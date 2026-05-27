@@ -1,2 +1,2 @@
-# Align.net
+# Align
 AI - powered job matching app
