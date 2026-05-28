@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn — Find jobs that fit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #5D7FA3;
+    --sage: #8CB69B;
+    --bg: #F6F8F7;
+    --card-bg: #FCFCFA;
+    --text: #1A2530;
+    --border: #DDE3E8;
+    --mint: #6FBF8F;
+    --rose: #D79A9A;
+    --text-muted: #4A5968;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--brand);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--sage); }
+  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    background: var(--brand); color: white;
+    border: none; border-radius: 100px;
+    padding: 10px 24px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .nav-cta:hover { opacity: 0.88; }
+
+  /* HERO */
+  .hero {
+    min-height: 92vh;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 60px;
+    padding: 80px 8%;
+  }
+  .hero-text { max-width: 520px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: white; border: 1px solid var(--border);
+    border-radius: 100px; padding: 6px 16px;
+    font-size: 13px; color: var(--brand);
+    margin-bottom: 32px;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(42px, 5vw, 64px);
+    line-height: 1.08;
+    letter-spacing: -1.5px;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+  h1 em { font-style: italic; color: var(--brand); }
+  .hero-sub {
+    font-size: 18px; line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    font-weight: 300;
+  }
+  .hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--brand); color: white;
+    border: none; border-radius: 100px;
+    padding: 16px 36px; font-size: 16px;
+    font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); border-radius: 100px;
+    padding: 16px 28px; font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* SWIPE CARD MOCKUP */
+  .hero-visual {
+    position: relative;
+    display: flex; justify-content: center; align-items: center;
+    height: 520px;
+  }
+  .card-stack { position: relative; width: 320px; }
+  .job-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    width: 320px;
+    position: absolute;
+    transition: all 0.3s;
+  }
+  .card-back-2 {
+    transform: rotate(-4deg) translateY(12px);
+    opacity: 0.5;
+    background: #EEF2F5;
+  }
+  .card-back-1 {
+    transform: rotate(-2deg) translateY(6px);
+    opacity: 0.75;
+    background: #F4F7F9;
+  }
+  .card-front { position: relative; z-index: 3; }
+  .card-company-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .company-logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 500; color: white;
+    font-family: 'DM Serif Display', serif;
+  }
+  .company-name { font-size: 13px; color: var(--text-muted); }
+  .job-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); margin-bottom: 4px; }
+  .match-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(111,191,143,0.15);
+    color: #3a9463;
+    font-size: 12px; font-weight: 500;
+    padding: 4px 12px; border-radius: 100px;
+    margin-bottom: 20px;
+  }
+  .card-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 20px; }
+  .card-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .detail-item label { font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-item span { font-size: 14px; font-weight: 500; color: var(--text); }
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tag {
+    font-size: 12px; color: var(--brand);
+    background: rgba(93,127,163,0.1);
+    padding: 4px 12px; border-radius: 100px;
+  }
+  .swipe-actions { display: flex; gap: 12px; }
+  .swipe-btn {
+    flex: 1; padding: 14px;
+    border-radius: 14px; border: none;
+    font-size: 14px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .swipe-skip { background: rgba(215,154,154,0.15); color: #a05858; }
+  .swipe-skip:hover { background: rgba(215,154,154,0.28); }
+  .swipe-apply { background: rgba(111,191,143,0.15); color: #3a9463; }
+  .swipe-apply:hover { background: rgba(111,191,143,0.28); }
+
+  /* Floating labels */
+  .float-label {
+    position: absolute;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    box-shadow: 0 4px 20px rgba(47,58,69,0.08);
+    z-index: 10;
+  }
+  .float-salary { top: 30px; right: -60px; color: var(--text); }
+  .float-salary strong { display: block; font-size: 16px; font-weight: 500; color: var(--brand); }
+  .float-remote { bottom: 60px; left: -50px; color: var(--text-muted); }
+  .float-remote strong { color: var(--sage); }
+
+  /* HOW IT WORKS */
+  .section { padding: 100px 8%; }
+  .section-label {
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 16px; font-weight: 500;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 4vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+  .section-sub { font-size: 17px; color: var(--text-muted); line-height: 1.7; max-width: 520px; font-weight: 300; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 60px; }
+  .step-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .step-card::before {
+    content: attr(data-num);
+    position: absolute; top: -10px; right: 20px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 80px; color: var(--border);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .step-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; font-size: 22px;
+  }
+  .icon-blue { background: rgba(93,127,163,0.12); }
+  .icon-green { background: rgba(140,182,155,0.15); }
+  .icon-mint { background: rgba(111,191,143,0.15); }
+  .step-title { font-size: 18px; font-weight: 500; margin-bottom: 10px; }
+  .step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+
+  /* FEATURES / PERKS */
+  .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 60px; }
+  .feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+  }
+  .feature-card.accent { background: var(--brand); border-color: var(--brand); color: white; }
+  .feature-card.accent .feat-title { color: white; }
+  .feature-card.accent .feat-desc { color: rgba(255,255,255,0.75); }
+  .feat-icon { font-size: 28px; margin-bottom: 16px; }
+  .feat-title { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .feat-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
+
+  /* STATS */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden; margin-top: 60px;
+  }
+  .stat {
+    background: var(--card-bg);
+    padding: 36px 32px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 42px; color: var(--brand);
+    letter-spacing: -1px; margin-bottom: 8px;
+  }
+  .stat-label { font-size: 14px; color: var(--text-muted); }
+
+  /* CTA SECTION */
+  .cta-section {
+    margin: 0 8% 100px;
+    background: var(--brand);
+    border-radius: 28px;
+    padding: 80px 10%;
+    text-align: center;
+    color: white;
+  }
+  .cta-section h2 { color: white; letter-spacing: -1px; }
+  .cta-section p { color: rgba(255,255,255,0.75); font-size: 17px; margin: 16px 0 40px; font-weight: 300; }
+  .btn-white {
+    background: white; color: var(--brand);
+    border: none; border-radius: 100px;
+    padding: 16px 40px; font-size: 16px;
+    font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-white:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* FOOTER */
+  footer {
+    padding: 40px 8%;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .hero-text > * { animation: fadeUp 0.6s ease both; }
+  .hero-text > *:nth-child(1) { animation-delay: 0.1s; }
+  .hero-text > *:nth-child(2) { animation-delay: 0.2s; }
+  .hero-text > *:nth-child(3) { animation-delay: 0.3s; }
+  .hero-text > *:nth-child(4) { animation-delay: 0.4s; }
+  .card-front { animation: float 5s ease-in-out infinite; }
+  .float-salary { animation: float 4s ease-in-out infinite 0.5s; }
+  .float-remote { animation: float 4.5s ease-in-out infinite 1s; }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 60px 6%; }
+    .hero-visual { height: 400px; }
+    .float-salary { right: 0; }
+    .float-remote { left: 0; }
+    .steps { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Alygnn<span>.</span></div>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+  <button class="nav-cta" onclick="window.location.href='align-upload.html'">Get started</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-text">
+    <div class="hero-badge"><span class="badge-dot"></span> AI-powered job matching</div>
+    <h1>Your career,<br><em>perfectly</em><br>aligned.</h1>
+    <p class="hero-sub">Upload your resume. Set your criteria. Swipe through jobs matched to you by AI — salary, benefits, 401(k), and more.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="window.location.href='align-upload.html'">Upload your resume</button>
+      <button class="btn-ghost" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See how it works</button>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="card-stack">
+      <div class="job-card card-back-2"></div>
+      <div class="job-card card-back-1"></div>
+      <div class="job-card card-front">
+        <div class="card-company-row">
+          <div class="company-logo">S</div>
+          <div>
+            <div style="font-weight:500;font-size:15px;">Stripe</div>
+            <div class="company-name">San Francisco, CA · Remote OK</div>
+          </div>
+        </div>
+        <div class="job-title">Senior Product Designer</div>
+        <div class="match-badge">✦ 94% match</div>
+        <hr class="card-divider">
+        <div class="card-details">
+          <div class="detail-item"><label>Salary</label><span>$145k–$175k</span></div>
+          <div class="detail-item"><label>401(k)</label><span>4% match</span></div>
+          <div class="detail-item"><label>Health</label><span>Full coverage</span></div>
+          <div class="detail-item"><label>PTO</label><span>Unlimited</span></div>
+        </div>
+        <div class="card-tags">
+          <span class="tag">Figma</span>
+          <span class="tag">Systems</span>
+          <span class="tag">B2B SaaS</span>
+        </div>
+        <div class="swipe-actions">
+          <button class="swipe-btn swipe-skip">✕ Skip</button>
+          <button class="swipe-btn swipe-apply">✓ Apply</button>
+        </div>
+      </div>
+
+      <div class="float-label float-salary">
+        <span style="font-size:11px;color:var(--text-muted);">Base salary</span>
+        <strong>$160,000</strong>
+      </div>
+      <div class="float-label float-remote">
+        <strong>Remote</strong>
+        <span style="font-size:11px;"> friendly</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how" style="background: white;">
+  <p class="section-label">How it works</p>
+  <h2>Three steps to your<br>dream role</h2>
+  <p class="section-sub">No more endless scrolling. Alygnn learns what you're worth and surfaces jobs that meet your standards.</p>
+  <div class="steps">
+    <div class="step-card" data-num="1">
+      <div class="step-icon icon-blue">📄</div>
+      <div class="step-title">Upload your resume</div>
+      <p class="step-desc">Drop your PDF and our AI extracts your skills, experience, and job history automatically. No manual entry.</p>
+    </div>
+    <div class="step-card" data-num="2">
+      <div class="step-icon icon-green">⚙️</div>
+      <div class="step-title">Set your criteria</div>
+      <p class="step-desc">Choose your city, salary floor, 401(k) requirements, health coverage, remote preferences, and more.</p>
+    </div>
+    <div class="step-card" data-num="3">
+      <div class="step-icon icon-mint">👆</div>
+      <div class="step-title">Swipe to apply</div>
+      <p class="step-desc">Swipe right to apply, left to skip. Every card is a real job that already meets your criteria.</p>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="section" style="padding-top:0; background: white;">
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-num">94%</div>
+      <div class="stat-label">Average match accuracy</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">2.4M+</div>
+      <div class="stat-label">Jobs indexed daily</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">3× faster</div>
+      <div class="stat-label">Than traditional job search</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <p class="section-label">Features</p>
+  <h2>Everything your job<br>search was missing</h2>
+  <div class="features-grid">
+    <div class="feature-card accent">
+      <div class="feat-icon">✦</div>
+      <div class="feat-title">AI resume parsing</div>
+      <p class="feat-desc">Claude AI reads your resume and builds a rich profile — skills, seniority, industries, and salary expectations — in seconds.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="color:var(--sage)">💰</div>
+      <div class="feat-title">Full compensation view</div>
+      <p class="feat-desc">Every card shows base salary, 401(k) match, equity, health coverage, and PTO — not just the job title.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="color:var(--brand)">📍</div>
+      <div class="feat-title">Location filters</div>
+      <p class="feat-desc">Filter by city, state, country, or remote. Set a commute radius. Only see roles where you actually want to live.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon" style="color:var(--mint)">📊</div>
+      <div class="feat-title">Application tracker</div>
+      <p class="feat-desc">Every right swipe goes into a Kanban board — Applied, Interview, Offer, Rejected. Your pipeline, always organized.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Ready to find your<br>perfect alignment?</h2>
+  <p>Upload your resume and start swiping in under 2 minutes.</p>
+  <button class="btn-white" onclick="window.location.href='align-upload.html'">Get started for free</button>
+</div>
+
+<footer>
+  <div class="logo" style="font-size:18px;">Alygnn<span>.</span></div>
+  <span>© 2026 Alygnn. Built for job seekers, by people who hated job searching.</span>
+  <span>Privacy · Terms</span>
+</footer>
+
+</body>
+</html>
