@@ -1,12 +1,4 @@
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-};
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -20,7 +12,6 @@ export default async function handler(req, res) {
     let messageContent;
 
     if (resumeBase64 && resumeType === 'application/pdf') {
-      // Send PDF directly to Claude as a document
       messageContent = [
         {
           type: 'document',
@@ -32,51 +23,15 @@ export default async function handler(req, res) {
         },
         {
           type: 'text',
-          text: `You are a resume parser. Extract key information from this resume and return ONLY a valid JSON object with no extra text, no markdown, no code fences.
-
-Return this exact JSON structure:
-{
-  "name": "full name",
-  "email": "email address or empty string",
-  "phone": "phone number or empty string",
-  "location": "city, state or empty string",
-  "title": "current or most recent job title",
-  "summary": "2 sentence professional summary",
-  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
-  "experience_years": 3,
-  "education": "highest degree and field",
-  "languages": ["English"],
-  "job_types": ["Full-time"],
-  "industries": ["Technology"]
-}`,
+          text: 'You are a resume parser. Extract key information from this resume and return ONLY a valid JSON object with no extra text, no markdown, no code fences.\n\nReturn this exact JSON structure:\n{"name":"full name","email":"email or empty","phone":"phone or empty","location":"city, state or empty","title":"most recent job title","summary":"2 sentence summary","skills":["skill1","skill2","skill3","skill4","skill5"],"experience_years":3,"education":"degree and field","languages":["English"],"job_types":["Full-time"],"industries":["Technology"]}',
         },
       ];
     } else {
-      // Fall back to text
       const text = resumeText || 'No resume content provided';
       messageContent = [
         {
           type: 'text',
-          text: `You are a resume parser. Extract key information from this resume text and return ONLY a valid JSON object with no extra text, no markdown, no code fences.
-
-Resume text:
-${text}
-
-Return this exact JSON structure:
-{
-  "name": "full name",
-  "email": "email address or empty string",
-  "phone": "phone number or empty string",
-  "location": "city, state or empty string",
-  "title": "current or most recent job title",
-  "summary": "2 sentence professional summary",
-  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
-  "experience_years": 3,
-  "education": "highest degree and field",
-  "languages": ["English"],
-  "job_types": ["Full-time"],
-  "industries": ["Technology"]
-}`,
+          text: 'You are a resume parser. Extract key information from this resume text and return ONLY a valid JSON object with no extra text, no markdown, no code fences.\n\nResume:\n' + text + '\n\nReturn this exact JSON structure:\n{"name":"full name","email":"email or empty","phone":"phone or empty","location":"city, state or empty","title":"most recent job title","summary":"2 sentence summary","skills":["skill1","skill2","skill3","skill4","skill5"],"experience_years":3,"education":"degree and field","languages":["English"],"job_types":["Full-time"],"industries":["Technology"]}',
         },
       ];
     }
@@ -98,8 +53,8 @@ Return this exact JSON structure:
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Claude API error:', data);
-      return res.status(500).json({ error: 'Failed to parse resume' });
+      console.error('Claude API error:', JSON.stringify(data));
+      return res.status(500).json({ error: 'Claude API failed', details: data });
     }
 
     const text = data.content[0].text.trim();
@@ -109,7 +64,7 @@ Return this exact JSON structure:
     return res.status(200).json({ success: true, data: parsed });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error.message);
     return res.status(500).json({ error: 'Server error', details: error.message });
   }
-}
+};
