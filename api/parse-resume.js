@@ -7,7 +7,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,10 +15,70 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { resumeText } = req.body;
+    const { resumeBase64, resumeType, resumeText } = req.body;
 
-    if (!resumeText) {
-      return res.status(400).json({ error: 'No resume text provided' });
+    let messageContent;
+
+    if (resumeBase64 && resumeType === 'application/pdf') {
+      // Send PDF directly to Claude as a document
+      messageContent = [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: resumeBase64,
+          },
+        },
+        {
+          type: 'text',
+          text: `You are a resume parser. Extract key information from this resume and return ONLY a valid JSON object with no extra text, no markdown, no code fences.
+
+Return this exact JSON structure:
+{
+  "name": "full name",
+  "email": "email address or empty string",
+  "phone": "phone number or empty string",
+  "location": "city, state or empty string",
+  "title": "current or most recent job title",
+  "summary": "2 sentence professional summary",
+  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
+  "experience_years": 3,
+  "education": "highest degree and field",
+  "languages": ["English"],
+  "job_types": ["Full-time"],
+  "industries": ["Technology"]
+}`,
+        },
+      ];
+    } else {
+      // Fall back to text
+      const text = resumeText || 'No resume content provided';
+      messageContent = [
+        {
+          type: 'text',
+          text: `You are a resume parser. Extract key information from this resume text and return ONLY a valid JSON object with no extra text, no markdown, no code fences.
+
+Resume text:
+${text}
+
+Return this exact JSON structure:
+{
+  "name": "full name",
+  "email": "email address or empty string",
+  "phone": "phone number or empty string",
+  "location": "city, state or empty string",
+  "title": "current or most recent job title",
+  "summary": "2 sentence professional summary",
+  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
+  "experience_years": 3,
+  "education": "highest degree and field",
+  "languages": ["English"],
+  "job_types": ["Full-time"],
+  "industries": ["Technology"]
+}`,
+        },
+      ];
     }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -32,31 +91,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: `You are a resume parser. Extract key information from this resume and return ONLY a valid JSON object with no extra text.
-
-Resume:
-${resumeText}
-
-Return this exact JSON structure:
-{
-  "name": "full name",
-  "email": "email address",
-  "phone": "phone number",
-  "location": "city, state",
-  "title": "current or most recent job title",
-  "summary": "2 sentence professional summary",
-  "skills": ["skill1", "skill2", "skill3", "skill4", "skill5"],
-  "experience_years": 3,
-  "education": "highest degree and field",
-  "languages": ["English"],
-  "job_types": ["Full-time"],
-  "industries": ["Technology"]
-}`,
-          },
-        ],
+        messages: [{ role: 'user', content: messageContent }],
       }),
     });
 
@@ -68,8 +103,6 @@ Return this exact JSON structure:
     }
 
     const text = data.content[0].text.trim();
-
-    // Strip markdown code fences if present
     const clean = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -79,4 +112,5 @@ Return this exact JSON structure:
     console.error('Error:', error);
     return res.status(500).json({ error: 'Server error', details: error.message });
   }
+}
 }
