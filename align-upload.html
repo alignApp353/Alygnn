@@ -34,7 +34,6 @@
     flex-direction: column;
   }
 
-  /* NAV */
   nav {
     background: rgba(246,248,247,0.92);
     backdrop-filter: blur(12px);
@@ -65,18 +64,15 @@
   }
   .nav-back:hover { color: var(--text); }
 
-  /* MAIN LAYOUT */
   main {
     flex: 1;
     display: flex; align-items: center; justify-content: center;
     padding: 60px 5%;
   }
 
-  /* SCREENS */
   .screen { width: 100%; max-width: 560px; }
   .screen-confirm { max-width: 680px; }
 
-  /* UPLOAD SCREEN */
   .upload-eyebrow {
     display: flex; align-items: center; gap: 10px;
     margin-bottom: 20px;
@@ -98,7 +94,6 @@
     margin-bottom: 40px;
   }
 
-  /* DROP ZONE */
   .drop-zone {
     background: var(--card-bg);
     border: 2px dashed var(--border);
@@ -147,7 +142,6 @@
     margin-top: 20px; font-size: 12px; color: var(--text-muted);
   }
 
-  /* UPLOADING STATE */
   .uploading-state { display: none; }
   .upload-progress {
     background: var(--card-bg);
@@ -178,7 +172,6 @@
   }
   .progress-pct { font-size: 12px; color: var(--text-muted); }
 
-  /* CONFIRM SCREEN */
   .confirm-screen { display: none; }
   .confirm-header { margin-bottom: 36px; }
   .confirm-grid {
@@ -186,7 +179,6 @@
     gap: 24px; align-items: start;
   }
 
-  /* PDF PREVIEW CARD */
   .pdf-preview-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -207,13 +199,29 @@
   .pdf-icon svg { width: 16px; height: 16px; stroke: white; }
   .pdf-filename { font-size: 13px; font-weight: 500; color: white; }
   .pdf-size { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; }
+
+  /* PDF canvas container — shows the real rendered PDF page */
   .pdf-preview-body {
-    padding: 20px;
-    min-height: 320px;
     background: white;
-    display: flex; flex-direction: column; gap: 8px;
+    overflow: hidden;
+    max-height: 420px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
   }
-  /* Mock resume lines */
+  #pdf-canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  /* Fallback placeholder shown before PDF renders */
+  .pdf-placeholder {
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   .resume-mock-name {
     width: 60%; height: 18px;
     background: #1A2530; border-radius: 3px; margin-bottom: 4px;
@@ -232,6 +240,7 @@
   .resume-mock-line.short { width: 65%; }
   .resume-mock-line.med { width: 82%; }
   .resume-mock-line.full { width: 100%; }
+
   .pdf-preview-footer {
     padding: 12px 18px;
     border-top: 1px solid var(--border);
@@ -250,7 +259,6 @@
   }
   .pdf-reupload:hover { color: var(--text); }
 
-  /* EXTRACTED INFO */
   .extracted-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -314,7 +322,6 @@
     font-size: 12px; color: var(--text-muted); line-height: 1.6;
   }
 
-  /* CONFIRM ACTIONS */
   .confirm-actions {
     margin-top: 24px;
     display: flex; gap: 12px;
@@ -336,7 +343,6 @@
   }
   .btn-redo:hover { border-color: var(--brand); color: var(--brand); }
 
-  /* TIPS */
   .tips {
     margin-top: 32px;
     display: grid; grid-template-columns: repeat(3, 1fr);
@@ -352,18 +358,12 @@
   .tip-title { font-weight: 500; margin-bottom: 4px; font-size: 13px; }
   .tip-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
-  /* ANIMATIONS */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
   .screen { animation: fadeUp 0.5s ease both; }
   .spinner {
@@ -381,8 +381,8 @@
     .info-grid { grid-template-columns: 1fr; }
   }
 </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 
@@ -488,27 +488,28 @@
               <div class="pdf-size" id="preview-size">245 KB</div>
             </div>
           </div>
-          <div class="pdf-preview-body">
-            <div class="resume-mock-name"></div>
-            <div class="resume-mock-title"></div>
-            <div class="resume-mock-section"></div>
-            <div class="resume-mock-line full"></div>
-            <div class="resume-mock-line med"></div>
-            <div class="resume-mock-line short"></div>
-            <div class="resume-mock-section"></div>
-            <div class="resume-mock-line full"></div>
-            <div class="resume-mock-line full"></div>
-            <div class="resume-mock-line med"></div>
-            <div class="resume-mock-line short"></div>
-            <div class="resume-mock-section"></div>
-            <div class="resume-mock-line full"></div>
-            <div class="resume-mock-line med"></div>
-            <div class="resume-mock-line full"></div>
-            <div class="resume-mock-line short"></div>
-            <div class="resume-mock-section"></div>
-            <div class="resume-mock-line med"></div>
-            <div class="resume-mock-line full"></div>
+
+          <!-- PDF renders here; placeholder shown until canvas is ready -->
+          <div class="pdf-preview-body" id="pdf-preview-body">
+            <div class="pdf-placeholder" id="pdf-placeholder">
+              <div class="resume-mock-name"></div>
+              <div class="resume-mock-title"></div>
+              <div class="resume-mock-section"></div>
+              <div class="resume-mock-line full"></div>
+              <div class="resume-mock-line med"></div>
+              <div class="resume-mock-line short"></div>
+              <div class="resume-mock-section"></div>
+              <div class="resume-mock-line full"></div>
+              <div class="resume-mock-line full"></div>
+              <div class="resume-mock-line med"></div>
+              <div class="resume-mock-line short"></div>
+              <div class="resume-mock-section"></div>
+              <div class="resume-mock-line full"></div>
+              <div class="resume-mock-line med"></div>
+            </div>
+            <canvas id="pdf-canvas" style="display:none; width:100%; height:auto; block;"></canvas>
           </div>
+
           <div class="pdf-preview-footer">
             <div class="pdf-status"><div class="status-dot"></div>Successfully read</div>
             <button class="pdf-reupload" onclick="reupload()">Upload different file</button>
@@ -554,13 +555,7 @@
             <div class="skills-section">
               <span class="skills-label">Skills detected</span>
               <div class="skills-wrap">
-                <span class="skill-tag">Figma</span>
-                <span class="skill-tag">User research</span>
-                <span class="skill-tag">Prototyping</span>
-                <span class="skill-tag">Design systems</span>
-                <span class="skill-tag">React</span>
-                <span class="skill-tag">Accessibility</span>
-                <span class="skill-tag">Wireframing</span>
+                <span class="skill-tag">Loading...</span>
               </div>
             </div>
 
@@ -636,6 +631,30 @@
     progressSub.textContent = sub;
   }
 
+  // Renders the first page of the PDF into the canvas on the left side
+  async function renderPDFPreview(file) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const canvas = document.getElementById('pdf-canvas');
+      const container = document.getElementById('pdf-preview-body');
+      const containerWidth = container.offsetWidth || 260;
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = containerWidth / viewport.width;
+      const scaledViewport = page.getViewport({ scale });
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport }).promise;
+      // Swap out placeholder for real canvas
+      document.getElementById('pdf-placeholder').style.display = 'none';
+      canvas.style.display = 'block';
+    } catch (e) {
+      console.warn('PDF preview render failed:', e);
+      // Placeholder stays visible as fallback
+    }
+  }
+
   async function readAndParseResume(file) {
     try {
       setProgress(20, 'Reading your resume...', 'Securely loading your file');
@@ -666,7 +685,6 @@
         reader.readAsText(file);
       });
     }
-    // Use PDF.js to extract real text from PDF
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = '';
@@ -678,21 +696,41 @@
     return { type: 'text', content: text.substring(0, 4000) };
   }
 
+  // Formats education whether it comes back as a string or an object
+  function formatEducation(edu) {
+    if (!edu) return '—';
+    if (typeof edu === 'string') return edu;
+    if (typeof edu === 'object') {
+      const parts = [];
+      if (edu.degree) parts.push(edu.degree);
+      if (edu.field) parts.push(edu.field);
+      if (edu.school) parts.push(edu.school);
+      return parts.length > 0 ? parts.join(', ') : '—';
+    }
+    return '—';
+  }
+
   function showConfirm(data) {
     uploadingScreen.style.display = 'none';
     confirmScreen.style.display = 'block';
     confirmScreen.style.animation = 'fadeUp 0.5s ease both';
+
+    // Render the actual PDF preview now that the confirm screen is visible
+    if (currentFile) renderPDFPreview(currentFile);
+
     if (data) {
       const name = data.name || 'Your Name';
       const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
       document.getElementById('avatar-initials').textContent = initials;
       document.getElementById('extracted-name').textContent = name;
       document.getElementById('extracted-role').textContent = data.title || 'Professional';
+
       const infoItems = document.querySelectorAll('.info-item span');
       if (infoItems[0]) infoItems[0].textContent = data.experience_years ? data.experience_years + ' years' : '—';
-      if (infoItems[1]) infoItems[1].textContent = data.education || '—';
+      if (infoItems[1]) infoItems[1].textContent = formatEducation(data.education);
       if (infoItems[2]) infoItems[2].textContent = data.location || '—';
       if (infoItems[3]) infoItems[3].textContent = data.email || '—';
+
       if (data.skills && data.skills.length > 0) {
         const skillsWrap = document.querySelector('.skills-wrap');
         skillsWrap.innerHTML = data.skills.slice(0, 8).map(s => '<span class="skill-tag">' + s + '</span>').join('');
@@ -709,6 +747,9 @@
     fileInput.value = '';
     progressBar.style.width = '0%';
     progressPct.textContent = '0%';
+    // Reset PDF preview for next upload
+    document.getElementById('pdf-placeholder').style.display = 'flex';
+    document.getElementById('pdf-canvas').style.display = 'none';
   }
 
   function goToPreferences() {
