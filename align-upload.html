@@ -726,7 +726,17 @@
       document.getElementById('extracted-role').textContent = data.title || 'Professional';
 
       const infoItems = document.querySelectorAll('.info-item span');
-      if (infoItems[0]) infoItems[0].textContent = data.experience_years ? data.experience_years + ' years' : '—';
+      if (infoItems[0]) {
+  if (data.experience_years) {
+    const yrs = Math.floor(data.experience_years);
+    const mos = Math.round((data.experience_years - yrs) * 12);
+    if (yrs === 0) infoItems[0].textContent = mos + ' months';
+    else if (mos === 0) infoItems[0].textContent = yrs + (yrs === 1 ? ' year' : ' years');
+    else infoItems[0].textContent = yrs + (yrs === 1 ? ' year' : ' years') + ', ' + mos + ' months';
+  } else {
+    infoItems[0].textContent = '—';
+  }
+}
       if (infoItems[1]) infoItems[1].textContent = formatEducation(data.education);
       if (infoItems[2]) infoItems[2].textContent = data.location || '—';
       if (infoItems[3]) infoItems[3].textContent = data.email || '—';
