@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data.data) return res.status(500).json({ success: false, error: 'No results' });
+    if (!data.data || !data.data.length) return res.status(200).json({ success: false, error: 'No jobs found for your search.' });
 
     const jobs = data.data.slice(0, 15).map(job => ({
       id: job.job_id,
