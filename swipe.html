@@ -298,9 +298,10 @@
     const prefRaw = sessionStorage.getItem('preferences');
     const pref = prefRaw ? JSON.parse(prefRaw) : {};
 
-    const query = prefs.title || pref.query || 'software engineer';
-    const location = pref.city || prefs.location || '';
-    const employment_type = pref.jobType || '';
+    // Build a sensible query from whatever we have
+    const query = pref.query || pref.role || prefs.title || 'software engineer';
+    const location = pref.city || pref.location || prefs.location || '';
+    const employment_type = pref.jobType || pref.employment_type || '';
 
     try {
       const res = await fetch('/api/get-jobs', {
@@ -308,8 +309,15 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, location, employment_type }),
       });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
       const data = await res.json();
-      if (!data.success || !data.jobs.length) throw new Error(data.error || 'No jobs found');
+
+      if (!data.success || !data.jobs || !data.jobs.length) {
+        throw new Error(data.error || 'No jobs found for your search.');
+      }
+
       jobs = data.jobs;
       currentIndex = 0;
       applied = 0;
@@ -319,7 +327,7 @@
       renderCards();
       showScreen('swipe');
     } catch (err) {
-      console.error(err);
+      console.error('loadJobs error:', err);
       document.getElementById('error-msg').textContent = err.message || 'Failed to load jobs.';
       showScreen('error');
     }
@@ -368,12 +376,17 @@
       salary ? `<span class="pill salary">${salary}</span>` : '',
     ].filter(Boolean).join('');
 
-    const highlightsHTML = job.highlights.length
+    // FIX: safely handle highlights being null/undefined
+    const highlights = Array.isArray(job.highlights) ? job.highlights : [];
+    const highlightsHTML = highlights.length
       ? `<div class="card-highlights">
           <div class="highlights-label">Requirements</div>
-          ${job.highlights.map(h => `<div class="highlight-item"><div class="highlight-dot"></div>${h}</div>`).join('')}
+          ${highlights.map(h => `<div class="highlight-item"><div class="highlight-dot"></div>${h}</div>`).join('')}
         </div>`
       : '';
+
+    // FIX: safely handle description being null/undefined
+    const description = job.description || 'No description available.';
 
     card.innerHTML = `
       <div class="stamp stamp-apply">APPLY ✓</div>
@@ -381,12 +394,12 @@
       <div class="card-top">
         <div class="company-logo">${logoHTML}</div>
         <div class="card-top-text">
-          <div class="job-title">${job.title}</div>
-          <div class="company-name">${job.company}</div>
+          <div class="job-title">${job.title || 'Untitled Role'}</div>
+          <div class="company-name">${job.company || ''}</div>
         </div>
       </div>
       <div class="card-pills">${pillsHTML}</div>
-      <div class="card-desc">${job.description}</div>
+      <div class="card-desc">${description}</div>
       ${highlightsHTML}
       <div class="card-bottom">
         <div class="posted-time">${timeAgo(job.posted)}</div>
