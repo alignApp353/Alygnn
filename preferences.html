@@ -31,7 +31,6 @@
     min-height: 100vh;
   }
 
-  /* NAV */
   nav {
     background: rgba(246,248,247,0.92);
     backdrop-filter: blur(12px);
@@ -52,10 +51,8 @@
   .nav-back { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-back:hover { color: var(--text); }
 
-  /* LAYOUT */
   .page { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 64px); }
 
-  /* SIDEBAR */
   .sidebar {
     background: var(--card-bg);
     border-right: 1px solid var(--border);
@@ -88,16 +85,13 @@
   .sp-bar-bg { background: var(--border); border-radius: 100px; height: 4px; overflow: hidden; }
   .sp-bar { height: 100%; background: var(--mint); border-radius: 100px; width: 0%; transition: width 0.5s ease; }
 
-  /* MAIN CONTENT */
   .main-content { padding: 48px 5%; max-width: 740px; }
 
-  /* SECTION */
   .pref-section { margin-bottom: 48px; }
   .section-header { margin-bottom: 24px; }
   .section-num { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--brand); font-weight: 500; margin-bottom: 6px; }
   .section-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--text); letter-spacing: -0.5px; }
 
-  /* SALARY SLIDER */
   .salary-display {
     background: var(--card-bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 28px;
@@ -132,7 +126,6 @@
   .salary-chip:hover { border-color: var(--brand); color: var(--brand); }
   .salary-chip.active { background: var(--brand); color: white; border-color: var(--brand); }
 
-  /* LOCATION */
   .location-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .input-group { display: flex; flex-direction: column; gap: 6px; }
   .input-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
@@ -147,7 +140,6 @@
   .input-field::placeholder { color: var(--text-muted); }
   select.input-field { cursor: pointer; }
 
-  /* WORK STYLE TOGGLE */
   .toggle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .toggle-card {
     background: var(--card-bg); border: 1.5px solid var(--border);
@@ -161,7 +153,6 @@
   .tc-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
   .tc-sub { font-size: 12px; color: var(--text-muted); }
 
-  /* BENEFITS CHECKLIST */
   .benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .benefit-item {
     background: var(--card-bg); border: 1.5px solid var(--border);
@@ -182,20 +173,6 @@
   .benefit-name { font-size: 13px; font-weight: 500; color: var(--text); }
   .benefit-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 
-  /* 401K SLIDER */
-  .retirement-card {
-    background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 20px; padding: 28px;
-  }
-  .ret-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .ret-title { font-size: 15px; font-weight: 500; }
-  .ret-val {
-    font-family: 'DM Serif Display', serif; font-size: 28px;
-    color: var(--brand); letter-spacing: -1px;
-  }
-  input[type=range].mint-slider::-webkit-slider-thumb { background: var(--mint); box-shadow: 0 0 0 1px var(--mint); }
-
-  /* JOB TYPE */
   .jobtype-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .jt-card {
     background: var(--card-bg); border: 1.5px solid var(--border);
@@ -208,7 +185,6 @@
   .jt-icon { font-size: 20px; margin-bottom: 6px; }
   .jt-title { font-size: 13px; font-weight: 500; color: var(--text); }
 
-  /* INDUSTRY TAGS */
   .industry-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
   .ind-tag {
     padding: 8px 18px; border-radius: 100px;
@@ -219,7 +195,6 @@
   .ind-tag:hover { border-color: var(--brand); color: var(--brand); }
   .ind-tag.active { background: var(--brand); color: white; border-color: var(--brand); }
 
-  /* CTA */
   .pref-cta {
     background: var(--card-bg); border: 1px solid var(--border);
     border-radius: 20px; padding: 28px;
@@ -237,7 +212,6 @@
   }
   .btn-start:hover { opacity: 0.88; transform: translateY(-1px); }
 
-  /* DIVIDER */
   .section-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 48px; }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -309,11 +283,6 @@
         <div class="sidebar-icon si-blue">🏥</div>
         Benefits
         <span class="sidebar-check" id="sc-benefits"></span>
-      </a>
-      <a href="#retirement" class="sidebar-item">
-        <div class="sidebar-icon si-green">📈</div>
-        401(k)
-        <span class="sidebar-check" id="sc-retirement"></span>
       </a>
       <a href="#jobtype" class="sidebar-item">
         <div class="sidebar-icon si-sage">💼</div>
@@ -528,33 +497,10 @@
 
     <hr class="section-divider">
 
-    <!-- 401K -->
-    <div class="pref-section" id="retirement">
-      <div class="section-header">
-        <div class="section-num">05 — Retirement</div>
-        <div class="section-title">Minimum 401(k) match</div>
-      </div>
-      <div class="retirement-card">
-        <div class="ret-header">
-          <div class="ret-title">Employer match</div>
-          <div class="ret-val" id="k401-display">3%</div>
-        </div>
-        <input type="range" class="mint-slider" min="0" max="10" step="1" value="3" oninput="update401k(this.value)" style="width:100%;height:4px;-webkit-appearance:none;background:var(--border);border-radius:100px;outline:none;cursor:pointer;">
-        <div class="range-labels" style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--text-muted);">
-          <span>No match</span><span>5%</span><span>10%+</span>
-        </div>
-        <div style="margin-top:16px;padding:12px 14px;background:var(--mint-light);border-radius:10px;font-size:12px;color:#2e7a52;line-height:1.6;">
-          At 3% match: if you earn $80k and contribute 3%, your employer adds $2,400/year to your retirement automatically.
-        </div>
-      </div>
-    </div>
-
-    <hr class="section-divider">
-
     <!-- JOB TYPE -->
     <div class="pref-section" id="jobtype">
       <div class="section-header">
-        <div class="section-num">06 — Job type</div>
+        <div class="section-num">05 — Job type</div>
         <div class="section-title">What type of role?</div>
       </div>
       <div class="jobtype-grid">
@@ -582,7 +528,7 @@
     <!-- INDUSTRY -->
     <div class="pref-section" id="industry">
       <div class="section-header">
-        <div class="section-num">07 — Industry</div>
+        <div class="section-num">06 — Industry</div>
         <div class="section-title">Preferred industries</div>
       </div>
       <div class="industry-wrap">
@@ -635,17 +581,6 @@
     event.target.classList.add('active');
   }
 
-  function update401k(val) {
-    document.getElementById('k401-display').textContent = val + '%';
-    const salary = parseInt(document.getElementById('salary-slider').value);
-    const match = Math.round(salary * (val / 100));
-    document.querySelector('#retirement .ret-val + input + .range-labels + div').textContent =
-      val == 0 ? 'No employer match required.' :
-      `At ${val}% match: if you earn $${Math.round(salary/1000)}k and contribute ${val}%, your employer adds $${match.toLocaleString()}/year to your retirement automatically.`;
-    markDone('sc-retirement');
-    updateProgress();
-  }
-
   function selectWorkStyle(el) {
     document.querySelectorAll('.toggle-card').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
@@ -694,7 +629,7 @@
   }
 
   function updateProgress() {
-    const ids = ['sc-salary','sc-location','sc-workstyle','sc-benefits','sc-retirement','sc-jobtype','sc-industry'];
+    const ids = ['sc-salary','sc-location','sc-workstyle','sc-benefits','sc-jobtype','sc-industry'];
     const done = ids.filter(id => document.getElementById(id)?.textContent === '✓').length;
     const pct = Math.round((done / ids.length) * 100);
     document.getElementById('progress-bar').style.width = pct + '%';
