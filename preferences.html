@@ -140,6 +140,13 @@
   .input-field::placeholder { color: var(--text-muted); }
   select.input-field { cursor: pointer; }
 
+  /* Job role input highlight */
+  .role-input-wrap { margin-bottom: 24px; }
+  .role-input-wrap .input-field {
+    font-size: 16px; padding: 14px 18px; border-radius: 14px;
+    border: 2px solid var(--brand);
+  }
+
   .toggle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .toggle-card {
     background: var(--card-bg); border: 1.5px solid var(--border);
@@ -264,7 +271,12 @@
     <p class="sidebar-sub">Tell us exactly what you want. We only show jobs that meet your standards.</p>
 
     <div class="sidebar-sections">
-      <a href="#salary" class="sidebar-item active">
+      <a href="#role" class="sidebar-item active">
+        <div class="sidebar-icon si-blue">🎯</div>
+        Job role
+        <span class="sidebar-check" id="sc-role"></span>
+      </a>
+      <a href="#salary" class="sidebar-item">
         <div class="sidebar-icon si-blue">💰</div>
         Salary
         <span class="sidebar-check" id="sc-salary"></span>
@@ -307,6 +319,21 @@
 
   <!-- MAIN -->
   <main class="main-content">
+
+    <!-- JOB ROLE (NEW - most important field) -->
+    <div class="pref-section" id="role">
+      <div class="section-header">
+        <div class="section-num">00 — What you're looking for</div>
+        <div class="section-title">What job are you searching for?</div>
+      </div>
+      <div class="role-input-wrap">
+        <input type="text" class="input-field" id="role-input"
+          placeholder="e.g. Marketing Manager, Data Analyst, Nurse..."
+          oninput="checkRoleSection()">
+      </div>
+    </div>
+
+    <hr class="section-divider">
 
     <!-- SALARY -->
     <div class="pref-section" id="salary">
@@ -504,19 +531,19 @@
         <div class="section-title">What type of role?</div>
       </div>
       <div class="jobtype-grid">
-        <div class="jt-card active" onclick="toggleJobType(this)">
+        <div class="jt-card active" onclick="toggleJobType(this)" data-value="FULLTIME">
           <div class="jt-icon">⏰</div>
           <div class="jt-title">Full-time</div>
         </div>
-        <div class="jt-card" onclick="toggleJobType(this)">
+        <div class="jt-card" onclick="toggleJobType(this)" data-value="PARTTIME">
           <div class="jt-icon">🕐</div>
           <div class="jt-title">Part-time</div>
         </div>
-        <div class="jt-card" onclick="toggleJobType(this)">
+        <div class="jt-card" onclick="toggleJobType(this)" data-value="CONTRACTOR">
           <div class="jt-icon">📋</div>
           <div class="jt-title">Contract</div>
         </div>
-        <div class="jt-card" onclick="toggleJobType(this)">
+        <div class="jt-card" onclick="toggleJobType(this)" data-value="INTERN">
           <div class="jt-icon">🚀</div>
           <div class="jt-title">Internship</div>
         </div>
@@ -556,7 +583,7 @@
         <div class="cta-title">Ready to find your matches?</div>
         <div class="cta-sub">We'll show you jobs that meet every one of your criteria.</div>
       </div>
-      <button class="btn-start" onclick="window.location.href='swipe.html'">
+      <button class="btn-start" onclick="saveAndStart()">
         Start swiping →
       </button>
     </div>
@@ -618,6 +645,12 @@
     updateProgress();
   }
 
+  function checkRoleSection() {
+    const role = document.getElementById('role-input').value.trim();
+    if (role) markDone('sc-role'); else clearDone('sc-role');
+    updateProgress();
+  }
+
   function markDone(id) {
     const el = document.getElementById(id);
     if (el) el.textContent = '✓';
@@ -629,13 +662,49 @@
   }
 
   function updateProgress() {
-    const ids = ['sc-salary','sc-location','sc-workstyle','sc-benefits','sc-jobtype','sc-industry'];
+    const ids = ['sc-role','sc-salary','sc-location','sc-workstyle','sc-benefits','sc-jobtype','sc-industry'];
     const done = ids.filter(id => document.getElementById(id)?.textContent === '✓').length;
     const pct = Math.round((done / ids.length) * 100);
     document.getElementById('progress-bar').style.width = pct + '%';
     document.getElementById('progress-pct').textContent = pct + '%';
   }
 
+  // THE FIX: save all preferences to sessionStorage before navigating
+  function saveAndStart() {
+    const role = document.getElementById('role-input').value.trim();
+    const city = document.getElementById('city-input').value.trim();
+    const state = document.getElementById('state-input').value.trim();
+    const salary = parseInt(document.getElementById('salary-slider').value);
+
+    const workStyleEl = document.querySelector('.toggle-card.active .tc-title');
+    const workStyle = workStyleEl ? workStyleEl.textContent : '';
+
+    const activeJobTypes = [...document.querySelectorAll('.jt-card.active')]
+      .map(el => el.dataset.value).filter(Boolean);
+
+    const industries = [...document.querySelectorAll('.ind-tag.active')]
+      .map(el => el.textContent.trim());
+
+    const benefits = [...document.querySelectorAll('.benefit-item.active')]
+      .map(el => el.querySelector('.benefit-name').textContent.trim());
+
+    const preferences = {
+      query: role || 'software engineer',
+      city: city,
+      location: city && state ? `${city}, ${state}` : city || state || '',
+      salary_min: salary,
+      workStyle: workStyle,
+      jobType: activeJobTypes[0] || '',
+      jobTypes: activeJobTypes,
+      industries: industries,
+      benefits: benefits,
+    };
+
+    sessionStorage.setItem('preferences', JSON.stringify(preferences));
+    window.location.href = 'swipe.html';
+  }
+
+  // Initialize defaults as done
   markDone('sc-salary');
   markDone('sc-workstyle');
   markDone('sc-benefits');
