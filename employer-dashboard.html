@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn — Employer Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #5D7FA3; --sage: #8CB69B; --bg: #F0F3F2;
+    --card-bg: #FCFCFA; --text: #1A2530; --border: #DDE3E8;
+    --mint: #6FBF8F; --rose: #D79A9A; --text-muted: #4A5968;
+    --brand-light: rgba(93,127,163,0.08);
+    --mint-light: rgba(111,191,143,0.1);
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    background: rgba(246,248,247,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%; display: flex; align-items: center;
+    justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .nav-user { font-size: 13px; color: var(--text-muted); }
+  .btn-logout { font-size: 13px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.2s; }
+  .btn-logout:hover { border-color: var(--rose); color: var(--rose); }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 64px); }
+
+  .sidebar {
+    background: var(--card-bg); border-right: 1px solid var(--border);
+    padding: 32px 20px; position: sticky; top: 64px;
+    height: calc(100vh - 64px); overflow-y: auto;
+  }
+  .sidebar-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 10px; padding: 0 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    cursor: pointer; transition: all 0.2s;
+    font-size: 14px; color: var(--text-muted); margin-bottom: 2px;
+    border: none; background: none; width: 100%; text-align: left;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .nav-item:hover { background: var(--brand-light); color: var(--text); }
+  .nav-item.active { background: var(--brand-light); color: var(--brand); font-weight: 500; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--brand); color: white; font-size: 10px; padding: 2px 7px; border-radius: 100px; }
+
+  .main { padding: 40px 5%; }
+
+  /* PANELS */
+  .panel { display: none; animation: fadeUp 0.4s ease both; }
+  .panel.active { display: block; }
+
+  .page-header { margin-bottom: 32px; }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: var(--text-muted); }
+
+  /* STATS ROW */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 24px;
+  }
+  .stat-val { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--text); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  /* JOBS LIST */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 16px; font-weight: 500; color: var(--text); }
+  .btn-primary {
+    background: var(--brand); color: white; border: none;
+    border-radius: 100px; padding: 10px 22px; font-size: 13px;
+    font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  .job-row {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px;
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 10px; transition: box-shadow 0.2s;
+  }
+  .job-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .job-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .job-status.active { background: var(--mint); }
+  .job-status.paused { background: var(--rose); }
+  .job-info { flex: 1; }
+  .job-title-text { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .job-meta { font-size: 12px; color: var(--text-muted); }
+  .job-stats { display: flex; gap: 20px; text-align: center; }
+  .js-val { font-size: 16px; font-weight: 500; color: var(--text); }
+  .js-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .btn-view { font-size: 12px; color: var(--brand); background: var(--brand-light); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-view:hover { opacity: 0.8; }
+
+  /* CANDIDATES */
+  .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .candidate-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; transition: all 0.2s;
+  }
+  .candidate-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+  .candidate-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .candidate-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--brand-light); display: flex; align-items: center;
+    justify-content: center; font-size: 18px; flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .candidate-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .candidate-role { font-size: 12px; color: var(--text-muted); }
+  .candidate-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; border: 1px solid var(--border); color: var(--text-muted); }
+  .tag.match { background: var(--mint-light); border-color: rgba(111,191,143,0.3); color: #2e7a52; }
+  .candidate-actions { display: flex; gap: 8px; }
+  .btn-accept { flex: 1; background: var(--mint); color: white; border: none; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .btn-accept:hover { opacity: 0.85; }
+  .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
+
+  /* POST JOB FORM */
+  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; max-width: 640px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+  .form-input {
+    background: white; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 12px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    color: var(--text); outline: none; transition: border-color 0.2s; width: 100%;
+  }
+  .form-input:focus { border-color: var(--brand); }
+  .form-input::placeholder { color: #aab4bc; }
+  textarea.form-input { resize: vertical; min-height: 120px; }
+  select.form-input { cursor: pointer; }
+  .btn-post { background: var(--brand); color: white; border: none; border-radius: 12px; padding: 14px 32px; font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+  .btn-post:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white; padding: 10px 20px; border-radius: 100px;
+    font-size: 13px; font-weight: 500; transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-user-email"></span>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-label">Employer</div>
+    <button class="nav-item active" onclick="showPanel('overview')">
+      <span class="nav-icon">📊</span> Overview
+    </button>
+    <button class="nav-item" onclick="showPanel('jobs')">
+      <span class="nav-icon">💼</span> My Jobs
+    </button>
+    <button class="nav-item" onclick="showPanel('candidates')">
+      <span class="nav-icon">👥</span> Candidates
+      <span class="nav-badge">4</span>
+    </button>
+    <button class="nav-item" onclick="showPanel('post')">
+      <span class="nav-icon">➕</span> Post a Job
+    </button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Here's how your listings are performing</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val">3</div>
+          <div class="stat-label">Active jobs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">47</div>
+          <div class="stat-label">Total views</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">12</div>
+          <div class="stat-label">Right swipes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">4</div>
+          <div class="stat-label">New candidates</div>
+        </div>
+      </div>
+      <div class="section-header">
+        <div class="section-title">Recent activity</div>
+      </div>
+      <div class="job-row">
+        <div class="job-status active"></div>
+        <div class="job-info">
+          <div class="job-title-text">Frontend Developer</div>
+          <div class="job-meta">Full-time · Remote · Posted 2 days ago</div>
+        </div>
+        <div class="job-stats">
+          <div><div class="js-val">18</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">5</div><div class="js-label">Swipes</div></div>
+        </div>
+        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+      </div>
+      <div class="job-row">
+        <div class="job-status active"></div>
+        <div class="job-info">
+          <div class="job-title-text">Product Manager</div>
+          <div class="job-meta">Full-time · Hybrid · Posted 5 days ago</div>
+        </div>
+        <div class="job-stats">
+          <div><div class="js-val">22</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">4</div><div class="js-label">Swipes</div></div>
+        </div>
+        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+      </div>
+      <div class="job-row">
+        <div class="job-status paused"></div>
+        <div class="job-info">
+          <div class="job-title-text">UX Designer</div>
+          <div class="job-meta">Contract · On-site · Posted 1 week ago</div>
+        </div>
+        <div class="job-stats">
+          <div><div class="js-val">7</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">3</div><div class="js-label">Swipes</div></div>
+        </div>
+        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+      </div>
+    </div>
+
+    <!-- MY JOBS -->
+    <div class="panel" id="panel-jobs">
+      <div class="page-header">
+        <div class="page-title">My Jobs</div>
+        <div class="page-sub">Manage your job listings</div>
+      </div>
+      <div class="section-header">
+        <div class="section-title">Active listings</div>
+        <button class="btn-primary" onclick="showPanel('post')">+ Post new job</button>
+      </div>
+      <div id="jobs-list">
+        <div class="job-row">
+          <div class="job-status active"></div>
+          <div class="job-info">
+            <div class="job-title-text">Frontend Developer</div>
+            <div class="job-meta">Full-time · Remote · $90k–$120k · Posted 2 days ago</div>
+          </div>
+          <div class="job-stats">
+            <div><div class="js-val">18</div><div class="js-label">Views</div></div>
+            <div><div class="js-val">5</div><div class="js-label">Applied</div></div>
+          </div>
+          <button class="btn-view">Edit</button>
+        </div>
+        <div class="job-row">
+          <div class="job-status active"></div>
+          <div class="job-info">
+            <div class="job-title-text">Product Manager</div>
+            <div class="job-meta">Full-time · Hybrid · $110k–$140k · Posted 5 days ago</div>
+          </div>
+          <div class="job-stats">
+            <div><div class="js-val">22</div><div class="js-label">Views</div></div>
+            <div><div class="js-val">4</div><div class="js-label">Applied</div></div>
+          </div>
+          <button class="btn-view">Edit</button>
+        </div>
+        <div class="job-row">
+          <div class="job-status paused"></div>
+          <div class="job-info">
+            <div class="job-title-text">UX Designer</div>
+            <div class="job-meta">Contract · On-site · $70k–$90k · Posted 1 week ago · <span style="color:var(--rose)">Paused</span></div>
+          </div>
+          <div class="job-stats">
+            <div><div class="js-val">7</div><div class="js-label">Views</div></div>
+            <div><div class="js-val">3</div><div class="js-label">Applied</div></div>
+          </div>
+          <button class="btn-view">Edit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANDIDATES -->
+    <div class="panel" id="panel-candidates">
+      <div class="page-header">
+        <div class="page-title">Candidates</div>
+        <div class="page-sub">Job seekers who swiped right on your listings</div>
+      </div>
+      <div class="candidates-grid">
+        <div class="candidate-card">
+          <div class="candidate-top">
+            <div class="candidate-avatar">👩</div>
+            <div>
+              <div class="candidate-name">Sarah M.</div>
+              <div class="candidate-role">Applied to Frontend Developer</div>
+            </div>
+          </div>
+          <div class="candidate-tags">
+            <span class="tag match">React</span>
+            <span class="tag match">TypeScript</span>
+            <span class="tag">5 yrs exp</span>
+            <span class="tag">Remote</span>
+          </div>
+          <div class="candidate-actions">
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
+          </div>
+        </div>
+        <div class="candidate-card">
+          <div class="candidate-top">
+            <div class="candidate-avatar">👨</div>
+            <div>
+              <div class="candidate-name">James T.</div>
+              <div class="candidate-role">Applied to Product Manager</div>
+            </div>
+          </div>
+          <div class="candidate-tags">
+            <span class="tag match">Agile</span>
+            <span class="tag match">Roadmapping</span>
+            <span class="tag">7 yrs exp</span>
+            <span class="tag">Hybrid</span>
+          </div>
+          <div class="candidate-actions">
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
+          </div>
+        </div>
+        <div class="candidate-card">
+          <div class="candidate-top">
+            <div class="candidate-avatar">👩</div>
+            <div>
+              <div class="candidate-name">Priya K.</div>
+              <div class="candidate-role">Applied to Frontend Developer</div>
+            </div>
+          </div>
+          <div class="candidate-tags">
+            <span class="tag match">Vue.js</span>
+            <span class="tag match">CSS</span>
+            <span class="tag">3 yrs exp</span>
+            <span class="tag">Remote</span>
+          </div>
+          <div class="candidate-actions">
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
+          </div>
+        </div>
+        <div class="candidate-card">
+          <div class="candidate-top">
+            <div class="candidate-avatar">🧑</div>
+            <div>
+              <div class="candidate-name">Alex R.</div>
+              <div class="candidate-role">Applied to UX Designer</div>
+            </div>
+          </div>
+          <div class="candidate-tags">
+            <span class="tag match">Figma</span>
+            <span class="tag match">User Research</span>
+            <span class="tag">4 yrs exp</span>
+            <span class="tag">On-site</span>
+          </div>
+          <div class="candidate-actions">
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST JOB -->
+    <div class="panel" id="panel-post">
+      <div class="page-header">
+        <div class="page-title">Post a Job</div>
+        <div class="page-sub">Fill in the details and start finding candidates</div>
+      </div>
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Job title</label>
+            <input type="text" class="form-input" id="f-title" placeholder="e.g. Senior Designer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Company name</label>
+            <input type="text" class="form-input" id="f-company" placeholder="Your company">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-input" id="f-location" placeholder="e.g. New York, NY">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job type</label>
+            <select class="form-input" id="f-type">
+              <option>Full-time</option>
+              <option>Part-time</option>
+              <option>Contract</option>
+              <option>Internship</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Work style</label>
+            <select class="form-input" id="f-style">
+              <option>Remote</option>
+              <option>Hybrid</option>
+              <option>On-site</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Salary range</label>
+            <input type="text" class="form-input" id="f-salary" placeholder="e.g. $80k–$110k">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Job description</label>
+            <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..."></textarea>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Requirements (one per line)</label>
+            <textarea class="form-input" id="f-reqs" placeholder="3+ years of experience&#10;Proficiency in React&#10;Strong communication skills" style="min-height:90px"></textarea>
+          </div>
+        </div>
+        <button class="btn-post" onclick="postJob()">Post job →</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Auth check
+  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+  if (!user.email) window.location.href = 'login.html';
+  if (user.role !== 'employer') window.location.href = 'preferences.html';
+  document.getElementById('nav-user-email').textContent = user.email;
+
+  function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    event.currentTarget && event.currentTarget.classList.add('active');
+  }
+
+  function acceptCandidate(btn) {
+    const card = btn.closest('.candidate-card');
+    const name = card.querySelector('.candidate-name').textContent;
+    card.style.opacity = '0.5';
+    card.style.pointerEvents = 'none';
+    showToast('✓ ' + name + ' accepted!');
+  }
+
+  function passCandidate(btn) {
+    const card = btn.closest('.candidate-card');
+    card.style.opacity = '0';
+    setTimeout(() => card.remove(), 300);
+    showToast('Passed');
+  }
+
+  function postJob() {
+    const title = document.getElementById('f-title').value.trim();
+    const company = document.getElementById('f-company').value.trim();
+    if (!title || !company) { showToast('Please fill in job title and company'); return; }
+
+    const type = document.getElementById('f-type').value;
+    const style = document.getElementById('f-style').value;
+    const salary = document.getElementById('f-salary').value;
+
+    // Add to jobs list
+    const jobsList = document.getElementById('jobs-list');
+    const row = document.createElement('div');
+    row.className = 'job-row';
+    row.innerHTML = `
+      <div class="job-status active"></div>
+      <div class="job-info">
+        <div class="job-title-text">${title}</div>
+        <div class="job-meta">${type} · ${style}${salary ? ' · ' + salary : ''} · Just posted</div>
+      </div>
+      <div class="job-stats">
+        <div><div class="js-val">0</div><div class="js-label">Views</div></div>
+        <div><div class="js-val">0</div><div class="js-label">Applied</div></div>
+      </div>
+      <button class="btn-view">Edit</button>
+    `;
+    jobsList.prepend(row);
+
+    // Clear form
+    ['f-title','f-company','f-location','f-salary','f-desc','f-reqs'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+
+    showToast('🎉 Job posted successfully!');
+    setTimeout(() => showPanel('jobs'), 1200);
+  }
+
+  function logout() {
+    sessionStorage.removeItem('user');
+    window.location.href = 'login.html';
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+</script>
+</body>
+</html>
