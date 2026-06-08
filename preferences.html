@@ -140,7 +140,6 @@
   .input-field::placeholder { color: var(--text-muted); }
   select.input-field { cursor: pointer; }
 
-  /* Job role input highlight */
   .role-input-wrap { margin-bottom: 24px; }
   .role-input-wrap .input-field {
     font-size: 16px; padding: 14px 18px; border-radius: 14px;
@@ -320,7 +319,7 @@
   <!-- MAIN -->
   <main class="main-content">
 
-    <!-- JOB ROLE (NEW - most important field) -->
+    <!-- JOB ROLE -->
     <div class="pref-section" id="role">
       <div class="section-header">
         <div class="section-num">00 — What you're looking for</div>
@@ -672,7 +671,6 @@
     document.getElementById('progress-pct').textContent = pct + '%';
   }
 
-  // THE FIX: save all preferences to sessionStorage before navigating
   function saveAndStart() {
     const role = document.getElementById('role-input').value.trim();
     const city = document.getElementById('city-input').value.trim();
@@ -704,7 +702,8 @@
     };
 
     sessionStorage.setItem('preferences', JSON.stringify(preferences));
-    window.location.href = 'swipe.html';
+    // ✅ FIXED: go to login before swiping
+    window.location.href = 'login.html';
   }
 
   // Initialize defaults as done
