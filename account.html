@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn — My Account</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #5D7FA3; --sage: #8CB69B; --bg: #F0F3F2;
+    --card-bg: #FCFCFA; --text: #1A2530; --border: #DDE3E8;
+    --mint: #6FBF8F; --rose: #D79A9A; --text-muted: #4A5968;
+    --brand-light: rgba(93,127,163,0.08);
+    --mint-light: rgba(111,191,143,0.1);
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* NAV */
+  nav {
+    background: rgba(246,248,247,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%; display: flex; align-items: center;
+    justify-content: space-between; height: 64px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .nav-right { display: flex; align-items: center; gap: 12px; }
+  .btn-swipe {
+    background: var(--brand); color: white; border: none;
+    border-radius: 100px; padding: 8px 20px;
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-swipe:hover { opacity: 0.88; }
+  .btn-logout {
+    font-size: 13px; color: var(--text-muted); background: none;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 14px; cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-logout:hover { border-color: var(--rose); color: var(--rose); }
+
+  /* LAYOUT */
+  .page { max-width: 880px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* LOADING */
+  .loading-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 120px 0; gap: 16px;
+  }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--brand); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text { font-size: 15px; color: var(--text-muted); }
+
+  /* PROFILE HEADER */
+  .profile-header {
+    background: var(--brand);
+    border-radius: 20px; padding: 36px 40px;
+    display: flex; align-items: center; gap: 24px;
+    margin-bottom: 24px; position: relative; overflow: hidden;
+  }
+  .profile-header::before {
+    content: ''; position: absolute; width: 300px; height: 300px;
+    border-radius: 50%; background: rgba(255,255,255,0.05);
+    top: -100px; right: -60px; pointer-events: none;
+  }
+  .profile-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 28px; color: white;
+    flex-shrink: 0; position: relative; z-index: 1;
+  }
+  .profile-info { flex: 1; position: relative; z-index: 1; }
+  .profile-name { font-family: 'DM Serif Display', serif; font-size: 26px; color: white; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .profile-email { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 10px; }
+  .profile-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .profile-badge {
+    font-size: 11px; font-weight: 500; padding: 4px 12px;
+    border-radius: 100px; background: rgba(255,255,255,0.15);
+    color: white; border: 1px solid rgba(255,255,255,0.2);
+  }
+  .profile-badge.green { background: rgba(111,191,143,0.25); border-color: rgba(111,191,143,0.4); }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-1 { margin-bottom: 20px; }
+
+  /* CARDS */
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+  }
+  .card-header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .card-icon { font-size: 16px; }
+  .card-body { padding: 24px; }
+
+  /* INFO ROWS */
+  .info-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .info-row:first-child { padding-top: 0; }
+  .info-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 500; margin-bottom: 3px; }
+  .info-value { font-size: 14px; color: var(--text); font-weight: 500; }
+  .info-value.muted { color: var(--text-muted); font-weight: 300; }
+
+  /* SKILLS */
+  .skills-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skill-tag {
+    font-size: 12px; color: var(--brand);
+    background: var(--brand-light);
+    padding: 5px 14px; border-radius: 100px;
+    border: 1px solid rgba(93,127,163,0.15);
+  }
+  .empty-skills { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+  /* PREFERENCES */
+  .pref-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .pref-item {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .pref-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 500; margin-bottom: 4px; }
+  .pref-value { font-size: 14px; font-weight: 500; color: var(--text); }
+  .pref-value.empty { color: var(--text-muted); font-weight: 300; font-style: italic; }
+
+  /* APPLIED JOBS */
+  .applied-list { display: flex; flex-direction: column; gap: 10px; }
+  .applied-row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .applied-logo {
+    width: 38px; height: 38px; border-radius: 9px;
+    background: var(--brand-light); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; overflow: hidden;
+  }
+  .applied-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .applied-info { flex: 1; min-width: 0; }
+  .applied-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .applied-company { font-size: 12px; color: var(--text-muted); }
+  .applied-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .applied-badge {
+    font-size: 11px; font-weight: 500; padding: 3px 10px;
+    border-radius: 100px; background: var(--mint-light);
+    color: #2e7a52; border: 1px solid rgba(111,191,143,0.3);
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    text-align: center; padding: 32px 20px;
+    color: var(--text-muted); font-size: 14px; line-height: 1.6;
+  }
+  .empty-state-icon { font-size: 32px; margin-bottom: 10px; }
+  .empty-state a { color: var(--brand); text-decoration: none; font-weight: 500; }
+
+  /* DANGER ZONE */
+  .danger-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .danger-text { font-size: 13px; color: var(--text-muted); }
+  .danger-text strong { color: var(--text); display: block; font-size: 14px; margin-bottom: 2px; }
+  .btn-danger {
+    font-size: 13px; color: #8a4040; background: rgba(215,154,154,0.12);
+    border: 1px solid rgba(215,154,154,0.3); border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .btn-danger:hover { background: rgba(215,154,154,0.22); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white; padding: 10px 20px; border-radius: 100px;
+    font-size: 13px; font-weight: 500; transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .page { animation: fadeUp 0.5s ease both; }
+
+  @media (max-width: 640px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .pref-grid { grid-template-columns: 1fr; }
+    .profile-header { flex-direction: column; text-align: center; padding: 28px 24px; }
+    .profile-badges { justify-content: center; }
+    .page { padding: 24px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-right">
+    <a href="swipe.html" class="btn-swipe">👆 Keep swiping</a>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<div class="page" id="page" style="display:none;">
+
+  <!-- PROFILE HEADER -->
+  <div class="profile-header">
+    <div class="profile-avatar" id="avatar">?</div>
+    <div class="profile-info">
+      <div class="profile-name" id="display-name">—</div>
+      <div class="profile-email" id="display-email">—</div>
+      <div class="profile-badges">
+        <span class="profile-badge green" id="badge-confirmed">✓ Email confirmed</span>
+        <span class="profile-badge" id="badge-joined">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Resume info + Preferences -->
+  <div class="grid-2">
+
+    <!-- Resume info -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">📄</span> Resume info</div>
+      </div>
+      <div class="card-body">
+        <div class="info-row">
+          <div><div class="info-label">Job title</div><div class="info-value" id="r-title">—</div></div>
+        </div>
+        <div class="info-row">
+          <div><div class="info-label">Experience</div><div class="info-value" id="r-exp">—</div></div>
+        </div>
+        <div class="info-row">
+          <div><div class="info-label">Education</div><div class="info-value" id="r-edu">—</div></div>
+        </div>
+        <div class="info-row">
+          <div><div class="info-label">Location</div><div class="info-value" id="r-location">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">⚙️</span> Job preferences</div>
+      </div>
+      <div class="card-body">
+        <div class="pref-grid">
+          <div class="pref-item"><div class="pref-label">Role</div><div class="pref-value" id="p-role">—</div></div>
+          <div class="pref-item"><div class="pref-label">Location</div><div class="pref-value" id="p-location">—</div></div>
+          <div class="pref-item"><div class="pref-label">Job type</div><div class="pref-value" id="p-type">—</div></div>
+          <div class="pref-item"><div class="pref-label">Min salary</div><div class="pref-value" id="p-salary">—</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SKILLS -->
+  <div class="grid-1">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">✦</span> Skills</div>
+      </div>
+      <div class="card-body">
+        <div class="skills-wrap" id="skills-wrap">
+          <span class="empty-skills">No skills detected yet — upload your resume to get started.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLIED JOBS -->
+  <div class="grid-1">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">📬</span> Applied jobs</div>
+        <span id="applied-count" style="font-size:12px;color:var(--text-muted);"></span>
+      </div>
+      <div class="card-body" style="padding: 16px 24px;">
+        <div class="applied-list" id="applied-list">
+          <div class="empty-state">
+            <div class="empty-state-icon">👆</div>
+            No applications yet — <a href="swipe.html">start swiping</a> to find your match.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN OUT / DANGER -->
+  <div class="danger-card">
+    <div class="danger-text">
+      <strong>Sign out</strong>
+      You'll need to sign back in to access your account.
+    </div>
+    <button class="btn-danger" onclick="logout()">Sign out</button>
+  </div>
+
+</div>
+
+<!-- LOADING -->
+<div class="loading-state" id="loading-state">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading your account…</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { window.location.href = 'login.html'; return; }
+
+    const user = session.user;
+
+    // Profile header
+    const name = user.user_metadata?.full_name || user.email.split('@')[0];
+    const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('avatar').textContent = initials;
+    document.getElementById('display-name').textContent = name;
+    document.getElementById('display-email').textContent = user.email;
+    document.getElementById('badge-confirmed').textContent = user.email_confirmed_at ? '✓ Email confirmed' : '⚠ Email not confirmed';
+    const joined = new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    document.getElementById('badge-joined').textContent = 'Joined ' + joined;
+
+    // Resume data from sessionStorage
+    const resumeRaw = sessionStorage.getItem('resumeData');
+    const resume = resumeRaw ? JSON.parse(resumeRaw) : null;
+
+    if (resume) {
+      document.getElementById('r-title').textContent = resume.title || '—';
+
+      if (resume.experience_years) {
+        const yrs = Math.floor(resume.experience_years);
+        const mos = Math.round((resume.experience_years - yrs) * 12);
+        let expStr = '';
+        if (yrs === 0) expStr = mos + ' months';
+        else if (mos === 0) expStr = yrs + (yrs === 1 ? ' year' : ' years');
+        else expStr = yrs + ' years, ' + mos + ' months';
+        document.getElementById('r-exp').textContent = expStr;
+      }
+
+      const edu = resume.education;
+      if (edu) {
+        if (typeof edu === 'string') document.getElementById('r-edu').textContent = edu;
+        else if (typeof edu === 'object') {
+          const parts = [edu.degree, edu.field, edu.school].filter(Boolean);
+          document.getElementById('r-edu').textContent = parts.join(', ') || '—';
+        }
+      }
+
+      document.getElementById('r-location').textContent = resume.location || '—';
+
+      if (resume.skills && resume.skills.length > 0) {
+        document.getElementById('skills-wrap').innerHTML = resume.skills
+          .map(s => `<span class="skill-tag">${s}</span>`).join('');
+      }
+    }
+
+    // Preferences from sessionStorage
+    const prefRaw = sessionStorage.getItem('preferences');
+    const pref = prefRaw ? JSON.parse(prefRaw) : null;
+    if (pref) {
+      document.getElementById('p-role').textContent = pref.query || pref.role || '—';
+      document.getElementById('p-location').textContent = pref.city || pref.location || '—';
+      document.getElementById('p-type').textContent = pref.jobType || pref.employment_type || '—';
+      document.getElementById('p-salary').textContent = pref.salary ? '$' + Number(pref.salary).toLocaleString() : '—';
+    }
+
+    // Applied jobs from sessionStorage (saved by swipe.html)
+    const appliedRaw = sessionStorage.getItem('appliedJobs');
+    const appliedJobs = appliedRaw ? JSON.parse(appliedRaw) : [];
+
+    if (appliedJobs.length > 0) {
+      document.getElementById('applied-count').textContent = appliedJobs.length + ' applied';
+      document.getElementById('applied-list').innerHTML = appliedJobs.map(job => {
+        const logoHTML = job.logo
+          ? `<img src="${job.logo}" alt="${job.company}" onerror="this.parentElement.textContent='🏢'">`
+          : '🏢';
+        return `
+          <div class="applied-row">
+            <div class="applied-logo">${logoHTML}</div>
+            <div class="applied-info">
+              <div class="applied-title">${job.title || 'Untitled Role'}</div>
+              <div class="applied-company">${job.company || ''} ${job.location ? '· ' + job.location : ''}</div>
+            </div>
+            ${job.apply_url ? `<a href="${job.apply_url}" target="_blank" style="font-size:12px;color:var(--brand);text-decoration:none;font-weight:500;white-space:nowrap;">View →</a>` : ''}
+            <span class="applied-badge">Applied</span>
+          </div>`;
+      }).join('');
+    }
+
+    // Show page
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('page').style.display = 'block';
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  init();
+</script>
+</body>
+</html>
