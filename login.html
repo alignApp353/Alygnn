@@ -16,9 +16,11 @@
   html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
   body { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
 
+  /* ── LEFT PANEL ── */
   .left-panel {
-    background: var(--brand); display: flex; flex-direction: column;
-    justify-content: space-between; padding: 48px; position: relative; overflow: hidden;
+    background: var(--brand);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 48px; position: relative; overflow: hidden;
   }
   .left-panel::before {
     content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%;
@@ -28,117 +30,253 @@
     content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%;
     background: rgba(255,255,255,0.07); bottom: 60px; left: -80px;
   }
-  .panel-logo { font-family: 'DM Serif Display', serif; font-size: 26px; color: white; letter-spacing: -0.5px; position: relative; z-index: 1; }
-  .panel-logo span { color: rgba(255,255,255,0.55); }
+  .panel-logo {
+    font-family: 'DM Serif Display', serif; font-size: 26px; color: white;
+    letter-spacing: -0.5px; position: relative; z-index: 1; text-decoration: none;
+  }
+  .panel-logo span { color: rgba(255,255,255,0.5); }
+
   .panel-content { position: relative; z-index: 1; }
-  .panel-content h2 { font-family: 'DM Serif Display', serif; font-size: clamp(32px, 3.5vw, 46px); color: white; line-height: 1.1; letter-spacing: -1px; margin-bottom: 20px; }
-  .panel-content h2 em { font-style: italic; color: rgba(255,255,255,0.7); }
-  .panel-content p { font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.7; font-weight: 300; max-width: 360px; }
-  .mini-cards { position: relative; z-index: 1; margin-top: 48px; }
-  .mini-card { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; backdrop-filter: blur(4px); animation: fadeUp 0.5s ease both; }
+  .panel-content h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(30px, 3.2vw, 44px); color: white;
+    line-height: 1.1; letter-spacing: -1px; margin-bottom: 16px;
+  }
+  .panel-content h2 em { font-style: italic; color: rgba(255,255,255,0.65); }
+  .panel-content p { font-size: 16px; color: rgba(255,255,255,0.68); line-height: 1.7; font-weight: 300; max-width: 340px; }
+
+  /* seeker cards */
+  .mini-cards { margin-top: 44px; }
+  .mini-card {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 16px; padding: 18px 20px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 14px; backdrop-filter: blur(4px);
+    animation: fadeUp 0.5s ease both;
+  }
   .mini-card:nth-child(1) { animation-delay: 0.2s; }
   .mini-card:nth-child(2) { animation-delay: 0.35s; }
   .mini-card:nth-child(3) { animation-delay: 0.5s; }
-  .mini-logo { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 16px; color: white; flex-shrink: 0; }
+  .mini-logo {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 15px; color: white; flex-shrink: 0;
+  }
   .mini-info { flex: 1; }
-  .mini-title { font-size: 14px; font-weight: 500; color: white; margin-bottom: 2px; }
-  .mini-company { font-size: 12px; color: rgba(255,255,255,0.6); }
-  .mini-match { font-size: 12px; font-weight: 500; color: #a8e6c1; background: rgba(111,191,143,0.2); padding: 3px 10px; border-radius: 100px; }
-  .panel-footer { font-size: 12px; color: rgba(255,255,255,0.4); position: relative; z-index: 1; }
+  .mini-title { font-size: 13px; font-weight: 500; color: white; margin-bottom: 2px; }
+  .mini-company { font-size: 11px; color: rgba(255,255,255,0.6); }
+  .mini-match { font-size: 11px; font-weight: 500; color: #a8e6c1; background: rgba(111,191,143,0.2); padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
 
-  .right-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 60px 48px; }
+  /* employer stat cards */
+  .stat-cards { margin-top: 44px; display: flex; flex-direction: column; gap: 10px; }
+  .stat-card {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 16px; padding: 18px 22px; backdrop-filter: blur(4px);
+    animation: fadeUp 0.5s ease both;
+  }
+  .stat-card:nth-child(1) { animation-delay: 0.2s; }
+  .stat-card:nth-child(2) { animation-delay: 0.35s; }
+  .stat-card:nth-child(3) { animation-delay: 0.5s; }
+  .stat-num { font-family: 'DM Serif Display', serif; font-size: 26px; color: white; margin-bottom: 3px; }
+  .stat-desc { font-size: 12px; color: rgba(255,255,255,0.65); }
+
+  /* panel content visibility */
+  .seeker-content { display: block; }
+  .employer-content { display: none; }
+  .is-employer .seeker-content { display: none; }
+  .is-employer .employer-content { display: block; }
+
+  .panel-footer { font-size: 12px; color: rgba(255,255,255,0.35); position: relative; z-index: 1; }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: center; padding: 60px 48px; overflow-y: auto;
+  }
   .form-container { width: 100%; max-width: 400px; }
-  .form-header { margin-bottom: 40px; animation: fadeUp 0.5s ease both 0.1s; }
-  .form-header h1 { font-family: 'DM Serif Display', serif; font-size: 32px; letter-spacing: -0.8px; color: var(--text); margin-bottom: 8px; }
-  .form-header p { font-size: 15px; color: var(--text-muted); font-weight: 300; }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text-muted); text-decoration: none;
+    margin-bottom: 32px; transition: color 0.2s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .back-link:hover { color: var(--brand); }
+
+  /* Role switcher */
+  .role-switcher {
+    display: flex; background: white; border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; margin-bottom: 28px;
+    animation: fadeUp 0.45s ease both 0.05s;
+  }
+  .role-btn {
+    flex: 1; padding: 9px 12px; border: none; background: transparent;
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted); border-radius: 9px; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .role-btn.active { background: var(--brand); color: white; box-shadow: 0 2px 8px rgba(93,127,163,0.25); }
+
+  /* Form header */
+  .form-header { margin-bottom: 24px; animation: fadeUp 0.5s ease both 0.1s; }
+  .form-header h1 { font-family: 'DM Serif Display', serif; font-size: 30px; letter-spacing: -0.8px; color: var(--text); margin-bottom: 6px; }
+  .form-header p { font-size: 14px; color: var(--text-muted); font-weight: 300; }
   .form-header p a { color: var(--brand); text-decoration: none; font-weight: 500; }
   .form-header p a:hover { text-decoration: underline; }
 
-  .social-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 20px; border: 1px solid var(--border); border-radius: 12px; background: white; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; color: var(--text); cursor: pointer; transition: all 0.2s; margin-bottom: 12px; animation: fadeUp 0.5s ease both; }
-  .social-btn:hover { border-color: var(--brand); background: #f8fafc; }
-  .social-btn:nth-child(1) { animation-delay: 0.2s; }
-  .social-btn:nth-child(2) { animation-delay: 0.28s; }
-  .social-icon { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
+  /* Sign in / Sign up tabs */
+  .auth-tabs {
+    display: flex; background: white; border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; margin-bottom: 20px;
+    animation: fadeUp 0.5s ease both 0.15s;
+  }
+  .auth-tab {
+    flex: 1; padding: 9px; border: none; background: transparent;
+    font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted); border-radius: 9px; cursor: pointer; transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--brand); color: white; }
 
-  .divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; animation: fadeUp 0.5s ease both 0.35s; }
+  /* Google btn */
+  .google-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 13px 20px; border: 1px solid var(--border); border-radius: 12px;
+    background: white; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    color: var(--text); cursor: pointer; transition: all 0.2s; margin-bottom: 16px;
+    animation: fadeUp 0.5s ease both 0.2s;
+  }
+  .google-btn:hover { border-color: var(--brand); background: #f8fafc; }
+
+  .divider {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 18px;
+    animation: fadeUp 0.5s ease both 0.28s;
+  }
   .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .divider span { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 
-  .field { margin-bottom: 18px; animation: fadeUp 0.5s ease both; }
-  .field:nth-child(1) { animation-delay: 0.4s; }
-  .field:nth-child(2) { animation-delay: 0.48s; }
+  .msg-box { border-radius: 10px; padding: 11px 15px; font-size: 13px; margin-bottom: 16px; display: none; }
+  .msg-box.error { background: rgba(215,154,154,0.15); border: 1px solid rgba(215,154,154,0.4); color: #8a4040; }
+  .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
+
+  /* Fields */
+  .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 7px; }
-  .field input { width: 100%; padding: 13px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: white; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .field input {
+    width: 100%; padding: 13px 16px; border: 1px solid var(--border);
+    border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif;
+    color: var(--text); background: white; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
   .field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(93,127,163,0.12); }
   .field input::placeholder { color: #B0BBC6; }
   .password-wrap { position: relative; }
   .password-wrap input { padding-right: 48px; }
-  .eye-btn { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; transition: color 0.2s; }
+  .eye-btn {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    padding: 4px; display: flex; transition: color 0.2s;
+  }
   .eye-btn:hover { color: var(--brand); }
+
+  /* Password strength */
   .strength-bar { margin-top: 8px; }
-  .strength-track { height: 4px; background: var(--border); border-radius: 100px; overflow: hidden; margin-bottom: 5px; display: flex; gap: 3px; }
+  .strength-track { height: 4px; background: var(--border); border-radius: 100px; margin-bottom: 5px; display: flex; gap: 3px; }
   .strength-seg { flex: 1; border-radius: 100px; background: var(--border); transition: background 0.3s; }
   .strength-label { font-size: 11px; font-weight: 500; margin-bottom: 6px; }
-  .strength-rules { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .strength-rules { display: flex; flex-wrap: wrap; gap: 5px 12px; }
   .rule { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; transition: color 0.2s; }
   .rule.pass { color: #2d8a57; }
   .rule-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.2s; }
   .rule.pass .rule-dot { background: var(--mint); }
 
-  .forgot { display: block; text-align: right; font-size: 13px; color: var(--brand); text-decoration: none; margin-top: -10px; margin-bottom: 24px; animation: fadeUp 0.5s ease both 0.5s; }
+  .forgot {
+    display: block; text-align: right; font-size: 13px; color: var(--brand);
+    text-decoration: none; margin-top: -8px; margin-bottom: 20px;
+  }
   .forgot:hover { text-decoration: underline; }
 
-  .btn-submit { width: 100%; background: var(--brand); color: white; border: none; border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; animation: fadeUp 0.5s ease both 0.55s; }
+  .btn-submit {
+    width: 100%; background: var(--brand); color: white; border: none;
+    border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
   .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); }
   .btn-submit:active { transform: translateY(0); }
   .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-  .signup-prompt { text-align: center; margin-top: 28px; font-size: 14px; color: var(--text-muted); animation: fadeUp 0.5s ease both 0.6s; }
-  .signup-prompt a { color: var(--brand); text-decoration: none; font-weight: 500; }
-  .signup-prompt a:hover { text-decoration: underline; }
+  .switch-prompt { text-align: center; margin-top: 22px; font-size: 14px; color: var(--text-muted); }
+  .switch-prompt a { color: var(--brand); text-decoration: none; font-weight: 500; }
+  .switch-prompt a:hover { text-decoration: underline; }
 
-  .auth-tabs { display: flex; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 32px; animation: fadeUp 0.5s ease both 0.15s; }
-  .auth-tab { flex: 1; padding: 10px; border: none; background: transparent; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; color: var(--text-muted); border-radius: 9px; cursor: pointer; transition: all 0.2s; }
-  .auth-tab.active { background: var(--brand); color: white; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 
-  .msg-box { border-radius: 10px; padding: 12px 16px; font-size: 13px; margin-bottom: 20px; display: none; }
-  .msg-box.error { background: rgba(215,154,154,0.15); border: 1px solid rgba(215,154,154,0.4); color: #8a4040; }
-  .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
-
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  @media (max-width: 768px) { body { grid-template-columns: 1fr; } .left-panel { display: none; } .right-panel { padding: 48px 28px; } }
+  @media (max-width: 768px) {
+    body { grid-template-columns: 1fr; }
+    .left-panel { display: none; }
+    .right-panel { padding: 48px 28px; }
+  }
 </style>
 </head>
 <body>
 
-<div class="left-panel">
-  <div class="panel-logo">Alygnn<span>.</span></div>
+<!-- ── LEFT PANEL ── -->
+<div class="left-panel" id="left-panel">
+  <a class="panel-logo" href="index.html">Alygnn<span>.</span></a>
+
   <div class="panel-content">
-    <h2>Jobs that fit<br><em>your reality.</em></h2>
-    <p>Stop applying blindly. Alygnn matches you to roles that already meet your salary, location, and benefits criteria.</p>
-    <div class="mini-cards">
-      <div class="mini-card">
-        <div class="mini-logo">G</div>
-        <div class="mini-info"><div class="mini-title">UX Research Lead</div><div class="mini-company">Google · Mountain View, CA</div></div>
-        <span class="mini-match">97%</span>
+    <!-- Job seeker -->
+    <div class="seeker-content">
+      <h2>Jobs that fit<br><em>your reality.</em></h2>
+      <p>Stop applying blindly. Alygnn matches you to roles that already meet your salary, location, and benefits criteria.</p>
+      <div class="mini-cards">
+        <div class="mini-card">
+          <div class="mini-logo">G</div>
+          <div class="mini-info"><div class="mini-title">UX Research Lead</div><div class="mini-company">Google · Mountain View, CA</div></div>
+          <span class="mini-match">97%</span>
+        </div>
+        <div class="mini-card">
+          <div class="mini-logo">A</div>
+          <div class="mini-info"><div class="mini-title">Data Scientist II</div><div class="mini-company">Airbnb · Remote</div></div>
+          <span class="mini-match">91%</span>
+        </div>
+        <div class="mini-card">
+          <div class="mini-logo">N</div>
+          <div class="mini-info"><div class="mini-title">Sr. Product Manager</div><div class="mini-company">Notion · New York, NY</div></div>
+          <span class="mini-match">88%</span>
+        </div>
       </div>
-      <div class="mini-card">
-        <div class="mini-logo">A</div>
-        <div class="mini-info"><div class="mini-title">Data Scientist II</div><div class="mini-company">Airbnb · Remote</div></div>
-        <span class="mini-match">91%</span>
-      </div>
-      <div class="mini-card">
-        <div class="mini-logo">N</div>
-        <div class="mini-info"><div class="mini-title">Sr. Product Manager</div><div class="mini-company">Notion · New York, NY</div></div>
-        <span class="mini-match">88%</span>
+    </div>
+
+    <!-- Employer -->
+    <div class="employer-content">
+      <h2>Your next hire<br><em>is already here.</em></h2>
+      <p>Browse pre-matched candidates whose skills and salary expectations align with your role — before they ever apply.</p>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="stat-num">3.2×</div><div class="stat-desc">Faster time-to-hire vs. traditional boards</div></div>
+        <div class="stat-card"><div class="stat-num">91%</div><div class="stat-desc">Candidate-to-interview conversion rate</div></div>
+        <div class="stat-card"><div class="stat-num">2.4M+</div><div class="stat-desc">Active job seekers indexed daily</div></div>
       </div>
     </div>
   </div>
-  <div class="panel-footer">© 2026 Alygnn. Built for job seekers.</div>
+
+  <div class="panel-footer">© 2026 Alygnn.</div>
 </div>
 
+<!-- ── RIGHT PANEL ── -->
 <div class="right-panel">
   <div class="form-container">
+
+    <a href="index.html" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+      Back to Alygnn
+    </a>
+
+    <!-- Role switcher -->
+    <div class="role-switcher">
+      <button class="role-btn active" id="role-seeker" onclick="switchRole('seeker')">👤 Job Seeker</button>
+      <button class="role-btn" id="role-employer" onclick="switchRole('employer')">🏢 Employer</button>
+    </div>
+
     <div class="form-header">
       <h1 id="form-title">Welcome back</h1>
       <p id="form-subtitle">New here? <a href="#" onclick="switchTab('signup'); return false;">Create a free account</a></p>
@@ -149,90 +287,82 @@
       <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create account</button>
     </div>
 
-    <button class="social-btn" onclick="handleGoogleLogin()">
-      <span class="social-icon">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-          <path d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-      </span>
+    <!-- Google -->
+    <button class="google-btn" onclick="handleGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+        <path d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
       Continue with Google
     </button>
 
-    <button class="social-btn" onclick="handleAppleLogin()">
-      <span class="social-icon">
-        <svg width="16" height="16" viewBox="0 0 814 1000" xmlns="http://www.w3.org/2000/svg">
-          <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.5 135.4-317.3 269-317.3 70.6 0 129.5 46.4 173.3 46.4 41.8 0 107.6-49 185.6-49 29.9 0 108.2 2.6 168.9 75.7zm-234.4-134.6c31.4-37.9 53.9-90.8 53.9-143.7 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 85.3-55.1 139.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 134.7-70.9z" fill="currentColor"/>
-        </svg>
-      </span>
-      Continue with Apple
-    </button>
-
     <div class="divider"><span id="divider-text">or sign in with email</span></div>
-
     <div class="msg-box" id="msg-box"></div>
 
-    <!-- Login form -->
+    <!-- LOGIN FORM -->
     <div id="login-form">
       <div class="field">
-        <label>Email address</label>
+        <label id="login-email-label">Email address</label>
         <input type="email" id="email" placeholder="you@example.com" />
       </div>
       <div class="field">
         <label>Password</label>
         <div class="password-wrap">
-          <input type="password" id="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') handleLogin()" />
-          <button type="button" class="eye-btn" onclick="toggleEye('password', this)" aria-label="Show password">
-            <svg id="eye-icon-password" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <input type="password" id="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" />
+          <button type="button" class="eye-btn" onclick="toggleEye('password',this)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </div>
-      <a href="#" class="forgot" onclick="handleForgotPassword(); return false;">Forgot password?</a>
-      <button class="btn-submit" id="login-btn" onclick="handleLogin()">Sign in to Alygnn</button>
+      <a href="#" class="forgot" onclick="doForgot(); return false;">Forgot password?</a>
+      <button class="btn-submit" id="login-btn" onclick="doLogin()">Sign in to Alygnn</button>
     </div>
 
-    <!-- Signup form -->
+    <!-- SIGNUP FORM -->
     <div id="signup-form" style="display:none;">
       <div class="field">
         <label>Full name</label>
         <input type="text" id="signup-name" placeholder="Your name" />
       </div>
+      <div class="field" id="company-field" style="display:none;">
+        <label>Company name</label>
+        <input type="text" id="signup-company" placeholder="Acme Corp" />
+      </div>
       <div class="field">
-        <label>Email address</label>
+        <label id="signup-email-label">Email address</label>
         <input type="email" id="signup-email" placeholder="you@example.com" />
       </div>
       <div class="field">
         <label>Password</label>
         <div class="password-wrap">
-          <input type="password" id="signup-password" placeholder="At least 8 characters" onkeydown="if(event.key==='Enter') handleSignup()" oninput="checkStrength(this.value)" />
-          <button type="button" class="eye-btn" onclick="toggleEye('signup-password', this)" aria-label="Show password">
+          <input type="password" id="signup-password" placeholder="At least 8 characters" oninput="checkStrength(this.value)" onkeydown="if(event.key==='Enter') doSignup()" />
+          <button type="button" class="eye-btn" onclick="toggleEye('signup-password',this)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
         <div class="strength-bar" id="strength-bar" style="display:none;">
           <div class="strength-track">
-            <div class="strength-seg" id="seg1"></div>
-            <div class="strength-seg" id="seg2"></div>
-            <div class="strength-seg" id="seg3"></div>
-            <div class="strength-seg" id="seg4"></div>
+            <div class="strength-seg" id="seg1"></div><div class="strength-seg" id="seg2"></div>
+            <div class="strength-seg" id="seg3"></div><div class="strength-seg" id="seg4"></div>
           </div>
           <div class="strength-label" id="strength-label"></div>
           <div class="strength-rules">
             <div class="rule" id="rule-len"><div class="rule-dot"></div>8+ characters</div>
-            <div class="rule" id="rule-upper"><div class="rule-dot"></div>Uppercase letter</div>
+            <div class="rule" id="rule-upper"><div class="rule-dot"></div>Uppercase</div>
             <div class="rule" id="rule-num"><div class="rule-dot"></div>Number</div>
-            <div class="rule" id="rule-special"><div class="rule-dot"></div>Special character</div>
+            <div class="rule" id="rule-special"><div class="rule-dot"></div>Symbol</div>
           </div>
         </div>
       </div>
-      <button class="btn-submit" id="signup-btn" onclick="handleSignup()" style="margin-top:8px;">Create account</button>
+      <button class="btn-submit" id="signup-btn" onclick="doSignup()" style="margin-top:6px;">Create account</button>
     </div>
 
-    <p class="signup-prompt" id="bottom-prompt">
-      Don't have an account? <a href="#" onclick="switchTab('signup'); return false;">Sign up free</a>
+    <p class="switch-prompt" id="switch-prompt">
+      No account? <a href="#" onclick="switchTab('signup'); return false;">Sign up free</a>
     </p>
+
   </div>
 </div>
 
@@ -242,25 +372,54 @@
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // If already logged in, skip to swipe
+  let currentRole = 'seeker';
+
+  // Pre-select role from URL param
+  const urlRole = new URLSearchParams(window.location.search).get('role');
+  if (urlRole === 'employer') { currentRole = 'employer'; document.addEventListener('DOMContentLoaded', () => switchRole('employer')); }
+
+  // Redirect if already logged in
   sb.auth.getSession().then(({ data: { session } }) => {
-    if (session) window.location.href = 'swipe.html';
+    if (session) {
+      const r = session.user.user_metadata?.role || 'seeker';
+      window.location.href = r === 'employer' ? 'employer-dashboard.html' : 'swipe.html';
+    }
   });
 
-  function showMsg(text, type = 'error') {
-    const box = document.getElementById('msg-box');
-    box.textContent = text;
-    box.className = 'msg-box ' + type;
-    box.style.display = 'block';
+  const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-dashboard.html' : '/swipe.html');
+
+  function switchRole(role) {
+    currentRole = role;
+    const isEmp = role === 'employer';
+    // Left panel
+    document.getElementById('left-panel').classList.toggle('is-employer', isEmp);
+    // Role buttons
+    document.getElementById('role-seeker').classList.toggle('active', !isEmp);
+    document.getElementById('role-employer').classList.toggle('active', isEmp);
+    // Employer-only fields
+    document.getElementById('company-field').style.display = isEmp ? 'block' : 'none';
+    // Email label hints
+    document.getElementById('login-email-label').textContent = isEmp ? 'Work email' : 'Email address';
+    document.getElementById('signup-email-label').textContent = isEmp ? 'Work email' : 'Email address';
+    hideMsg();
+    refreshCopy();
   }
-  function hideMsg() {
-    document.getElementById('msg-box').style.display = 'none';
-  }
-  function setLoading(btnId, loading, text) {
-    const btn = document.getElementById(btnId);
-    btn.disabled = loading;
-    btn.textContent = loading ? text : btn.dataset.original || btn.textContent;
-    if (!loading && btn.dataset.original) btn.textContent = btn.dataset.original;
+
+  function refreshCopy() {
+    const isLogin = document.getElementById('login-form').style.display !== 'none';
+    const isEmp = currentRole === 'employer';
+    document.getElementById('form-title').textContent = isLogin
+      ? (isEmp ? 'Employer sign in' : 'Welcome back')
+      : (isEmp ? 'Create employer account' : 'Create your account');
+    document.getElementById('form-subtitle').innerHTML = isLogin
+      ? `New here? <a href="#" onclick="switchTab('signup'); return false;">Create a free account</a>`
+      : `Already have one? <a href="#" onclick="switchTab('login'); return false;">Sign in</a>`;
+    document.getElementById('divider-text').textContent = isLogin ? 'or sign in with email' : 'or sign up with email';
+    document.getElementById('login-btn').textContent = isEmp ? 'Sign in to Dashboard' : 'Sign in to Alygnn';
+    document.getElementById('signup-btn').textContent = isEmp ? 'Create employer account' : 'Create account';
+    document.getElementById('switch-prompt').innerHTML = isLogin
+      ? `No account? <a href="#" onclick="switchTab('signup'); return false;">Sign up free</a>`
+      : `Already have an account? <a href="#" onclick="switchTab('login'); return false;">Sign in</a>`;
   }
 
   function switchTab(mode) {
@@ -270,60 +429,66 @@
     document.getElementById('signup-form').style.display = isLogin ? 'none' : 'block';
     document.getElementById('tab-login').classList.toggle('active', isLogin);
     document.getElementById('tab-signup').classList.toggle('active', !isLogin);
-    document.getElementById('form-title').textContent = isLogin ? 'Welcome back' : 'Create your account';
-    document.getElementById('form-subtitle').innerHTML = isLogin
-      ? 'New here? <a href="#" onclick="switchTab(\'signup\'); return false;">Create a free account</a>'
-      : 'Already have one? <a href="#" onclick="switchTab(\'login\'); return false;">Sign in</a>';
-    document.getElementById('divider-text').textContent = isLogin ? 'or sign in with email' : 'or sign up with email';
-    document.getElementById('bottom-prompt').innerHTML = isLogin
-      ? 'Don\'t have an account? <a href="#" onclick="switchTab(\'signup\'); return false;">Sign up free</a>'
-      : 'Already have an account? <a href="#" onclick="switchTab(\'login\'); return false;">Sign in</a>';
+    refreshCopy();
   }
 
-  async function handleLogin() {
+  function showMsg(text, type = 'error') {
+    const b = document.getElementById('msg-box');
+    b.textContent = text; b.className = 'msg-box ' + type; b.style.display = 'block';
+  }
+  function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
+
+  async function doLogin() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     if (!email || !password) { showMsg('Please enter your email and password.'); return; }
     hideMsg();
     const btn = document.getElementById('login-btn');
-    btn.dataset.original = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Signing in…';
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    btn.disabled = false; btn.textContent = btn.dataset.original;
+    const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Signing in…';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    btn.disabled = false; btn.textContent = orig;
     if (error) { showMsg(error.message); return; }
-    window.location.href = 'swipe.html';
+    const r = data.user?.user_metadata?.role || 'seeker';
+    window.location.href = redirectFor(r);
   }
 
-  async function handleSignup() {
+  async function doSignup() {
     const name = document.getElementById('signup-name').value.trim();
     const email = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
+    const company = document.getElementById('signup-company').value.trim();
     if (!name || !email || !password) { showMsg('Please fill in all fields.'); return; }
+    if (currentRole === 'employer' && !company) { showMsg('Please enter your company name.'); return; }
     if (password.length < 8) { showMsg('Password must be at least 8 characters.'); return; }
     hideMsg();
     const btn = document.getElementById('signup-btn');
-    btn.dataset.original = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Creating account…';
-    const { error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
-    btn.disabled = false; btn.textContent = btn.dataset.original;
+    const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Creating account…';
+    const meta = { full_name: name, role: currentRole };
+    if (company) meta.company = company;
+    const { error } = await sb.auth.signUp({ email, password, options: { data: meta } });
+    btn.disabled = false; btn.textContent = orig;
     if (error) { showMsg(error.message); return; }
     showMsg('Account created! Check your email to confirm, then sign in.', 'success');
     setTimeout(() => switchTab('login'), 3000);
   }
 
-  async function handleGoogleLogin() {
-    await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/swipe.html' } });
+  async function handleGoogle() {
+    await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectFor(currentRole) } });
   }
 
-  async function handleAppleLogin() {
-    await sb.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin + '/swipe.html' } });
+  async function doForgot() {
+    const email = document.getElementById('email').value.trim();
+    if (!email) { showMsg('Enter your email above first.'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
+    if (error) { showMsg(error.message); return; }
+    showMsg('Reset email sent — check your inbox.', 'success');
   }
 
-  function toggleEye(inputId, btn) {
-    const input = document.getElementById(inputId);
-    const isHidden = input.type === 'password';
-    input.type = isHidden ? 'text' : 'password';
-    btn.querySelector('svg').innerHTML = isHidden
+  function toggleEye(id, btn) {
+    const input = document.getElementById(id);
+    const hide = input.type === 'password';
+    input.type = hide ? 'text' : 'password';
+    btn.querySelector('svg').innerHTML = hide
       ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'
       : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   }
@@ -332,34 +497,15 @@
     const bar = document.getElementById('strength-bar');
     if (!val) { bar.style.display = 'none'; return; }
     bar.style.display = 'block';
-    const rules = {
-      len: val.length >= 8,
-      upper: /[A-Z]/.test(val),
-      num: /[0-9]/.test(val),
-      special: /[^A-Za-z0-9]/.test(val)
-    };
-    ['len','upper','num','special'].forEach(r => {
-      const el = document.getElementById('rule-' + r);
-      el.classList.toggle('pass', rules[r]);
-    });
+    const rules = { len: val.length >= 8, upper: /[A-Z]/.test(val), num: /[0-9]/.test(val), special: /[^A-Za-z0-9]/.test(val) };
+    ['len','upper','num','special'].forEach(r => document.getElementById('rule-' + r).classList.toggle('pass', rules[r]));
     const score = Object.values(rules).filter(Boolean).length;
-    const colors = ['', '#D79A9A', '#e8b86d', '#5D7FA3', '#6FBF8F'];
-    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-    const labelColors = ['', '#8a4040', '#7a5a1a', '#3a5a7a', '#2d8a57'];
-    for (let i = 1; i <= 4; i++) {
-      document.getElementById('seg' + i).style.background = i <= score ? colors[score] : 'var(--border)';
-    }
+    const colors = ['','#D79A9A','#e8b86d','#5D7FA3','#6FBF8F'];
+    const labels = ['','Weak','Fair','Good','Strong'];
+    const lc = ['','#8a4040','#7a5a1a','#3a5a7a','#2d8a57'];
+    for (let i = 1; i <= 4; i++) document.getElementById('seg'+i).style.background = i <= score ? colors[score] : 'var(--border)';
     const lbl = document.getElementById('strength-label');
-    lbl.textContent = labels[score];
-    lbl.style.color = labelColors[score];
-  }
-
-  async function handleForgotPassword() {
-    const email = document.getElementById('email').value.trim();
-    if (!email) { showMsg('Enter your email above first.'); return; }
-    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
-    if (error) { showMsg(error.message); return; }
-    showMsg('Password reset email sent! Check your inbox.', 'success');
+    lbl.textContent = labels[score]; lbl.style.color = lc[score];
   }
 </script>
 </body>
