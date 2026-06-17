@@ -378,13 +378,7 @@
   const urlRole = new URLSearchParams(window.location.search).get('role');
   if (urlRole === 'employer') { currentRole = 'employer'; document.addEventListener('DOMContentLoaded', () => switchRole('employer')); }
 
-  // Redirect if already logged in
-  sb.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-      const r = session.user.user_metadata?.role || 'seeker';
-      window.location.href = r === 'employer' ? 'employer-dashboard.html' : 'swipe.html';
-    }
-  });
+
 
   const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-dashboard.html' : '/swipe.html');
 
