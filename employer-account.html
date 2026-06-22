@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account — Alygnn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root{
+    --brand:#5D7FA3;
+    --sage:#8CB69B;
+    --mint:#6FBF8F;
+    --rose:#D79A9A;
+    --bg:#F6F8F7;
+    --card-bg:#FCFCFA;
+    --text:#1A2530;
+    --text-muted:#4A5968;
+    --border:#DDE3E8;
+    --brand-tint:rgba(93,127,163,0.1);
+    --mint-tint:rgba(111,191,143,0.15);
+    --rose-tint:rgba(215,154,154,0.15);
+  }
+
+  body{
+    font-family:'DM Sans', sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
+
+  nav{
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height: 64px;
+  }
+  .logo{
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--brand);
+    letter-spacing: -0.5px;
+    text-decoration:none;
+  }
+  .logo span{ color: var(--sage); }
+  .nav-links{ display:flex; gap:32px; align-items:center; }
+  .nav-links a{
+    text-decoration:none;
+    color:var(--text-muted);
+    font-size:14px;
+    padding:6px 0;
+    border-bottom:2px solid transparent;
+    transition:color .2s, border-color .2s;
+  }
+  .nav-links a.active{ color:var(--text); border-bottom-color:var(--brand); }
+  .nav-links a:hover{ color:var(--text); }
+  .nav-cta{
+    background: var(--brand); color: white;
+    border: none; border-radius: 100px;
+    padding: 9px 22px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .nav-cta:hover{ opacity: 0.88; }
+
+  .page{
+    max-width:880px;
+    margin:0 auto;
+    padding:56px 6% 100px;
+  }
+
+  .profile-card{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:32px;
+    margin-bottom:40px;
+  }
+  .avatar{
+    width:76px; height:76px;
+    border-radius:16px;
+    background:var(--brand);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'DM Serif Display', serif;
+    font-size:1.7rem;
+    color:white;
+    flex-shrink:0;
+    overflow:hidden;
+    cursor:pointer;
+    position:relative;
+  }
+  .avatar img{
+    width:100%; height:100%;
+    object-fit:cover;
+  }
+  .profile-info h1{
+    font-family:'DM Serif Display', serif;
+    font-size:1.6rem;
+    letter-spacing:-0.5px;
+    color:var(--text);
+    margin-bottom:4px;
+  }
+  .profile-info p{
+    color:var(--text-muted);
+    font-size:14px;
+    font-weight:300;
+  }
+  .headline-empty{
+    color:#9BA8B3;
+    font-style:italic;
+  }
+
+  .section{ margin-bottom:40px; }
+  .section-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .section-header h2{
+    font-family:'DM Serif Display', serif;
+    font-size:1.15rem;
+    letter-spacing:-0.3px;
+    color:var(--text);
+  }
+  .section-link{
+    font-size:13px;
+    color:var(--brand);
+    text-decoration:none;
+  }
+  .section-link:hover{ text-decoration:underline; }
+
+  .job-list{ display:flex; flex-direction:column; gap:10px; }
+  .job-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px 18px;
+  }
+  .job-logo{
+    width:40px; height:40px;
+    border-radius:11px;
+    background:var(--brand-tint);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem;
+    flex-shrink:0;
+  }
+  .job-meta{ flex:1; min-width:0; }
+  .job-title{ font-weight:500; font-size:15px; color:var(--text); }
+  .job-company{ font-size:13px; color:var(--text-muted); }
+  .job-tag{
+    font-size:12px;
+    font-weight:500;
+    padding:4px 12px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .tag-active{ background:var(--mint-tint); color:#3a9463; }
+  .tag-closed{ background:var(--rose-tint); color:#a05858; }
+
+  .empty-state{
+    background:var(--card-bg);
+    border:1px dashed var(--border);
+    border-radius:14px;
+    padding:28px;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+  }
+
+  .links-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .link-card{
+    flex:1;
+    min-width:200px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+    text-decoration:none;
+    color:var(--text);
+    transition:border-color .2s, transform .2s;
+  }
+  .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
+  .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
+  .link-card .label{ font-weight:500; font-size:15px; }
+  .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-links">
+    <a href="employer-account.html" class="active">Account</a>
+    <button class="nav-cta" onclick="window.location.href='employer-dashboard.html'">Post a job</button>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="profile-card">
+    <div class="avatar" id="avatar" onclick="document.getElementById('photo-input').click()" title="Click to add a logo">
+      <span id="avatar-initials">C</span>
+      <img id="avatar-img" style="display:none;">
+    </div>
+    <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
+    <div class="profile-info">
+      <h1>Company name</h1>
+      <p class="headline-empty">Add a company description</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Posted jobs</h2>
+      <a href="employer-dashboard.html" class="section-link">Post a job →</a>
+    </div>
+    <div class="empty-state">
+      No jobs posted yet. Once you post a role, it'll show up here.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Candidates</h2>
+    </div>
+    <div class="empty-state">
+      No candidates yet. Once people apply to your jobs, you'll see them here.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Settings</h2>
+    </div>
+    <div class="links-row">
+      <a href="employer-profile.html" class="link-card">
+        <span class="icon">🏢</span>
+        <div class="label">Edit company profile</div>
+        <div class="sub">Update name, logo, and description</div>
+      </a>
+      <a href="employer-dashboard.html" class="link-card">
+        <span class="icon">📋</span>
+        <div class="label">Manage job posts</div>
+        <div class="sub">Edit or close active listings</div>
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function handlePhotoUpload(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const dataUrl = e.target.result;
+      localStorage.setItem('companyLogo', dataUrl);
+      showPhoto(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showPhoto(dataUrl){
+    document.getElementById('avatar-img').src = dataUrl;
+    document.getElementById('avatar-img').style.display = 'block';
+    document.getElementById('avatar-initials').style.display = 'none';
+  }
+
+  const savedLogo = localStorage.getItem('companyLogo');
+  if(savedLogo){
+    showPhoto(savedLogo);
+  }
+</script>
+
+</body>
+</html>
