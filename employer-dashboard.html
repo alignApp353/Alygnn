@@ -164,7 +164,7 @@
 <body>
 
 <nav>
-  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <a href="/index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-right">
     <span class="nav-user" id="nav-user-email"></span>
     <button class="btn-logout" onclick="logout()">Sign out</button>
@@ -175,17 +175,17 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-label">Employer</div>
-    <button class="nav-item active" onclick="showPanel('overview')">
+    <button class="nav-item active" onclick="showPanel('overview', this)">
       <span class="nav-icon">📊</span> Overview
     </button>
-    <button class="nav-item" onclick="showPanel('jobs')">
+    <button class="nav-item" onclick="showPanel('jobs', this)">
       <span class="nav-icon">💼</span> My Jobs
     </button>
-    <button class="nav-item" onclick="showPanel('candidates')">
+    <button class="nav-item" onclick="showPanel('candidates', this)">
       <span class="nav-icon">👥</span> Candidates
       <span class="nav-badge">4</span>
     </button>
-    <button class="nav-item" onclick="showPanel('post')">
+    <button class="nav-item" onclick="showPanel('post', this)">
       <span class="nav-icon">➕</span> Post a Job
     </button>
   </aside>
@@ -230,7 +230,7 @@
           <div><div class="js-val">18</div><div class="js-label">Views</div></div>
           <div><div class="js-val">5</div><div class="js-label">Swipes</div></div>
         </div>
-        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
       </div>
       <div class="job-row">
         <div class="job-status active"></div>
@@ -242,7 +242,7 @@
           <div><div class="js-val">22</div><div class="js-label">Views</div></div>
           <div><div class="js-val">4</div><div class="js-label">Swipes</div></div>
         </div>
-        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
       </div>
       <div class="job-row">
         <div class="job-status paused"></div>
@@ -254,7 +254,7 @@
           <div><div class="js-val">7</div><div class="js-label">Views</div></div>
           <div><div class="js-val">3</div><div class="js-label">Swipes</div></div>
         </div>
-        <button class="btn-view" onclick="showPanel('candidates')">View candidates</button>
+        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
       </div>
     </div>
 
@@ -266,7 +266,7 @@
       </div>
       <div class="section-header">
         <div class="section-title">Active listings</div>
-        <button class="btn-primary" onclick="showPanel('post')">+ Post new job</button>
+        <button class="btn-primary" onclick="showPanel('post', this)">+ Post new job</button>
       </div>
       <div id="jobs-list">
         <div class="job-row">
@@ -454,17 +454,44 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  // Auth check
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
-  if (!user.email) window.location.href = 'login.html';
-  if (user.role !== 'employer') window.location.href = 'preferences.html';
-  document.getElementById('nav-user-email').textContent = user.email;
+  // Auth check — reads the same saved login from either sessionStorage or localStorage.
+  // This prevents the dashboard from breaking if the login page saves role/type slightly differently.
+  function safeParse(value) {
+    try { return JSON.parse(value || '{}'); } catch (e) { return {}; }
+  }
 
-  function showPanel(name) {
+  const user =
+    safeParse(sessionStorage.getItem('user')) ||
+    safeParse(localStorage.getItem('user')) ||
+    {};
+
+  const userEmail = user.email || user.userEmail || user.employerEmail || '';
+  const userRole = String(
+    user.role || user.accountType || user.userType || user.type || user.profileType || ''
+  ).toLowerCase();
+
+  if (!userEmail) {
+    window.location.href = '/login.html';
+  } else if (userRole && !userRole.includes('employer')) {
+    window.location.href = '/preferences.html';
+  } else {
+    document.getElementById('nav-user-email').textContent = userEmail;
+  }
+
+  function showPanel(name, trigger) {
+    const targetPanel = document.getElementById('panel-' + name);
+    if (!targetPanel) return;
+
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('panel-' + name).classList.add('active');
-    event.currentTarget && event.currentTarget.classList.add('active');
+
+    targetPanel.classList.add('active');
+
+    const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
+      ? trigger
+      : document.querySelector(`.nav-item[onclick*="${name}"]`);
+
+    if (navButton) navButton.classList.add('active');
   }
 
   function acceptCandidate(btn) {
@@ -520,7 +547,7 @@
 
   function logout() {
     sessionStorage.removeItem('user');
-    window.location.href = 'login.html';
+    window.location.href = '/login.html';
   }
 
   let toastTimer;
