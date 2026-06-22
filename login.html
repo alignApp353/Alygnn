@@ -392,9 +392,6 @@
     document.getElementById('role-employer').classList.toggle('active', isEmp);
     // Employer-only fields
     document.getElementById('company-field').style.display = isEmp ? 'block' : 'none';
-    // Email label hints
-    document.getElementById('login-email-label').textContent = isEmp ? 'Work email' : 'Email address';
-    document.getElementById('signup-email-label').textContent = isEmp ? 'Work email' : 'Email address';
     hideMsg();
     refreshCopy();
   }
