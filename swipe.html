@@ -241,7 +241,10 @@
     <div class="stat"><div class="stat-val" id="stat-skipped">0</div><div class="stat-label">Skipped</div></div>
     <div class="stat"><div class="stat-val" id="stat-remaining">—</div><div class="stat-label">Left</div></div>
   </div>
-  <a href="preferences.html" class="nav-back">← Back</a>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <a href="account.html" class="nav-back">👤 Account</a>
+    <a href="preferences.html" class="nav-back">← Back</a>
+  </div>
 </nav>
 
 <!-- LOADING -->
@@ -304,11 +307,20 @@
     const employment_type = pref.jobType || pref.employment_type || '';
 
     try {
-      const res = await fetch('/api/get-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, location, employment_type }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      let res;
+      try {
+        res = await fetch('/api/get-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, location, employment_type }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
@@ -328,7 +340,10 @@
       showScreen('swipe');
     } catch (err) {
       console.error('loadJobs error:', err);
-      document.getElementById('error-msg').textContent = err.message || 'Failed to load jobs.';
+      const msg = err.name === 'AbortError'
+        ? 'The job search took too long to respond. The server may be down or misconfigured — try again in a moment.'
+        : (err.message || 'Failed to load jobs.');
+      document.getElementById('error-msg').textContent = msg;
       showScreen('error');
     }
   }
