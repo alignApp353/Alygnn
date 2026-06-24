@@ -456,9 +456,18 @@
     const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Creating account…';
     const meta = { full_name: name, role: currentRole };
     if (company) meta.company = company;
-    const { error } = await sb.auth.signUp({ email, password, options: { data: meta } });
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: meta } });
     btn.disabled = false; btn.textContent = orig;
     if (error) { showMsg(error.message); return; }
+
+    // If email confirmation is disabled in Supabase, signUp() returns a
+    // live session right away — skip the "check your email" step entirely.
+    if (data.session) {
+      showMsg('Account created! Redirecting…', 'success');
+      setTimeout(() => { window.location.href = redirectFor(currentRole); }, 600);
+      return;
+    }
+
     showMsg('Account created! Check your email to confirm, then sign in.', 'success');
     setTimeout(() => switchTab('login'), 3000);
   }
