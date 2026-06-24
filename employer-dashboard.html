@@ -6,6 +6,7 @@
 <title>Alygnn — Employer Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -454,29 +455,43 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  // Auth check — reads the same saved login from either sessionStorage or localStorage.
-  // This prevents the dashboard from breaking if the login page saves role/type slightly differently.
-  function safeParse(value) {
-    try { return JSON.parse(value || '{}'); } catch (e) { return {}; }
+  // Auth check — verifies against the real Supabase session instead of a
+  // sessionStorage key that login.html never actually wrote. This is what
+  // was bouncing employers straight back to /login.html before the
+  // dashboard could render.
+  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function checkAuth() {
+    const { data, error } = await sb.auth.getUser();
+    const authedUser = data && data.user;
+
+    if (error || !authedUser) {
+      window.location.href = '/login.html';
+      return;
+    }
+
+    const role = String(authedUser.user_metadata?.role || '').toLowerCase();
+    if (role && !role.includes('employer')) {
+      window.location.href = '/preferences.html';
+      return;
+    }
+
+    document.getElementById('nav-user-email').textContent = authedUser.email || '';
+
+    // Keep sessionStorage in sync so other pages that still read it
+    // (e.g. employer-account.html) stay consistent with the real session.
+    sessionStorage.setItem('user', JSON.stringify({
+      email: authedUser.email,
+      role: authedUser.user_metadata?.role || 'employer',
+      full_name: authedUser.user_metadata?.full_name || '',
+      company: authedUser.user_metadata?.company || ''
+    }));
   }
 
-  const user =
-    safeParse(sessionStorage.getItem('user')) ||
-    safeParse(localStorage.getItem('user')) ||
-    {};
-
-  const userEmail = user.email || user.userEmail || user.employerEmail || '';
-  const userRole = String(
-    user.role || user.accountType || user.userType || user.type || user.profileType || ''
-  ).toLowerCase();
-
-  if (!userEmail) {
-    window.location.href = '/login.html';
-  } else if (userRole && !userRole.includes('employer')) {
-    window.location.href = '/preferences.html';
-  } else {
-    document.getElementById('nav-user-email').textContent = userEmail;
-  }
+  checkAuth();
 
   function showPanel(name, trigger) {
     const targetPanel = document.getElementById('panel-' + name);
@@ -545,7 +560,8 @@
     setTimeout(() => showPanel('jobs'), 1200);
   }
 
-  function logout() {
+  async function logout() {
+    await sb.auth.signOut();
     sessionStorage.removeItem('user');
     window.location.href = '/login.html';
   }
