@@ -118,6 +118,26 @@
     color:#9BA8B3;
     font-style:italic;
   }
+  [contenteditable="true"]{
+    outline:none;
+    border-radius:6px;
+    transition:background .15s;
+  }
+  [contenteditable="true"]:hover{
+    background:rgba(93,127,163,0.06);
+  }
+  [contenteditable="true"]:focus{
+    background:rgba(93,127,163,0.08);
+  }
+  [contenteditable="true"]:empty::before{
+    content: attr(data-placeholder);
+    color:#9BA8B3;
+    font-style:italic;
+  }
+  #company-name:empty::before{
+    font-style:normal;
+    font-family:'DM Serif Display', serif;
+  }
 
   .section{ margin-bottom:40px; }
   .section-header{
@@ -217,8 +237,8 @@
     </div>
     <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
     <div class="profile-info">
-      <h1>Company name</h1>
-      <p class="headline-empty">Add a company description</p>
+      <h1 id="company-name" contenteditable="true" data-placeholder="Company name" onblur="saveField('companyName', this)"></h1>
+      <p id="company-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a company description" onblur="saveField('companyHeadline', this)" onfocus="clearPlaceholder(this)"></p>
     </div>
   </div>
 
@@ -280,9 +300,30 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
+  function saveField(key, el){
+    localStorage.setItem(key, el.textContent.trim());
+  }
+
+  function clearPlaceholder(el){
+    // Prevents the italic placeholder styling from sticking once typing starts
+    el.classList.remove('headline-empty');
+  }
+
   const savedLogo = localStorage.getItem('companyLogo');
   if(savedLogo){
     showPhoto(savedLogo);
+  }
+
+  const savedName = localStorage.getItem('companyName');
+  if(savedName){
+    document.getElementById('company-name').textContent = savedName;
+  }
+
+  const savedHeadline = localStorage.getItem('companyHeadline');
+  const headlineEl = document.getElementById('company-headline');
+  if(savedHeadline){
+    headlineEl.textContent = savedHeadline;
+    headlineEl.classList.remove('headline-empty');
   }
 </script>
 
