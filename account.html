@@ -121,6 +121,26 @@
     color:#9BA8B3;
     font-style:italic;
   }
+  [contenteditable="true"]{
+    outline:none;
+    border-radius:6px;
+    transition:background .15s;
+  }
+  [contenteditable="true"]:hover{
+    background:rgba(93,127,163,0.06);
+  }
+  [contenteditable="true"]:focus{
+    background:rgba(93,127,163,0.08);
+  }
+  [contenteditable="true"]:empty::before{
+    content: attr(data-placeholder);
+    color:#9BA8B3;
+    font-style:italic;
+  }
+  #profile-name:empty::before{
+    font-style:normal;
+    font-family:'DM Serif Display', serif;
+  }
 
   .section{ margin-bottom:40px; }
   .section-header{
@@ -221,8 +241,8 @@
     </div>
     <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
     <div class="profile-info">
-      <h1>Lara Uyar</h1>
-      <p class="headline-empty">Add a headline</p>
+      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name" onblur="saveField('profileName', this)">Lara Uyar</h1>
+      <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline" onblur="saveField('profileHeadline', this)" onfocus="clearPlaceholder(this)"></p>
     </div>
   </div>
 
@@ -283,10 +303,31 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
+  function saveField(key, el){
+    localStorage.setItem(key, el.textContent.trim());
+  }
+
+  function clearPlaceholder(el){
+    // Prevents the italic placeholder styling from sticking once typing starts
+    el.classList.remove('headline-empty');
+  }
+
   // Load saved photo on page load, otherwise initials stay as fallback
   const savedPhoto = localStorage.getItem('profilePhoto');
   if(savedPhoto){
     showPhoto(savedPhoto);
+  }
+
+  const savedName = localStorage.getItem('profileName');
+  if(savedName){
+    document.getElementById('profile-name').textContent = savedName;
+  }
+
+  const savedHeadline = localStorage.getItem('profileHeadline');
+  const headlineEl = document.getElementById('profile-headline');
+  if(savedHeadline){
+    headlineEl.textContent = savedHeadline;
+    headlineEl.classList.remove('headline-empty');
   }
 </script>
 
