@@ -273,6 +273,69 @@
   }
   .stat-label { font-size: 14px; color: var(--text-muted); }
 
+  /* PRODUCT PREVIEW */
+  .preview-tabs { display: flex; gap: 10px; margin: 40px 0 32px; flex-wrap: wrap; }
+  .preview-tab {
+    padding: 10px 20px; border-radius: 100px;
+    border: 1px solid var(--border); background: white;
+    font-size: 14px; font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+  }
+  .preview-tab:hover { border-color: var(--brand); color: var(--brand); }
+  .preview-tab.active { background: var(--brand); color: white; border-color: var(--brand); }
+  .preview-frame {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(47,58,69,0.08);
+  }
+  .frame-chrome { display: flex; gap: 6px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .frame-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .frame-dot.red { background: var(--rose); }
+  .frame-dot.yellow { background: #E3C26B; }
+  .frame-dot.green { background: var(--sage); }
+  .frame-body { padding: 36px; min-height: 420px; }
+  .preview-panel { display: none; }
+  .preview-panel.active { display: block; animation: fadeUp 0.4s ease; }
+
+  .dash-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .dash-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .dash-stat-num { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--brand); margin-bottom: 4px; }
+  .dash-stat-label { font-size: 12px; color: var(--text-muted); }
+
+  .mini-job-list { display: flex; flex-direction: column; gap: 12px; }
+  .mini-job-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+  .mini-job-logo { width: 36px; height: 36px; border-radius: 10px; background: var(--brand); color: white; display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 14px; flex-shrink: 0; }
+  .mini-job-info { flex: 1; }
+  .mini-job-title { font-size: 14px; font-weight: 500; }
+  .mini-job-company { font-size: 12px; color: var(--text-muted); }
+  .mini-job-match { font-size: 13px; font-weight: 500; color: #3a9463; background: rgba(111,191,143,0.15); padding: 4px 10px; border-radius: 100px; flex-shrink: 0; }
+
+  .kanban-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kanban-col { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .kanban-col-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .kanban-count { background: white; border: 1px solid var(--border); border-radius: 100px; padding: 1px 8px; font-size: 11px; }
+  .kanban-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .kanban-card strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .kanban-card span { font-size: 11px; color: var(--text-muted); }
+
+  .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--brand); color: white; display: flex; align-items: center; justify-content: center; font-family: 'DM Serif Display', serif; font-size: 20px; flex-shrink: 0; }
+  .profile-name { font-size: 18px; font-weight: 500; }
+  .profile-role { font-size: 13px; color: var(--text-muted); }
+  .profile-skills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .timeline { border-left: 2px solid var(--border); padding-left: 20px; display: flex; flex-direction: column; gap: 22px; margin-left: 4px; }
+  .timeline-item { position: relative; }
+  .timeline-item::before { content: ""; position: absolute; left: -26px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
+  .timeline-role { font-size: 14px; font-weight: 500; }
+  .timeline-company { font-size: 13px; color: var(--text-muted); }
+  .timeline-dates { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 120px; margin: 8px 0 36px; position: relative; }
+  .bar { flex: 1; background: var(--brand); border-radius: 6px 6px 0 0; opacity: 0.85; position: relative; }
+  .bar-label { position: absolute; bottom: -22px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--text-muted); }
+
   /* EMPLOYER SECTION */
   .employer-section {
     background: rgba(93,127,163,0.06);
@@ -480,6 +543,9 @@
     .trust-row { grid-template-columns: 1fr; }
     .testimonial-grid { grid-template-columns: 1fr; }
     .logo-strip { gap: 28px; }
+    .kanban-grid { grid-template-columns: 1fr; }
+    .dash-stats-row { grid-template-columns: 1fr; }
+    .frame-body { padding: 24px; }
   }
 </style>
 </head>
@@ -622,6 +688,155 @@
       <div class="feat-icon" style="color:var(--mint)">📊</div>
       <div class="feat-title">Application tracker</div>
       <p class="feat-desc">Every right swipe goes into a Kanban board — Applied, Interview, Offer, Rejected. Your pipeline, always organized.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCT PREVIEW -->
+<section class="section" id="preview" style="background: white;">
+  <p class="section-label">See it in action</p>
+  <h2>Built for both sides<br>of the hire.</h2>
+  <p class="section-sub">A look at what candidates and employers actually see inside Alygnn.</p>
+
+  <div class="preview-tabs">
+    <button class="preview-tab active" onclick="showPreview('panel-candidate', this)">Candidate dashboard</button>
+    <button class="preview-tab" onclick="showPreview('panel-tracker', this)">Application tracker</button>
+    <button class="preview-tab" onclick="showPreview('panel-resume', this)">Resume profile</button>
+    <button class="preview-tab" onclick="showPreview('panel-employer', this)">Employer dashboard</button>
+  </div>
+
+  <div class="preview-frame">
+    <div class="frame-chrome">
+      <span class="frame-dot red"></span>
+      <span class="frame-dot yellow"></span>
+      <span class="frame-dot green"></span>
+    </div>
+    <div class="frame-body">
+
+      <!-- Candidate dashboard -->
+      <div class="preview-panel active" id="panel-candidate">
+        <div class="dash-stats-row">
+          <div class="dash-stat">
+            <div class="dash-stat-num">8</div>
+            <div class="dash-stat-label">New matches today</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">5</div>
+            <div class="dash-stat-label">Active applications</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">23</div>
+            <div class="dash-stat-label">Profile views</div>
+          </div>
+        </div>
+        <div class="mini-job-list">
+          <div class="mini-job-card">
+            <div class="mini-job-logo">S</div>
+            <div class="mini-job-info">
+              <div class="mini-job-title">Senior Product Designer</div>
+              <div class="mini-job-company">Stripe · Remote OK</div>
+            </div>
+            <div class="mini-job-match">94% match</div>
+          </div>
+          <div class="mini-job-card">
+            <div class="mini-job-logo">N</div>
+            <div class="mini-job-info">
+              <div class="mini-job-title">Backend Engineer</div>
+              <div class="mini-job-company">Notion · Raleigh, NC</div>
+            </div>
+            <div class="mini-job-match">89% match</div>
+          </div>
+          <div class="mini-job-card">
+            <div class="mini-job-logo">L</div>
+            <div class="mini-job-info">
+              <div class="mini-job-title">Sales Development Rep</div>
+              <div class="mini-job-company">Linear · Remote</div>
+            </div>
+            <div class="mini-job-match">85% match</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Application tracker -->
+      <div class="preview-panel" id="panel-tracker">
+        <div class="kanban-grid">
+          <div class="kanban-col">
+            <div class="kanban-col-title">Applied <span class="kanban-count">4</span></div>
+            <div class="kanban-card"><strong>Product Designer</strong><span>Stripe</span></div>
+            <div class="kanban-card"><strong>Backend Engineer</strong><span>Notion</span></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-title">Interview <span class="kanban-count">2</span></div>
+            <div class="kanban-card"><strong>Sales Rep</strong><span>Linear</span></div>
+            <div class="kanban-card"><strong>Data Analyst</strong><span>Crab Sea</span></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-title">Offer <span class="kanban-count">1</span></div>
+            <div class="kanban-card"><strong>Marketing Coordinator</strong><span>Nova Tech</span></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-title">Rejected <span class="kanban-count">1</span></div>
+            <div class="kanban-card"><strong>UX Researcher</strong><span>Lighthouse Labs</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resume profile -->
+      <div class="preview-panel" id="panel-resume">
+        <div class="profile-header">
+          <div class="profile-avatar">M</div>
+          <div>
+            <div class="profile-name">Maya Chen</div>
+            <div class="profile-role">Backend Engineer · Raleigh, NC</div>
+          </div>
+        </div>
+        <div class="profile-skills">
+          <span class="tag">Python</span>
+          <span class="tag">PostgreSQL</span>
+          <span class="tag">AWS</span>
+          <span class="tag">REST APIs</span>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-role">Backend Engineer</div>
+            <div class="timeline-company">Acme Co.</div>
+            <div class="timeline-dates">2024 — Present</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-role">Software Engineer Intern</div>
+            <div class="timeline-company">Nova Tech</div>
+            <div class="timeline-dates">2023 — 2024</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employer dashboard -->
+      <div class="preview-panel" id="panel-employer">
+        <div class="dash-stats-row">
+          <div class="dash-stat">
+            <div class="dash-stat-num">4</div>
+            <div class="dash-stat-label">Open roles</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">38</div>
+            <div class="dash-stat-label">Candidates this week</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-num">9 days</div>
+            <div class="dash-stat-label">Avg. time to hire</div>
+          </div>
+        </div>
+        <div class="bar-chart">
+          <div class="bar" style="height: 40%;"><span class="bar-label">Mon</span></div>
+          <div class="bar" style="height: 65%;"><span class="bar-label">Tue</span></div>
+          <div class="bar" style="height: 50%;"><span class="bar-label">Wed</span></div>
+          <div class="bar" style="height: 85%;"><span class="bar-label">Thu</span></div>
+          <div class="bar" style="height: 60%;"><span class="bar-label">Fri</span></div>
+          <div class="bar" style="height: 30%;"><span class="bar-label">Sat</span></div>
+          <div class="bar" style="height: 20%;"><span class="bar-label">Sun</span></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
@@ -833,6 +1048,15 @@
   <span>© 2026 Alygnn. Built for job seekers, by people who hated job searching.</span>
   <span>Privacy · Terms</span>
 </footer>
+
+<script>
+  function showPreview(panelId, btn) {
+    document.querySelectorAll('.preview-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
 
 </body>
 </html>
