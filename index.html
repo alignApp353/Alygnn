@@ -50,6 +50,9 @@
   .nav-links { display: flex; gap: 32px; list-style: none; }
   .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-links a:hover { color: var(--text); }
+  .nav-right { display: flex; align-items: center; gap: 20px; }
+  .nav-signin { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .nav-signin:hover { color: var(--text); }
   .nav-cta {
     background: var(--brand); color: white;
     border: none; border-radius: 100px;
@@ -270,6 +273,123 @@
   }
   .stat-label { font-size: 14px; color: var(--text-muted); }
 
+  /* EMPLOYER SECTION */
+  .employer-section {
+    background: rgba(93,127,163,0.06);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .employer-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 60px; align-items: center;
+    margin-top: 48px;
+  }
+  .perk-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 14px;
+    margin: 32px 0 40px;
+  }
+  .perk-list li {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 15px; font-weight: 500; color: var(--text);
+  }
+  .perk-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(111,191,143,0.18); color: #3a9463;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .rank-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%; max-width: 380px;
+    margin: 0 auto;
+  }
+  .rank-card-title {
+    font-size: 12px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+  .rank-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .rank-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .rank-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--brand); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name { font-size: 14px; font-weight: 500; }
+  .rank-role { font-size: 12px; color: var(--text-muted); }
+  .rank-score {
+    font-size: 13px; font-weight: 500; color: #3a9463;
+    background: rgba(111,191,143,0.15);
+    padding: 4px 10px; border-radius: 100px;
+    flex-shrink: 0;
+  }
+
+  /* PRICING */
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 60px; }
+  .price-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 28px;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .price-card.featured { background: var(--brand); border-color: var(--brand); color: white; }
+  .price-card.featured .price-tier,
+  .price-card.featured .price-desc { color: rgba(255,255,255,0.78); }
+  .price-card.featured .price-amount { color: white; }
+  .price-card.featured .price-amount span { color: rgba(255,255,255,0.7); }
+  .price-card.featured .price-features li::before { color: white; }
+  .price-tag {
+    position: absolute; top: -12px; right: 28px;
+    background: var(--sage); color: white;
+    font-size: 12px; padding: 4px 14px; border-radius: 100px;
+  }
+  .price-tier { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 14px; }
+  .price-amount { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--text); margin-bottom: 6px; }
+  .price-amount span { font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text-muted); font-weight: 400; }
+  .price-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px; }
+  .price-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; flex: 1; }
+  .price-features li { font-size: 14px; display: flex; align-items: center; gap: 10px; }
+  .price-features li::before { content: "✓"; color: #3a9463; font-weight: 700; }
+
+  /* TRUST SIGNALS */
+  .trust-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden; margin-top: 56px;
+  }
+  .logo-strip {
+    display: flex; align-items: center; justify-content: center;
+    gap: 48px; flex-wrap: wrap;
+    margin: 56px 0; opacity: 0.55;
+  }
+  .logo-strip span {
+    font-family: 'DM Serif Display', serif;
+    font-size: 19px; color: var(--text-muted);
+    letter-spacing: -0.5px;
+  }
+  .testimonial-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .testimonial-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+  }
+  .testimonial-quote { font-size: 15px; line-height: 1.7; color: var(--text); font-style: italic; margin-bottom: 16px; }
+  .testimonial-author { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+
   /* CTA SECTION */
   .cta-section {
     margin: 0 8% 100px;
@@ -326,6 +446,12 @@
     .stats-row { grid-template-columns: 1fr; }
     .nav-links { display: none; }
     .about-grid { grid-template-columns: 1fr !important; }
+    .employer-grid { grid-template-columns: 1fr; }
+    .employer-grid .rank-card { order: -1; }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .trust-row { grid-template-columns: 1fr; }
+    .testimonial-grid { grid-template-columns: 1fr; }
+    .logo-strip { gap: 28px; }
   }
 </style>
 </head>
@@ -336,9 +462,14 @@
   <ul class="nav-links">
     <li><a href="#how">How it works</a></li>
     <li><a href="#features">Features</a></li>
+    <li><a href="#employers">Employers</a></li>
+    <li><a href="#pricing">Pricing</a></li>
     <li><a href="#about">About</a></li>
   </ul>
-  <button class="nav-cta" onclick="window.location.href='align-upload.html'">Get started</button>
+  <div class="nav-right">
+    <a class="nav-signin" href="account-login.html">Sign in</a>
+    <button class="nav-cta" onclick="window.location.href='align-upload.html'">Get started</button>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -463,6 +594,148 @@
       <div class="feat-icon" style="color:var(--mint)">📊</div>
       <div class="feat-title">Application tracker</div>
       <p class="feat-desc">Every right swipe goes into a Kanban board — Applied, Interview, Offer, Rejected. Your pipeline, always organized.</p>
+    </div>
+  </div>
+</section>
+
+<!-- EMPLOYERS -->
+<section class="section employer-section" id="employers">
+  <p class="section-label">For employers</p>
+  <h2>Hire smarter<br>with Alygnn.</h2>
+  <p class="section-sub">Stop sifting through hundreds of resumes that don't fit. Alygnn ranks every applicant by fit, so you spend time only on candidates who are actually qualified.</p>
+
+  <div class="employer-grid">
+    <div>
+      <ul class="perk-list">
+        <li><span class="perk-icon">✓</span> AI-ranked candidates</li>
+        <li><span class="perk-icon">✓</span> Pre-qualified applicants</li>
+        <li><span class="perk-icon">✓</span> Faster hiring</li>
+        <li><span class="perk-icon">✓</span> Lower cost-per-hire</li>
+        <li><span class="perk-icon">✓</span> Employer dashboard</li>
+      </ul>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="window.location.href='employer-signup.html'">Post a job</button>
+        <button class="btn-ghost" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">See pricing</button>
+      </div>
+    </div>
+
+    <div class="rank-card">
+      <div class="rank-card-title">Top matches · Senior Backend Engineer</div>
+      <div class="rank-row">
+        <div class="rank-avatar">JD</div>
+        <div class="rank-info">
+          <div class="rank-name">Jordan Diaz</div>
+          <div class="rank-role">8 yrs · Backend</div>
+        </div>
+        <div class="rank-score">96%</div>
+      </div>
+      <div class="rank-row">
+        <div class="rank-avatar">AM</div>
+        <div class="rank-info">
+          <div class="rank-name">Amara Mensah</div>
+          <div class="rank-role">5 yrs · Backend</div>
+        </div>
+        <div class="rank-score">91%</div>
+      </div>
+      <div class="rank-row">
+        <div class="rank-avatar">TK</div>
+        <div class="rank-info">
+          <div class="rank-name">Theo Kim</div>
+          <div class="rank-role">6 yrs · Backend</div>
+        </div>
+        <div class="rank-score">88%</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="pricing" style="background: white;">
+  <p class="section-label">Pricing</p>
+  <h2>Simple pricing,<br>built to scale with you.</h2>
+  <p class="section-sub">No hidden fees. Cancel anytime. Candidates always search for free.</p>
+
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-tier">Candidates</div>
+      <div class="price-amount">Free</div>
+      <p class="price-desc">Always free for job seekers. No catch, no credit card.</p>
+      <ul class="price-features">
+        <li>Unlimited swipes</li>
+        <li>AI resume parsing</li>
+        <li>Application tracker</li>
+        <li>Direct employer messaging</li>
+      </ul>
+      <button class="btn-ghost" onclick="window.location.href='align-upload.html'">Get started</button>
+    </div>
+
+    <div class="price-card featured">
+      <span class="price-tag">Most popular</span>
+      <div class="price-tier">Employers</div>
+      <div class="price-amount">$200 <span>/ month</span></div>
+      <p class="price-desc">Everything you need to find and hire qualified candidates faster.</p>
+      <ul class="price-features">
+        <li>Unlimited job postings</li>
+        <li>AI-ranked candidates</li>
+        <li>Employer dashboard</li>
+        <li>Priority support</li>
+      </ul>
+      <button class="btn-white" onclick="window.location.href='employer-signup.html'">Post a job</button>
+    </div>
+
+    <div class="price-card">
+      <div class="price-tier">Enterprise</div>
+      <div class="price-amount">Contact sales</div>
+      <p class="price-desc">Custom volume, integrations, and dedicated support for larger teams.</p>
+      <ul class="price-features">
+        <li>Unlimited seats</li>
+        <li>Dedicated account manager</li>
+        <li>Custom integrations</li>
+        <li>SLA & onboarding support</li>
+      </ul>
+      <button class="btn-ghost" onclick="window.location.href='mailto:admin@alygnn.com?subject=Enterprise%20inquiry'">Contact sales</button>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST SIGNALS -->
+<section class="section" id="trust">
+  <p class="section-label">Trust</p>
+  <h2>Trusted by growing companies<br>across Raleigh and beyond.</h2>
+
+  <!-- TODO: swap these placeholder numbers for real metrics once available -->
+  <div class="trust-row">
+    <div class="stat">
+      <div class="stat-num">120+</div>
+      <div class="stat-label">Jobs available right now</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">35+</div>
+      <div class="stat-label">Employers using Alygnn</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">60+</div>
+      <div class="stat-label">Successful hires made</div>
+    </div>
+  </div>
+
+  <!-- TODO: replace with real partner/customer logos -->
+  <div class="logo-strip">
+    <span>Crab Sea</span>
+    <span>Nova Tech</span>
+    <span>Lighthouse Labs</span>
+    <span>Acme Co.</span>
+  </div>
+
+  <!-- TODO: replace with real testimonials once gathered -->
+  <div class="testimonial-grid">
+    <div class="testimonial-card">
+      <p class="testimonial-quote">"We filled a role in nine days that had been open for two months. The ranked candidates were genuinely qualified — no more wading through resumes that don't fit."</p>
+      <div class="testimonial-author">— Early employer partner</div>
+    </div>
+    <div class="testimonial-card">
+      <p class="testimonial-quote">"I stopped applying to jobs I wasn't even sure I qualified for. Every card I see now actually fits what I'm looking for."</p>
+      <div class="testimonial-author">— Early job seeker</div>
     </div>
   </div>
 </section>
