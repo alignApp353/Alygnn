@@ -6,6 +6,7 @@
 <title>Alygnn — Set your preferences</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -641,6 +642,11 @@
 </div>
 
 <script>
+  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const TOTAL = 300000;
   const FLOOR = 10000;
 
@@ -751,7 +757,7 @@
     document.getElementById('progress-pct').textContent = pct + '%';
   }
 
-  function saveAndStart() {
+  async function saveAndStart() {
     const role = document.getElementById('role-input').value.trim();
     const city = document.getElementById('city-input').value.trim();
     const state = document.getElementById('state-input').value.trim();
@@ -783,6 +789,24 @@
       benefits: benefits,
     };
 
+    // Check whether the person is already logged in before deciding
+    // where to send them. Previously this redirected to login.html
+    // unconditionally, which logged out already-signed-in users
+    // every time they tried to edit their preferences.
+    const { data: { session } } = await sb.auth.getSession();
+
+    if (session) {
+      // Already logged in — save locally so account.html / swipe.html
+      // can read it, and go straight back to the account page.
+      // NOTE: this currently only persists to this browser. For
+      // preferences to follow the user across devices, this should
+      // also be written to a Supabase table keyed by session.user.id.
+      localStorage.setItem('preferences', JSON.stringify(preferences));
+      window.location.href = 'account.html';
+      return;
+    }
+
+    // Not logged in yet — keep the original onboarding flow.
     sessionStorage.setItem('preferences', JSON.stringify(preferences));
     window.location.href = 'login.html';
   }
