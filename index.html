@@ -390,6 +390,34 @@
   .testimonial-quote { font-size: 15px; line-height: 1.7; color: var(--text); font-style: italic; margin-bottom: 16px; }
   .testimonial-author { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
+  /* FAQ */
+  .faq-list { display: flex; flex-direction: column; gap: 12px; margin-top: 48px; max-width: 720px; }
+  .faq-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .faq-item summary {
+    cursor: pointer; list-style: none;
+    padding: 20px 24px;
+    font-size: 15px; font-weight: 500;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: "+"; font-size: 22px; font-weight: 400;
+    color: var(--text-muted); transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .faq-item[open] summary::after { transform: rotate(45deg); }
+  .faq-answer {
+    padding: 0 24px 22px;
+    font-size: 14px; color: var(--text-muted);
+    line-height: 1.7; max-width: 600px;
+  }
+
   /* CTA SECTION */
   .cta-section {
     margin: 0 8% 100px;
@@ -645,6 +673,14 @@
         </div>
         <div class="rank-score">88%</div>
       </div>
+      <div class="rank-row">
+        <div class="rank-avatar">MC</div>
+        <div class="rank-info">
+          <div class="rank-name">Maya Chen</div>
+          <div class="rank-role">1 yr · Backend</div>
+        </div>
+        <div class="rank-score">82%</div>
+      </div>
     </div>
   </div>
 </section>
@@ -737,6 +773,36 @@
       <p class="testimonial-quote">"I stopped applying to jobs I wasn't even sure I qualified for. Every card I see now actually fits what I'm looking for."</p>
       <div class="testimonial-author">— Early job seeker</div>
     </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq" style="background: white;">
+  <p class="section-label">FAQ</p>
+  <h2>Questions, answered.</h2>
+  <p class="section-sub">Everything you need to know before you get started.</p>
+
+  <div class="faq-list">
+    <details class="faq-item">
+      <summary>How does Alygnn match jobs?</summary>
+      <p class="faq-answer">Alygnn uses AI to read your resume and build a profile of your skills, experience, and seniority. We compare that profile against open roles and your stated criteria — location, salary floor, benefits — and only surface jobs that genuinely fit.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Is Alygnn free for job seekers?</summary>
+      <p class="faq-answer">Yes, always. Candidate accounts are completely free — unlimited swipes, resume parsing, and application tracking, with no credit card required.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How do employers post jobs?</summary>
+      <p class="faq-answer">Employers sign up for an account, post a role through the employer dashboard, and start receiving AI-ranked candidates right away. Every plan includes a 15-day free trial.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I upload my resume privately?</summary>
+      <p class="faq-answer">Yes. Your resume and profile are only visible to employers once you apply to their role. You're always in control of what's shared and with whom.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What industries are supported?</summary>
+      <p class="faq-answer">Alygnn currently supports a wide range of industries, with a growing focus on tech, sales, business, and professional services roles. We're adding new categories regularly as we grow.</p>
+    </details>
   </div>
 </section>
 
