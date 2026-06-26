@@ -812,28 +812,31 @@
     document.getElementById('progress-pct').textContent = pct + '%';
   }
 
-  async function saveAndStart() {
+  function collectPreferences() {
     const role = document.getElementById('role-input').value.trim();
     const city = document.getElementById('city-input').value.trim();
     const state = document.getElementById('state-input').value.trim();
-    const salaryMin = parseInt(document.getElementById('salary-min').value);
-    const salaryMax = parseInt(document.getElementById('salary-max').value);
+    const salaryMin = parseInt(document.getElementById('salary-min').value, 10);
+    const salaryMax = parseInt(document.getElementById('salary-max').value, 10);
 
     const workStyleEl = document.querySelector('.toggle-card.active .tc-title');
-    const workStyle = workStyleEl ? workStyleEl.textContent : '';
+    const workStyle = workStyleEl ? workStyleEl.textContent.trim() : '';
 
     const activeJobTypes = [...document.querySelectorAll('.jt-card.active')]
-      .map(el => el.dataset.value).filter(Boolean);
+      .map(el => el.dataset.value)
+      .filter(Boolean);
 
     const industries = [...document.querySelectorAll('.ind-tag.active')]
       .map(el => el.textContent.trim());
 
     const benefits = [...document.querySelectorAll('.benefit-item.active')]
-      .map(el => el.querySelector('.benefit-name').textContent.trim());
+      .map(el => el.querySelector('.benefit-name')?.textContent.trim())
+      .filter(Boolean);
 
-    const preferences = {
-      query: role || 'software engineer',
+    return {
+      query: role || '',
       city: city,
+      state: state,
       location: city && state ? `${city}, ${state}` : city || state || '',
       salary_min: salaryMin,
       salary_max: salaryMax,
@@ -843,28 +846,53 @@
       industries: industries,
       benefits: benefits,
     };
+  }
 
-    // Check whether the person is already logged in before deciding
-    // where to send them. Previously this redirected to login.html
-    // unconditionally, which logged out already-signed-in users
-    // every time they tried to edit their preferences.
-    const { data: { session } } = await sb.auth.getSession();
+  async function savePreferencesToSupabase(user, preferences) {
+    if (!user?.id) throw new Error('No logged-in user found.');
 
-    if (session) {
-      // Already logged in — save to this account's row in the
-      // database (not just this browser) and go back to the account page.
-      const { error } = await sb.from('profiles').upsert({
-        id: session.user.id,
-        preferences: preferences,
-      });
-      if (error) console.error('Failed to save preferences', error);
-      window.location.href = 'account.html';
-      return;
+    const payload = {
+      id: user.id,
+      full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      preferences: preferences,
+    };
+
+    const { error } = await sb
+      .from('profiles')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error) throw error;
+  }
+
+  async function saveAndStart() {
+    const btn = document.querySelector('.btn-start');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+      const preferences = collectPreferences();
+      const { data: { session }, error: sessionError } = await sb.auth.getSession();
+
+      if (sessionError) throw sessionError;
+
+      if (session?.user) {
+        await savePreferencesToSupabase(session.user, preferences);
+        sessionStorage.removeItem('preferences');
+        window.location.href = 'account.html';
+        return;
+      }
+
+      // User is not logged in yet. Save temporarily, then login/signup page must
+      // move this into Supabase after authentication.
+      sessionStorage.setItem('preferences', JSON.stringify(preferences));
+      window.location.href = 'login.html';
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      alert('Preferences did not save: ' + (error.message || 'Unknown error'));
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
-
-    // Not logged in yet — keep the original onboarding flow.
-    sessionStorage.setItem('preferences', JSON.stringify(preferences));
-    window.location.href = 'login.html';
   }
 
   // Initialize
@@ -877,16 +905,28 @@
   updateProgress();
 
   (async function initPreferencesPage() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return; // new-user onboarding flow — defaults are fine
+    const { data: { session }, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) {
+      console.error('Failed to get session', sessionError);
+      return;
+    }
+
+    // New-user onboarding flow — use any preferences saved before login, otherwise defaults.
+    if (!session?.user) {
+      const pendingPrefs = sessionStorage.getItem('preferences');
+      if (pendingPrefs) {
+        try { prefillFromSaved(JSON.parse(pendingPrefs)); } catch (e) { console.warn('Bad saved preferences', e); }
+      }
+      return;
+    }
 
     const { data: profile, error } = await sb
       .from('profiles')
       .select('preferences')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('Failed to load preferences', error);
       return;
     }
