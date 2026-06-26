@@ -367,7 +367,7 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -429,6 +429,40 @@
   }
   function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
 
+  async function savePendingPreferences(user, fallbackName = '') {
+    if (!user?.id) return;
+
+    const savedPrefs = sessionStorage.getItem('preferences');
+    if (!savedPrefs) return;
+
+    let parsedPrefs = {};
+    try {
+      parsedPrefs = JSON.parse(savedPrefs);
+    } catch (e) {
+      console.warn('Could not parse saved preferences:', e);
+      return;
+    }
+
+    const { error } = await sb
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || fallbackName || '',
+        preferences: parsedPrefs
+      }, {
+        onConflict: 'id'
+      });
+
+    if (error) {
+      console.error('Could not save pending preferences:', error);
+      showMsg('Signed in, but preferences did not save: ' + error.message);
+      return;
+    }
+
+    sessionStorage.removeItem('preferences');
+  }
+
+
   async function doLogin() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -439,6 +473,9 @@
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     btn.disabled = false; btn.textContent = orig;
     if (error) { showMsg(error.message); return; }
+
+    await savePendingPreferences(data.user);
+
     const r = data.user?.user_metadata?.role || 'seeker';
     window.location.href = redirectFor(r);
   }
@@ -463,6 +500,7 @@
     // If email confirmation is disabled in Supabase, signUp() returns a
     // live session right away — skip the "check your email" step entirely.
     if (data.session) {
+      await savePendingPreferences(data.user, name);
       showMsg('Account created! Redirecting…', 'success');
       setTimeout(() => { window.location.href = redirectFor(currentRole); }, 600);
       return;
