@@ -6,6 +6,7 @@
 <title>Account — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -276,8 +277,30 @@
 </div>
 
 <script>
-  function saveField(key, el){
-    localStorage.setItem(key, el.textContent.trim());
+  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUserId = null;
+
+  function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  async function saveField(key, el) {
+    if (!currentUserId) return;
+    const value = el.textContent.trim();
+    const column = key === 'profileName' ? 'full_name' : 'headline';
+    const { error } = await sb.from('profiles').upsert({
+      id: currentUserId,
+      [column]: value,
+    });
+    if (error) console.error('Failed to save', column, error);
+    if (column === 'full_name') {
+      document.getElementById('avatar-initials').textContent = getInitials(value);
+    }
   }
 
   function clearPlaceholder(el){
@@ -285,21 +308,45 @@
     el.classList.remove('headline-empty');
   }
 
-  // Profile photos are no longer supported — always show initials,
-  // and clear out any photo saved from before this change.
-  localStorage.removeItem('profilePhoto');
+  async function initAccountPage() {
+    const { data: { session } } = await sb.auth.getSession();
 
-  const savedName = localStorage.getItem('profileName');
-  if(savedName){
-    document.getElementById('profile-name').textContent = savedName;
+    // Real auth guard — previously this page had none at all, so anyone
+    // (logged in or not) saw whatever was last saved in this browser.
+    if (!session) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    currentUserId = session.user.id;
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('full_name, headline')
+      .eq('id', currentUserId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 just means "no row yet" — fine for a brand-new account.
+      console.error('Failed to load profile', error);
+    }
+
+    const nameEl = document.getElementById('profile-name');
+    const headlineEl = document.getElementById('profile-headline');
+
+    const fullName = profile?.full_name || session.user.user_metadata?.full_name || '';
+    if (fullName) {
+      nameEl.textContent = fullName;
+    }
+    document.getElementById('avatar-initials').textContent = getInitials(fullName);
+
+    if (profile?.headline) {
+      headlineEl.textContent = profile.headline;
+      headlineEl.classList.remove('headline-empty');
+    }
   }
 
-  const savedHeadline = localStorage.getItem('profileHeadline');
-  const headlineEl = document.getElementById('profile-headline');
-  if(savedHeadline){
-    headlineEl.textContent = savedHeadline;
-    headlineEl.classList.remove('headline-empty');
-  }
+  initAccountPage();
 </script>
 
 </body>
