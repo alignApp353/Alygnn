@@ -383,6 +383,7 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -578,6 +579,11 @@
 </main>
 
 <script>
+  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   const dropZone = document.getElementById('drop-zone');
   const fileInput = document.getElementById('file-input');
   const uploadScreen = document.getElementById('upload-screen');
@@ -746,7 +752,22 @@
         skillsWrap.innerHTML = data.skills.slice(0, 8).map(s => '<span class="skill-tag">' + s + '</span>').join('');
       }
       sessionStorage.setItem('resumeData', JSON.stringify(data));
+      saveResumeIfLoggedIn(data);
     }
+  }
+
+  // If the person already has an account, persist their resume to
+  // that account's row in the database — not just this browser's
+  // sessionStorage, which previously meant resumes weren't actually
+  // tied to a specific account at all.
+  async function saveResumeIfLoggedIn(data) {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { error } = await sb.from('profiles').upsert({
+      id: session.user.id,
+      resume_data: data,
+    });
+    if (error) console.error('Failed to save resume', error);
   }
 
   function reupload() {
