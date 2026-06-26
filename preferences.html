@@ -696,6 +696,61 @@
     updateProgress();
   }
 
+  // Restores a previously saved preferences object into the form.
+  // Used when an already-logged-in user reopens this page to edit
+  // their existing preferences, instead of always showing defaults.
+  function prefillFromSaved(saved) {
+    if (!saved) return;
+
+    if (saved.query) document.getElementById('role-input').value = saved.query;
+    if (saved.city) document.getElementById('city-input').value = saved.city;
+
+    if (typeof saved.salary_min === 'number' && typeof saved.salary_max === 'number') {
+      document.getElementById('salary-min').value = saved.salary_min;
+      document.getElementById('salary-max').value = saved.salary_max;
+      document.querySelectorAll('.salary-chip').forEach(c => c.classList.remove('active'));
+      updateFill();
+      markDone('sc-salary');
+    }
+
+    if (saved.workStyle) {
+      document.querySelectorAll('.toggle-card').forEach(c => {
+        const isMatch = c.querySelector('.tc-title')?.textContent === saved.workStyle;
+        c.classList.toggle('active', isMatch);
+      });
+      markDone('sc-workstyle');
+    }
+
+    if (Array.isArray(saved.jobTypes)) {
+      document.querySelectorAll('.jt-card').forEach(c => {
+        c.classList.toggle('active', saved.jobTypes.includes(c.dataset.value));
+      });
+      if (saved.jobTypes.length) markDone('sc-jobtype'); else clearDone('sc-jobtype');
+    }
+
+    if (Array.isArray(saved.industries)) {
+      document.querySelectorAll('.ind-tag').forEach(c => {
+        c.classList.toggle('active', saved.industries.includes(c.textContent.trim()));
+      });
+      if (saved.industries.length) markDone('sc-industry'); else clearDone('sc-industry');
+    }
+
+    if (Array.isArray(saved.benefits)) {
+      document.querySelectorAll('.benefit-item').forEach(c => {
+        const name = c.querySelector('.benefit-name')?.textContent.trim();
+        const isMatch = saved.benefits.includes(name);
+        c.classList.toggle('active', isMatch);
+        const check = c.querySelector('.benefit-check');
+        if (check) check.textContent = isMatch ? '✓' : '';
+      });
+      if (saved.benefits.length) markDone('sc-benefits'); else clearDone('sc-benefits');
+    }
+
+    checkRoleSection();
+    checkSection('sc-location');
+    updateProgress();
+  }
+
   function selectWorkStyle(el) {
     document.querySelectorAll('.toggle-card').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
@@ -796,12 +851,13 @@
     const { data: { session } } = await sb.auth.getSession();
 
     if (session) {
-      // Already logged in — save locally so account.html / swipe.html
-      // can read it, and go straight back to the account page.
-      // NOTE: this currently only persists to this browser. For
-      // preferences to follow the user across devices, this should
-      // also be written to a Supabase table keyed by session.user.id.
-      localStorage.setItem('preferences', JSON.stringify(preferences));
+      // Already logged in — save to this account's row in the
+      // database (not just this browser) and go back to the account page.
+      const { error } = await sb.from('profiles').upsert({
+        id: session.user.id,
+        preferences: preferences,
+      });
+      if (error) console.error('Failed to save preferences', error);
       window.location.href = 'account.html';
       return;
     }
@@ -819,6 +875,26 @@
   markDone('sc-jobtype');
   markDone('sc-industry');
   updateProgress();
+
+  (async function initPreferencesPage() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return; // new-user onboarding flow — defaults are fine
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('preferences')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Failed to load preferences', error);
+      return;
+    }
+
+    if (profile?.preferences) {
+      prefillFromSaved(profile.preferences);
+    }
+  })();
 
   document.querySelectorAll('.sidebar-item').forEach(item => {
     item.addEventListener('click', function() {
