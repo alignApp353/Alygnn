@@ -459,8 +459,8 @@
   // sessionStorage key that login.html never actually wrote. This is what
   // was bouncing employers straight back to /login.html before the
   // dashboard could render.
-  const SUPABASE_URL = 'https://gvshgnzjzgaxcqaxccih.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2hnbnpqemdheGNxYXhjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NTQzNDIsImV4cCI6MjA5NzEzMDM0Mn0.j2CWZL2WAakVYEql-ArlrYCiw-2SsEo2CBfUVvK3xIY';
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -474,8 +474,11 @@
     }
 
     const role = String(authedUser.user_metadata?.role || '').toLowerCase();
-    if (role && !role.includes('employer')) {
-      window.location.href = '/preferences.html';
+
+    // Only redirect confirmed job-seeker accounts away.
+    // Google OAuth users may not have role metadata yet, so do not bounce them.
+    if (role === 'seeker' || role === 'job_seeker') {
+      window.location.href = '/account.html';
       return;
     }
 
