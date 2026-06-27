@@ -88,6 +88,7 @@
     border-radius:20px;
     padding:32px;
     margin-bottom:40px;
+    min-width:0;
   }
   .avatar{
     width:76px; height:76px;
@@ -99,17 +100,24 @@
     color:white;
     flex-shrink:0;
   }
+  .profile-info{ min-width:0; flex:1; }
   .profile-info h1{
     font-family:'DM Serif Display', serif;
     font-size:1.6rem;
     letter-spacing:-0.5px;
     color:var(--text);
     margin-bottom:4px;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+    white-space:normal;
   }
   .profile-info p{
     color:var(--text-muted);
     font-size:14px;
     font-weight:300;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+    white-space:normal;
   }
   .headline-empty{
     color:#9BA8B3;
@@ -307,6 +315,24 @@
     // Prevents the italic placeholder styling from sticking once typing starts
     el.classList.remove('headline-empty');
   }
+
+  function limitLength(el, max){
+    el.addEventListener('input', function(){
+      if(el.textContent.length > max){
+        el.textContent = el.textContent.slice(0, max);
+        // move cursor to end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
+  }
+
+  limitLength(document.getElementById('profile-name'), 60);
+  limitLength(document.getElementById('profile-headline'), 200);
 
   async function initAccountPage() {
     const { data: { session } } = await sb.auth.getSession();
