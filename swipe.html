@@ -30,6 +30,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    overscroll-behavior: none;
   }
 
   /* NAV */
@@ -103,6 +104,7 @@
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
+    -webkit-touch-callout: none;
     transform-origin: center bottom;
     transition: box-shadow 0.2s;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
@@ -291,26 +293,28 @@
   let applied = 0;
   let skipped = 0;
   let history = [];
+
   let isDragging = false;
-  let startX = 0, startY = 0, currentX = 0;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
   let activeCard = null;
+  let activePointerId = null;
 
   async function loadJobs() {
     showScreen('loading');
 
-    // Read preferences from sessionStorage
     const prefs = JSON.parse(sessionStorage.getItem('resumeData') || '{}');
     const prefRaw = sessionStorage.getItem('preferences');
     const pref = prefRaw ? JSON.parse(prefRaw) : {};
 
-    // Build a sensible query from whatever we have
     const query = pref.query || pref.role || prefs.title || 'software engineer';
     const location = pref.city || pref.location || prefs.location || '';
     const employment_type = pref.jobType || pref.employment_type || '';
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       let res;
       try {
@@ -383,7 +387,7 @@
 
     const salary = formatSalary(job);
     const logoHTML = job.logo
-      ? `<img src="${job.logo}" alt="${job.company}" onerror="this.parentElement.textContent='🏢'">`
+      ? `<img src="${job.logo}" alt="${job.company || 'Company'}" onerror="this.parentElement.textContent='🏢'">`
       : '🏢';
 
     const pillsHTML = [
@@ -393,7 +397,6 @@
       salary ? `<span class="pill salary">${salary}</span>` : '',
     ].filter(Boolean).join('');
 
-    // FIX: safely handle highlights being null/undefined
     const highlights = Array.isArray(job.highlights) ? job.highlights : [];
     const highlightsHTML = highlights.length
       ? `<div class="card-highlights">
@@ -402,7 +405,6 @@
         </div>`
       : '';
 
-    // FIX: safely handle description being null/undefined
     const description = job.description || 'No description available.';
 
     card.innerHTML = `
@@ -431,58 +433,71 @@
   function renderCards() {
     const stack = document.getElementById('card-stack');
     stack.innerHTML = '';
+
     const remaining = jobs.slice(currentIndex, currentIndex + 3);
-    if (!remaining.length) { showScreen('empty'); return; }
-    // Render in reverse so first card is on top
-    [...remaining].reverse().forEach((job, i) => {
-      const realIndex = currentIndex + (remaining.length - 1 - i);
-      stack.appendChild(buildCard(job, realIndex));
+    if (!remaining.length) {
+      showScreen('empty');
+      return;
+    }
+
+    // IMPORTANT: First card in the DOM is the visible top card because CSS uses .job-card:first-child.
+    remaining.forEach((job, i) => {
+      stack.appendChild(buildCard(job, currentIndex + i));
     });
+
     updateStats();
     setupTopCard();
   }
 
   function setupTopCard() {
     const stack = document.getElementById('card-stack');
-    activeCard = stack.querySelector('.job-card:last-child');
+    activeCard = stack.querySelector('.job-card:first-child');
   }
 
   function setupDrag(card) {
-    card.addEventListener('pointerdown', dragStart);
+    card.addEventListener('pointerdown', dragStart, { passive: false });
   }
 
   function dragStart(e) {
-    if (e.target.tagName === 'A') return;
+    if (e.target.closest('a')) return;
 
-    const stack = document.getElementById('card-stack');
-    activeCard = stack.querySelector('.job-card:last-child');
+    setupTopCard();
 
     if (!activeCard || activeCard !== e.currentTarget) return;
 
+    e.preventDefault();
+
     isDragging = true;
+    activePointerId = e.pointerId;
     startX = e.clientX;
     startY = e.clientY;
     currentX = 0;
 
     activeCard.classList.add('is-dragging');
+    activeCard.style.transition = 'none';
 
-    if (activeCard.setPointerCapture) {
+    try {
       activeCard.setPointerCapture(e.pointerId);
+    } catch (err) {
+      console.warn('Pointer capture not supported:', err);
     }
 
-    document.addEventListener('pointermove', dragMove);
-    document.addEventListener('pointerup', dragEnd);
-    document.addEventListener('pointercancel', dragEnd);
+    activeCard.addEventListener('pointermove', dragMove, { passive: false });
+    activeCard.addEventListener('pointerup', dragEnd);
+    activeCard.addEventListener('pointercancel', dragEnd);
   }
 
   function dragMove(e) {
     if (!isDragging || !activeCard) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+
+    e.preventDefault();
 
     currentX = e.clientX - startX;
     const currentY = e.clientY - startY;
     const rotate = currentX * 0.08;
 
-    activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.3}px) rotate(${rotate}deg)`;
+    activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.25}px) rotate(${rotate}deg)`;
 
     const applyStamp = activeCard.querySelector('.stamp-apply');
     const skipStamp = activeCard.querySelector('.stamp-skip');
@@ -500,36 +515,47 @@
     }
   }
 
-  function dragEnd() {
+  function dragEnd(e) {
     if (!isDragging || !activeCard) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
 
     isDragging = false;
+
+    activeCard.removeEventListener('pointermove', dragMove);
+    activeCard.removeEventListener('pointerup', dragEnd);
+    activeCard.removeEventListener('pointercancel', dragEnd);
+
     activeCard.classList.remove('is-dragging');
 
-    document.removeEventListener('pointermove', dragMove);
-    document.removeEventListener('pointerup', dragEnd);
-    document.removeEventListener('pointercancel', dragEnd);
+    try {
+      activeCard.releasePointerCapture(e.pointerId);
+    } catch (err) {}
 
-    const threshold = 80;
+    activePointerId = null;
+
+    const threshold = 70;
 
     if (currentX > threshold) {
       animateSwipe('right');
     } else if (currentX < -threshold) {
       animateSwipe('left');
     } else {
+      activeCard.style.transition = 'transform 0.25s ease';
       activeCard.style.transform = '';
-      activeCard.style.transition = 'transform 0.3s ease';
-
+      const cardToReset = activeCard;
       setTimeout(() => {
-        if (activeCard) activeCard.style.transition = '';
-      }, 300);
+        if (cardToReset) cardToReset.style.transition = '';
+      }, 250);
     }
   }
 
   function animateSwipe(direction) {
+    setupTopCard();
     if (!activeCard) return;
+
     const job = jobs[parseInt(activeCard.dataset.index)];
     activeCard.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
+
     history.push({ job, direction, index: currentIndex });
 
     if (direction === 'right') {
@@ -541,17 +567,39 @@
     }
 
     currentIndex++;
-    setTimeout(() => renderCards(), 350);
+
+    setTimeout(() => {
+      renderCards();
+    }, 350);
   }
 
-  function skipCurrent() { if (activeCard) { currentX = -150; animateSwipe('left'); } }
-  function applyCurrent() { if (activeCard) { currentX = 150; animateSwipe('right'); } }
+  function skipCurrent() {
+    setupTopCard();
+    if (activeCard) {
+      currentX = -150;
+      animateSwipe('left');
+    }
+  }
+
+  function applyCurrent() {
+    setupTopCard();
+    if (activeCard) {
+      currentX = 150;
+      animateSwipe('right');
+    }
+  }
 
   function undo() {
-    if (!history.length) { showToast('Nothing to undo'); return; }
+    if (!history.length) {
+      showToast('Nothing to undo');
+      return;
+    }
+
     const last = history.pop();
+
     if (last.direction === 'right') applied = Math.max(0, applied - 1);
     else skipped = Math.max(0, skipped - 1);
+
     currentIndex = last.index;
     renderCards();
     showToast('↩ Undone');
@@ -564,6 +612,7 @@
   }
 
   let toastTimer;
+
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -572,14 +621,12 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
   }
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') skipCurrent();
     if (e.key === 'ArrowRight') applyCurrent();
     if (e.key === 'z' && (e.metaKey || e.ctrlKey)) undo();
   });
 
-  // Start
   loadJobs();
 </script>
 </body>
