@@ -101,6 +101,8 @@
     padding: 28px;
     cursor: grab;
     user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
     transform-origin: center bottom;
     transition: box-shadow 0.2s;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
@@ -446,53 +448,70 @@
   }
 
   function setupDrag(card) {
-    card.addEventListener('mousedown', dragStart);
-    card.addEventListener('touchstart', dragStart, { passive: true });
+    card.addEventListener('pointerdown', dragStart);
   }
 
   function dragStart(e) {
     if (e.target.tagName === 'A') return;
+
     const stack = document.getElementById('card-stack');
     activeCard = stack.querySelector('.job-card:last-child');
+
     if (!activeCard || activeCard !== e.currentTarget) return;
+
     isDragging = true;
-    const point = e.touches ? e.touches[0] : e;
-    startX = point.clientX;
-    startY = point.clientY;
+    startX = e.clientX;
+    startY = e.clientY;
     currentX = 0;
+
     activeCard.classList.add('is-dragging');
-    document.addEventListener('mousemove', dragMove);
-    document.addEventListener('mouseup', dragEnd);
-    document.addEventListener('touchmove', dragMove, { passive: true });
-    document.addEventListener('touchend', dragEnd);
+
+    if (activeCard.setPointerCapture) {
+      activeCard.setPointerCapture(e.pointerId);
+    }
+
+    document.addEventListener('pointermove', dragMove);
+    document.addEventListener('pointerup', dragEnd);
+    document.addEventListener('pointercancel', dragEnd);
   }
 
   function dragMove(e) {
     if (!isDragging || !activeCard) return;
-    const point = e.touches ? e.touches[0] : e;
-    currentX = point.clientX - startX;
-    const currentY = point.clientY - startY;
+
+    currentX = e.clientX - startX;
+    const currentY = e.clientY - startY;
     const rotate = currentX * 0.08;
+
     activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.3}px) rotate(${rotate}deg)`;
 
     const applyStamp = activeCard.querySelector('.stamp-apply');
     const skipStamp = activeCard.querySelector('.stamp-skip');
     const ratio = Math.min(Math.abs(currentX) / 80, 1);
-    if (currentX > 20) { applyStamp.style.opacity = ratio; skipStamp.style.opacity = 0; }
-    else if (currentX < -20) { skipStamp.style.opacity = ratio; applyStamp.style.opacity = 0; }
-    else { applyStamp.style.opacity = 0; skipStamp.style.opacity = 0; }
+
+    if (currentX > 20) {
+      applyStamp.style.opacity = ratio;
+      skipStamp.style.opacity = 0;
+    } else if (currentX < -20) {
+      skipStamp.style.opacity = ratio;
+      applyStamp.style.opacity = 0;
+    } else {
+      applyStamp.style.opacity = 0;
+      skipStamp.style.opacity = 0;
+    }
   }
 
   function dragEnd() {
     if (!isDragging || !activeCard) return;
+
     isDragging = false;
     activeCard.classList.remove('is-dragging');
-    document.removeEventListener('mousemove', dragMove);
-    document.removeEventListener('mouseup', dragEnd);
-    document.removeEventListener('touchmove', dragMove);
-    document.removeEventListener('touchend', dragEnd);
+
+    document.removeEventListener('pointermove', dragMove);
+    document.removeEventListener('pointerup', dragEnd);
+    document.removeEventListener('pointercancel', dragEnd);
 
     const threshold = 80;
+
     if (currentX > threshold) {
       animateSwipe('right');
     } else if (currentX < -threshold) {
@@ -500,7 +519,10 @@
     } else {
       activeCard.style.transform = '';
       activeCard.style.transition = 'transform 0.3s ease';
-      setTimeout(() => { if (activeCard) activeCard.style.transition = ''; }, 300);
+
+      setTimeout(() => {
+        if (activeCard) activeCard.style.transition = '';
+      }, 300);
     }
   }
 
