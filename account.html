@@ -233,7 +233,7 @@
       <span id="avatar-initials">LU</span>
     </div>
     <div class="profile-info">
-      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name" onblur="saveField('profileName', this)">Lara Uyar</h1>
+      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name" onblur="saveField('profileName', this)"></h1>
       <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline" onblur="saveField('profileHeadline', this)" onfocus="clearPlaceholder(this)"></p>
     </div>
   </div>
@@ -335,9 +335,7 @@
     const headlineEl = document.getElementById('profile-headline');
 
     const fullName = profile?.full_name || session.user.user_metadata?.full_name || '';
-    if (fullName) {
-      nameEl.textContent = fullName;
-    }
+    nameEl.textContent = fullName;
     document.getElementById('avatar-initials').textContent = getInitials(fullName);
 
     if (profile?.headline) {
