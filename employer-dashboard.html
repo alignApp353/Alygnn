@@ -125,6 +125,7 @@
   .btn-accept:hover { opacity: 0.85; }
   .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
+  .btn-download { flex:1;background:var(--brand-light);color:var(--brand);border:1px solid var(--border);border-radius:8px;padding:9px;font-size:13px;cursor:pointer;}
 
   /* POST JOB FORM */
   .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; max-width: 640px; }
@@ -154,7 +155,11 @@
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-  @media (max-width: 860px) {
+  
+.resume-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300}
+.resume-box{background:white;width:min(700px,90%);padding:30px;border-radius:20px}
+
+@media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
     .stats-row { grid-template-columns: 1fr 1fr; }
@@ -331,7 +336,7 @@
             <span class="tag">Remote</span>
           </div>
           <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button><button class="btn-download" onclick="viewResume(this)">View Resume</button>
             <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
           </div>
         </div>
@@ -350,7 +355,7 @@
             <span class="tag">Hybrid</span>
           </div>
           <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button><button class="btn-download" onclick="viewResume(this)">View Resume</button>
             <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
           </div>
         </div>
@@ -369,7 +374,7 @@
             <span class="tag">Remote</span>
           </div>
           <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button><button class="btn-download" onclick="viewResume(this)">View Resume</button>
             <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
           </div>
         </div>
@@ -388,7 +393,7 @@
             <span class="tag">On-site</span>
           </div>
           <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
+            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button><button class="btn-download" onclick="viewResume(this)">View Resume</button>
             <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
           </div>
         </div>
@@ -450,6 +455,19 @@
     </div>
 
   </main>
+</div>
+
+
+<div class="resume-modal" id="resumeModal">
+  <div class="resume-box">
+    <h2 style="margin-bottom:15px;">Candidate Resume</h2>
+    <p><strong>Experience:</strong> 5 years in software development.</p>
+    <p><strong>Skills:</strong> React, JavaScript, TypeScript, CSS.</p>
+    <p><strong>Education:</strong> B.S. Computer Science.</p>
+    <p><strong>Previous Employer:</strong> Tech Solutions Inc.</p>
+    <br>
+    <button class="btn-primary" onclick="closeResume()">Close</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -562,6 +580,10 @@
     showToast('🎉 Job posted successfully!');
     setTimeout(() => showPanel('jobs'), 1200);
   }
+
+
+function viewResume(){ document.getElementById('resumeModal').style.display='flex'; }
+function closeResume(){ document.getElementById('resumeModal').style.display='none'; }
 
   async function logout() {
     await sb.auth.signOut();
