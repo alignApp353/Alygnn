@@ -277,7 +277,7 @@
         <div class="sub">Update salary, location, work style</div>
       </a>
 
-      <!-- This card now switches between "Upload" and "View" states
+      <!-- This card switches between "Upload" and "View" states
            depending on whether a resume file has been saved. -->
       <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
@@ -285,10 +285,10 @@
         <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
       </a>
 
-      <a href="#" class="link-card" onclick="setPassword(); return false;">
+      <a href="account-settings.html" class="link-card">
         <span class="icon">🔒</span>
-        <div class="label">Set Password</div>
-        <div class="sub">Create a password for email login</div>
+        <div class="label">Account settings</div>
+        <div class="sub">Password, linked accounts, sign out</div>
       </a>
     </div>
   </div>
@@ -435,25 +435,6 @@
     }
 
     renderResumeCard(profile?.resume_file_path);
-  }
-  async function setPassword() {
-    const newPassword = prompt("Enter a new password (minimum 8 characters):");
-
-    if (!newPassword || newPassword.length < 8) {
-      alert("Password must be at least 8 characters.");
-      return;
-    }
-
-    const { error } = await sb.auth.updateUser({
-      password: newPassword
-    });
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert("Password successfully set! You can now sign in with email and password.");
   }
 
   initAccountPage();
