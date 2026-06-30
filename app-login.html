@@ -2,200 +2,262 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alygnn Login</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<title>Alygnn</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #ffffff;
-  color: #111827;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
+
+:root{
+    --brand:#5D7FA3;
+    --sage:#8CB69B;
+    --bg:#F6F8F7;
+    --card-bg:#FCFCFA;
+    --text:#1A2530;
+    --border:#DDE3E8;
+    --mint:#6FBF8F;
+    --rose:#D79A9A;
+    --text-muted:#4A5968;
 }
 
-.screen {
-  min-height: 100vh;
-  padding: 34px 24px;
-  display: flex;
-  flex-direction: column;
+*{
+    box-sizing:border-box;
 }
 
-.logo {
-  font-size: 38px;
-  font-weight: 800;
-  color: #2563eb;
-  margin-top: 30px;
+body{
+    margin:0;
+    font-family:'DM Sans',sans-serif;
+    background:var(--bg);
+    color:var(--text);
 }
 
-.subtitle {
-  font-size: 16px;
-  color: #6b7280;
-  margin-top: 8px;
-  margin-bottom: 34px;
+.header{
+    background:var(--bg);
+    padding:20px;
+    position:sticky;
+    top:0;
+    z-index:100;
 }
 
-.input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
-  margin-bottom: 14px;
-  font-size: 16px;
+.greeting{
+    font-size:30px;
+    font-weight:800;
+    margin-bottom:15px;
 }
 
-.forgot {
-  text-align: right;
-  margin-bottom: 16px;
+.search{
+    width:100%;
+    padding:18px;
+    border-radius:18px;
+    border:1px solid var(--border);
+    background:var(--card-bg);
+    font-size:16px;
+    font-family:'DM Sans',sans-serif;
 }
 
-.forgot a {
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 600;
+.search:focus{
+    outline:none;
+    border-color:var(--brand);
 }
 
-.btn {
-  width: 100%;
-  padding: 16px;
-  border-radius: 12px;
-  border: none;
-  font-size: 17px;
-  font-weight: 700;
-  margin-top: 8px;
+.job-card{
+    background:var(--card-bg);
+    margin:16px;
+    padding:24px;
+    border-radius:24px;
+    border:1px solid var(--border);
+    box-shadow:0 4px 12px rgba(0,0,0,.04);
 }
 
-.primary {
-  background: #2563eb;
-  color: white;
+.match{
+    display:inline-block;
+    background:#E8F5EC;
+    color:#2F855A;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:700;
+    margin-bottom:18px;
 }
 
-.google {
-  background: white;
-  color: #111827;
-  border: 1px solid #d1d5db;
+.job-title{
+    font-size:28px;
+    font-weight:800;
+    margin-bottom:8px;
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #9ca3af;
-  margin: 22px 0 10px;
+.company{
+    color:var(--text-muted);
+    font-size:16px;
+    margin-bottom:18px;
 }
 
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #e5e7eb;
+.description{
+    color:var(--text);
+    line-height:1.6;
+    margin-bottom:18px;
 }
 
-.link {
-  text-align: center;
-  margin-top: 22px;
-  color: #2563eb;
-  font-weight: 700;
+.salary{
+    color:var(--brand);
+    font-size:22px;
+    font-weight:800;
+    margin-bottom:20px;
 }
 
-.small {
-  margin-top: auto;
-  text-align: center;
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.4;
+.tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:22px;
+}
+
+.tag{
+    background:#EDF2F7;
+    padding:8px 14px;
+    border-radius:999px;
+    color:var(--text-muted);
+    font-size:14px;
+}
+
+.apply-btn{
+    width:100%;
+    padding:18px;
+    border:none;
+    border-radius:18px;
+    background:var(--brand);
+    color:white;
+    font-size:17px;
+    font-weight:700;
+    font-family:'DM Sans',sans-serif;
+    cursor:pointer;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    width:100%;
+    background:var(--card-bg);
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-around;
+    padding:16px 0;
+}
+
+.nav-item{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:13px;
+    font-weight:600;
+}
+
+.active{
+    color:var(--brand);
+    font-weight:700;
 }
 </style>
 </head>
 
 <body>
-<div class="screen">
 
-  <div class="logo">Alygnn</div>
-  <div class="subtitle">Sign in to find jobs that align with you.</div>
+<div class="header">
 
-  <input id="email" class="input" type="email" placeholder="Email">
-  <input id="password" class="input" type="password" placeholder="Password">
+    <div class="greeting">
+        Welcome back
+    </div>
 
-  <div class="forgot">
-    <a href="#" onclick="forgotPassword()">Forgot Password?</a>
-  </div>
-
-  <button class="btn primary" onclick="login()">Sign in</button>
-
-  <div class="divider">or</div>
-
-  <button class="btn google" onclick="googleLogin()">Continue with Google</button>
-
-  <div class="link" onclick="location.href='app-create-account.html'">
-    Create an account
-  </div>
-
-  <div class="small">
-    By continuing, you agree to Alygnn's Terms and Privacy Policy.
-  </div>
+    <input class="search"
+    placeholder="Search jobs, companies, skills...">
 
 </div>
 
-<script>
-const SUPABASE_URL = "https://auth.alygnn.com";
-const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
+<div class="job-card">
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <div class="match">94% Match</div>
 
-async function login() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
+    <div class="job-title">
+        Account Manager
+    </div>
 
-  if (!email || !password) {
-    alert("Please enter your email and password.");
-    return;
-  }
+    <div class="company">
+        LP Consulting • Raleigh, NC
+    </div>
 
-  const { error } = await sb.auth.signInWithPassword({
-    email,
-    password
-  });
+    <div class="description">
+        Leadership training provided. Full-time position with advancement opportunities.
+    </div>
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+    <div class="salary">
+        $55,000 - $75,000
+    </div>
 
-  window.location.href = "app-home.html";
-}
+    <div class="tags">
+        <div class="tag">Full-Time</div>
+        <div class="tag">Leadership</div>
+        <div class="tag">Training</div>
+    </div>
 
-async function googleLogin() {
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: "https://alygnn.com/app-home.html"
-    }
-  });
+    <button class="apply-btn">
+        Quick Apply
+    </button>
 
-  if (error) {
-    alert(error.message);
-  }
-}
+</div>
 
-async function forgotPassword() {
-  const email = prompt("Enter your email address:");
+<div class="job-card">
 
-  if (!email) return;
+    <div class="match">91% Match</div>
 
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://alygnn.com/reset-password.html"
-  });
+    <div class="job-title">
+        Business Development Associate
+    </div>
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+    <div class="company">
+        The Midtown Group • Raleigh, NC
+    </div>
 
-  alert("Password reset email sent.");
-}
-</script>
+    <div class="description">
+        Entry-level role. Full training provided. Fast-track leadership opportunities available.
+    </div>
+
+    <div class="salary">
+        $50,000 - $70,000
+    </div>
+
+    <div class="tags">
+        <div class="tag">Entry Level</div>
+        <div class="tag">Sales</div>
+        <div class="tag">Growth</div>
+    </div>
+
+    <button class="apply-btn">
+        Quick Apply
+    </button>
+
+</div>
+
+<div style="height:110px;"></div>
+
+<div class="bottom-nav">
+    <div class="nav-item active">
+        Home
+    </div>
+
+    <div class="nav-item">
+        Jobs
+    </div>
+
+    <div class="nav-item">
+        Saved
+    </div>
+
+    <div class="nav-item">
+        Applied
+    </div>
+
+    <div class="nav-item">
+        Profile
+    </div>
+</div>
 
 </body>
 </html>
