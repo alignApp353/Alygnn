@@ -62,21 +62,18 @@
   }
   .nav-links a.active{ color:var(--text); border-bottom-color:var(--brand); }
   .nav-links a:hover{ color:var(--text); }
+  .nav-home{
+    font-size:14px;
+    color:var(--text-muted);
+    text-decoration:none;
+    transition:color .2s;
+  }
+  .nav-home:hover{ color:var(--brand); }
 
   .page{
     max-width:880px;
     margin:0 auto;
     padding:56px 6% 100px;
-  }
-
-  .demo-banner{
-    background:#FFF6E9;
-    border:1px solid #F0DDB8;
-    color:#8A6116;
-    font-size:13px;
-    border-radius:12px;
-    padding:10px 16px;
-    margin-bottom:32px;
   }
 
   .profile-card{
@@ -157,44 +154,6 @@
     letter-spacing:-0.3px;
     color:var(--text);
   }
-  .section-count{
-    font-size:12px;
-    color:var(--brand);
-    background:var(--brand-tint);
-    padding:3px 12px;
-    border-radius:100px;
-  }
-
-  .job-list{ display:flex; flex-direction:column; gap:10px; }
-  .job-row{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:16px 18px;
-  }
-  .job-logo{
-    width:40px; height:40px;
-    border-radius:11px;
-    background:var(--brand-tint);
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.05rem;
-    flex-shrink:0;
-  }
-  .job-meta{ flex:1; min-width:0; }
-  .job-title{ font-weight:500; font-size:15px; color:var(--text); }
-  .job-company{ font-size:13px; color:var(--text-muted); }
-  .job-tag{
-    font-size:12px;
-    font-weight:500;
-    padding:4px 12px;
-    border-radius:100px;
-    white-space:nowrap;
-  }
-  .tag-applied{ background:var(--mint-tint); color:#3a9463; }
-  .tag-skipped{ background:var(--rose-tint); color:#a05858; }
 
   .empty-state{
     background:var(--card-bg);
@@ -231,6 +190,7 @@
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-links">
+    <a href="index.html" class="nav-home">← Home</a>
     <a href="account.html" class="active">Account</a>
     <a href="swipe.html">Swipe</a>
   </div>
@@ -277,8 +237,6 @@
         <div class="sub">Update salary, location, work style</div>
       </a>
 
-      <!-- This card switches between "Upload" and "View" states
-           depending on whether a resume file has been saved. -->
       <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
         <div class="label" id="resume-card-label">Upload resume</div>
@@ -323,7 +281,6 @@
   }
 
   function clearPlaceholder(el){
-    // Prevents the italic placeholder styling from sticking once typing starts
     el.classList.remove('headline-empty');
   }
 
@@ -331,7 +288,6 @@
     el.addEventListener('input', function(){
       if(el.textContent.length > max){
         el.textContent = el.textContent.slice(0, max);
-        // move cursor to end
         const range = document.createRange();
         const sel = window.getSelection();
         range.selectNodeContents(el);
@@ -359,9 +315,6 @@
     return session;
   }
 
-  // Checks whether a resume file has been saved for this user, and
-  // switches the Settings card between an "Upload resume" state and
-  // a "View resume" state (with a link to the actual file) accordingly.
   async function renderResumeCard(resumeFilePath) {
     const labelEl = document.getElementById('resume-card-label');
     const subEl = document.getElementById('resume-card-sub');
@@ -374,11 +327,9 @@
       return;
     }
 
-    // A resume exists — generate a temporary signed URL since the
-    // bucket is private, so only this logged-in user can view it.
     const { data: signedUrlData, error: signedUrlError } = await sb.storage
       .from('resumes')
-      .createSignedUrl(resumeFilePath, 60 * 5); // valid 5 minutes
+      .createSignedUrl(resumeFilePath, 60 * 5);
 
     labelEl.textContent = 'View resume';
 
@@ -389,8 +340,6 @@
       return;
     }
 
-    // Clicking the card opens the resume in a new tab; replacing
-    // still happens via the upload page.
     cardEl.href = signedUrlData.signedUrl;
     cardEl.target = '_blank';
     subEl.innerHTML = 'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
