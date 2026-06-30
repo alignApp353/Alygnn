@@ -53,6 +53,7 @@
   }
   .btn-primary { background: var(--brand); color: white; }
   .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-outline { background: white; border: 1px solid var(--border); color: var(--text); }
   .btn-outline:hover { border-color: var(--brand); color: var(--brand); }
   .btn-danger { background: white; border: 1px solid var(--rose); color: #a05858; }
@@ -72,6 +73,9 @@
   .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
 
   .danger-section { border-color: rgba(215,154,154,0.4); }
+
+  .code-step { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .code-step .desc { margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -96,11 +100,19 @@
   <!-- Password -->
   <div class="section">
     <h2>Password</h2>
-    <div class="desc">Change your password for signing in with email</div>
+    <div class="desc">Change your password for signing in with email. We'll email you a code to confirm it's really you.</div>
     <div class="field">
       <input type="password" id="new-password" placeholder="New password (8+ characters)" />
     </div>
-    <button class="btn btn-primary" onclick="changePassword()">Update password</button>
+    <button class="btn btn-primary" id="send-code-btn" onclick="sendVerificationCode()">Send verification code</button>
+
+    <div class="code-step" id="code-step">
+      <div class="desc" id="code-desc">Enter the 6-digit code we sent to your email.</div>
+      <div class="field">
+        <input type="text" id="verification-code" placeholder="123456" maxlength="6" />
+      </div>
+      <button class="btn btn-primary" id="confirm-code-btn" onclick="confirmCodeAndChangePassword()">Confirm and update password</button>
+    </div>
   </div>
 
   <!-- Linked accounts -->
@@ -135,6 +147,11 @@
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  let currentEmail = null;
+  let currentUserId = null;
+  let pendingPassword = null;
+  let pendingCodeId = null;
+
   function showMsg(text, type = 'error') {
     const b = document.getElementById('msg-box');
     b.textContent = text;
@@ -149,7 +166,9 @@
       return;
     }
 
-    document.getElementById('email-display').textContent = session.user.email || '—';
+    currentEmail = session.user.email;
+    currentUserId = session.user.id;
+    document.getElementById('email-display').textContent = currentEmail || '—';
 
     const providers = session.user.identities?.map(i => i.provider) || [];
     const hasGoogle = providers.includes('google');
@@ -158,26 +177,147 @@
     pill.classList.toggle('off', !hasGoogle);
   }
 
-  async function changePassword() {
+  function generateCode() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  async function sendVerificationCode() {
     const password = document.getElementById('new-password').value;
     if (!password || password.length < 8) {
       showMsg('Password must be at least 8 characters.');
       return;
     }
 
-    const { error } = await sb.auth.updateUser({ password });
-    if (error) {
-      showMsg(error.message);
+    const btn = document.getElementById('send-code-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    const { data: insertData, error: insertError } = await sb
+      .from('password_change_codes')
+      .insert({ user_id: currentUserId, code, expires_at: expiresAt })
+      .select()
+      .single();
+
+    if (insertError) {
+      showMsg('Could not start verification: ' + insertError.message);
+      btn.disabled = false;
+      btn.textContent = 'Send verification code';
       return;
     }
 
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
-      await sb.from('profiles').upsert({ id: session.user.id, has_password: true });
+    try {
+      const res = await fetch('/api/send-password-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentEmail, code }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Failed to send email');
+    } catch (err) {
+      showMsg('Could not send the code: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Send verification code';
+      return;
     }
 
+    pendingPassword = password;
+    pendingCodeId = insertData.id;
+
+    document.getElementById('code-step').style.display = 'block';
+    document.getElementById('code-desc').textContent = `Enter the 6-digit code we sent to ${currentEmail}.`;
+    btn.textContent = 'Code sent';
+    showMsg('Check your email for the verification code.', 'success');
+  }
+
+  async function confirmCodeAndChangePassword() {
+    const enteredCode = document.getElementById('verification-code').value.trim();
+    if (!enteredCode) {
+      showMsg('Enter the code from your email.');
+      return;
+    }
+    if (!pendingPassword || !pendingCodeId) {
+      showMsg('Please request a new code.');
+      return;
+    }
+
+    const btn = document.getElementById('confirm-code-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+
+    const { data: codeRow, error: codeError } = await sb
+      .from('password_change_codes')
+      .select('code, expires_at, used')
+      .eq('id', pendingCodeId)
+      .single();
+
+    if (codeError || !codeRow) {
+      showMsg('Could not verify code. Please request a new one.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm and update password';
+      return;
+    }
+
+    if (codeRow.used) {
+      showMsg('This code has already been used. Please request a new one.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm and update password';
+      return;
+    }
+
+    if (new Date(codeRow.expires_at) < new Date()) {
+      showMsg('This code has expired. Please request a new one.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm and update password';
+      return;
+    }
+
+    if (codeRow.code !== enteredCode) {
+      showMsg('Incorrect code. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm and update password';
+      return;
+    }
+
+    // Code checks out — now actually apply the password change.
+    const { error: updateError } = await sb.auth.updateUser({ password: pendingPassword });
+    if (updateError) {
+      showMsg(updateError.message);
+      btn.disabled = false;
+      btn.textContent = 'Confirm and update password';
+      return;
+    }
+
+    await sb.from('password_change_codes').update({ used: true }).eq('id', pendingCodeId);
+    await sb.from('profiles').upsert({ id: currentUserId, has_password: true });
+
+    sendPasswordChangeEmail(currentEmail);
+
     document.getElementById('new-password').value = '';
-    showMsg('Password updated.', 'success');
+    document.getElementById('verification-code').value = '';
+    document.getElementById('code-step').style.display = 'none';
+    document.getElementById('send-code-btn').textContent = 'Send verification code';
+    document.getElementById('send-code-btn').disabled = false;
+    pendingPassword = null;
+    pendingCodeId = null;
+
+    showMsg('Password updated successfully.', 'success');
+  }
+
+  // Sends a final "your password was changed" confirmation, separate
+  // from the verification code email, once the change has gone through.
+  async function sendPasswordChangeEmail(email) {
+    try {
+      await fetch('/api/notify-password-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch (err) {
+      console.error('Failed to send password change notification', err);
+    }
   }
 
   async function signOut() {
@@ -189,10 +329,6 @@
     const sure = confirm('This will permanently delete your account and all your data. This cannot be undone. Are you sure?');
     if (!sure) return;
 
-    // Deleting a user requires a privileged server-side call (the anon
-    // key can't do this directly). For now this signs them out and
-    // flags their profile for manual/admin deletion; a proper delete
-    // endpoint can be wired in later via a Supabase Edge Function.
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await sb.from('profiles').upsert({
