@@ -225,6 +225,7 @@
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -290,6 +291,32 @@
 </div>
 
 <script>
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUserId = null;
+
+  async function waitForSession(maxWaitMs = 5000) {
+    const started = Date.now();
+    let result = await sb.auth.getSession();
+    let session = result.data.session;
+
+    while (!session && Date.now() - started < maxWaitMs) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      result = await sb.auth.getSession();
+      session = result.data.session;
+    }
+
+    return session;
+  }
+
+  function getInitials(name) {
+    if (!name) return 'C';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
   function handlePhotoUpload(event){
     const file = event.target.files[0];
     if(!file) return;
@@ -308,12 +335,27 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
-  function saveField(key, el){
-    localStorage.setItem(key, el.textContent.trim());
+  async function saveField(key, el){
+    const value = el.textContent.trim();
+    localStorage.setItem(key, value);
+
+    if (!currentUserId) return;
+
+    const column = key === 'companyName' ? 'company_name' : 'company_headline';
+    const { error } = await sb.from('profiles').upsert({
+      id: currentUserId,
+      role: 'employer',
+      [column]: value
+    }, { onConflict: 'id' });
+
+    if (error) console.error('Failed to save employer profile', error);
+
+    if (key === 'companyName') {
+      document.getElementById('avatar-initials').textContent = getInitials(value);
+    }
   }
 
   function clearPlaceholder(el){
-    // Prevents the italic placeholder styling from sticking once typing starts
     el.classList.remove('headline-empty');
   }
 
@@ -321,7 +363,6 @@
     el.addEventListener('input', function(){
       if(el.textContent.length > max){
         el.textContent = el.textContent.slice(0, max);
-        // move cursor to end
         const range = document.createRange();
         const sel = window.getSelection();
         range.selectNodeContents(el);
@@ -335,22 +376,51 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
-  const savedLogo = localStorage.getItem('companyLogo');
-  if(savedLogo){
-    showPhoto(savedLogo);
+  async function initEmployerAccountPage(){
+    const session = await waitForSession();
+
+    if (!session) {
+      window.location.href = 'login.html?role=employer';
+      return;
+    }
+
+    currentUserId = session.user.id;
+
+    const savedLogo = localStorage.getItem('companyLogo');
+    if(savedLogo) showPhoto(savedLogo);
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('company_name, company_headline, full_name')
+      .eq('id', currentUserId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Failed to load employer profile', error);
+    }
+
+    const companyNameEl = document.getElementById('company-name');
+    const headlineEl = document.getElementById('company-headline');
+
+    const companyName =
+      profile?.company_name ||
+      session.user.user_metadata?.company_name ||
+      localStorage.getItem('companyName') ||
+      '';
+
+    if (companyName) {
+      companyNameEl.textContent = companyName;
+      document.getElementById('avatar-initials').textContent = getInitials(companyName);
+    }
+
+    const headline = profile?.company_headline || localStorage.getItem('companyHeadline') || '';
+    if (headline) {
+      headlineEl.textContent = headline;
+      headlineEl.classList.remove('headline-empty');
+    }
   }
 
-  const savedName = localStorage.getItem('companyName');
-  if(savedName){
-    document.getElementById('company-name').textContent = savedName;
-  }
-
-  const savedHeadline = localStorage.getItem('companyHeadline');
-  const headlineEl = document.getElementById('company-headline');
-  if(savedHeadline){
-    headlineEl.textContent = savedHeadline;
-    headlineEl.classList.remove('headline-empty');
-  }
+  initEmployerAccountPage();
 </script>
 
 </body>
