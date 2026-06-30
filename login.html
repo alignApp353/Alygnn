@@ -497,6 +497,12 @@
     btn.disabled = false; btn.textContent = orig;
     if (error) { showMsg(error.message); return; }
 
+    // Email/password signups already have a password, so they should
+    // never see the "set a password" step that Google sign-ins get.
+    if (data.user) {
+      await sb.from('profiles').upsert({ id: data.user.id, has_password: true });
+    }
+
     // If email confirmation is disabled in Supabase, signUp() returns a
     // live session right away — skip the "check your email" step entirely.
     if (data.session) {
@@ -511,7 +517,9 @@
   }
 
   async function handleGoogle() {
-    await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectFor(currentRole) } });
+    // Google sign-ins go through set-password.html first, which checks
+    // whether this is their first time and sends them on from there.
+    await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/set-password.html' } });
   }
 
   async function doForgot() {
