@@ -279,6 +279,11 @@
         <div class="label">Update resume</div>
         <div class="sub">Replace or re-upload your resume</div>
       </a>
+      <a href="#" class="link-card" onclick="setPassword(); return false;">
+        <span class="icon">🔒</span>
+        <div class="label">Set Password</div>
+        <div class="sub">Create a password for email login</div>
+      </a>
     </div>
   </div>
 
@@ -386,6 +391,26 @@
       headlineEl.classList.remove('headline-empty');
     }
   }
+  async function setPassword() {
+    const newPassword = prompt("Enter a new password (minimum 8 characters):");
+
+    if (!newPassword || newPassword.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+
+    const { error } = await sb.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("Password successfully set! You can now sign in with email and password.");
+  }
+
   initAccountPage();
 </script>
 
