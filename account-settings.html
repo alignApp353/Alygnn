@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account settings — Alygnn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #5D7FA3; --sage: #8CB69B; --bg: #F6F8F7; --card-bg: #FCFCFA;
+    --text: #1A2530; --text-muted: #4A5968; --border: #DDE3E8;
+    --mint: #6FBF8F; --rose: #D79A9A;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); padding: 0 5%;
+    display: flex; align-items: center; justify-content: space-between; height: 64px;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .back-link { font-size: 14px; color: var(--text-muted); text-decoration: none; }
+  .back-link:hover { color: var(--text); }
+
+  .page { max-width: 640px; margin: 0 auto; padding: 56px 6% 100px; }
+  h1 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; margin-bottom: 36px; }
+
+  .section {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; margin-bottom: 16px;
+  }
+  .section h2 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .section .desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .value { font-size: 14px; color: var(--text); }
+
+  .field input {
+    width: 100%; padding: 11px 14px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none;
+    margin-bottom: 10px;
+  }
+  .field input:focus { border-color: var(--brand); }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 10px 18px; font-size: 14px;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500;
+  }
+  .btn-primary { background: var(--brand); color: white; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-outline { background: white; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--brand); color: var(--brand); }
+  .btn-danger { background: white; border: 1px solid var(--rose); color: #a05858; }
+  .btn-danger:hover { background: rgba(215,154,154,0.1); }
+
+  .pill {
+    font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 100px;
+    background: rgba(111,191,143,0.15); color: #2d8a57;
+  }
+  .pill.off { background: var(--border); color: var(--text-muted); }
+
+  .msg-box {
+    border-radius: 10px; padding: 10px 14px; font-size: 13px;
+    margin-bottom: 14px; display: none;
+  }
+  .msg-box.error { background: rgba(215,154,154,0.15); border: 1px solid rgba(215,154,154,0.4); color: #8a4040; }
+  .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
+
+  .danger-section { border-color: rgba(215,154,154,0.4); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <a href="account.html" class="back-link">← Back to account</a>
+</nav>
+
+<div class="page">
+  <h1>Account settings</h1>
+
+  <div class="msg-box" id="msg-box"></div>
+
+  <!-- Email -->
+  <div class="section">
+    <h2>Email</h2>
+    <div class="desc">The email associated with your account</div>
+    <div class="row"><span class="value" id="email-display">—</span></div>
+  </div>
+
+  <!-- Password -->
+  <div class="section">
+    <h2>Password</h2>
+    <div class="desc">Change your password for signing in with email</div>
+    <div class="field">
+      <input type="password" id="new-password" placeholder="New password (8+ characters)" />
+    </div>
+    <button class="btn btn-primary" onclick="changePassword()">Update password</button>
+  </div>
+
+  <!-- Linked accounts -->
+  <div class="section">
+    <h2>Linked accounts</h2>
+    <div class="desc">Sign-in methods connected to your account</div>
+    <div class="row">
+      <span class="value">Google</span>
+      <span class="pill" id="google-pill">Checking…</span>
+    </div>
+  </div>
+
+  <!-- Sign out -->
+  <div class="section">
+    <h2>Sign out</h2>
+    <div class="desc">Sign out of Alygnn on this device</div>
+    <button class="btn btn-outline" onclick="signOut()">Sign out</button>
+  </div>
+
+  <!-- Delete account -->
+  <div class="section danger-section">
+    <h2>Delete account</h2>
+    <div class="desc">Permanently delete your account and all associated data. This can't be undone.</div>
+    <button class="btn btn-danger" onclick="confirmDelete()">Delete my account</button>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function showMsg(text, type = 'error') {
+    const b = document.getElementById('msg-box');
+    b.textContent = text;
+    b.className = 'msg-box ' + type;
+    b.style.display = 'block';
+  }
+
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    document.getElementById('email-display').textContent = session.user.email || '—';
+
+    const providers = session.user.identities?.map(i => i.provider) || [];
+    const hasGoogle = providers.includes('google');
+    const pill = document.getElementById('google-pill');
+    pill.textContent = hasGoogle ? 'Connected' : 'Not connected';
+    pill.classList.toggle('off', !hasGoogle);
+  }
+
+  async function changePassword() {
+    const password = document.getElementById('new-password').value;
+    if (!password || password.length < 8) {
+      showMsg('Password must be at least 8 characters.');
+      return;
+    }
+
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) {
+      showMsg(error.message);
+      return;
+    }
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      await sb.from('profiles').upsert({ id: session.user.id, has_password: true });
+    }
+
+    document.getElementById('new-password').value = '';
+    showMsg('Password updated.', 'success');
+  }
+
+  async function signOut() {
+    await sb.auth.signOut();
+    window.location.href = 'login.html';
+  }
+
+  async function confirmDelete() {
+    const sure = confirm('This will permanently delete your account and all your data. This cannot be undone. Are you sure?');
+    if (!sure) return;
+
+    // Deleting a user requires a privileged server-side call (the anon
+    // key can't do this directly). For now this signs them out and
+    // flags their profile for manual/admin deletion; a proper delete
+    // endpoint can be wired in later via a Supabase Edge Function.
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      await sb.from('profiles').upsert({
+        id: session.user.id,
+        deletion_requested: true,
+      });
+    }
+    await sb.auth.signOut();
+    alert('Your deletion request has been received. You have been signed out.');
+    window.location.href = 'index.html';
+  }
+
+  init();
+</script>
+</body>
+</html>
