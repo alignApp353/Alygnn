@@ -103,8 +103,8 @@ body {
 </div>
 
 <script>
-const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_KEY = "PASTE_YOUR_SUPABASE_KEY_HERE";
+const SUPABASE_URL = "https://auth.alygnn.com";
+const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
