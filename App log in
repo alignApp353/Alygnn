@@ -44,6 +44,17 @@ body {
   font-size: 16px;
 }
 
+.forgot {
+  text-align: right;
+  margin-bottom: 16px;
+}
+
+.forgot a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
 .btn {
   width: 100%;
   padding: 16px;
@@ -65,9 +76,25 @@ body {
   border: 1px solid #d1d5db;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9ca3af;
+  margin: 22px 0 10px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
 .link {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 22px;
   color: #2563eb;
   font-weight: 700;
 }
@@ -77,6 +104,7 @@ body {
   text-align: center;
   font-size: 13px;
   color: #6b7280;
+  line-height: 1.4;
 }
 </style>
 </head>
@@ -90,7 +118,13 @@ body {
   <input id="email" class="input" type="email" placeholder="Email">
   <input id="password" class="input" type="password" placeholder="Password">
 
+  <div class="forgot">
+    <a href="#" onclick="forgotPassword()">Forgot Password?</a>
+  </div>
+
   <button class="btn primary" onclick="login()">Sign in</button>
+
+  <div class="divider">or</div>
 
   <button class="btn google" onclick="googleLogin()">Continue with Google</button>
 
@@ -98,7 +132,9 @@ body {
     Create an account
   </div>
 
-  <div class="small">By continuing, you agree to Alygnn's Terms and Privacy Policy.</div>
+  <div class="small">
+    By continuing, you agree to Alygnn's Terms and Privacy Policy.
+  </div>
 
 </div>
 
@@ -138,7 +174,26 @@ async function googleLogin() {
     }
   });
 
-  if (error) alert(error.message);
+  if (error) {
+    alert(error.message);
+  }
+}
+
+async function forgotPassword() {
+  const email = prompt("Enter your email address:");
+
+  if (!email) return;
+
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://alygnn.com/reset-password.html"
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Password reset email sent.");
 }
 </script>
 
