@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account - Alygnn</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#fff;
+    color:#111827;
+}
+
+.screen{
+    min-height:100vh;
+    padding:34px 24px;
+    display:flex;
+    flex-direction:column;
+}
+
+.logo{
+    font-size:38px;
+    font-weight:800;
+    color:#2563eb;
+    margin-top:30px;
+}
+
+.subtitle{
+    color:#6b7280;
+    margin-top:8px;
+    margin-bottom:34px;
+}
+
+.input{
+    width:100%;
+    box-sizing:border-box;
+    padding:16px;
+    border-radius:12px;
+    border:1px solid #d1d5db;
+    margin-bottom:14px;
+    font-size:16px;
+}
+
+.btn{
+    width:100%;
+    padding:16px;
+    border-radius:12px;
+    border:none;
+    font-size:17px;
+    font-weight:700;
+    margin-top:8px;
+}
+
+.primary{
+    background:#2563eb;
+    color:white;
+}
+
+.google{
+    background:white;
+    color:#111827;
+    border:1px solid #d1d5db;
+}
+
+.divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:#9ca3af;
+    margin:22px 0 10px;
+}
+
+.divider::before,
+.divider::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:#e5e7eb;
+}
+
+.link{
+    text-align:center;
+    margin-top:22px;
+    color:#2563eb;
+    font-weight:700;
+}
+
+.small{
+    margin-top:auto;
+    text-align:center;
+    font-size:13px;
+    color:#6b7280;
+    line-height:1.4;
+}
+</style>
+</head>
+
+<body>
+
+<div class="screen">
+
+    <div class="logo">Alygnn</div>
+    <div class="subtitle">
+        Create your account and start finding jobs.
+    </div>
+
+    <input id="firstName" class="input" placeholder="First Name">
+    <input id="lastName" class="input" placeholder="Last Name">
+    <input id="email" class="input" type="email" placeholder="Email">
+    <input id="password" class="input" type="password" placeholder="Password">
+
+    <button class="btn primary" onclick="signup()">
+        Create Account
+    </button>
+
+    <div class="divider">or</div>
+
+    <button class="btn google" onclick="googleSignup()">
+        Continue with Google
+    </button>
+
+    <div class="link" onclick="location.href='app-login.html'">
+        Already have an account? Sign In
+    </div>
+
+    <div class="small">
+        By continuing, you agree to Alygnn's Terms and Privacy Policy.
+    </div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL = "https://auth.alygnn.com";
+const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
+
+const sb = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+async function signup(){
+
+    const firstName = document.getElementById("firstName").value.trim();
+    const lastName = document.getElementById("lastName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if(!firstName || !lastName || !email || !password){
+        alert("Please complete all fields.");
+        return;
+    }
+
+    const { error } = await sb.auth.signUp({
+        email,
+        password,
+        options:{
+            data:{
+                first_name:firstName,
+                last_name:lastName
+            }
+        }
+    });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    alert("Account created successfully. Please check your email.");
+
+    window.location.href = "app-login.html";
+}
+
+async function googleSignup(){
+
+    const { error } = await sb.auth.signInWithOAuth({
+        provider:"google",
+        options:{
+            redirectTo:"https://alygnn.com/app-home.html"
+        }
+    });
+
+    if(error){
+        alert(error.message);
+    }
+}
+
+</script>
+
+</body>
+</html>
