@@ -763,9 +763,30 @@
   async function saveResumeIfLoggedIn(data) {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
+
+    let resumeFilePath = null;
+
+    // Upload the actual resume file (not just the parsed data) so it
+    // can be viewed later from the account page.
+    if (currentFile) {
+      const fileExt = currentFile.name.split('.').pop();
+      const filePath = session.user.id + '/resume.' + fileExt;
+
+      const { error: uploadError } = await sb.storage
+        .from('resumes')
+        .upload(filePath, currentFile, { upsert: true });
+
+      if (uploadError) {
+        console.error('Failed to upload resume file', uploadError);
+      } else {
+        resumeFilePath = filePath;
+      }
+    }
+
     const { error } = await sb.from('profiles').upsert({
       id: session.user.id,
       resume_data: data,
+      resume_file_path: resumeFilePath,
     });
     if (error) console.error('Failed to save resume', error);
   }
