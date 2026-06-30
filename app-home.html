@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f5f7fa;
+}
+
+.header{
+    background:white;
+    padding:15px;
+    position:sticky;
+    top:0;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+
+.search{
+    width:100%;
+    padding:12px;
+    border-radius:25px;
+    border:none;
+    background:#eee;
+}
+
+.job-card{
+    background:white;
+    margin:15px;
+    padding:18px;
+    border-radius:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+.company{
+    color:#666;
+    margin-bottom:10px;
+}
+
+.salary{
+    color:green;
+    font-weight:bold;
+}
+
+.apply-btn{
+    width:100%;
+    padding:12px;
+    margin-top:15px;
+    border:none;
+    border-radius:10px;
+    background:#2563eb;
+    color:white;
+    font-size:16px;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    width:100%;
+    background:white;
+    display:flex;
+    justify-content:space-around;
+    padding:12px 0;
+    box-shadow:0 -2px 8px rgba(0,0,0,.1);
+}
+
+.nav-item{
+    text-align:center;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    <input class="search" placeholder="Search jobs...">
+</div>
+
+<div class="job-card">
+    <h3>Account Manager</h3>
+    <div class="company">LP Consulting • Raleigh, NC</div>
+    <p>Leadership training provided. Full-time.</p>
+    <div class="salary">$55,000 - $75,000</div>
+    <button class="apply-btn">Quick Apply</button>
+</div>
+
+<div class="job-card">
+    <h3>Business Development Associate</h3>
+    <div class="company">The Midtown Group • Raleigh, NC</div>
+    <p>Entry level. Training provided.</p>
+    <div class="salary">$50,000 - $70,000</div>
+    <button class="apply-btn">Quick Apply</button>
+</div>
+
+<div style="height:90px;"></div>
+
+<div class="bottom-nav">
+    <div class="nav-item">🏠<br>Home</div>
+    <div class="nav-item">🔍<br>Jobs</div>
+    <div class="nav-item">❤️<br>Saved</div>
+    <div class="nav-item">📄<br>Applied</div>
+    <div class="nav-item">👤<br>Profile</div>
+</div>
+
+</body>
+</html>
