@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn — Swipe Jobs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+:root{
+  --brand:#5D7FA3;
+  --sage:#8CB69B;
+  --bg:#F6F8F7;
+  --card-bg:#FCFCFA;
+  --text:#1A2530;
+  --border:#DDE3E8;
+  --mint:#6FBF8F;
+  --rose:#D79A9A;
+  --text-muted:#4A5968;
+  --brand-light:rgba(93,127,163,0.10);
+}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow:hidden;
+}
+
+nav{
+  height:64px;
+  padding:0 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:rgba(246,248,247,.95);
+  border-bottom:1px solid var(--border);
+}
+
+.logo{
+  font-family:'DM Serif Display',serif;
+  font-size:24px;
+  color:var(--brand);
+}
+
+.logo span{
+  color:var(--sage);
+}
+
+.nav-stats{
+  display:flex;
+  gap:16px;
+}
+
+.stat{
+  text-align:center;
+}
+
+.stat-val{
+  font-size:17px;
+  font-weight:700;
+}
+
+.stat-label{
+  font-size:9px;
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:.8px;
+}
+
+.swipe-area{
+  height:calc(100vh - 64px);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+
+.card-stack{
+  position:relative;
+  width:100%;
+  max-width:430px;
+  height:540px;
+}
+
+.job-card{
+  position:absolute;
+  inset:0;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:28px;
+  padding:26px;
+  box-shadow:0 8px 30px rgba(0,0,0,.08);
+  display:flex;
+  flex-direction:column;
+  cursor:grab;
+  user-select:none;
+  touch-action:none;
+  transform-origin:center bottom;
+}
+
+.job-card:nth-child(2){
+  transform:scale(.96) translateY(10px);
+  z-index:1;
+}
+
+.job-card:nth-child(3){
+  transform:scale(.92) translateY(20px);
+  z-index:0;
+}
+
+.job-card:first-child{
+  z-index:2;
+}
+
+.job-card.is-dragging{
+  transition:none;
+  box-shadow:0 18px 50px rgba(0,0,0,.16);
+}
+
+.job-card.swipe-left{
+  animation:swipeLeft .35s ease forwards;
+}
+
+.job-card.swipe-right{
+  animation:swipeRight .35s ease forwards;
+}
+
+.stamp{
+  position:absolute;
+  top:24px;
+  padding:7px 16px;
+  border-radius:10px;
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:2px;
+  opacity:0;
+  border:3px solid;
+  pointer-events:none;
+}
+
+.stamp-apply{
+  right:24px;
+  color:var(--mint);
+  border-color:var(--mint);
+  transform:rotate(12deg);
+}
+
+.stamp-skip{
+  left:24px;
+  color:var(--rose);
+  border-color:var(--rose);
+  transform:rotate(-12deg);
+}
+
+.match{
+  display:inline-block;
+  width:max-content;
+  background:#E8F5EC;
+  color:#2F855A;
+  padding:8px 14px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:800;
+  margin-bottom:18px;
+}
+
+.card-top{
+  display:flex;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+.company-logo{
+  width:54px;
+  height:54px;
+  border-radius:16px;
+  background:var(--brand-light);
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+}
+
+.job-title{
+  font-family:'DM Serif Display',serif;
+  font-size:28px;
+  line-height:1.1;
+  color:var(--text);
+}
+
+.company-name{
+  font-size:15px;
+  color:var(--text-muted);
+  margin-top:4px;
+}
+
+.card-pills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:18px;
+}
+
+.pill{
+  font-size:12px;
+  padding:7px 12px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  color:var(--text-muted);
+  background:white;
+}
+
+.salary{
+  background:var(--brand-light);
+  color:var(--brand);
+}
+
+.card-desc{
+  font-size:15px;
+  color:var(--text-muted);
+  line-height:1.65;
+  flex:1;
+  overflow:hidden;
+}
+
+.card-bottom{
+  border-top:1px solid var(--border);
+  padding-top:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:18px;
+}
+
+.posted-time{
+  font-size:12px;
+  color:var(--text-muted);
+}
+
+.apply-link{
+  color:var(--brand);
+  text-decoration:none;
+  font-size:13px;
+  font-weight:700;
+}
+
+.action-buttons{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  margin-top:24px;
+}
+
+.action-btn{
+  border:none;
+  border-radius:50%;
+  background:white;
+  border:1.5px solid var(--border);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.btn-undo{
+  width:46px;
+  height:46px;
+  font-size:18px;
+}
+
+.btn-skip{
+  width:58px;
+  height:58px;
+  font-size:26px;
+  color:var(--rose);
+}
+
+.btn-apply{
+  width:68px;
+  height:68px;
+  font-size:30px;
+  background:var(--brand);
+  color:white;
+  border:none;
+}
+
+.empty-screen{
+  display:none;
+  height:calc(100vh - 64px);
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+  padding:30px;
+}
+
+.empty-title{
+  font-family:'DM Serif Display',serif;
+  font-size:32px;
+  margin-bottom:10px;
+}
+
+.empty-sub{
+  color:var(--text-muted);
+  line-height:1.6;
+  max-width:320px;
+}
+
+.toast{
+  position:fixed;
+  bottom:32px;
+  left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--text);
+  color:white;
+  padding:12px 22px;
+  border-radius:999px;
+  font-size:14px;
+  transition:.3s;
+  z-index:100;
+}
+
+.toast.show{
+  transform:translateX(-50%) translateY(0);
+}
+
+@keyframes swipeLeft{
+  to{
+    transform:translateX(-130%) rotate(-22deg);
+    opacity:0;
+  }
+}
+
+@keyframes swipeRight{
+  to{
+    transform:translateX(130%) rotate(22deg);
+    opacity:0;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <div class="logo">Alygnn<span>.</span></div>
+
+  <div class="nav-stats">
+    <div class="stat">
+      <div class="stat-val" id="stat-applied">0</div>
+      <div class="stat-label">Liked</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-val" id="stat-skipped">0</div>
+      <div class="stat-label">Passed</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-val" id="stat-remaining">0</div>
+      <div class="stat-label">Left</div>
+    </div>
+  </div>
+</nav>
+
+<div class="swipe-area" id="swipe-area">
+  <div class="card-stack" id="card-stack"></div>
+
+  <div class="action-buttons">
+    <button class="action-btn btn-undo" onclick="undo()">↩</button>
+    <button class="action-btn btn-skip" onclick="skipCurrent()">✕</button>
+    <button class="action-btn btn-apply" onclick="applyCurrent()">✓</button>
+  </div>
+</div>
+
+<div class="empty-screen" id="empty-screen">
+  <div class="empty-title">You're all caught up</div>
+  <div class="empty-sub">
+    You went through all your matches. More jobs will appear as Alygnn finds better fits for you.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let jobs = [
+  {
+    title:"Account Manager",
+    company:"LP Consulting",
+    location:"Raleigh, NC",
+    type:"Full-time",
+    salary:"$55k–$75k",
+    match:"94% Match",
+    description:"Leadership training provided. Full-time position with advancement opportunities and hands-on business development experience.",
+    posted:"Today"
+  },
+  {
+    title:"Business Development Associate",
+    company:"The Midtown Group",
+    location:"Raleigh, NC",
+    type:"Entry level",
+    salary:"$50k–$70k",
+    match:"91% Match",
+    description:"Entry-level role with full training provided. Strong fit for candidates looking for growth, leadership, and client-facing experience.",
+    posted:"1 day ago"
+  },
+  {
+    title:"Sales Development Representative",
+    company:"Alygnn Partner Company",
+    location:"Durham, NC",
+    type:"Full-time",
+    salary:"$48k–$68k",
+    match:"88% Match",
+    description:"Work with local businesses, build client relationships, and grow into leadership responsibilities over time.",
+    posted:"3 days ago"
+  }
+];
+
+let currentIndex = 0;
+let applied = 0;
+let skipped = 0;
+let history = [];
+
+let activeCard = null;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let currentX = 0;
+let activePointerId = null;
+
+function buildCard(job,index){
+  const card = document.createElement("div");
+  card.className = "job-card";
+  card.dataset.index = index;
+
+  card.innerHTML = `
+    <div class="stamp stamp-apply">LIKE</div>
+    <div class="stamp stamp-skip">PASS</div>
+
+    <div class="match">${job.match}</div>
+
+    <div class="card-top">
+      <div class="company-logo">🏢</div>
+      <div>
+        <div class="job-title">${job.title}</div>
+        <div class="company-name">${job.company}</div>
+      </div>
+    </div>
+
+    <div class="card-pills">
+      <span class="pill">${job.location}</span>
+      <span class="pill">${job.type}</span>
+      <span class="pill salary">${job.salary}</span>
+    </div>
+
+    <div class="card-desc">${job.description}</div>
+
+    <div class="card-bottom">
+      <div class="posted-time">${job.posted}</div>
+      <a href="#" class="apply-link">View details</a>
+    </div>
+  `;
+
+  setupDrag(card);
+  return card;
+}
+
+function renderCards(){
+  const stack = document.getElementById("card-stack");
+  stack.innerHTML = "";
+
+  const remaining = jobs.slice(currentIndex,currentIndex + 3);
+
+  if(!remaining.length){
+    document.getElementById("swipe-area").style.display = "none";
+    document.getElementById("empty-screen").style.display = "flex";
+    return;
+  }
+
+  remaining.forEach((job,i)=>{
+    stack.appendChild(buildCard(job,currentIndex + i));
+  });
+
+  updateStats();
+  setupTopCard();
+}
+
+function setupTopCard(){
+  activeCard = document.querySelector(".job-card:first-child");
+}
+
+function setupDrag(card){
+  card.addEventListener("pointerdown",dragStart,{passive:false});
+}
+
+function dragStart(e){
+  setupTopCard();
+
+  if(!activeCard || activeCard !== e.currentTarget) return;
+
+  e.preventDefault();
+
+  isDragging = true;
+  activePointerId = e.pointerId;
+  startX = e.clientX;
+  startY = e.clientY;
+  currentX = 0;
+
+  activeCard.classList.add("is-dragging");
+  activeCard.style.transition = "none";
+
+  try{
+    activeCard.setPointerCapture(e.pointerId);
+  }catch(err){}
+
+  activeCard.addEventListener("pointermove",dragMove,{passive:false});
+  activeCard.addEventListener("pointerup",dragEnd);
+  activeCard.addEventListener("pointercancel",dragEnd);
+}
+
+function dragMove(e){
+  if(!isDragging || !activeCard) return;
+  if(activePointerId !== null && e.pointerId !== activePointerId) return;
+
+  e.preventDefault();
+
+  currentX = e.clientX - startX;
+  const currentY = e.clientY - startY;
+  const rotate = currentX * 0.08;
+
+  activeCard.style.transform = `translate(${currentX}px, ${currentY * .25}px) rotate(${rotate}deg)`;
+
+  const applyStamp = activeCard.querySelector(".stamp-apply");
+  const skipStamp = activeCard.querySelector(".stamp-skip");
+  const ratio = Math.min(Math.abs(currentX) / 80,1);
+
+  if(currentX > 20){
+    applyStamp.style.opacity = ratio;
+    skipStamp.style.opacity = 0;
+  }else if(currentX < -20){
+    skipStamp.style.opacity = ratio;
+    applyStamp.style.opacity = 0;
+  }else{
+    applyStamp.style.opacity = 0;
+    skipStamp.style.opacity = 0;
+  }
+}
+
+function dragEnd(e){
+  if(!isDragging || !activeCard) return;
+
+  isDragging = false;
+
+  activeCard.removeEventListener("pointermove",dragMove);
+  activeCard.removeEventListener("pointerup",dragEnd);
+  activeCard.removeEventListener("pointercancel",dragEnd);
+
+  activeCard.classList.remove("is-dragging");
+
+  activePointerId = null;
+
+  if(currentX > 70){
+    animateSwipe("right");
+  }else if(currentX < -70){
+    animateSwipe("left");
+  }else{
+    activeCard.style.transition = "transform .25s ease";
+    activeCard.style.transform = "";
+  }
+}
+
+function animateSwipe(direction){
+  setupTopCard();
+  if(!activeCard) return;
+
+  const job = jobs[parseInt(activeCard.dataset.index)];
+
+  activeCard.classList.add(direction === "right" ? "swipe-right" : "swipe-left");
+
+  history.push({
+    job,
+    direction,
+    index:currentIndex
+  });
+
+  if(direction === "right"){
+    applied++;
+    showToast("Added to liked jobs");
+  }else{
+    skipped++;
+    showToast("Passed");
+  }
+
+  currentIndex++;
+
+  setTimeout(()=>{
+    renderCards();
+  },350);
+}
+
+function skipCurrent(){
+  setupTopCard();
+  if(activeCard){
+    currentX = -150;
+    animateSwipe("left");
+  }
+}
+
+function applyCurrent(){
+  setupTopCard();
+  if(activeCard){
+    currentX = 150;
+    animateSwipe("right");
+  }
+}
+
+function undo(){
+  if(!history.length){
+    showToast("Nothing to undo");
+    return;
+  }
+
+  const last = history.pop();
+
+  if(last.direction === "right"){
+    applied = Math.max(0,applied - 1);
+  }else{
+    skipped = Math.max(0,skipped - 1);
+  }
+
+  currentIndex = last.index;
+  renderCards();
+  showToast("Undone");
+}
+
+function updateStats(){
+  document.getElementById("stat-applied").textContent = applied;
+  document.getElementById("stat-skipped").textContent = skipped;
+  document.getElementById("stat-remaining").textContent = Math.max(0,jobs.length - currentIndex);
+}
+
+let toastTimer;
+
+function showToast(message){
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(()=>{
+    toast.classList.remove("show");
+  },1800);
+}
+
+renderCards();
+</script>
+
+</body>
+</html>
