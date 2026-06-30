@@ -887,8 +887,8 @@
   </ul>
   <div class="nav-right">
     <a class="nav-signin" href="employers.html">For employers</a>
-    <a class="nav-signin" href="login.html">Sign in</a>
-    <button class="nav-cta" onclick="window.location.href='align-upload.html'">Get started</button>
+    <a class="nav-signin" id="nav-auth-link" href="login.html">Sign in</a>
+    <button class="nav-cta" id="nav-cta-btn" onclick="window.location.href='align-upload.html'">Get started</button>
   </div>
 </nav>
 
@@ -1213,22 +1213,18 @@
       <summary>How does Alygnn match jobs?</summary>
       <p class="faq-answer">Alygnn uses AI to read your resume and build a profile of your skills, experience, and seniority. We compare that profile against open roles and your stated criteria — location, salary floor, benefits — and surface opportunities designed to fit.</p>
     </details>
-
     <details class="faq-item">
       <summary>Is Alygnn free for job seekers?</summary>
       <p class="faq-answer">Yes. Candidate accounts are free to create. You can upload your resume, build your profile, and preview matches without a credit card.</p>
     </details>
-
     <details class="faq-item">
       <summary>How quickly will I hear back after applying?</summary>
       <p class="faq-answer">Response times depend on each employer. Alygnn is designed to improve the quality of matches so employers can review stronger-fit candidates faster.</p>
     </details>
-
     <details class="faq-item">
       <summary>Can I upload my resume privately?</summary>
       <p class="faq-answer">Yes. Your resume and profile are used to generate your matches. You're always in control of what you share with employers.</p>
     </details>
-
     <details class="faq-item">
       <summary>What industries are supported?</summary>
       <p class="faq-answer">Alygnn is built to support a wide range of industries, with an early focus on sales, business, technology, and professional services roles.</p>
@@ -1239,15 +1235,12 @@
 <section class="section" id="about" style="background: white;">
   <p class="section-label">About</p>
   <h2>Where opportunity meets<br>talent.</h2>
-
   <p style="font-size:17px;line-height:1.8;color:#4A5968;font-weight:300;max-width:640px;margin-top:24px;">
     Job searching is broken. Candidates apply to roles that don't fit. Employers sift through resumes that don't fit either. Everyone wastes time.
   </p>
-
   <p style="font-size:17px;line-height:1.8;color:#4A5968;font-weight:300;max-width:640px;margin-top:16px;">
     Alygnn fixes that — an AI-powered platform that reads your resume, understands your background, and helps connect candidates with opportunities that better align with their goals.
   </p>
-
   <p style="font-size:17px;line-height:1.8;color:#1A2530;font-weight:500;margin-top:32px;">
     <br>Established 2026.
   </p>
@@ -1272,6 +1265,38 @@
     document.getElementById(panelId).classList.add('active');
     btn.classList.add('active');
   }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Checks session on load and updates the nav so a logged-in user
+  // sees "My account" instead of "Sign in" — preventing the false
+  // impression that they've been logged out when they hit the homepage.
+  (async () => {
+    const { createClient } = supabase;
+    const sb = createClient(
+      'https://auth.alygnn.com',
+      'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
+    );
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+
+    const authLink = document.getElementById('nav-auth-link');
+    const ctaBtn = document.getElementById('nav-cta-btn');
+
+    if (authLink) {
+      authLink.textContent = 'My account';
+      authLink.href = 'account.html';
+    }
+
+    // Hide "Get started" for logged-in users since they already have
+    // an account — replace with a "Swipe jobs" shortcut instead.
+    if (ctaBtn) {
+      ctaBtn.textContent = 'Swipe jobs';
+      ctaBtn.onclick = () => window.location.href = 'swipe.html';
+    }
+  })();
 </script>
 
 </body>
