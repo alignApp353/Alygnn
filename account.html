@@ -217,11 +217,13 @@
     text-decoration:none;
     color:var(--text);
     transition:border-color .2s, transform .2s;
+    display:block;
   }
   .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
   .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
+  .link-card .sub a{ color:var(--brand); text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -274,11 +276,15 @@
         <div class="label">Edit preferences</div>
         <div class="sub">Update salary, location, work style</div>
       </a>
-      <a href="align-upload.html" class="link-card">
+
+      <!-- This card now switches between "Upload" and "View" states
+           depending on whether a resume file has been saved. -->
+      <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
-        <div class="label">Update resume</div>
-        <div class="sub">Replace or re-upload your resume</div>
+        <div class="label" id="resume-card-label">Upload resume</div>
+        <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
       </a>
+
       <a href="#" class="link-card" onclick="setPassword(); return false;">
         <span class="icon">🔒</span>
         <div class="label">Set Password</div>
@@ -353,6 +359,43 @@
     return session;
   }
 
+  // Checks whether a resume file has been saved for this user, and
+  // switches the Settings card between an "Upload resume" state and
+  // a "View resume" state (with a link to the actual file) accordingly.
+  async function renderResumeCard(resumeFilePath) {
+    const labelEl = document.getElementById('resume-card-label');
+    const subEl = document.getElementById('resume-card-sub');
+    const cardEl = document.getElementById('resume-card');
+
+    if (!resumeFilePath) {
+      labelEl.textContent = 'Upload resume';
+      subEl.textContent = 'Add your resume so employers can see your background';
+      cardEl.href = 'align-upload.html';
+      return;
+    }
+
+    // A resume exists — generate a temporary signed URL since the
+    // bucket is private, so only this logged-in user can view it.
+    const { data: signedUrlData, error: signedUrlError } = await sb.storage
+      .from('resumes')
+      .createSignedUrl(resumeFilePath, 60 * 5); // valid 5 minutes
+
+    labelEl.textContent = 'View resume';
+
+    if (signedUrlError) {
+      console.error('Failed to create signed URL', signedUrlError);
+      subEl.textContent = 'Replace or re-upload your resume';
+      cardEl.href = 'align-upload.html';
+      return;
+    }
+
+    // Clicking the card opens the resume in a new tab; replacing
+    // still happens via the upload page.
+    cardEl.href = signedUrlData.signedUrl;
+    cardEl.target = '_blank';
+    subEl.innerHTML = 'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
+  }
+
   async function initAccountPage() {
     const session = await waitForSession();
 
@@ -365,7 +408,7 @@
 
     const { data: profile, error } = await sb
       .from('profiles')
-      .select('full_name, headline')
+      .select('full_name, headline, resume_file_path')
       .eq('id', currentUserId)
       .single();
 
@@ -390,6 +433,8 @@
       headlineEl.textContent = profile.headline;
       headlineEl.classList.remove('headline-empty');
     }
+
+    renderResumeCard(profile?.resume_file_path);
   }
   async function setPassword() {
     const newPassword = prompt("Enter a new password (minimum 8 characters):");
