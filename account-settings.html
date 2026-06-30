@@ -149,6 +149,7 @@
 
   let currentEmail = null;
   let currentUserId = null;
+  let userHasPassword = false;
   let pendingPassword = null;
   let pendingCodeId = null;
 
@@ -170,6 +171,13 @@
     currentUserId = session.user.id;
     document.getElementById('email-display').textContent = currentEmail || '—';
 
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('has_password')
+      .eq('id', currentUserId)
+      .single();
+    userHasPassword = !!profile?.has_password;
+
     const providers = session.user.identities?.map(i => i.provider) || [];
     const hasGoogle = providers.includes('google');
     const pill = document.getElementById('google-pill');
@@ -181,6 +189,23 @@
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
+  // Supabase doesn't expose the current password for direct comparison
+  // (it's hashed, not stored as plain text), so the only reliable way
+  // to check "is this the same password they already have" is to try
+  // signing in with it. If it succeeds, it's identical to what's on
+  // file — we just re-confirm the existing session afterward so this
+  // check doesn't change what they're signed in as.
+  async function isSameAsCurrentPassword(candidatePassword) {
+    if (!userHasPassword) return false; // nothing to compare against yet
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: currentEmail,
+      password: candidatePassword,
+    });
+
+    return !error && !!data?.session;
+  }
+
   async function sendVerificationCode() {
     const password = document.getElementById('new-password').value;
     if (!password || password.length < 8) {
@@ -190,6 +215,16 @@
 
     const btn = document.getElementById('send-code-btn');
     btn.disabled = true;
+    btn.textContent = 'Checking…';
+
+    const sameAsCurrent = await isSameAsCurrentPassword(password);
+    if (sameAsCurrent) {
+      showMsg('That\'s your current password. Please choose a different one.');
+      btn.disabled = false;
+      btn.textContent = 'Send verification code';
+      return;
+    }
+
     btn.textContent = 'Sending…';
 
     const code = generateCode();
@@ -292,6 +327,7 @@
 
     await sb.from('password_change_codes').update({ used: true }).eq('id', pendingCodeId);
     await sb.from('profiles').upsert({ id: currentUserId, has_password: true });
+    userHasPassword = true;
 
     sendPasswordChangeEmail(currentEmail);
 
@@ -306,8 +342,6 @@
     showMsg('Password updated successfully.', 'success');
   }
 
-  // Sends a final "your password was changed" confirmation, separate
-  // from the verification code email, once the change has gone through.
   async function sendPasswordChangeEmail(email) {
     try {
       await fetch('/api/notify-password-change', {
