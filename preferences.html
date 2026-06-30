@@ -231,7 +231,7 @@
   .jt-icon { font-size: 20px; margin-bottom: 6px; }
   .jt-title { font-size: 13px; font-weight: 500; color: var(--text); }
 
-  .industry-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .industry-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .ind-tag {
     padding: 8px 18px; border-radius: 100px;
     border: 1px solid var(--border); background: white;
@@ -240,6 +240,30 @@
   }
   .ind-tag:hover { border-color: var(--brand); color: var(--brand); }
   .ind-tag.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+  .industry-search-wrap { position: relative; max-width: 360px; }
+  .industry-search-wrap .input-field { padding-right: 80px; }
+  .industry-add-btn {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: var(--brand); color: white; border: none;
+    border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.2s;
+  }
+  .industry-add-btn:hover { opacity: 0.88; }
+  .industry-search-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+  .industry-search-error { font-size: 12px; color: #a05858; margin-top: 8px; display: none; }
+
+  /* Suggestions dropdown while typing */
+  .industry-suggestions {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 80px;
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 200px; overflow-y: auto;
+    display: none; z-index: 10;
+  }
+  .industry-suggestion-item {
+    padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .industry-suggestion-item:hover { background: var(--brand-light); }
 
   .pref-cta {
     background: var(--card-bg); border: 1px solid var(--border);
@@ -463,17 +487,6 @@
             <option>Other</option>
           </select>
         </div>
-        <div class="input-group">
-          <label class="input-label">Max commute</label>
-          <select class="input-field" onchange="checkSection('sc-location')">
-            <option>No preference</option>
-            <option>15 minutes</option>
-            <option>30 minutes</option>
-            <option>45 minutes</option>
-            <option>1 hour</option>
-            <option>Remote only</option>
-          </select>
-        </div>
       </div>
     </div>
 
@@ -516,57 +529,57 @@
         <div class="benefit-item active" onclick="toggleBenefit(this)">
           <div class="benefit-check">✓</div>
           <div class="benefit-text">
-            <div class="benefit-name">Health insurance</div>
+            <div class="benefit-name">🏥 Health Insurance</div>
             <div class="benefit-desc">Medical, dental, vision</div>
           </div>
         </div>
         <div class="benefit-item active" onclick="toggleBenefit(this)">
           <div class="benefit-check">✓</div>
           <div class="benefit-text">
-            <div class="benefit-name">401(k) plan</div>
-            <div class="benefit-desc">Retirement savings</div>
-          </div>
-        </div>
-        <div class="benefit-item" onclick="toggleBenefit(this)">
-          <div class="benefit-check"></div>
-          <div class="benefit-text">
-            <div class="benefit-name">Equity / stock options</div>
-            <div class="benefit-desc">RSUs, options, ESPP</div>
+            <div class="benefit-name">💰 Competitive Pay + Bonuses</div>
+            <div class="benefit-desc">Bonus pay, commission, incentives</div>
           </div>
         </div>
         <div class="benefit-item active" onclick="toggleBenefit(this)">
           <div class="benefit-check">✓</div>
           <div class="benefit-text">
-            <div class="benefit-name">Paid time off</div>
-            <div class="benefit-desc">Vacation + sick days</div>
+            <div class="benefit-name">🏖️ Paid Time Off</div>
+            <div class="benefit-desc">Vacation, sick days, holidays</div>
           </div>
         </div>
         <div class="benefit-item" onclick="toggleBenefit(this)">
           <div class="benefit-check"></div>
           <div class="benefit-text">
-            <div class="benefit-name">Parental leave</div>
-            <div class="benefit-desc">Maternity / paternity</div>
+            <div class="benefit-name">🏠 Flexible Schedule / Remote Work</div>
+            <div class="benefit-desc">Remote, hybrid, flexible hours</div>
           </div>
         </div>
         <div class="benefit-item" onclick="toggleBenefit(this)">
           <div class="benefit-check"></div>
           <div class="benefit-text">
-            <div class="benefit-name">Learning budget</div>
-            <div class="benefit-desc">Education stipend</div>
+            <div class="benefit-name">📈 Career Growth & Training</div>
+            <div class="benefit-desc">Training provided, promotions, mentorship</div>
           </div>
         </div>
         <div class="benefit-item" onclick="toggleBenefit(this)">
           <div class="benefit-check"></div>
           <div class="benefit-text">
-            <div class="benefit-name">Home office stipend</div>
-            <div class="benefit-desc">Equipment allowance</div>
+            <div class="benefit-name">💵 401(k) / Retirement Plan</div>
+            <div class="benefit-desc">Retirement savings, company match</div>
           </div>
         </div>
         <div class="benefit-item" onclick="toggleBenefit(this)">
           <div class="benefit-check"></div>
           <div class="benefit-text">
-            <div class="benefit-name">Wellness benefits</div>
-            <div class="benefit-desc">Gym, mental health</div>
+            <div class="benefit-name">🎓 Education Assistance</div>
+            <div class="benefit-desc">Tuition reimbursement, certifications</div>
+          </div>
+        </div>
+        <div class="benefit-item" onclick="toggleBenefit(this)">
+          <div class="benefit-check"></div>
+          <div class="benefit-text">
+            <div class="benefit-name">🎉 Wellness & Workplace Perks</div>
+            <div class="benefit-desc">Gym membership, employee discounts, company events</div>
           </div>
         </div>
       </div>
@@ -608,7 +621,7 @@
         <div class="section-num">06 — Industry</div>
         <div class="section-title">Preferred industries</div>
       </div>
-      <div class="industry-wrap">
+      <div class="industry-wrap" id="industry-wrap">
         <button class="ind-tag active" onclick="toggleIndustry(this)">Technology</button>
         <button class="ind-tag active" onclick="toggleIndustry(this)">Design</button>
         <button class="ind-tag" onclick="toggleIndustry(this)">Finance</button>
@@ -625,6 +638,22 @@
         <button class="ind-tag" onclick="toggleIndustry(this)">Manufacturing</button>
         <button class="ind-tag" onclick="toggleIndustry(this)">Startup</button>
       </div>
+
+      <!-- Lets someone search for an industry not already listed above.
+           Only real, recognized industries (checked against a known
+           list) can be added — random text like a name is rejected. -->
+      <div class="industry-search-wrap">
+        <input type="text" class="input-field" id="industry-search-input"
+          placeholder="Search or add an industry..."
+          autocomplete="off"
+          oninput="renderIndustrySuggestions()"
+          onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleIndustrySearch(); }"
+          onblur="setTimeout(hideIndustrySuggestions, 150)">
+        <button type="button" class="industry-add-btn" onclick="handleIndustrySearch()">Add</button>
+        <div class="industry-suggestions" id="industry-suggestions"></div>
+      </div>
+      <div class="industry-search-hint">Can't find your industry? Search for a recognized industry name above.</div>
+      <div class="industry-search-error" id="industry-search-error">That's not a recognized industry. Try a more specific or different term.</div>
     </div>
 
     <!-- CTA -->
@@ -649,6 +678,32 @@
 
   const TOTAL = 300000;
   const FLOOR = 10000;
+
+  // Recognized industries — anything typed into the search/add box
+  // must match (or closely match) something in this list to be
+  // accepted. This is what prevents random text (like a name) from
+  // being added as an "industry."
+  const KNOWN_INDUSTRIES = [
+    'Technology','Software','Design','UX/UI Design','Graphic Design','Finance','Banking',
+    'Insurance','Investment Management','Accounting','Healthcare','Hospitals',
+    'Pharmaceuticals','Biotechnology','Medical Devices','Mental Health Services',
+    'Education','Higher Education','EdTech','Marketing','Advertising','Public Relations',
+    'Social Media','E-commerce','Retail','Wholesale','Media','Broadcasting','Publishing',
+    'Film & Television','Music','Gaming','Real Estate','Construction','Architecture',
+    'Government','Public Administration','Defense','Nonprofit','Social Services',
+    'Consulting','Management Consulting','Legal','Law Enforcement','Manufacturing',
+    'Automotive','Aerospace','Logistics','Transportation','Shipping','Supply Chain',
+    'Agriculture','Food & Beverage','Restaurants','Hospitality','Travel & Tourism',
+    'Airlines','Energy','Oil & Gas','Renewable Energy','Utilities','Telecommunications',
+    'Insurance Tech','Fintech','Cybersecurity','Artificial Intelligence',
+    'Data Science','Cloud Computing','Hardware','Semiconductors',
+    'Sports & Recreation','Fitness & Wellness','Beauty & Cosmetics',
+    'Fashion & Apparel','Human Resources','Recruiting','Customer Service',
+    'Startup','Venture Capital','Private Equity','Mining','Chemicals',
+    'Textiles','Furniture','Printing','Environmental Services',
+    'Public Safety','Veterinary Services','Childcare','Religious Organizations',
+    'Arts & Culture','Museums','Libraries','Research',
+  ];
 
   function fmtSalary(val) {
     if (val >= 300000) return '$300k+';
@@ -729,8 +784,18 @@
     }
 
     if (Array.isArray(saved.industries)) {
+      // Re-create any custom (but valid) industries the person
+      // previously added that aren't part of the default tag list,
+      // then select all tags that match what was saved.
+      saved.industries.forEach(name => {
+        const exists = [...document.querySelectorAll('.ind-tag')]
+          .some(t => t.textContent.trim().toLowerCase() === name.toLowerCase());
+        if (!exists) addIndustryTag(name, false);
+      });
       document.querySelectorAll('.ind-tag').forEach(c => {
-        c.classList.toggle('active', saved.industries.includes(c.textContent.trim()));
+        c.classList.toggle('active', saved.industries.some(
+          name => name.toLowerCase() === c.textContent.trim().toLowerCase()
+        ));
       });
       if (saved.industries.length) markDone('sc-industry'); else clearDone('sc-industry');
     }
@@ -778,6 +843,101 @@
     el.classList.toggle('active');
     const anyActive = document.querySelectorAll('.ind-tag.active').length > 0;
     if (anyActive) markDone('sc-industry'); else clearDone('sc-industry');
+    updateProgress();
+  }
+
+  // Adds a new industry tag to the wrap. Only called once a value has
+  // already passed validation against KNOWN_INDUSTRIES.
+  function addIndustryTag(name, makeActive) {
+    const btn = document.createElement('button');
+    btn.className = 'ind-tag' + (makeActive ? ' active' : '');
+    btn.type = 'button';
+    btn.textContent = name;
+    btn.onclick = function () { toggleIndustry(btn); };
+    document.getElementById('industry-wrap').appendChild(btn);
+    return btn;
+  }
+
+  function normalize(str) {
+    return str.trim().toLowerCase();
+  }
+
+  // Finds an exact (case-insensitive) match in the known industries
+  // list, returning the properly-capitalized version, or null if
+  // nothing matches.
+  function findKnownIndustry(value) {
+    const target = normalize(value);
+    const match = KNOWN_INDUSTRIES.find(ind => normalize(ind) === target);
+    return match || null;
+  }
+
+  function renderIndustrySuggestions() {
+    const input = document.getElementById('industry-search-input');
+    const box = document.getElementById('industry-suggestions');
+    const value = normalize(input.value);
+
+    document.getElementById('industry-search-error').style.display = 'none';
+
+    if (!value) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    const matches = KNOWN_INDUSTRIES.filter(ind => normalize(ind).includes(value)).slice(0, 8);
+
+    if (matches.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    box.innerHTML = matches.map(name =>
+      `<div class="industry-suggestion-item" onclick="selectIndustrySuggestion('${name.replace(/'/g, "\\'")}')">${name}</div>`
+    ).join('');
+    box.style.display = 'block';
+  }
+
+  function hideIndustrySuggestions() {
+    document.getElementById('industry-suggestions').style.display = 'none';
+  }
+
+  function selectIndustrySuggestion(name) {
+    document.getElementById('industry-search-input').value = name;
+    hideIndustrySuggestions();
+    handleIndustrySearch();
+  }
+
+  // Called when someone searches/adds an industry via the search bar.
+  // Only adds it if it matches a recognized industry — anything else
+  // (like a name, or random text) is rejected with an error message.
+  function handleIndustrySearch() {
+    const input = document.getElementById('industry-search-input');
+    const errorEl = document.getElementById('industry-search-error');
+    const value = input.value.trim();
+    if (!value) return;
+
+    const known = findKnownIndustry(value);
+
+    if (!known) {
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    errorEl.style.display = 'none';
+
+    const existingTag = [...document.querySelectorAll('.ind-tag')]
+      .find(t => normalize(t.textContent) === normalize(known));
+
+    if (existingTag) {
+      if (!existingTag.classList.contains('active')) existingTag.classList.add('active');
+    } else {
+      addIndustryTag(known, true);
+    }
+
+    input.value = '';
+    hideIndustrySuggestions();
+    markDone('sc-industry');
     updateProgress();
   }
 
