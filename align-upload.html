@@ -200,7 +200,6 @@
   .pdf-filename { font-size: 13px; font-weight: 500; color: white; }
   .pdf-size { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; }
 
-  /* PDF canvas container — shows the real rendered PDF page */
   .pdf-preview-body {
     background: white;
     overflow: hidden;
@@ -214,7 +213,6 @@
     height: auto;
     display: block;
   }
-  /* Fallback placeholder shown before PDF renders */
   .pdf-placeholder {
     width: 100%;
     padding: 20px;
@@ -490,7 +488,6 @@
             </div>
           </div>
 
-          <!-- PDF renders here; placeholder shown until canvas is ready -->
           <div class="pdf-preview-body" id="pdf-preview-body">
             <div class="pdf-placeholder" id="pdf-placeholder">
               <div class="resume-mock-name"></div>
@@ -637,7 +634,6 @@
     progressSub.textContent = sub;
   }
 
-  // Renders the first page of the PDF into the canvas on the left side
   async function renderPDFPreview(file) {
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -652,12 +648,10 @@
       canvas.width = scaledViewport.width;
       canvas.height = scaledViewport.height;
       await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaledViewport }).promise;
-      // Swap out placeholder for real canvas
       document.getElementById('pdf-placeholder').style.display = 'none';
       canvas.style.display = 'block';
     } catch (e) {
       console.warn('PDF preview render failed:', e);
-      // Placeholder stays visible as fallback
     }
   }
 
@@ -702,7 +696,6 @@
     return { type: 'text', content: text.substring(0, 4000) };
   }
 
-  // Formats education whether it comes back as a string or an object
   function formatEducation(edu) {
     if (!edu) return '—';
     if (typeof edu === 'string') return edu;
@@ -721,7 +714,6 @@
     confirmScreen.style.display = 'block';
     confirmScreen.style.animation = 'fadeUp 0.5s ease both';
 
-    // Render the actual PDF preview now that the confirm screen is visible
     if (currentFile) renderPDFPreview(currentFile);
 
     if (data) {
@@ -757,17 +749,15 @@
   }
 
   // If the person already has an account, persist their resume to
-  // that account's row in the database — not just this browser's
-  // sessionStorage, which previously meant resumes weren't actually
-  // tied to a specific account at all.
+  // that account's row in the database — both the parsed data AND
+  // the actual file itself, so it can be viewed later from the
+  // account page instead of being thrown away after parsing.
   async function saveResumeIfLoggedIn(data) {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
 
     let resumeFilePath = null;
 
-    // Upload the actual resume file (not just the parsed data) so it
-    // can be viewed later from the account page.
     if (currentFile) {
       const fileExt = currentFile.name.split('.').pop();
       const filePath = session.user.id + '/resume.' + fileExt;
@@ -799,7 +789,6 @@
     fileInput.value = '';
     progressBar.style.width = '0%';
     progressPct.textContent = '0%';
-    // Reset PDF preview for next upload
     document.getElementById('pdf-placeholder').style.display = 'flex';
     document.getElementById('pdf-canvas').style.display = 'none';
   }
