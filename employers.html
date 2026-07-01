@@ -412,8 +412,8 @@
   </div>
 </section>
 
-<!-- PRICING -->
-<section class="section" id="pricing">
+<!-- PRICING — hidden until session check confirms the user is logged in -->
+<section class="section" id="pricing" style="display:none;">
   <p class="section-label">Pricing</p>
   <h2>Simple pricing,<br>built to scale with you.</h2>
   <p class="section-sub">No hidden fees. Cancel anytime. Start with a 15-day free trial.</p>
@@ -422,7 +422,7 @@
     <div class="price-card featured">
       <span class="price-tag">15-day free trial</span>
       <div class="price-tier">Employers</div>
-      <div class="price-amount">$200 <span>/ month</span></div>
+      <div class="price-amount">$299 <span>/ month</span></div>
       <p class="price-desc">Free for your first 15 days. Everything you need to find and hire qualified candidates faster.</p>
       <ul class="price-features">
         <li>Unlimited job postings</li>
@@ -430,7 +430,7 @@
         <li>Employer dashboard</li>
         <li>Priority support</li>
       </ul>
-      <button class="btn-white" onclick="window.location.href='login.html?role=employer'">Start free trial</button>
+      <div id="pricing-cta"></div>
     </div>
 
     <div class="price-card">
@@ -446,6 +446,14 @@
       <button class="btn-ghost" onclick="window.location.href='mailto:admin@alygnn.com?subject=Enterprise%20inquiry'">Contact sales</button>
     </div>
   </div>
+</section>
+
+<!-- Shown instead of pricing when the user is not logged in -->
+<section class="section" id="pricing-locked" style="text-align:center;">
+  <p class="section-label">Pricing</p>
+  <h2>Ready to get started?</h2>
+  <p class="section-sub" style="margin: 16px auto 32px;">Create an employer account to view our pricing and start your free trial.</p>
+  <button class="btn-primary" onclick="window.location.href='login.html?role=employer'">Create employer account →</button>
 </section>
 
 <!-- TESTIMONIAL -->
@@ -490,6 +498,53 @@
   <span>© 2026 Alygnn. <a href="index.html">For jobseekers →</a></span>
   <span>Privacy · Terms</span>
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(async () => {
+  const { createClient } = supabase;
+  const sb = createClient(
+    'https://auth.alygnn.com',
+    'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
+  );
+
+  const pricingSection = document.getElementById('pricing');
+  const lockedSection = document.getElementById('pricing-locked');
+  const ctaWrap = document.getElementById('pricing-cta');
+
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (!session) {
+    // Not logged in — show the "create account" prompt, hide real pricing
+    lockedSection.style.display = 'block';
+    return;
+  }
+
+  // Logged in — show real pricing, hide the locked prompt
+  pricingSection.style.display = 'block';
+  lockedSection.style.display = 'none';
+
+  // Check whether company profile is filled out
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('company_name')
+    .eq('id', session.user.id)
+    .single();
+
+  const isVerified = !!(profile?.company_name && profile.company_name.trim().length > 0);
+
+  if (isVerified) {
+    ctaWrap.innerHTML = `<button class="btn-white" onclick="window.location.href='employer-dashboard.html'">Start free trial</button>`;
+  } else {
+    ctaWrap.innerHTML = `
+      <button class="btn-white" style="opacity:0.45; cursor:not-allowed;" disabled>Start free trial</button>
+      <p style="margin-top:12px; font-size:13px; color:rgba(255,255,255,0.75); text-align:center;">
+        Complete your <a href="employer-account.html" style="color:white; text-decoration:underline;">company profile</a> to unlock this.
+      </p>
+    `;
+  }
+})();
+</script>
 
 </body>
 </html>
