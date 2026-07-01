@@ -1078,6 +1078,8 @@
     const role = profile?.role || session.user.user_metadata?.role || 'seeker';
 
     if (role === 'employer') {
+      window.location.href = 'employers.html';
+      return;
       // Employer: show employer-specific links, hide job seeker stuff
       if (authLink) { authLink.textContent = 'My account'; authLink.href = 'employer-account.html'; }
       if (ctaBtn) { ctaBtn.textContent = 'Dashboard'; ctaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
