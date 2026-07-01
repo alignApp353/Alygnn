@@ -1078,16 +1078,39 @@
     const role = profile?.role || session.user.user_metadata?.role || 'seeker';
 
     if (role === 'employer') {
-      window.location.href = 'employers.html';
-      return;
-      // Employer: show employer-specific links, hide job seeker stuff
-      if (authLink) { authLink.textContent = 'My account'; authLink.href = 'employer-account.html'; }
-      if (ctaBtn) { ctaBtn.textContent = 'Dashboard'; ctaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
-    } else {
-      // Job seeker
-      if (authLink) { authLink.textContent = 'My account'; authLink.href = 'account.html'; }
-      if (ctaBtn) { ctaBtn.textContent = 'Swipe jobs'; ctaBtn.onclick = () => window.location.href = 'swipe.html'; }
-    }
+
+  // Allow employers to browse the job seeker homepage
+  // without redirecting them back
+
+  if (authLink) {
+    authLink.textContent = 'Employer Account';
+    authLink.href = 'employer-account.html';
+  }
+
+  if (ctaBtn) {
+    ctaBtn.textContent = 'Employer Dashboard';
+    ctaBtn.onclick = () => {
+      window.location.href = 'employer-dashboard.html';
+    };
+  }
+
+} else {
+
+  // Job seeker
+
+  if (authLink) {
+    authLink.textContent = 'My Account';
+    authLink.href = 'account.html';
+  }
+
+  if (ctaBtn) {
+    ctaBtn.textContent = 'Swipe Jobs';
+    ctaBtn.onclick = () => {
+      window.location.href = 'swipe.html';
+    };
+  }
+
+}
   })();
 </script>
 
