@@ -4,14 +4,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn Login</title>
 
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 
 <style>
 :root{
     --brand:#5D7FA3;
     --sage:#8CB69B;
     --bg:#05080D;
-    --card-bg:rgba(18,24,36,.92);
+    --card-bg:rgba(18,24,36,.94);
     --text:#FFFFFF;
     --border:rgba(255,255,255,.12);
     --mint:#6FBF8F;
@@ -21,21 +23,26 @@
 
 *{
     box-sizing:border-box;
-    font-family:'DM Sans',sans-serif;
+    font-family:'DM Sans', Arial, sans-serif !important;
+}
+
+html, body{
+    margin:0;
+    min-height:100%;
+    background:#05080D;
+    color:var(--text);
 }
 
 body{
-    margin:0;
     min-height:100vh;
     background:
-        radial-gradient(circle at top, rgba(93,127,163,.35), transparent 35%),
+        radial-gradient(circle at top, rgba(93,127,163,.35), transparent 34%),
         linear-gradient(180deg,#05080D,#0A0F17);
-    color:var(--text);
 }
 
 .screen{
     min-height:100vh;
-    padding:36px 24px;
+    padding:34px 24px;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -49,12 +56,11 @@ body{
     border-radius:34px;
     padding:42px 28px;
     box-shadow:0 24px 70px rgba(0,0,0,.45);
-    backdrop-filter:blur(18px);
 }
 
 .logo{
-    font-size:54px;
-    font-weight:800;
+    font-size:56px;
+    font-weight:900;
     color:var(--brand);
     text-align:center;
     letter-spacing:-2px;
@@ -70,8 +76,8 @@ body{
 }
 
 .title{
-    font-size:36px;
-    font-weight:800;
+    font-size:38px;
+    font-weight:900;
     text-align:center;
     margin-bottom:30px;
 }
@@ -82,7 +88,8 @@ body{
     border-radius:18px;
     border:1px solid var(--border);
     background:rgba(255,255,255,.03);
-    font-size:16px;
+    font-size:17px;
+    font-weight:500;
     margin-bottom:16px;
     color:white;
 }
@@ -100,8 +107,8 @@ body{
     width:100%;
     padding:18px;
     border-radius:18px;
-    font-size:17px;
-    font-weight:800;
+    font-size:18px;
+    font-weight:900;
     margin-top:10px;
     cursor:pointer;
 }
@@ -116,6 +123,20 @@ body{
     background:transparent;
     color:white;
     border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+}
+
+.social-logo{
+    width:24px;
+    height:24px;
+}
+
+.apple-logo{
+    font-size:28px;
+    line-height:1;
 }
 
 .divider{
@@ -124,6 +145,7 @@ body{
     gap:14px;
     color:var(--text-muted);
     font-size:13px;
+    font-weight:700;
     margin:26px 0 12px;
 }
 
@@ -140,12 +162,13 @@ body{
     margin-top:30px;
     color:var(--text-muted);
     line-height:1.7;
-    font-size:16px;
+    font-size:17px;
+    font-weight:500;
 }
 
 .link a{
     color:var(--brand);
-    font-weight:800;
+    font-weight:900;
     text-decoration:none;
 }
 </style>
@@ -167,7 +190,6 @@ body{
         </div>
 
         <input class="input" type="email" placeholder="Email">
-
         <input class="input" type="password" placeholder="Password">
 
         <button class="btn primary" onclick="window.location.href='app-home.html'">
@@ -177,10 +199,12 @@ body{
         <div class="divider">OR</div>
 
         <button class="btn social">
+            <img class="social-logo" src="https://www.google.com/favicon.ico" alt="Google">
             Continue with Google
         </button>
 
         <button class="btn social">
+            <span class="apple-logo"></span>
             Continue with Apple
         </button>
 
