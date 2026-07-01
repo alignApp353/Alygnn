@@ -967,99 +967,6 @@
   </div>
 </section>
 
-<section class="section" id="preview" style="background: white;">
-  <p class="section-label">See it in action</p>
-  <h2>See what's<br>waiting for you.</h2>
-  <p class="section-sub">A look at what you'll actually see inside Alygnn. Demo examples shown.</p>
-
-  <div class="preview-tabs">
-    <button class="preview-tab active" onclick="showPreview('panel-candidate', this)">Candidate dashboard</button>
-    <button class="preview-tab" onclick="showPreview('panel-tracker', this)">Application tracker</button>
-    <button class="preview-tab" onclick="showPreview('panel-resume', this)">Resume profile</button>
-  </div>
-
-  <div class="preview-frame">
-    <div class="frame-chrome">
-      <span class="frame-dot red"></span>
-      <span class="frame-dot yellow"></span>
-      <span class="frame-dot green"></span>
-    </div>
-    <div class="frame-body">
-      <div class="preview-panel active" id="panel-candidate">
-        <div class="dash-stats-row">
-          <div class="dash-stat"><div class="dash-stat-num">8</div><div class="dash-stat-label">New matches today</div></div>
-          <div class="dash-stat"><div class="dash-stat-num">5</div><div class="dash-stat-label">Active applications</div></div>
-          <div class="dash-stat"><div class="dash-stat-num">23</div><div class="dash-stat-label">Profile views</div></div>
-        </div>
-        <div class="mini-job-list">
-          <div class="mini-job-card">
-            <div class="mini-job-logo">D</div>
-            <div class="mini-job-info"><div class="mini-job-title">Senior Product Designer</div><div class="mini-job-company">Demo Co. · Remote OK</div></div>
-            <div class="mini-job-match">94% match</div>
-          </div>
-          <div class="mini-job-card">
-            <div class="mini-job-logo">N</div>
-            <div class="mini-job-info"><div class="mini-job-title">Backend Engineer</div><div class="mini-job-company">Northline Labs · Raleigh, NC</div></div>
-            <div class="mini-job-match">89% match</div>
-          </div>
-          <div class="mini-job-card">
-            <div class="mini-job-logo">L</div>
-            <div class="mini-job-info"><div class="mini-job-title">Sales Development Rep</div><div class="mini-job-company">LaunchWorks · Remote</div></div>
-            <div class="mini-job-match">85% match</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="preview-panel" id="panel-tracker">
-        <div class="kanban-grid">
-          <div class="kanban-col">
-            <div class="kanban-col-title">Applied <span class="kanban-count">4</span></div>
-            <div class="kanban-card"><strong>Product Designer</strong><span>Demo Co.</span></div>
-            <div class="kanban-card"><strong>Backend Engineer</strong><span>Northline Labs</span></div>
-          </div>
-          <div class="kanban-col">
-            <div class="kanban-col-title">Interview <span class="kanban-count">2</span></div>
-            <div class="kanban-card"><strong>Sales Rep</strong><span>LaunchWorks</span></div>
-            <div class="kanban-card"><strong>Data Analyst</strong><span>Oakstone</span></div>
-          </div>
-          <div class="kanban-col">
-            <div class="kanban-col-title">Offer <span class="kanban-count">1</span></div>
-            <div class="kanban-card"><strong>Marketing Coordinator</strong><span>Nova Group</span></div>
-          </div>
-          <div class="kanban-col">
-            <div class="kanban-col-title">Rejected <span class="kanban-count">1</span></div>
-            <div class="kanban-card"><strong>UX Researcher</strong><span>Lighthouse Labs</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="preview-panel" id="panel-resume">
-        <div class="profile-header">
-          <div class="profile-avatar">M</div>
-          <div><div class="profile-name">Maya Chen</div><div class="profile-role">Backend Engineer · Raleigh, NC</div></div>
-        </div>
-        <div class="profile-skills">
-          <span class="tag">Python</span>
-          <span class="tag">PostgreSQL</span>
-          <span class="tag">AWS</span>
-          <span class="tag">REST APIs</span>
-        </div>
-        <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-role">Backend Engineer</div>
-            <div class="timeline-company">Example Company</div>
-            <div class="timeline-dates">2024 — Present</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-role">Software Engineer Intern</div>
-            <div class="timeline-company">Nova Group</div>
-            <div class="timeline-dates">2023 — 2024</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- Interactive Preview replaced with a single link to demo.html -->
 <section class="section" style="background:white; text-align:center;">
@@ -1146,15 +1053,6 @@
   <span>© 2026 Alygnn. Built for job seekers, by people who hated job searching.</span>
   <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span>
 </footer>
-
-<script>
-  function showPreview(panelId, btn) {
-    document.querySelectorAll('.preview-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(panelId).classList.add('active');
-    btn.classList.add('active');
-  }
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
