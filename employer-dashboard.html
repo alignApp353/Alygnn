@@ -28,7 +28,7 @@
   .logo span { color: var(--sage); }
   .nav-right { display: flex; align-items: center; gap: 16px; }
   .nav-user { font-size: 13px; color: var(--text-muted); }
-  .btn-logout { font-size: 13px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.2s; }
+  .btn-logout { font-size: 13px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
   .btn-logout:hover { border-color: var(--rose); color: var(--rose); }
 
   .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 64px); }
@@ -45,16 +45,15 @@
     cursor: pointer; transition: all 0.2s;
     font-size: 14px; color: var(--text-muted); margin-bottom: 2px;
     border: none; background: none; width: 100%; text-align: left;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', sans-serif; text-decoration: none;
   }
   .nav-item:hover { background: var(--brand-light); color: var(--text); }
   .nav-item.active { background: var(--brand-light); color: var(--brand); font-weight: 500; }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-  .nav-badge { margin-left: auto; background: var(--brand); color: white; font-size: 10px; padding: 2px 7px; border-radius: 100px; }
+  .nav-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
   .main { padding: 40px 5%; }
 
-  /* PANELS */
   .panel { display: none; animation: fadeUp 0.4s ease both; }
   .panel.active { display: block; }
 
@@ -62,16 +61,11 @@
   .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
   .page-sub { font-size: 14px; color: var(--text-muted); }
 
-  /* STATS ROW */
   .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-  .stat-card {
-    background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 16px; padding: 20px 24px;
-  }
+  .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; }
   .stat-val { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--text); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
   .stat-label { font-size: 12px; color: var(--text-muted); }
 
-  /* JOBS LIST */
   .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .section-title { font-size: 16px; font-weight: 500; color: var(--text); }
   .btn-primary {
@@ -101,42 +95,27 @@
   .btn-view { font-size: 12px; color: var(--brand); background: var(--brand-light); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
   .btn-view:hover { opacity: 0.8; }
 
-  /* CANDIDATES */
   .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-  .candidate-card {
-    background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px; transition: all 0.2s;
-  }
+  .candidate-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; transition: all 0.2s; }
   .candidate-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
   .candidate-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .candidate-avatar {
-    width: 44px; height: 44px; border-radius: 50%;
-    background: var(--brand-light); display: flex; align-items: center;
-    justify-content: center; font-size: 18px; flex-shrink: 0;
-    border: 1px solid var(--border);
-  }
+  .candidate-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; border: 1px solid var(--border); }
   .candidate-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
   .candidate-role { font-size: 12px; color: var(--text-muted); }
   .candidate-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   .tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; border: 1px solid var(--border); color: var(--text-muted); }
-  .tag.match { background: var(--mint-light); border-color: rgba(111,191,143,0.3); color: #2e7a52; }
   .candidate-actions { display: flex; gap: 8px; }
   .btn-accept { flex: 1; background: var(--mint); color: white; border: none; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-accept:hover { opacity: 0.85; }
   .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
 
-  /* POST JOB FORM */
   .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; max-width: 640px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .form-group.full { grid-column: 1 / -1; }
   .form-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
-  .form-input {
-    background: white; border: 1.5px solid var(--border); border-radius: 12px;
-    padding: 12px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif;
-    color: var(--text); outline: none; transition: border-color 0.2s; width: 100%;
-  }
+  .form-input { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; }
   .form-input:focus { border-color: var(--brand); }
   .form-input::placeholder { color: #aab4bc; }
   textarea.form-input { resize: vertical; min-height: 120px; }
@@ -144,12 +123,11 @@
   .btn-post { background: var(--brand); color: white; border: none; border-radius: 12px; padding: 14px 32px; font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
   .btn-post:hover { opacity: 0.88; transform: translateY(-1px); }
 
-  /* TOAST */
-  .toast {
-    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--text); color: white; padding: 10px 20px; border-radius: 100px;
-    font-size: 13px; font-weight: 500; transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
-  }
+  .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-state .empty-title { font-weight: 500; color: var(--text); margin-bottom: 6px; font-size: 15px; }
+
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: white; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; transition: transform 0.3s ease; z-index: 200; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -165,15 +143,14 @@
 <body>
 
 <nav>
-  <a href="/index.html" class="logo">Alygnn<span>.</span></a>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-right">
-    <span class="nav-user" id="nav-user-email"></span>
+    <span class="nav-user" id="nav-user-name"></span>
     <button class="btn-logout" onclick="logout()">Sign out</button>
   </div>
 </nav>
 
 <div class="layout">
-  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-label">Employer</div>
     <button class="nav-item active" onclick="showPanel('overview', this)">
@@ -184,14 +161,16 @@
     </button>
     <button class="nav-item" onclick="showPanel('candidates', this)">
       <span class="nav-icon">👥</span> Candidates
-      <span class="nav-badge">4</span>
     </button>
     <button class="nav-item" onclick="showPanel('post', this)">
       <span class="nav-icon">➕</span> Post a Job
     </button>
+    <hr class="nav-divider">
+    <a href="employer-account.html" class="nav-item">
+      <span class="nav-icon">←</span> My account
+    </a>
   </aside>
 
-  <!-- MAIN -->
   <main class="main">
 
     <!-- OVERVIEW -->
@@ -201,61 +180,20 @@
         <div class="page-sub">Here's how your listings are performing</div>
       </div>
       <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-val">3</div>
-          <div class="stat-label">Active jobs</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val">47</div>
-          <div class="stat-label">Total views</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val">12</div>
-          <div class="stat-label">Right swipes</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val">4</div>
-          <div class="stat-label">New candidates</div>
-        </div>
+        <div class="stat-card"><div class="stat-val" id="stat-active">0</div><div class="stat-label">Active jobs</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-views">0</div><div class="stat-label">Total views</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-swipes">0</div><div class="stat-label">Right swipes</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-candidates">0</div><div class="stat-label">New candidates</div></div>
       </div>
       <div class="section-header">
         <div class="section-title">Recent activity</div>
       </div>
-      <div class="job-row">
-        <div class="job-status active"></div>
-        <div class="job-info">
-          <div class="job-title-text">Frontend Developer</div>
-          <div class="job-meta">Full-time · Remote · Posted 2 days ago</div>
+      <div id="overview-jobs">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">No jobs posted yet</div>
+          Post your first job to start seeing activity here.
         </div>
-        <div class="job-stats">
-          <div><div class="js-val">18</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">5</div><div class="js-label">Swipes</div></div>
-        </div>
-        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
-      </div>
-      <div class="job-row">
-        <div class="job-status active"></div>
-        <div class="job-info">
-          <div class="job-title-text">Product Manager</div>
-          <div class="job-meta">Full-time · Hybrid · Posted 5 days ago</div>
-        </div>
-        <div class="job-stats">
-          <div><div class="js-val">22</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">4</div><div class="js-label">Swipes</div></div>
-        </div>
-        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
-      </div>
-      <div class="job-row">
-        <div class="job-status paused"></div>
-        <div class="job-info">
-          <div class="job-title-text">UX Designer</div>
-          <div class="job-meta">Contract · On-site · Posted 1 week ago</div>
-        </div>
-        <div class="job-stats">
-          <div><div class="js-val">7</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">3</div><div class="js-label">Swipes</div></div>
-        </div>
-        <button class="btn-view" onclick="showPanel('candidates', this)">View candidates</button>
       </div>
     </div>
 
@@ -270,41 +208,10 @@
         <button class="btn-primary" onclick="showPanel('post', this)">+ Post new job</button>
       </div>
       <div id="jobs-list">
-        <div class="job-row">
-          <div class="job-status active"></div>
-          <div class="job-info">
-            <div class="job-title-text">Frontend Developer</div>
-            <div class="job-meta">Full-time · Remote · $90k–$120k · Posted 2 days ago</div>
-          </div>
-          <div class="job-stats">
-            <div><div class="js-val">18</div><div class="js-label">Views</div></div>
-            <div><div class="js-val">5</div><div class="js-label">Applied</div></div>
-          </div>
-          <button class="btn-view">Edit</button>
-        </div>
-        <div class="job-row">
-          <div class="job-status active"></div>
-          <div class="job-info">
-            <div class="job-title-text">Product Manager</div>
-            <div class="job-meta">Full-time · Hybrid · $110k–$140k · Posted 5 days ago</div>
-          </div>
-          <div class="job-stats">
-            <div><div class="js-val">22</div><div class="js-label">Views</div></div>
-            <div><div class="js-val">4</div><div class="js-label">Applied</div></div>
-          </div>
-          <button class="btn-view">Edit</button>
-        </div>
-        <div class="job-row">
-          <div class="job-status paused"></div>
-          <div class="job-info">
-            <div class="job-title-text">UX Designer</div>
-            <div class="job-meta">Contract · On-site · $70k–$90k · Posted 1 week ago · <span style="color:var(--rose)">Paused</span></div>
-          </div>
-          <div class="job-stats">
-            <div><div class="js-val">7</div><div class="js-label">Views</div></div>
-            <div><div class="js-val">3</div><div class="js-label">Applied</div></div>
-          </div>
-          <button class="btn-view">Edit</button>
+        <div class="empty-state">
+          <div class="empty-icon">💼</div>
+          <div class="empty-title">No active listings</div>
+          Post your first job to start receiving candidates.
         </div>
       </div>
     </div>
@@ -315,82 +222,11 @@
         <div class="page-title">Candidates</div>
         <div class="page-sub">Job seekers who swiped right on your listings</div>
       </div>
-      <div class="candidates-grid">
-        <div class="candidate-card">
-          <div class="candidate-top">
-            <div class="candidate-avatar">👩</div>
-            <div>
-              <div class="candidate-name">Sarah M.</div>
-              <div class="candidate-role">Applied to Frontend Developer</div>
-            </div>
-          </div>
-          <div class="candidate-tags">
-            <span class="tag match">React</span>
-            <span class="tag match">TypeScript</span>
-            <span class="tag">5 yrs exp</span>
-            <span class="tag">Remote</span>
-          </div>
-          <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
-            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
-          </div>
-        </div>
-        <div class="candidate-card">
-          <div class="candidate-top">
-            <div class="candidate-avatar">👨</div>
-            <div>
-              <div class="candidate-name">James T.</div>
-              <div class="candidate-role">Applied to Product Manager</div>
-            </div>
-          </div>
-          <div class="candidate-tags">
-            <span class="tag match">Agile</span>
-            <span class="tag match">Roadmapping</span>
-            <span class="tag">7 yrs exp</span>
-            <span class="tag">Hybrid</span>
-          </div>
-          <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
-            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
-          </div>
-        </div>
-        <div class="candidate-card">
-          <div class="candidate-top">
-            <div class="candidate-avatar">👩</div>
-            <div>
-              <div class="candidate-name">Priya K.</div>
-              <div class="candidate-role">Applied to Frontend Developer</div>
-            </div>
-          </div>
-          <div class="candidate-tags">
-            <span class="tag match">Vue.js</span>
-            <span class="tag match">CSS</span>
-            <span class="tag">3 yrs exp</span>
-            <span class="tag">Remote</span>
-          </div>
-          <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
-            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
-          </div>
-        </div>
-        <div class="candidate-card">
-          <div class="candidate-top">
-            <div class="candidate-avatar">🧑</div>
-            <div>
-              <div class="candidate-name">Alex R.</div>
-              <div class="candidate-role">Applied to UX Designer</div>
-            </div>
-          </div>
-          <div class="candidate-tags">
-            <span class="tag match">Figma</span>
-            <span class="tag match">User Research</span>
-            <span class="tag">4 yrs exp</span>
-            <span class="tag">On-site</span>
-          </div>
-          <div class="candidate-actions">
-            <button class="btn-accept" onclick="acceptCandidate(this)">✓ Accept</button>
-            <button class="btn-pass" onclick="passCandidate(this)">✕ Pass</button>
-          </div>
+      <div id="candidates-grid" class="candidates-grid">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No candidates yet</div>
+          Once job seekers apply to your listings, they'll appear here.
         </div>
       </div>
     </div>
@@ -455,43 +291,45 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  // Auth check — verifies against the real Supabase session instead of a
-  // sessionStorage key that login.html never actually wrote. This is what
-  // was bouncing employers straight back to /login.html before the
-  // dashboard could render.
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // In-memory job store for jobs posted this session.
+  // Replace with a real Supabase jobs table when ready.
+  let sessionJobs = [];
 
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
     const authedUser = data && data.user;
 
     if (error || !authedUser) {
-      window.location.href = '/login.html';
+      window.location.href = 'login.html';
       return;
     }
 
     const role = String(authedUser.user_metadata?.role || '').toLowerCase();
-
-    // Only redirect confirmed job-seeker accounts away.
-    // Google OAuth users may not have role metadata yet, so do not bounce them.
     if (role === 'seeker' || role === 'job_seeker') {
-      window.location.href = '/account.html';
+      window.location.href = 'account.html';
       return;
     }
 
-    document.getElementById('nav-user-email').textContent = authedUser.email || '';
+    // Show company name (or person name) instead of email in the nav
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('company_name, full_name')
+      .eq('id', authedUser.id)
+      .maybeSingle();
 
-    // Keep sessionStorage in sync so other pages that still read it
-    // (e.g. employer-account.html) stay consistent with the real session.
-    sessionStorage.setItem('user', JSON.stringify({
-      email: authedUser.email,
-      role: authedUser.user_metadata?.role || 'employer',
-      full_name: authedUser.user_metadata?.full_name || '',
-      company: authedUser.user_metadata?.company || ''
-    }));
+    const displayName =
+      profile?.company_name ||
+      profile?.full_name ||
+      authedUser.user_metadata?.full_name ||
+      authedUser.user_metadata?.name ||
+      authedUser.email || '';
+
+    document.getElementById('nav-user-name').textContent = displayName;
   }
 
   checkAuth();
@@ -499,32 +337,44 @@
   function showPanel(name, trigger) {
     const targetPanel = document.getElementById('panel-' + name);
     if (!targetPanel) return;
-
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
     targetPanel.classList.add('active');
-
     const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
       ? trigger
       : document.querySelector(`.nav-item[onclick*="${name}"]`);
-
     if (navButton) navButton.classList.add('active');
   }
 
-  function acceptCandidate(btn) {
-    const card = btn.closest('.candidate-card');
-    const name = card.querySelector('.candidate-name').textContent;
-    card.style.opacity = '0.5';
-    card.style.pointerEvents = 'none';
-    showToast('✓ ' + name + ' accepted!');
-  }
+  function renderJobs() {
+    const jobsList = document.getElementById('jobs-list');
+    const overviewJobs = document.getElementById('overview-jobs');
 
-  function passCandidate(btn) {
-    const card = btn.closest('.candidate-card');
-    card.style.opacity = '0';
-    setTimeout(() => card.remove(), 300);
-    showToast('Passed');
+    document.getElementById('stat-active').textContent = sessionJobs.length;
+
+    if (sessionJobs.length === 0) {
+      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active listings</div>Post your first job to start receiving candidates.</div>`;
+      overviewJobs.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No jobs posted yet</div>Post your first job to start seeing activity here.</div>`;
+      return;
+    }
+
+    const jobRows = sessionJobs.map(job => `
+      <div class="job-row">
+        <div class="job-status active"></div>
+        <div class="job-info">
+          <div class="job-title-text">${job.title}</div>
+          <div class="job-meta">${job.type} · ${job.style}${job.salary ? ' · ' + job.salary : ''} · Just posted</div>
+        </div>
+        <div class="job-stats">
+          <div><div class="js-val">0</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">0</div><div class="js-label">Applied</div></div>
+        </div>
+        <button class="btn-view">Edit</button>
+      </div>
+    `).join('');
+
+    jobsList.innerHTML = jobRows;
+    overviewJobs.innerHTML = jobRows;
   }
 
   function postJob() {
@@ -532,29 +382,18 @@
     const company = document.getElementById('f-company').value.trim();
     if (!title || !company) { showToast('Please fill in job title and company'); return; }
 
-    const type = document.getElementById('f-type').value;
-    const style = document.getElementById('f-style').value;
-    const salary = document.getElementById('f-salary').value;
+    const job = {
+      title,
+      company,
+      location: document.getElementById('f-location').value.trim(),
+      type: document.getElementById('f-type').value,
+      style: document.getElementById('f-style').value,
+      salary: document.getElementById('f-salary').value.trim(),
+    };
 
-    // Add to jobs list
-    const jobsList = document.getElementById('jobs-list');
-    const row = document.createElement('div');
-    row.className = 'job-row';
-    row.innerHTML = `
-      <div class="job-status active"></div>
-      <div class="job-info">
-        <div class="job-title-text">${title}</div>
-        <div class="job-meta">${type} · ${style}${salary ? ' · ' + salary : ''} · Just posted</div>
-      </div>
-      <div class="job-stats">
-        <div><div class="js-val">0</div><div class="js-label">Views</div></div>
-        <div><div class="js-val">0</div><div class="js-label">Applied</div></div>
-      </div>
-      <button class="btn-view">Edit</button>
-    `;
-    jobsList.prepend(row);
+    sessionJobs.unshift(job);
+    renderJobs();
 
-    // Clear form
     ['f-title','f-company','f-location','f-salary','f-desc','f-reqs'].forEach(id => {
       document.getElementById(id).value = '';
     });
@@ -565,8 +404,7 @@
 
   async function logout() {
     await sb.auth.signOut();
-    sessionStorage.removeItem('user');
-    window.location.href = '/login.html';
+    window.location.href = 'index.html';
   }
 
   let toastTimer;
