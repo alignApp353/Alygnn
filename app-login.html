@@ -111,6 +111,12 @@ body{
     font-weight:900;
     margin-top:10px;
     cursor:pointer;
+    transition:all .2s ease;
+}
+
+.btn:active{
+    transform:scale(.98);
+}
 }
 
 .primary{
@@ -165,7 +171,21 @@ body{
     height:1px;
     background:var(--border);
 }
+.forgot{
+    text-align:right;
+    margin:-5px 0 20px;
+}
 
+.forgot a{
+    color:var(--text-muted);
+    text-decoration:none;
+    font-size:14px;
+    font-weight:700;
+}
+
+.forgot a:hover{
+    color:white;
+}
 .link{
     text-align:center;
     margin-top:30px;
@@ -197,13 +217,17 @@ body{
         <div class="title">
             Welcome back
         </div>
+<input class="input" type="email" placeholder="Email">
 
-        <input class="input" type="email" placeholder="Email">
-        <input class="input" type="password" placeholder="Password">
+<input class="input" type="password" placeholder="Password">
 
-        <button class="btn primary" onclick="window.location.href='app-home.html'">
-            Sign In
-        </button>
+<div class="forgot">
+    <a href="forgot-password.html">Forgot Password?</a>
+</div>
+
+<button class="btn primary" onclick="window.location.href='app-home.html'">
+    Sign In
+</button>
 
         <div class="divider">OR</div>
 
