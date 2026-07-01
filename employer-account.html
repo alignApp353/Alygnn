@@ -24,202 +24,54 @@
     --rose-tint:rgba(215,154,154,0.15);
   }
 
-  body{
-    font-family:'DM Sans', sans-serif;
-    background:var(--bg);
-    color:var(--text);
-    min-height:100vh;
-  }
+  body{ font-family:'DM Sans', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
 
   nav{
     position: sticky; top: 0; z-index: 100;
-    background: rgba(246,248,247,0.92);
-    backdrop-filter: blur(12px);
+    background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
-    padding: 0 5%;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    height: 64px;
+    padding: 0 5%; display:flex; align-items:center; justify-content:space-between; height: 64px;
   }
-  .logo{
-    font-family: 'DM Serif Display', serif;
-    font-size: 22px;
-    color: var(--brand);
-    letter-spacing: -0.5px;
-    text-decoration:none;
-  }
-  .logo span{ color: var(--sage); }
-  .nav-links{ display:flex; gap:32px; align-items:center; }
-  .nav-links a{
-    text-decoration:none;
-    color:var(--text-muted);
-    font-size:14px;
-    padding:6px 0;
-    border-bottom:2px solid transparent;
-    transition:color .2s, border-color .2s;
-  }
+  .logo{ font-family:'DM Serif Display',serif; font-size:22px; color:var(--brand); letter-spacing:-0.5px; text-decoration:none; }
+  .logo span{ color:var(--sage); }
+  .nav-links{ display:flex; gap:24px; align-items:center; }
+  .nav-links a{ text-decoration:none; color:var(--text-muted); font-size:14px; padding:6px 0; border-bottom:2px solid transparent; transition:color .2s, border-color .2s; }
   .nav-links a.active{ color:var(--text); border-bottom-color:var(--brand); }
   .nav-links a:hover{ color:var(--text); }
-  .nav-cta{
-    background: var(--brand); color: white;
-    border: none; border-radius: 100px;
-    padding: 9px 22px; font-size: 14px; font-family: 'DM Sans', sans-serif;
-    cursor: pointer; transition: opacity 0.2s;
-  }
-  .nav-cta:hover{ opacity: 0.88; }
+  .nav-home{ font-size:14px; color:var(--text-muted); text-decoration:none; transition:color .2s; }
+  .nav-home:hover{ color:var(--brand); }
+  .nav-right{ display:flex; align-items:center; gap:16px; }
+  .nav-name{ font-size:14px; color:var(--text-muted); }
+  .nav-signout{ font-size:13px; color:var(--text-muted); background:none; border:1px solid var(--border); border-radius:100px; padding:6px 14px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; }
+  .nav-signout:hover{ border-color:var(--brand); color:var(--brand); }
+  .nav-cta{ background:var(--brand); color:white; border:none; border-radius:100px; padding:9px 22px; font-size:14px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:opacity 0.2s; }
+  .nav-cta:hover{ opacity:0.88; }
 
-  .page{
-    max-width:880px;
-    margin:0 auto;
-    padding:56px 6% 100px;
-  }
+  .page{ max-width:880px; margin:0 auto; padding:56px 6% 100px; }
 
-  .profile-card{
-    display:flex;
-    align-items:center;
-    gap:22px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:20px;
-    padding:32px;
-    margin-bottom:40px;
-    min-width:0;
-  }
-  .avatar{
-    width:76px; height:76px;
-    border-radius:16px;
-    background:var(--brand);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'DM Serif Display', serif;
-    font-size:1.7rem;
-    color:white;
-    flex-shrink:0;
-    overflow:hidden;
-    cursor:pointer;
-    position:relative;
-  }
-  .avatar img{
-    width:100%; height:100%;
-    object-fit:cover;
-  }
+  .profile-card{ display:flex; align-items:center; gap:22px; background:var(--card-bg); border:1px solid var(--border); border-radius:20px; padding:32px; margin-bottom:40px; min-width:0; }
+  .avatar{ width:76px; height:76px; border-radius:16px; background:var(--brand); display:flex; align-items:center; justify-content:center; font-family:'DM Serif Display',serif; font-size:1.7rem; color:white; flex-shrink:0; overflow:hidden; cursor:pointer; position:relative; }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
   .profile-info{ min-width:0; flex:1; }
-  .profile-info h1{
-    font-family:'DM Serif Display', serif;
-    font-size:1.6rem;
-    letter-spacing:-0.5px;
-    color:var(--text);
-    margin-bottom:4px;
-    word-wrap:break-word;
-    overflow-wrap:break-word;
-    white-space:normal;
-  }
-  .profile-info p{
-    color:var(--text-muted);
-    font-size:14px;
-    font-weight:300;
-    word-wrap:break-word;
-    overflow-wrap:break-word;
-    white-space:normal;
-  }
-  .headline-empty{
-    color:#9BA8B3;
-    font-style:italic;
-  }
-  [contenteditable="true"]{
-    outline:none;
-    border-radius:6px;
-    transition:background .15s;
-  }
-  [contenteditable="true"]:hover{
-    background:rgba(93,127,163,0.06);
-  }
-  [contenteditable="true"]:focus{
-    background:rgba(93,127,163,0.08);
-  }
-  [contenteditable="true"]:empty::before{
-    content: attr(data-placeholder);
-    color:#9BA8B3;
-    font-style:italic;
-  }
-  #company-name:empty::before{
-    font-style:normal;
-    font-family:'DM Serif Display', serif;
-  }
+  .profile-info h1{ font-family:'DM Serif Display',serif; font-size:1.6rem; letter-spacing:-0.5px; color:var(--text); margin-bottom:4px; word-wrap:break-word; overflow-wrap:break-word; white-space:normal; }
+  .profile-info p{ color:var(--text-muted); font-size:14px; font-weight:300; word-wrap:break-word; overflow-wrap:break-word; white-space:normal; }
+  .headline-empty{ color:#9BA8B3; font-style:italic; }
+  [contenteditable="true"]{ outline:none; border-radius:6px; transition:background .15s; }
+  [contenteditable="true"]:hover{ background:rgba(93,127,163,0.06); }
+  [contenteditable="true"]:focus{ background:rgba(93,127,163,0.08); }
+  [contenteditable="true"]:empty::before{ content:attr(data-placeholder); color:#9BA8B3; font-style:italic; }
+  #company-name:empty::before{ font-style:normal; font-family:'DM Serif Display',serif; }
 
   .section{ margin-bottom:40px; }
-  .section-header{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    margin-bottom:16px;
-  }
-  .section-header h2{
-    font-family:'DM Serif Display', serif;
-    font-size:1.15rem;
-    letter-spacing:-0.3px;
-    color:var(--text);
-  }
-  .section-link{
-    font-size:13px;
-    color:var(--brand);
-    text-decoration:none;
-  }
+  .section-header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .section-header h2{ font-family:'DM Serif Display',serif; font-size:1.15rem; letter-spacing:-0.3px; color:var(--text); }
+  .section-link{ font-size:13px; color:var(--brand); text-decoration:none; }
   .section-link:hover{ text-decoration:underline; }
 
-  .job-list{ display:flex; flex-direction:column; gap:10px; }
-  .job-row{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:16px 18px;
-  }
-  .job-logo{
-    width:40px; height:40px;
-    border-radius:11px;
-    background:var(--brand-tint);
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.05rem;
-    flex-shrink:0;
-  }
-  .job-meta{ flex:1; min-width:0; }
-  .job-title{ font-weight:500; font-size:15px; color:var(--text); }
-  .job-company{ font-size:13px; color:var(--text-muted); }
-  .job-tag{
-    font-size:12px;
-    font-weight:500;
-    padding:4px 12px;
-    border-radius:100px;
-    white-space:nowrap;
-  }
-  .tag-active{ background:var(--mint-tint); color:#3a9463; }
-  .tag-closed{ background:var(--rose-tint); color:#a05858; }
-
-  .empty-state{
-    background:var(--card-bg);
-    border:1px dashed var(--border);
-    border-radius:14px;
-    padding:28px;
-    text-align:center;
-    color:var(--text-muted);
-    font-size:14px;
-  }
+  .empty-state{ background:var(--card-bg); border:1px dashed var(--border); border-radius:14px; padding:28px; text-align:center; color:var(--text-muted); font-size:14px; }
 
   .links-row{ display:flex; gap:14px; flex-wrap:wrap; }
-  .link-card{
-    flex:1;
-    min-width:200px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:20px;
-    text-decoration:none;
-    color:var(--text);
-    transition:border-color .2s, transform .2s;
-  }
+  .link-card{ flex:1; min-width:200px; background:var(--card-bg); border:1px solid var(--border); border-radius:14px; padding:20px; text-decoration:none; color:var(--text); transition:border-color .2s, transform .2s; }
   .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
   .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
   .link-card .label{ font-weight:500; font-size:15px; }
@@ -232,8 +84,13 @@
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-links">
+    <a href="index.html" class="nav-home">← Home</a>
     <a href="employer-account.html" class="active">Account</a>
-    <button class="nav-cta" onclick="window.location.href='employer-dashboard.html'">Post a job</button>
+  </div>
+  <div class="nav-right">
+    <span class="nav-name" id="nav-name"></span>
+    <button class="nav-cta" onclick="window.location.href='employer-dashboard.html'">Dashboard</button>
+    <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
 
@@ -256,29 +113,21 @@
       <h2>Posted jobs</h2>
       <a href="employer-dashboard.html" class="section-link">Post a job →</a>
     </div>
-    <div class="empty-state">
-      No jobs posted yet. Once you post a role, it'll show up here.
-    </div>
+    <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
   </div>
 
   <div class="section">
-    <div class="section-header">
-      <h2>Candidates</h2>
-    </div>
-    <div class="empty-state">
-      No candidates yet. Once people apply to your jobs, you'll see them here.
-    </div>
+    <div class="section-header"><h2>Candidates</h2></div>
+    <div class="empty-state">No candidates yet. Once people apply to your jobs, you'll see them here.</div>
   </div>
 
   <div class="section">
-    <div class="section-header">
-      <h2>Settings</h2>
-    </div>
+    <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
       <div class="link-card">
         <span class="icon">🏢</span>
         <div class="label">Company profile</div>
-        <div class="sub">Update your company information above.</div>
+        <div class="sub">Update your company name and description above.</div>
       </div>
       <a href="employer-dashboard.html" class="link-card">
         <span class="icon">📋</span>
@@ -302,13 +151,11 @@
     const started = Date.now();
     let result = await sb.auth.getSession();
     let session = result.data.session;
-
     while (!session && Date.now() - started < maxWaitMs) {
       await new Promise(resolve => setTimeout(resolve, 400));
       result = await sb.auth.getSession();
       session = result.data.session;
     }
-
     return session;
   }
 
@@ -319,7 +166,7 @@
 
   function handlePhotoUpload(event){
     const file = event.target.files[0];
-    if(!file) return;
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e){
       const dataUrl = e.target.result;
@@ -338,30 +185,21 @@
   async function saveField(key, el){
     const value = el.textContent.trim();
     localStorage.setItem(key, value);
-
     if (!currentUserId) return;
-
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
-    const { error } = await sb.from('profiles').upsert({
-      id: currentUserId,
-      role: 'employer',
-      [column]: value
-    }, { onConflict: 'id' });
-
+    const { error } = await sb.from('profiles').upsert({ id: currentUserId, role: 'employer', [column]: value }, { onConflict: 'id' });
     if (error) console.error('Failed to save employer profile', error);
-
     if (key === 'companyName') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
+      document.getElementById('nav-name').textContent = value;
     }
   }
 
-  function clearPlaceholder(el){
-    el.classList.remove('headline-empty');
-  }
+  function clearPlaceholder(el){ el.classList.remove('headline-empty'); }
 
   function limitLength(el, max){
     el.addEventListener('input', function(){
-      if(el.textContent.length > max){
+      if (el.textContent.length > max){
         el.textContent = el.textContent.slice(0, max);
         const range = document.createRange();
         const sel = window.getSelection();
@@ -376,18 +214,19 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
+  async function signOut() {
+    await sb.auth.signOut();
+    window.location.href = 'index.html';
+  }
+
   async function initEmployerAccountPage(){
     const session = await waitForSession();
-
-    if (!session) {
-      window.location.href = 'login.html?role=employer';
-      return;
-    }
+    if (!session) { window.location.href = 'login.html?role=employer'; return; }
 
     currentUserId = session.user.id;
 
     const savedLogo = localStorage.getItem('companyLogo');
-    if(savedLogo) showPhoto(savedLogo);
+    if (savedLogo) showPhoto(savedLogo);
 
     const { data: profile, error } = await sb
       .from('profiles')
@@ -395,23 +234,21 @@
       .eq('id', currentUserId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Failed to load employer profile', error);
-    }
+    if (error && error.code !== 'PGRST116') console.error('Failed to load employer profile', error);
 
     const companyNameEl = document.getElementById('company-name');
     const headlineEl = document.getElementById('company-headline');
 
-    const companyName =
-      profile?.company_name ||
-      session.user.user_metadata?.company_name ||
-      localStorage.getItem('companyName') ||
-      '';
+    const companyName = profile?.company_name || session.user.user_metadata?.company_name || localStorage.getItem('companyName') || '';
+    const displayName = companyName || profile?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
 
     if (companyName) {
       companyNameEl.textContent = companyName;
       document.getElementById('avatar-initials').textContent = getInitials(companyName);
     }
+
+    // Show company name (or person name if no company yet) in nav — never the email
+    document.getElementById('nav-name').textContent = displayName;
 
     const headline = profile?.company_headline || localStorage.getItem('companyHeadline') || '';
     if (headline) {
@@ -422,6 +259,5 @@
 
   initEmployerAccountPage();
 </script>
-
 </body>
 </html>
