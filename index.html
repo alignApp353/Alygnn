@@ -1064,10 +1064,28 @@
     );
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
+
     const authLink = document.getElementById('nav-auth-link');
     const ctaBtn = document.getElementById('nav-cta-btn');
-    if (authLink) { authLink.textContent = 'My account'; authLink.href = 'account.html'; }
-    if (ctaBtn) { ctaBtn.textContent = 'Swipe jobs'; ctaBtn.onclick = () => window.location.href = 'swipe.html'; }
+
+    // Check role from profiles table (most reliable source)
+    const { data: profile } = await sb
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const role = profile?.role || session.user.user_metadata?.role || 'seeker';
+
+    if (role === 'employer') {
+      // Employer: show employer-specific links, hide job seeker stuff
+      if (authLink) { authLink.textContent = 'My account'; authLink.href = 'employer-account.html'; }
+      if (ctaBtn) { ctaBtn.textContent = 'Dashboard'; ctaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
+    } else {
+      // Job seeker
+      if (authLink) { authLink.textContent = 'My account'; authLink.href = 'account.html'; }
+      if (ctaBtn) { ctaBtn.textContent = 'Swipe jobs'; ctaBtn.onclick = () => window.location.href = 'swipe.html'; }
+    }
   })();
 </script>
 
