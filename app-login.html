@@ -4,80 +4,156 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn Login</title>
 
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
 <style>
+:root{
+    --brand: #5D7FA3;
+    --sage: #8CB69B;
+    --bg: #F6F8F7;
+    --card-bg: #FCFCFA;
+    --text: #1A2530;
+    --border: #DDE3E8;
+    --mint: #6FBF8F;
+    --rose: #D79A9A;
+    --text-muted: #4A5968;
+}
+
+*{
+    box-sizing:border-box;
+    font-family:'DM Sans', sans-serif;
+}
+
 body{
     margin:0;
-    font-family:Arial,sans-serif;
-    background:#F6F8F7;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+}
+
+.screen{
+    min-height:100vh;
+    padding:42px 24px;
     display:flex;
+    flex-direction:column;
     justify-content:center;
-    align-items:center;
-    height:100vh;
 }
 
 .card{
-    width:90%;
-    max-width:400px;
-    background:white;
-    padding:30px;
-    border-radius:20px;
-    box-shadow:0 4px 20px rgba(0,0,0,.08);
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:32px;
+    padding:36px 26px;
+    box-shadow:0 12px 35px rgba(26,37,48,.08);
 }
 
-h1{
+.logo{
+    font-size:42px;
+    font-weight:800;
+    color:var(--brand);
     text-align:center;
-    color:#1A2530;
+    margin-bottom:8px;
 }
 
-input{
-    width:100%;
-    padding:16px;
-    margin-top:15px;
-    border-radius:12px;
-    border:1px solid #ddd;
-    box-sizing:border-box;
-}
-
-button{
-    width:100%;
-    padding:16px;
-    margin-top:20px;
-    border:none;
-    border-radius:12px;
-    background:#5D7FA3;
-    color:white;
+.subtitle{
+    text-align:center;
+    color:var(--text-muted);
     font-size:16px;
-    font-weight:bold;
+    margin-bottom:34px;
 }
 
-.signup{
+.title{
+    font-size:32px;
+    font-weight:800;
     text-align:center;
-    margin-top:20px;
+    margin-bottom:26px;
+}
+
+.input{
+    width:100%;
+    padding:18px;
+    border-radius:18px;
+    border:1px solid var(--border);
+    background:white;
+    font-size:16px;
+    margin-bottom:16px;
+    color:var(--text);
+}
+
+.input:focus{
+    outline:none;
+    border-color:var(--brand);
+}
+
+.btn{
+    width:100%;
+    padding:18px;
+    border:none;
+    border-radius:18px;
+    font-size:17px;
+    font-weight:800;
+    margin-top:8px;
+}
+
+.primary{
+    background:var(--brand);
+    color:white;
+}
+
+.google{
+    background:white;
+    color:var(--text);
+    border:1px solid var(--border);
+}
+
+.link{
+    text-align:center;
+    margin-top:28px;
+    color:var(--text-muted);
+    line-height:1.6;
+}
+
+.link a{
+    color:var(--brand);
+    font-weight:800;
+    text-decoration:none;
 }
 </style>
 </head>
 
 <body>
 
-<div class="card">
+<div class="screen">
+    <div class="card">
 
-    <h1>Welcome to Alygnn</h1>
+        <div class="logo">Alygnn.</div>
 
-    <input type="email" placeholder="Email">
+        <div class="subtitle">
+            Your career, perfectly aligned.
+        </div>
 
-    <input type="password" placeholder="Password">
+        <div class="title">
+            Welcome back
+        </div>
 
-    <button onclick="window.location.href='app-home.html'">
-        Sign In
-    </button>
+        <input class="input" type="email" placeholder="Email">
 
-    <div class="signup">
-        Don't have an account?<br><br>
-        <a href="app-create-account.html">
-            Create Account
-        </a>
+        <input class="input" type="password" placeholder="Password">
+
+        <button class="btn primary" onclick="window.location.href='app-home.html'">
+            Sign In
+        </button>
+
+        <button class="btn google">
+            Continue with Google
+        </button>
+
+        <div class="link">
+            Don't have an account?<br>
+            <a href="app-create-account.html">Create Account</a>
+        </div>
+
     </div>
-
 </div>
 
 </body>
