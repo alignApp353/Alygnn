@@ -525,7 +525,10 @@
   async function doForgot() {
     const email = document.getElementById('email').value.trim();
     if (!email) { showMsg('Enter your email above first.'); return; }
-    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
+   const { error } = await sb.auth.resetPasswordForEmail(
+  email,
+  { redirectTo: window.location.origin + '/reset-password.html' }
+);
     if (error) { showMsg(error.message); return; }
     showMsg('Reset email sent — check your inbox.', 'success');
   }
