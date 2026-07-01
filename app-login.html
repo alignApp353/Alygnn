@@ -170,7 +170,16 @@ body{
 }
 
 .bio-icon{
-    font-size:30px;
+    width:30px;
+    height:30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.bio-icon svg{
+    width:28px;
+    height:28px;
 }
 
 .bio-text{
@@ -270,7 +279,17 @@ body{
         </button>
 
         <button class="btn social">
-            <span class="bio-icon">🔒</span>
+
+            <span class="bio-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 12C10.3 12 9 13.3 9 15V17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M15 15V17C15 20 13.5 22 12 22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M6 15V16C6 20.4 8.7 24 12 24" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18 15V16C18 19.6 16.5 22.7 14 24" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M7 10C7 7.2 9.2 5 12 5C14.8 5 17 7.2 17 10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M4 10C4 5.6 7.6 2 12 2C16.4 2 20 5.6 20 10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </span>
 
             <div class="bio-text">
                 <div class="bio-title">Quick Sign In</div>
@@ -278,6 +297,7 @@ body{
                     Use Face ID or Fingerprint
                 </div>
             </div>
+
         </button>
 
         <div class="link">
