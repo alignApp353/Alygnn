@@ -33,12 +33,10 @@ html,body{
 
 body{
     min-height:100vh;
-
     background:
         radial-gradient(circle at top,
         rgba(93,127,163,.35),
         transparent 35%),
-
         linear-gradient(
         180deg,
         #05080D,
@@ -56,15 +54,10 @@ body{
 .card{
     width:100%;
     max-width:430px;
-
     background:var(--card-bg);
-
     border:1px solid var(--border);
-
     border-radius:34px;
-
     padding:42px 30px;
-
     box-shadow:0 25px 70px rgba(0,0,0,.45);
 }
 
@@ -94,18 +87,11 @@ body{
 .input{
     width:100%;
     padding:20px;
-
     border-radius:20px;
-
     border:1px solid var(--border);
-
     background:rgba(255,255,255,.03);
-
     color:white;
-
     font-size:18px;
-
-    margin-bottom:16px;
 }
 
 .input::placeholder{
@@ -117,9 +103,39 @@ body{
     border-color:var(--brand);
 }
 
+.password-wrapper{
+    position:relative;
+    margin-top:16px;
+}
+
+.password-input{
+    padding-right:60px;
+}
+
+.toggle-password{
+    position:absolute;
+    top:50%;
+    right:20px;
+    transform:translateY(-50%);
+    background:none;
+    border:none;
+    cursor:pointer;
+    opacity:.7;
+}
+
+.toggle-password:hover{
+    opacity:1;
+}
+
+.toggle-password svg{
+    width:24px;
+    height:24px;
+    stroke:white;
+}
+
 .forgot{
     text-align:right;
-    margin-top:-5px;
+    margin-top:12px;
     margin-bottom:22px;
 }
 
@@ -131,21 +147,13 @@ body{
 
 .btn{
     width:100%;
-
     padding:20px;
-
     border-radius:20px;
-
     border:none;
-
     font-size:18px;
-
     font-weight:900;
-
     cursor:pointer;
-
     transition:.2s;
-
     margin-top:12px;
 }
 
@@ -161,22 +169,14 @@ body{
 .social{
     background:transparent;
     color:white;
-
     border:1px solid var(--border);
-
     display:flex;
     align-items:center;
     justify-content:center;
-
     gap:14px;
 }
 
 .social-logo{
-    width:24px;
-    height:24px;
-}
-
-.apple-icon{
     width:24px;
     height:24px;
 }
@@ -191,11 +191,8 @@ body{
     display:flex;
     align-items:center;
     gap:16px;
-
     margin:30px 0 10px;
-
     color:var(--text-muted);
-
     font-size:14px;
     font-weight:700;
 }
@@ -213,7 +210,6 @@ body{
     flex-direction:column;
     justify-content:center;
     align-items:center;
-
     padding:22px;
 }
 
@@ -232,11 +228,8 @@ body{
 .link{
     margin-top:34px;
     text-align:center;
-
     color:var(--text-muted);
-
     line-height:1.8;
-
     font-size:17px;
 }
 
@@ -255,9 +248,7 @@ body{
 
 <div class="card">
 
-<div class="logo">
-Alygnn.
-</div>
+<div class="logo">Alygnn.</div>
 
 <div class="subtitle">
 Where Opportunity meets talent
@@ -267,13 +258,40 @@ Where Opportunity meets talent
 Welcome back
 </div>
 
-<input class="input"
+<input
+class="input"
 type="email"
 placeholder="Email">
 
-<input class="input"
+<div class="password-wrapper">
+
+<input
+id="password"
+class="input password-input"
 type="password"
 placeholder="Password">
+
+<button
+type="button"
+class="toggle-password"
+onclick="togglePassword()">
+
+<svg xmlns="http://www.w3.org/2000/svg"
+fill="none"
+viewBox="0 0 24 24"
+stroke-width="2"
+stroke="currentColor">
+
+<path stroke-linecap="round"
+stroke-linejoin="round"
+d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+
+<circle cx="12" cy="12" r="3"/>
+</svg>
+
+</button>
+
+</div>
 
 <div class="forgot">
 <a href="forgot-password.html">
@@ -283,38 +301,29 @@ Forgot Password?
 
 <button class="btn primary"
 onclick="window.location.href='app-home.html'">
-
 Sign In
-
 </button>
 
-<div class="divider">
-OR
-</div>
+<div class="divider">OR</div>
 
 <button class="btn social">
-
 <img class="social-logo"
 src="https://www.google.com/favicon.ico">
-
 Continue with Google
-
 </button>
 
 <button class="btn social">
 
 <span class="apple-icon">
 <svg viewBox="0 0 384 512">
-<path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.2-39.3.6-75.5 22.8-95.7 58C-17.2 269.2 13 373.6 54 430.6c19.6 27.8 42.9 59 73.5 57.9 29.5-1.2 40.6-18.9 76.3-18.9 35.6 0 45.6 18.9 76.4 18.3 31.7-.6 51.7-28.3 71.2-56.2 22.5-32.8 31.8-64.6 32.3-66.2-.7-.3-61.4-23.5-61-96.8zM259.5 102.5c16.3-19.8 27.3-47.3 24.3-74.5-23.5.9-52 15.7-68.8 35.5-15.1 17.4-28.3 45.4-24.7 72.1 26.2 2 52.9-13.3 69.2-33.1z"/>
+<path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.2-39.3.6-75.5 22.8-95.7 58C-17.2 269.2 13 373.6 54 430.6c19.6 27.8 42.9 59 73.5 57.9 29.5-1.2 40.6-18.9 76.3-18.9 35.6 0 45.6 18.9 76.4 18.3 31.7-.6 51.7-28.3 71.2-56.2 22.5-32.8 31.8-64.6 32.3-66.2-.7-.3-61.4-23.5-61-96.8z"/>
 </svg>
 </span>
 
 Continue with Apple
-
 </button>
 
 <button class="btn social quick-login">
-
 <div class="bio-title">
 Quick Sign In
 </div>
@@ -322,23 +331,30 @@ Quick Sign In
 <div class="bio-subtitle">
 Use Face ID or Fingerprint
 </div>
-
 </button>
 
 <div class="link">
-
 Don't have an account?<br>
-
 <a href="app-create-account.html">
-
 Create Account
-
 </a>
-
 </div>
 
 </div>
 </div>
+
+<script>
+function togglePassword() {
+    const password =
+        document.getElementById("password");
+
+    if (password.type === "password") {
+        password.type = "text";
+    } else {
+        password.type = "password";
+    }
+}
+</script>
 
 </body>
 </html>
