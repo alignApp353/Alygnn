@@ -116,44 +116,16 @@
     overflow-wrap:break-word;
     white-space:normal;
   }
-  .headline-empty{
-    color:#9BA8B3;
-    font-style:italic;
-  }
-  [contenteditable="true"]{
-    outline:none;
-    border-radius:6px;
-    transition:background .15s;
-  }
-  [contenteditable="true"]:hover{
-    background:rgba(93,127,163,0.06);
-  }
-  [contenteditable="true"]:focus{
-    background:rgba(93,127,163,0.08);
-  }
-  [contenteditable="true"]:empty::before{
-    content: attr(data-placeholder);
-    color:#9BA8B3;
-    font-style:italic;
-  }
-  #profile-name:empty::before{
-    font-style:normal;
-    font-family:'DM Serif Display', serif;
-  }
+  .headline-empty{ color:#9BA8B3; font-style:italic; }
+  [contenteditable="true"]{ outline:none; border-radius:6px; transition:background .15s; }
+  [contenteditable="true"]:hover{ background:rgba(93,127,163,0.06); }
+  [contenteditable="true"]:focus{ background:rgba(93,127,163,0.08); }
+  [contenteditable="true"]:empty::before{ content: attr(data-placeholder); color:#9BA8B3; font-style:italic; }
+  #profile-name:empty::before{ font-style:normal; font-family:'DM Serif Display', serif; }
 
   .section{ margin-bottom:40px; }
-  .section-header{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    margin-bottom:16px;
-  }
-  .section-header h2{
-    font-family:'DM Serif Display', serif;
-    font-size:1.15rem;
-    letter-spacing:-0.3px;
-    color:var(--text);
-  }
+  .section-header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .section-header h2{ font-family:'DM Serif Display', serif; font-size:1.15rem; letter-spacing:-0.3px; color:var(--text); }
 
   .empty-state{
     background:var(--card-bg);
@@ -167,8 +139,7 @@
 
   .links-row{ display:flex; gap:14px; flex-wrap:wrap; }
   .link-card{
-    flex:1;
-    min-width:200px;
+    flex:1; min-width:200px;
     background:var(--card-bg);
     border:1px solid var(--border);
     border-radius:14px;
@@ -209,40 +180,28 @@
   </div>
 
   <div class="section">
-    <div class="section-header">
-      <h2>Applied jobs</h2>
-    </div>
-    <div class="empty-state">
-      No applied jobs yet. Once you swipe right on a job, you'll see it here.
-    </div>
+    <div class="section-header"><h2>Applied jobs</h2></div>
+    <div class="empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
   </div>
 
   <div class="section">
-    <div class="section-header">
-      <h2>Skipped jobs</h2>
-    </div>
-    <div class="empty-state">
-      No skipped jobs yet. Once you swipe left on a job, you'll see it here.
-    </div>
+    <div class="section-header"><h2>Skipped jobs</h2></div>
+    <div class="empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
   </div>
 
   <div class="section">
-    <div class="section-header">
-      <h2>Settings</h2>
-    </div>
+    <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
       <a href="preferences.html" class="link-card">
         <span class="icon">⚙️</span>
         <div class="label">Edit preferences</div>
         <div class="sub">Update salary, location, work style</div>
       </a>
-
       <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
         <div class="label" id="resume-card-label">Upload resume</div>
         <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
       </a>
-
       <a href="account-settings.html" class="link-card">
         <span class="icon">🔒</span>
         <div class="label">Account settings</div>
@@ -270,19 +229,14 @@
     if (!currentUserId) return;
     const value = el.textContent.trim();
     const column = key === 'profileName' ? 'full_name' : 'headline';
-    const { error } = await sb.from('profiles').upsert({
-      id: currentUserId,
-      [column]: value,
-    });
+    const { error } = await sb.from('profiles').upsert({ id: currentUserId, [column]: value });
     if (error) console.error('Failed to save', column, error);
     if (column === 'full_name') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
     }
   }
 
-  function clearPlaceholder(el){
-    el.classList.remove('headline-empty');
-  }
+  function clearPlaceholder(el){ el.classList.remove('headline-empty'); }
 
   function limitLength(el, max){
     el.addEventListener('input', function(){
@@ -305,13 +259,11 @@
     const started = Date.now();
     let result = await sb.auth.getSession();
     let session = result.data.session;
-
     while (!session && Date.now() - started < maxWaitMs) {
       await new Promise(resolve => setTimeout(resolve, 400));
       result = await sb.auth.getSession();
       session = result.data.session;
     }
-
     return session;
   }
 
@@ -334,7 +286,6 @@
     labelEl.textContent = 'View resume';
 
     if (signedUrlError) {
-      console.error('Failed to create signed URL', signedUrlError);
       subEl.textContent = 'Replace or re-upload your resume';
       cardEl.href = 'align-upload.html';
       return;
@@ -354,6 +305,19 @@
     }
 
     currentUserId = session.user.id;
+
+    // Gate: no password set means the account setup isn't complete.
+    // Send them back to set-password.html before they can access anything.
+    const { data: pwCheck } = await sb
+      .from('profiles')
+      .select('has_password')
+      .eq('id', currentUserId)
+      .single();
+
+    if (!pwCheck?.has_password) {
+      window.location.href = 'set-password.html';
+      return;
+    }
 
     const { data: profile, error } = await sb
       .from('profiles')
