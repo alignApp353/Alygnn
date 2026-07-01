@@ -311,15 +311,8 @@
     transition: all 0.2s;
   }
 
-  .swipe-skip {
-    background: rgba(215,154,154,0.15);
-    color: #a05858;
-  }
-
-  .swipe-apply {
-    background: rgba(111,191,143,0.15);
-    color: #3a9463;
-  }
+  .swipe-skip { background: rgba(215,154,154,0.15); color: #a05858; }
+  .swipe-apply { background: rgba(111,191,143,0.15); color: #3a9463; }
 
   .float-label {
     position: absolute;
@@ -383,8 +376,7 @@
   .step-card::before {
     content: attr(data-num);
     position: absolute;
-    top: -10px;
-    right: 20px;
+    top: -10px; right: 20px;
     font-family: 'DM Serif Display', serif;
     font-size: 80px;
     color: var(--border);
@@ -393,12 +385,9 @@
   }
 
   .step-icon {
-    width: 48px;
-    height: 48px;
+    width: 48px; height: 48px;
     border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     margin-bottom: 20px;
     font-size: 22px;
   }
@@ -407,17 +396,8 @@
   .icon-green { background: rgba(140,182,155,0.15); }
   .icon-mint { background: rgba(111,191,143,0.15); }
 
-  .step-title {
-    font-size: 18px;
-    font-weight: 500;
-    margin-bottom: 10px;
-  }
-
-  .step-desc {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.65;
-  }
+  .step-title { font-size: 18px; font-weight: 500; margin-bottom: 10px; }
+  .step-desc { font-size: 14px; color: var(--text-muted); line-height: 1.65; }
 
   .features-grid {
     display: grid;
@@ -556,14 +536,11 @@
   }
 
   .mini-job-logo {
-    width: 36px;
-    height: 36px;
+    width: 36px; height: 36px;
     border-radius: 10px;
     background: var(--brand);
     color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     font-family: 'DM Serif Display', serif;
     font-size: 14px;
     flex-shrink: 0;
@@ -634,14 +611,11 @@
   }
 
   .profile-avatar {
-    width: 56px;
-    height: 56px;
+    width: 56px; height: 56px;
     border-radius: 50%;
     background: var(--brand);
     color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     font-family: 'DM Serif Display', serif;
     font-size: 20px;
     flex-shrink: 0;
@@ -671,10 +645,8 @@
   .timeline-item::before {
     content: "";
     position: absolute;
-    left: -26px;
-    top: 4px;
-    width: 10px;
-    height: 10px;
+    left: -26px; top: 4px;
+    width: 10px; height: 10px;
     border-radius: 50%;
     background: var(--brand);
   }
@@ -732,11 +704,7 @@
     margin-bottom: 16px;
   }
 
-  .testimonial-author {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
+  .testimonial-author { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
   .faq-list {
     display: flex;
@@ -830,11 +798,7 @@
     gap: 20px;
   }
 
-  footer a {
-    color: var(--text-muted);
-    text-decoration: none;
-  }
-
+  footer a { color: var(--text-muted); text-decoration: none; }
   footer a:hover { color: var(--brand); }
 
   @keyframes fadeUp {
@@ -865,7 +829,6 @@
     .features-grid { grid-template-columns: 1fr; }
     .stats-row { grid-template-columns: 1fr; }
     .nav-links { display: none; }
-    .pricing-grid { grid-template-columns: 1fr; }
     .trust-row { grid-template-columns: 1fr; }
     .testimonial-grid { grid-template-columns: 1fr; }
     .logo-strip { gap: 28px; }
@@ -934,7 +897,6 @@
           <button class="swipe-btn swipe-apply">✓ Apply</button>
         </div>
       </div>
-
       <div class="float-label float-salary">
         <span style="font-size:11px;color:var(--text-muted);">Base salary</span>
         <strong>$160,000</strong>
@@ -951,7 +913,6 @@
   <p class="section-label">How it works</p>
   <h2>Three steps to your<br>dream role</h2>
   <p class="section-sub">No more endless scrolling. Alygnn learns what you're worth and surfaces jobs that meet your standards.</p>
-
   <div class="steps">
     <div class="step-card" data-num="1">
       <div class="step-icon icon-blue">📄</div>
@@ -973,25 +934,15 @@
 
 <section class="section" style="padding-top:0; background: white;">
   <div class="stats-row">
-    <div class="stat">
-      <div class="stat-num">AI</div>
-      <div class="stat-label">Powered job matching</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">Beta</div>
-      <div class="stat-label">Launching in Raleigh first</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">3×</div>
-      <div class="stat-label">Cleaner than endless job scrolling</div>
-    </div>
+    <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Powered job matching</div></div>
+    <div class="stat"><div class="stat-num">Beta</div><div class="stat-label">Launching in Raleigh first</div></div>
+    <div class="stat"><div class="stat-num">3×</div><div class="stat-label">Cleaner than endless job scrolling</div></div>
   </div>
 </section>
 
 <section class="section" id="features">
   <p class="section-label">Features</p>
   <h2>Everything your job<br>search was missing</h2>
-
   <div class="features-grid">
     <div class="feature-card accent">
       <div class="feat-icon">✦</div>
@@ -1006,7 +957,7 @@
     <div class="feature-card">
       <div class="feat-icon" style="color:var(--brand)">📍</div>
       <div class="feat-title">Location filters</div>
-      <p class="feat-desc">Filter by city, state, country, or remote. Set a commute radius. Only see roles where you actually want to live.</p>
+      <p class="feat-desc">Filter by city, state, country, or remote. Only see roles where you actually want to live.</p>
     </div>
     <div class="feature-card">
       <div class="feat-icon" style="color:var(--mint)">📊</div>
@@ -1033,47 +984,27 @@
       <span class="frame-dot yellow"></span>
       <span class="frame-dot green"></span>
     </div>
-
     <div class="frame-body">
       <div class="preview-panel active" id="panel-candidate">
         <div class="dash-stats-row">
-          <div class="dash-stat">
-            <div class="dash-stat-num">8</div>
-            <div class="dash-stat-label">New matches today</div>
-          </div>
-          <div class="dash-stat">
-            <div class="dash-stat-num">5</div>
-            <div class="dash-stat-label">Active applications</div>
-          </div>
-          <div class="dash-stat">
-            <div class="dash-stat-num">23</div>
-            <div class="dash-stat-label">Profile views</div>
-          </div>
+          <div class="dash-stat"><div class="dash-stat-num">8</div><div class="dash-stat-label">New matches today</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">5</div><div class="dash-stat-label">Active applications</div></div>
+          <div class="dash-stat"><div class="dash-stat-num">23</div><div class="dash-stat-label">Profile views</div></div>
         </div>
-
         <div class="mini-job-list">
           <div class="mini-job-card">
             <div class="mini-job-logo">D</div>
-            <div class="mini-job-info">
-              <div class="mini-job-title">Senior Product Designer</div>
-              <div class="mini-job-company">Demo Co. · Remote OK</div>
-            </div>
+            <div class="mini-job-info"><div class="mini-job-title">Senior Product Designer</div><div class="mini-job-company">Demo Co. · Remote OK</div></div>
             <div class="mini-job-match">94% match</div>
           </div>
           <div class="mini-job-card">
             <div class="mini-job-logo">N</div>
-            <div class="mini-job-info">
-              <div class="mini-job-title">Backend Engineer</div>
-              <div class="mini-job-company">Northline Labs · Raleigh, NC</div>
-            </div>
+            <div class="mini-job-info"><div class="mini-job-title">Backend Engineer</div><div class="mini-job-company">Northline Labs · Raleigh, NC</div></div>
             <div class="mini-job-match">89% match</div>
           </div>
           <div class="mini-job-card">
             <div class="mini-job-logo">L</div>
-            <div class="mini-job-info">
-              <div class="mini-job-title">Sales Development Rep</div>
-              <div class="mini-job-company">LaunchWorks · Remote</div>
-            </div>
+            <div class="mini-job-info"><div class="mini-job-title">Sales Development Rep</div><div class="mini-job-company">LaunchWorks · Remote</div></div>
             <div class="mini-job-match">85% match</div>
           </div>
         </div>
@@ -1105,19 +1036,14 @@
       <div class="preview-panel" id="panel-resume">
         <div class="profile-header">
           <div class="profile-avatar">M</div>
-          <div>
-            <div class="profile-name">Maya Chen</div>
-            <div class="profile-role">Backend Engineer · Raleigh, NC</div>
-          </div>
+          <div><div class="profile-name">Maya Chen</div><div class="profile-role">Backend Engineer · Raleigh, NC</div></div>
         </div>
-
         <div class="profile-skills">
           <span class="tag">Python</span>
           <span class="tag">PostgreSQL</span>
           <span class="tag">AWS</span>
           <span class="tag">REST APIs</span>
         </div>
-
         <div class="timeline">
           <div class="timeline-item">
             <div class="timeline-role">Backend Engineer</div>
@@ -1135,62 +1061,28 @@
   </div>
 </section>
 
-<section class="section" style="background:white;">
+<!-- Interactive Preview replaced with a single link to demo.html -->
+<section class="section" style="background:white; text-align:center;">
   <p class="section-label">Interactive Preview</p>
-  <h2>Experience Alygnn<br>before signing up.</h2>
-  <p class="section-sub">Try a quick demo of how Alygnn works for both candidates and employers. Example data only.</p>
-
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feat-icon">👤</div>
-      <div class="feat-title">Job Seeker Preview</div>
-      <p class="feat-desc">Browse sample jobs and experience the swipe-based matching process before creating an account.</p>
-      <button class="btn-primary" onclick="window.location.href='swipe-demo.html'" style="margin-top:20px;">
-        Try Candidate Demo
-      </button>
-    </div>
-
-    <div class="feature-card">
-      <div class="feat-icon">🏢</div>
-      <div class="feat-title">Employer Preview</div>
-      <p class="feat-desc">See how employers review applicants, view match scores, and manage candidates.</p>
-      <button class="btn-primary" onclick="window.location.href='employer-demo.html'" style="margin-top:20px;background:#1A2530;">
-        Try Employer Demo
-      </button>
-    </div>
-  </div>
-
-  <p style="margin-top:24px;color:var(--text-muted);font-size:13px;">
-    Demo preview only. Example data shown.
-  </p>
+  <h2>See Alygnn in action</h2>
+  <p class="section-sub" style="margin:16px auto 32px;">Try a live demo as a job seeker or employer — no account needed.</p>
+  <button class="btn-primary" onclick="window.location.href='demo.html'">Try the demo →</button>
 </section>
 
 <section class="section" id="trust">
   <p class="section-label">Trust</p>
   <h2>Built for growing companies<br>across Raleigh and beyond.</h2>
-
   <div class="trust-row">
-    <div class="stat">
-      <div class="stat-num">Early</div>
-      <div class="stat-label">Employer access opening soon</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">Beta</div>
-      <div class="stat-label">Candidate matching in progress</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">AI</div>
-      <div class="stat-label">Matching built around fit</div>
-    </div>
+    <div class="stat"><div class="stat-num">Early</div><div class="stat-label">Employer access opening soon</div></div>
+    <div class="stat"><div class="stat-num">Beta</div><div class="stat-label">Candidate matching in progress</div></div>
+    <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Matching built around fit</div></div>
   </div>
-
   <div class="logo-strip">
     <span>Raleigh</span>
     <span>Durham</span>
     <span>Cary</span>
     <span>Triangle Area</span>
   </div>
-
   <div class="testimonial-grid">
     <div class="testimonial-card">
       <p class="testimonial-quote">"Alygnn is being built to reduce the noise in hiring and help employers see better-fit candidates faster."</p>
@@ -1207,7 +1099,6 @@
   <p class="section-label">FAQ</p>
   <h2>Questions, answered.</h2>
   <p class="section-sub">Everything you need to know before you get started.</p>
-
   <div class="faq-list">
     <details class="faq-item">
       <summary>How does Alygnn match jobs?</summary>
@@ -1241,9 +1132,7 @@
   <p style="font-size:17px;line-height:1.8;color:#4A5968;font-weight:300;max-width:640px;margin-top:16px;">
     Alygnn fixes that — an AI-powered platform that reads your resume, understands your background, and helps connect candidates with opportunities that better align with their goals.
   </p>
-  <p style="font-size:17px;line-height:1.8;color:#1A2530;font-weight:500;margin-top:32px;">
-    <br>Established 2026.
-  </p>
+  <p style="font-size:17px;line-height:1.8;color:#1A2530;font-weight:500;margin-top:32px;"><br>Established 2026.</p>
 </section>
 
 <div class="cta-section">
@@ -1269,33 +1158,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // Checks session on load and updates the nav so a logged-in user
-  // sees "My account" instead of "Sign in" — preventing the false
-  // impression that they've been logged out when they hit the homepage.
   (async () => {
     const { createClient } = supabase;
     const sb = createClient(
       'https://auth.alygnn.com',
       'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
     );
-
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-
     const authLink = document.getElementById('nav-auth-link');
     const ctaBtn = document.getElementById('nav-cta-btn');
-
-    if (authLink) {
-      authLink.textContent = 'My account';
-      authLink.href = 'account.html';
-    }
-
-    // Hide "Get started" for logged-in users since they already have
-    // an account — replace with a "Swipe jobs" shortcut instead.
-    if (ctaBtn) {
-      ctaBtn.textContent = 'Swipe jobs';
-      ctaBtn.onclick = () => window.location.href = 'swipe.html';
-    }
+    if (authLink) { authLink.textContent = 'My account'; authLink.href = 'account.html'; }
+    if (ctaBtn) { ctaBtn.textContent = 'Swipe jobs'; ctaBtn.onclick = () => window.location.href = 'swipe.html'; }
   })();
 </script>
 
