@@ -310,12 +310,19 @@
     // Send them back to set-password.html before they can access anything.
     const { data: pwCheck } = await sb
       .from('profiles')
-      .select('has_password')
+      .select('has_password, role')
       .eq('id', currentUserId)
       .single();
 
     if (!pwCheck?.has_password) {
       window.location.href = 'set-password.html';
+      return;
+    }
+
+    // Role gate: employers should never land on the candidate hub.
+    const role = pwCheck?.role || session.user.user_metadata?.role || 'seeker';
+    if (role === 'employer') {
+      window.location.href = 'employer-account.html';
       return;
     }
 
