@@ -850,7 +850,7 @@
   </ul>
   <div class="nav-right">
     <a class="nav-signin" href="employers.html">For employers</a>
-    <a class="nav-signin" id="nav-auth-link" href="login.html">Sign in</a>
+    <a class="nav-signin" id="nav-auth-link" href="login.html?role=jobseeker">Sign in</a>
     <button class="nav-cta" id="nav-cta-btn" onclick="window.location.href='align-upload.html'">Get started</button>
   </div>
 </nav>
@@ -1062,13 +1062,16 @@
       'https://auth.alygnn.com',
       'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
     );
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
 
     const authLink = document.getElementById('nav-auth-link');
     const ctaBtn = document.getElementById('nav-cta-btn');
 
-    // Check role from profiles table (most reliable source)
+    // This is the JOB SEEKER homepage.
+    // Employers are allowed to view this page, but we do NOT redirect them
+    // and we do NOT change the top buttons into employer-account buttons.
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+
     const { data: profile } = await sb
       .from('profiles')
       .select('role')
@@ -1077,40 +1080,21 @@
 
     const role = profile?.role || session.user.user_metadata?.role || 'seeker';
 
-    if (role === 'employer') {
+    // Only change the navbar for real job seekers.
+    // If the logged-in user is an employer, keep this page looking like the job seeker homepage.
+    if (role === 'seeker' || role === 'jobseeker' || role === 'employee') {
+      if (authLink) {
+        authLink.textContent = 'My account';
+        authLink.href = 'account.html';
+      }
 
-  // Allow employers to browse the job seeker homepage
-  // without redirecting them back
-
-  if (authLink) {
-    authLink.textContent = 'Employer Account';
-    authLink.href = 'employer-account.html';
-  }
-
-  if (ctaBtn) {
-    ctaBtn.textContent = 'Employer Dashboard';
-    ctaBtn.onclick = () => {
-      window.location.href = 'employer-dashboard.html';
-    };
-  }
-
-} else {
-
-  // Job seeker
-
-  if (authLink) {
-    authLink.textContent = 'My Account';
-    authLink.href = 'account.html';
-  }
-
-  if (ctaBtn) {
-    ctaBtn.textContent = 'Swipe Jobs';
-    ctaBtn.onclick = () => {
-      window.location.href = 'swipe.html';
-    };
-  }
-
-}
+      if (ctaBtn) {
+        ctaBtn.textContent = 'Swipe jobs';
+        ctaBtn.onclick = () => {
+          window.location.href = 'swipe.html';
+        };
+      }
+    }
   })();
 </script>
 
