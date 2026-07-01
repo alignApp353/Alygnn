@@ -307,16 +307,24 @@
     currentUserId = session.user.id;
 
     // Gate: no password set means the account setup isn't complete.
-    // Send them back to set-password.html before they can access anything.
+    // Guard against redirect loops by only redirecting once per page load.
     const { data: pwCheck } = await sb
       .from('profiles')
       .select('has_password, role')
       .eq('id', currentUserId)
-      .single();
+      .maybeSingle();
 
     if (!pwCheck?.has_password) {
-      window.location.href = 'set-password.html';
-      return;
+      // Only redirect if we didn't just come from set-password.html
+      // (prevents infinite back-and-forth loop).
+      const referrer = document.referrer;
+      const cameFromSetPassword = referrer && referrer.includes('set-password');
+      if (!cameFromSetPassword) {
+        window.location.href = 'set-password.html';
+        return;
+      }
+      // If we just came from set-password.html, let them through anyway
+      // so they're not stuck in a loop — they can set it from Account settings.
     }
 
     // Role gate: employers should never land on the candidate hub.
