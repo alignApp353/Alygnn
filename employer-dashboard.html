@@ -523,6 +523,120 @@
     document.getElementById('f-style').value = 'Remote';
   }
 
+
+  function normalizeText(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function countRealWords(value) {
+    const words = normalizeText(value).match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+    return words.length;
+  }
+
+  function hasRepeatedJunk(value) {
+    const clean = normalizeText(value).toLowerCase();
+    if (!clean) return true;
+    if (/^(.)\1{3,}$/.test(clean.replace(/\s/g, ''))) return true;
+    if (/^[a-z]{1,3}(\s+[a-z]{1,3}){0,4}$/.test(clean)) return true;
+    if (/^[^a-zA-Z0-9]+$/.test(clean)) return true;
+    return false;
+  }
+
+  function containsBlockedJunk(value) {
+    const text = normalizeText(value).toLowerCase();
+    const blocked = [
+      'test', 'asdf', 'qwerty', 'fake', 'random', 'dummy', 'sample',
+      'lorem ipsum', 'abc', '123', 'sklcnsa', 'slkcnsa', 'aaa', 'zzz'
+    ];
+    return blocked.some(word => text.includes(word));
+  }
+
+  function isValidJobTitle(title) {
+    const clean = normalizeText(title);
+    if (clean.length < 6 || clean.length > 80) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (countRealWords(clean) < 2) return false;
+    return /^[A-Za-z0-9&.,'’()\-/ ]+$/.test(clean);
+  }
+
+  function isValidCompanyName(company) {
+    const clean = normalizeText(company);
+    if (clean.length < 3 || clean.length > 80) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    return /^[A-Za-z0-9&.,'’()\-/ ]+$/.test(clean);
+  }
+
+  function isValidLocation(location, workStyle) {
+    const clean = normalizeText(location);
+    if (clean.length < 4 || clean.length > 80) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+
+    if (workStyle === 'Remote') {
+      return /remote|united states|usa|u\.s\.|[A-Za-z]{3,}/i.test(clean);
+    }
+
+    // Requires something that looks like City, ST or City State.
+    return /^[A-Za-z .'-]{3,},?\s+[A-Za-z]{2,}(\s+[A-Za-z]{2,})*$/.test(clean);
+  }
+
+  function isValidSalary(salary) {
+    const clean = normalizeText(salary).toLowerCase();
+    if (clean.length < 4 || clean.length > 60) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (!/\d/.test(clean)) return false;
+    return /(\$|k\b|hour|hr|year|yr|salary|annually|per)/i.test(clean);
+  }
+
+  function isValidDescription(description) {
+    const clean = normalizeText(description);
+    if (clean.length < 180) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (countRealWords(clean) < 35) return false;
+
+    const roleSignals = ['responsibilities', 'role', 'team', 'customer', 'training', 'schedule', 'experience', 'skills', 'work', 'position'];
+    const foundSignals = roleSignals.filter(word => clean.toLowerCase().includes(word)).length;
+    return foundSignals >= 2;
+  }
+
+  function validateJob(job) {
+    if (!isValidJobTitle(job.title)) {
+      return 'Enter a real job title, like "Customer Service Representative" or "Sales Account Manager".';
+    }
+
+    if (!isValidCompanyName(job.company)) {
+      return 'Enter a real company name.';
+    }
+
+    if (!isValidLocation(job.location, job.work_style)) {
+      return job.work_style === 'Remote'
+        ? 'Enter a valid location, like "Remote - United States".'
+        : 'Enter a real location, like "Raleigh, NC".';
+    }
+
+    if (!isValidSalary(job.salary)) {
+      return 'Enter a real salary, like "$18/hour", "$45,000-$60,000", or "$55k/year".';
+    }
+
+    if (!isValidDescription(job.description)) {
+      return 'Job description must be at least 180 characters and explain the real role, responsibilities, and work.';
+    }
+
+    const requirements = job.requirements
+      .split('\n')
+      .map(r => normalizeText(r))
+      .filter(Boolean);
+
+    if (requirements.length < 3) {
+      return 'Add at least 3 real requirements, one per line.';
+    }
+
+    if (requirements.some(req => req.length < 12 || countRealWords(req) < 2 || containsBlockedJunk(req) || hasRepeatedJunk(req))) {
+      return 'Each requirement must be a real sentence or phrase, not random text.';
+    }
+
+    return '';
+  }
+
   async function postJob() {
     if (!employerVerified) {
       showToast('Your business must be approved by Alygnn before posting jobs.');
@@ -532,68 +646,9 @@
 
     const job = collectJobForm();
 
-    const bannedWords = [
-      'test',
-      'asdf',
-      'abc',
-      'qwerty',
-      'sklcnsa',
-      'slkcnsa',
-      'fake',
-      'random',
-      '123'
-    ];
-
-    const titleLower = job.title.toLowerCase();
-    const descriptionLower = job.description.toLowerCase();
-
-    if (job.title.length < 5) {
-      showToast('Job title must be at least 5 characters.');
-      return;
-    }
-
-    if (bannedWords.some(word => titleLower.includes(word))) {
-      showToast('Please enter a real job title.');
-      return;
-    }
-
-    if (job.company.length < 2) {
-      showToast('Please enter a company name.');
-      return;
-    }
-
-    if (job.location.length < 2) {
-      showToast('Please enter a valid location.');
-      return;
-    }
-
-    if (!/\d/.test(job.salary)) {
-      showToast('Salary must contain numbers, like $45,000 or $18/hour.');
-      return;
-    }
-
-    if (job.description.length < 100) {
-      showToast('Job description must be at least 100 characters.');
-      return;
-    }
-
-    if (bannedWords.some(word => descriptionLower.includes(word))) {
-      showToast('Please enter a real job description.');
-      return;
-    }
-
-    const requirements = job.requirements
-      .split('\n')
-      .map(r => r.trim())
-      .filter(Boolean);
-
-    if (requirements.length < 3) {
-      showToast('Please add at least 3 requirements, one per line.');
-      return;
-    }
-
-    if (requirements.some(req => req.length < 5)) {
-      showToast('Each requirement should be at least 5 characters.');
+    const validationError = validateJob(job);
+    if (validationError) {
+      showToast(validationError);
       return;
     }
 
