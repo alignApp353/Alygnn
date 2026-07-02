@@ -122,6 +122,20 @@
   select.form-input { cursor: pointer; }
   .btn-post { background: var(--brand); color: white; border: none; border-radius: 12px; padding: 14px 32px; font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
   .btn-post:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-post.locked, .btn-primary.locked { opacity: .45; cursor: not-allowed; transform: none; }
+  .verification-lock {
+    background: rgba(231,184,109,0.12);
+    border: 1px solid rgba(231,184,109,0.4);
+    color: #7a5a1a;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .job-actions { display:flex; gap:8px; align-items:center; }
+  .btn-danger { font-size: 12px; color: #a05858; background: rgba(215,154,154,0.15); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-danger:hover { opacity: .8; }
 
   .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
   .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
@@ -234,8 +248,11 @@
     <!-- POST JOB -->
     <div class="panel" id="panel-post">
       <div class="page-header">
-        <div class="page-title">Post a Job</div>
+        <div class="page-title" id="post-form-title">Post a Job</div>
         <div class="page-sub">Fill in the details and start finding candidates</div>
+      </div>
+      <div class="verification-lock" id="verification-lock" style="display:none;">
+        Your business must be approved by Alygnn before you can post jobs.
       </div>
       <div class="form-card">
         <div class="form-grid">
@@ -281,7 +298,8 @@
             <textarea class="form-input" id="f-reqs" placeholder="3+ years of experience&#10;Proficiency in React&#10;Strong communication skills" style="min-height:90px"></textarea>
           </div>
         </div>
-        <button class="btn-post" onclick="postJob()">Post job →</button>
+        <button class="btn-post" id="post-job-btn" onclick="postJob()">Post job →</button>
+        <button class="btn-view" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none; margin-left:8px;">Cancel edit</button>
       </div>
     </div>
 
@@ -296,9 +314,12 @@
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // In-memory job store for jobs posted this session.
-  // Replace with a real Supabase jobs table when ready.
+  // Temporary in-memory job store for this page.
+  // Later, connect this to a real Supabase jobs table so jobs persist after refresh.
   let sessionJobs = [];
+  let employerVerified = false;
+  let currentProfile = null;
+  let editingJobIndex = null;
 
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
@@ -315,12 +336,20 @@
       return;
     }
 
-    // Show company name (or person name) instead of email in the nav
-    const { data: profile } = await sb
+    const { data: profile, error: profileError } = await sb
       .from('profiles')
-      .select('company_name, full_name')
+      .select('company_name, full_name, employer_verified, verification_status')
       .eq('id', authedUser.id)
       .maybeSingle();
+
+    if (profileError) {
+      console.error('Failed to load employer profile:', profileError);
+    }
+
+    currentProfile = profile || {};
+    employerVerified =
+      profile?.employer_verified === true &&
+      profile?.verification_status === 'approved';
 
     const displayName =
       profile?.company_name ||
@@ -330,20 +359,74 @@
       authedUser.email || '';
 
     document.getElementById('nav-user-name').textContent = displayName;
+
+    const companyInput = document.getElementById('f-company');
+    if (companyInput && profile?.company_name) {
+      companyInput.value = profile.company_name;
+    }
+
+    updateVerificationUI();
   }
 
   checkAuth();
 
+  function updateVerificationUI() {
+    const lockBox = document.getElementById('verification-lock');
+    const postBtn = document.getElementById('post-job-btn');
+
+    if (employerVerified) {
+      if (lockBox) lockBox.style.display = 'none';
+      if (postBtn) {
+        postBtn.classList.remove('locked');
+        postBtn.disabled = false;
+      }
+      return;
+    }
+
+    const status = currentProfile?.verification_status || 'not_submitted';
+
+    if (lockBox) {
+      lockBox.style.display = 'block';
+      lockBox.innerHTML = `
+        <strong>Business verification required</strong><br>
+        Current status: <strong>${escapeHtml(status)}</strong>. Your business must be approved by Alygnn before you can post jobs.
+        <br><br>
+        <a href="employer-account.html" style="color:#5D7FA3; font-weight:500;">Go to employer account →</a>
+      `;
+    }
+
+    if (postBtn) {
+      postBtn.classList.add('locked');
+      postBtn.disabled = true;
+    }
+  }
+
   function showPanel(name, trigger) {
+    if (name === 'post' && !employerVerified) {
+      showToast('Your business must be approved by Alygnn before posting jobs.');
+    }
+
     const targetPanel = document.getElementById('panel-' + name);
     if (!targetPanel) return;
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     targetPanel.classList.add('active');
+
     const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
       ? trigger
       : document.querySelector(`.nav-item[onclick*="${name}"]`);
+
     if (navButton) navButton.classList.add('active');
+    updateVerificationUI();
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   function renderJobs() {
@@ -358,18 +441,21 @@
       return;
     }
 
-    const jobRows = sessionJobs.map(job => `
+    const jobRows = sessionJobs.map((job, index) => `
       <div class="job-row">
         <div class="job-status active"></div>
         <div class="job-info">
-          <div class="job-title-text">${job.title}</div>
-          <div class="job-meta">${job.type} · ${job.style}${job.salary ? ' · ' + job.salary : ''} · Just posted</div>
+          <div class="job-title-text">${escapeHtml(job.title)}</div>
+          <div class="job-meta">${escapeHtml(job.type)} · ${escapeHtml(job.style)}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''} · ${job.updated ? 'Updated' : 'Just posted'}</div>
         </div>
         <div class="job-stats">
           <div><div class="js-val">0</div><div class="js-label">Views</div></div>
           <div><div class="js-val">0</div><div class="js-label">Applied</div></div>
         </div>
-        <button class="btn-view">Edit</button>
+        <div class="job-actions">
+          <button class="btn-view" onclick="editJob(${index})">Edit</button>
+          <button class="btn-danger" onclick="deleteJob(${index})">Delete</button>
+        </div>
       </div>
     `).join('');
 
@@ -377,29 +463,108 @@
     overviewJobs.innerHTML = jobRows;
   }
 
-  function postJob() {
-    const title = document.getElementById('f-title').value.trim();
-    const company = document.getElementById('f-company').value.trim();
-    if (!title || !company) { showToast('Please fill in job title and company'); return; }
-
-    const job = {
-      title,
-      company,
+  function collectJobForm() {
+    return {
+      title: document.getElementById('f-title').value.trim(),
+      company: document.getElementById('f-company').value.trim(),
       location: document.getElementById('f-location').value.trim(),
       type: document.getElementById('f-type').value,
       style: document.getElementById('f-style').value,
       salary: document.getElementById('f-salary').value.trim(),
+      desc: document.getElementById('f-desc').value.trim(),
+      reqs: document.getElementById('f-reqs').value.trim()
     };
+  }
 
-    sessionJobs.unshift(job);
-    renderJobs();
+  function fillJobForm(job) {
+    document.getElementById('f-title').value = job.title || '';
+    document.getElementById('f-company').value = job.company || currentProfile?.company_name || '';
+    document.getElementById('f-location').value = job.location || '';
+    document.getElementById('f-type').value = job.type || 'Full-time';
+    document.getElementById('f-style').value = job.style || 'Remote';
+    document.getElementById('f-salary').value = job.salary || '';
+    document.getElementById('f-desc').value = job.desc || '';
+    document.getElementById('f-reqs').value = job.reqs || '';
+  }
 
-    ['f-title','f-company','f-location','f-salary','f-desc','f-reqs'].forEach(id => {
+  function clearJobForm() {
+    ['f-title','f-location','f-salary','f-desc','f-reqs'].forEach(id => {
       document.getElementById(id).value = '';
     });
 
-    showToast('🎉 Job posted successfully!');
-    setTimeout(() => showPanel('jobs'), 1200);
+    document.getElementById('f-company').value = currentProfile?.company_name || '';
+    document.getElementById('f-type').value = 'Full-time';
+    document.getElementById('f-style').value = 'Remote';
+  }
+
+  function postJob() {
+    if (!employerVerified) {
+      showToast('Your business must be approved by Alygnn before posting jobs.');
+      updateVerificationUI();
+      return;
+    }
+
+    const job = collectJobForm();
+
+    if (!job.title || !job.company) {
+      showToast('Please fill in job title and company');
+      return;
+    }
+
+    if (editingJobIndex !== null) {
+      sessionJobs[editingJobIndex] = {
+        ...sessionJobs[editingJobIndex],
+        ...job,
+        updated: true
+      };
+      showToast('Job updated successfully!');
+      cancelEdit(false);
+    } else {
+      sessionJobs.unshift(job);
+      showToast('🎉 Job posted successfully!');
+      clearJobForm();
+    }
+
+    renderJobs();
+    setTimeout(() => showPanel('jobs'), 500);
+  }
+
+  function editJob(index) {
+    const job = sessionJobs[index];
+    if (!job) return;
+
+    editingJobIndex = index;
+    fillJobForm(job);
+
+    document.getElementById('post-form-title').textContent = 'Edit Job';
+    document.getElementById('post-job-btn').textContent = 'Save changes →';
+    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+    showPanel('post');
+  }
+
+  function cancelEdit(clearForm = true) {
+    editingJobIndex = null;
+
+    document.getElementById('post-form-title').textContent = 'Post a Job';
+    document.getElementById('post-job-btn').textContent = 'Post job →';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+
+    if (clearForm) clearJobForm();
+    updateVerificationUI();
+  }
+
+  function deleteJob(index) {
+    const job = sessionJobs[index];
+    if (!job) return;
+
+    if (!confirm(`Delete "${job.title}"?`)) return;
+
+    sessionJobs.splice(index, 1);
+    if (editingJobIndex === index) cancelEdit();
+
+    renderJobs();
+    showToast('Job deleted.');
   }
 
   async function logout() {
@@ -413,7 +578,7 @@
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
   }
 </script>
 </body>
