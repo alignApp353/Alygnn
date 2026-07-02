@@ -409,6 +409,17 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
+  function getCurrentBusinessProfileFromPage() {
+    return {
+      company_name: document.getElementById('company-name')?.textContent.trim() || '',
+      company_headline: document.getElementById('company-headline')?.textContent.trim() || '',
+      company_website: document.getElementById('company-website')?.value.trim() || '',
+      company_phone: document.getElementById('company-phone')?.value.trim() || '',
+      business_email: document.getElementById('business-email')?.value.trim() || '',
+      business_address: document.getElementById('business-address')?.value.trim() || ''
+    };
+  }
+
   // Shows the verification banner based on field validation and auto-approval status
   function updateVerificationBanner(){
     const profile = getCurrentBusinessProfileFromPage();
