@@ -119,10 +119,7 @@
     background:var(--mint);
     flex-shrink:0;
   }
-  .account-job-info{
-    flex:1;
-    min-width:0;
-  }
+  .account-job-info{ flex:1; min-width:0; }
   .account-job-title{
     font-size:15px;
     font-weight:500;
@@ -213,7 +210,9 @@
       <h2>Posted jobs</h2>
       <a href="employer-dashboard.html" class="section-link">Post a job →</a>
     </div>
-    <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
+    <div id="posted-jobs-list">
+      <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
+    </div>
   </div>
 
   <div class="section">
@@ -481,7 +480,7 @@
 
     if (error) {
       console.error('Failed to load employer jobs:', error);
-      jobsBox.innerHTML = '<div class="empty-state">Could not load jobs right now.</div>';
+      jobsBox.innerHTML = '<div class="empty-state">Could not load jobs right now. Open the console for the Supabase error.</div>';
       return;
     }
 
@@ -495,9 +494,7 @@
         <div class="account-job-dot"></div>
         <div class="account-job-info">
           <div class="account-job-title">${escapeHtml(job.title)}</div>
-          <div class="account-job-meta">
-            ${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.location ? ' · ' + escapeHtml(job.location) : ''}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}
-          </div>
+          <div class="account-job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.location ? ' · ' + escapeHtml(job.location) : ''}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}</div>
         </div>
         <a href="employer-dashboard.html" class="section-link">Manage →</a>
       </div>
