@@ -532,8 +532,68 @@
 
     const job = collectJobForm();
 
-    if (!job.title || !job.company) {
-      showToast('Please fill in job title and company');
+    const bannedWords = [
+      'test',
+      'asdf',
+      'abc',
+      'qwerty',
+      'sklcnsa',
+      'slkcnsa',
+      'fake',
+      'random',
+      '123'
+    ];
+
+    const titleLower = job.title.toLowerCase();
+    const descriptionLower = job.description.toLowerCase();
+
+    if (job.title.length < 5) {
+      showToast('Job title must be at least 5 characters.');
+      return;
+    }
+
+    if (bannedWords.some(word => titleLower.includes(word))) {
+      showToast('Please enter a real job title.');
+      return;
+    }
+
+    if (job.company.length < 2) {
+      showToast('Please enter a company name.');
+      return;
+    }
+
+    if (job.location.length < 2) {
+      showToast('Please enter a valid location.');
+      return;
+    }
+
+    if (!/\d/.test(job.salary)) {
+      showToast('Salary must contain numbers, like $45,000 or $18/hour.');
+      return;
+    }
+
+    if (job.description.length < 100) {
+      showToast('Job description must be at least 100 characters.');
+      return;
+    }
+
+    if (bannedWords.some(word => descriptionLower.includes(word))) {
+      showToast('Please enter a real job description.');
+      return;
+    }
+
+    const requirements = job.requirements
+      .split('\n')
+      .map(r => r.trim())
+      .filter(Boolean);
+
+    if (requirements.length < 3) {
+      showToast('Please add at least 3 requirements, one per line.');
+      return;
+    }
+
+    if (requirements.some(req => req.length < 5)) {
+      showToast('Each requirement should be at least 5 characters.');
       return;
     }
 
