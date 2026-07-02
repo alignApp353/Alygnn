@@ -314,12 +314,11 @@
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Temporary in-memory job store for this page.
-  // Later, connect this to a real Supabase jobs table so jobs persist after refresh.
-  let sessionJobs = [];
+  let jobs = [];
   let employerVerified = false;
   let currentProfile = null;
-  let editingJobIndex = null;
+  let currentUser = null;
+  let editingJobId = null;
 
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
@@ -329,6 +328,8 @@
       window.location.href = 'login.html';
       return;
     }
+
+    currentUser = authedUser;
 
     const role = String(authedUser.user_metadata?.role || '').toLowerCase();
     if (role === 'seeker' || role === 'job_seeker') {
@@ -366,6 +367,7 @@
     }
 
     updateVerificationUI();
+    await loadJobs();
   }
 
   checkAuth();
@@ -408,8 +410,10 @@
 
     const targetPanel = document.getElementById('panel-' + name);
     if (!targetPanel) return;
+
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
     targetPanel.classList.add('active');
 
     const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
@@ -429,32 +433,54 @@
       .replaceAll("'", '&#039;');
   }
 
+  async function loadJobs() {
+    if (!currentUser) return;
+
+    const { data, error } = await sb
+      .from('jobs')
+      .select('*')
+      .eq('employer_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to load jobs:', error);
+      showToast('Could not load jobs from Supabase.');
+      return;
+    }
+
+    jobs = data || [];
+    renderJobs();
+  }
+
   function renderJobs() {
     const jobsList = document.getElementById('jobs-list');
     const overviewJobs = document.getElementById('overview-jobs');
 
-    document.getElementById('stat-active').textContent = sessionJobs.length;
+    document.getElementById('stat-active').textContent = jobs.filter(job => job.status !== 'deleted').length;
+    document.getElementById('stat-views').textContent = jobs.reduce((sum, job) => sum + (job.views || 0), 0);
+    document.getElementById('stat-swipes').textContent = jobs.reduce((sum, job) => sum + (job.applied || 0), 0);
+    document.getElementById('stat-candidates').textContent = jobs.reduce((sum, job) => sum + (job.applied || 0), 0);
 
-    if (sessionJobs.length === 0) {
+    if (jobs.length === 0) {
       jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active listings</div>Post your first job to start receiving candidates.</div>`;
       overviewJobs.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No jobs posted yet</div>Post your first job to start seeing activity here.</div>`;
       return;
     }
 
-    const jobRows = sessionJobs.map((job, index) => `
+    const jobRows = jobs.map(job => `
       <div class="job-row">
         <div class="job-status active"></div>
         <div class="job-info">
           <div class="job-title-text">${escapeHtml(job.title)}</div>
-          <div class="job-meta">${escapeHtml(job.type)} · ${escapeHtml(job.style)}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''} · ${job.updated ? 'Updated' : 'Just posted'}</div>
+          <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
         </div>
         <div class="job-stats">
-          <div><div class="js-val">0</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">0</div><div class="js-label">Applied</div></div>
+          <div><div class="js-val">${job.views || 0}</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">${job.applied || 0}</div><div class="js-label">Applied</div></div>
         </div>
         <div class="job-actions">
-          <button class="btn-view" onclick="editJob(${index})">Edit</button>
-          <button class="btn-danger" onclick="deleteJob(${index})">Delete</button>
+          <button class="btn-view" onclick="editJob('${job.id}')">Edit</button>
+          <button class="btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
         </div>
       </div>
     `).join('');
@@ -468,11 +494,11 @@
       title: document.getElementById('f-title').value.trim(),
       company: document.getElementById('f-company').value.trim(),
       location: document.getElementById('f-location').value.trim(),
-      type: document.getElementById('f-type').value,
-      style: document.getElementById('f-style').value,
+      job_type: document.getElementById('f-type').value,
+      work_style: document.getElementById('f-style').value,
       salary: document.getElementById('f-salary').value.trim(),
-      desc: document.getElementById('f-desc').value.trim(),
-      reqs: document.getElementById('f-reqs').value.trim()
+      description: document.getElementById('f-desc').value.trim(),
+      requirements: document.getElementById('f-reqs').value.trim()
     };
   }
 
@@ -480,11 +506,11 @@
     document.getElementById('f-title').value = job.title || '';
     document.getElementById('f-company').value = job.company || currentProfile?.company_name || '';
     document.getElementById('f-location').value = job.location || '';
-    document.getElementById('f-type').value = job.type || 'Full-time';
-    document.getElementById('f-style').value = job.style || 'Remote';
+    document.getElementById('f-type').value = job.job_type || 'Full-time';
+    document.getElementById('f-style').value = job.work_style || 'Remote';
     document.getElementById('f-salary').value = job.salary || '';
-    document.getElementById('f-desc').value = job.desc || '';
-    document.getElementById('f-reqs').value = job.reqs || '';
+    document.getElementById('f-desc').value = job.description || '';
+    document.getElementById('f-reqs').value = job.requirements || '';
   }
 
   function clearJobForm() {
@@ -497,7 +523,7 @@
     document.getElementById('f-style').value = 'Remote';
   }
 
-  function postJob() {
+  async function postJob() {
     if (!employerVerified) {
       showToast('Your business must be approved by Alygnn before posting jobs.');
       updateVerificationUI();
@@ -511,29 +537,52 @@
       return;
     }
 
-    if (editingJobIndex !== null) {
-      sessionJobs[editingJobIndex] = {
-        ...sessionJobs[editingJobIndex],
-        ...job,
-        updated: true
-      };
+    if (editingJobId) {
+      const { error } = await sb
+        .from('jobs')
+        .update({
+          ...job,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingJobId)
+        .eq('employer_id', currentUser.id);
+
+      if (error) {
+        console.error('Failed to update job:', error);
+        showToast('Could not update job.');
+        return;
+      }
+
       showToast('Job updated successfully!');
       cancelEdit(false);
     } else {
-      sessionJobs.unshift(job);
+      const { error } = await sb
+        .from('jobs')
+        .insert({
+          employer_id: currentUser.id,
+          ...job,
+          status: 'active'
+        });
+
+      if (error) {
+        console.error('Failed to post job:', error);
+        showToast('Could not post job. Check Supabase jobs table.');
+        return;
+      }
+
       showToast('🎉 Job posted successfully!');
       clearJobForm();
     }
 
-    renderJobs();
+    await loadJobs();
     setTimeout(() => showPanel('jobs'), 500);
   }
 
-  function editJob(index) {
-    const job = sessionJobs[index];
+  function editJob(jobId) {
+    const job = jobs.find(j => j.id === jobId);
     if (!job) return;
 
-    editingJobIndex = index;
+    editingJobId = jobId;
     fillJobForm(job);
 
     document.getElementById('post-form-title').textContent = 'Edit Job';
@@ -544,7 +593,7 @@
   }
 
   function cancelEdit(clearForm = true) {
-    editingJobIndex = null;
+    editingJobId = null;
 
     document.getElementById('post-form-title').textContent = 'Post a Job';
     document.getElementById('post-job-btn').textContent = 'Post job →';
@@ -554,16 +603,26 @@
     updateVerificationUI();
   }
 
-  function deleteJob(index) {
-    const job = sessionJobs[index];
+  async function deleteJob(jobId) {
+    const job = jobs.find(j => j.id === jobId);
     if (!job) return;
 
     if (!confirm(`Delete "${job.title}"?`)) return;
 
-    sessionJobs.splice(index, 1);
-    if (editingJobIndex === index) cancelEdit();
+    const { error } = await sb
+      .from('jobs')
+      .delete()
+      .eq('id', jobId)
+      .eq('employer_id', currentUser.id);
 
-    renderJobs();
+    if (error) {
+      console.error('Failed to delete job:', error);
+      showToast('Could not delete job.');
+      return;
+    }
+
+    if (editingJobId === jobId) cancelEdit();
+    await loadJobs();
     showToast('Job deleted.');
   }
 
