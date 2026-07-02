@@ -102,6 +102,16 @@
   .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
+  .verification-note{
+    margin-top:12px;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.5;
+  }
+  .nav-cta.locked{
+    opacity:.45;
+    cursor:not-allowed;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -115,7 +125,7 @@
   </div>
   <div class="nav-right">
     <span class="nav-name" id="nav-name"></span>
-    <button class="nav-cta" onclick="window.location.href='employer-dashboard.html'">Dashboard</button>
+    <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
@@ -152,6 +162,17 @@
           <input type="tel" class="field-input" id="company-phone" placeholder="Business phone number"
             onblur="saveInputField('companyPhone', this)" />
         </div>
+        <div class="company-field-row">
+          <span class="field-icon">📧</span>
+          <input type="email" class="field-input" id="business-email" placeholder="Business email (e.g. admin@company.com)"
+            onblur="saveInputField('businessEmail', this)" />
+        </div>
+        <div class="company-field-row">
+          <span class="field-icon">📍</span>
+          <input type="text" class="field-input" id="business-address" placeholder="Business address"
+            onblur="saveInputField('businessAddress', this)" />
+        </div>
+        <p class="verification-note">Your business info will be reviewed by Alygnn before job posting is unlocked.</p>
       </div>
     </div>
   </div>
@@ -159,7 +180,7 @@
   <div class="section">
     <div class="section-header">
       <h2>Posted jobs</h2>
-      <a href="employer-dashboard.html" class="section-link">Post a job →</a>
+      <a href="#" onclick="goToDashboard(); return false;" class="section-link">Post a job →</a>
     </div>
     <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
   </div>
@@ -172,7 +193,7 @@
   <div class="section">
     <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
-      <a href="employer-dashboard.html" class="link-card">
+      <a href="#" onclick="goToDashboard(); return false;" class="link-card">
         <span class="icon">📋</span>
         <div class="label">Manage job posts</div>
         <div class="sub">Edit or close active listings</div>
@@ -194,6 +215,7 @@
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUserId = null;
+  let currentProfile = null;
 
   async function waitForSession(maxWaitMs = 5000) {
     const started = Date.now();
@@ -258,6 +280,29 @@
     return numbersOnly.length >= 10 && numbersOnly.length <= 15;
   }
 
+  function isValidBusinessEmail(value) {
+    const cleaned = value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) return false;
+
+    const blockedDomains = [
+      'gmail.com',
+      'yahoo.com',
+      'hotmail.com',
+      'outlook.com',
+      'icloud.com',
+      'aol.com',
+      'proton.me',
+      'protonmail.com'
+    ];
+
+    const domain = cleaned.split('@')[1];
+    return domain && !blockedDomains.includes(domain);
+  }
+
+  function isValidAddress(value) {
+    return value.trim().length >= 8 && /[a-zA-Z]/.test(value) && /\d/.test(value);
+  }
+
 
   async function saveEmployerProfile(payload){
     if (!currentUserId) return false;
@@ -300,9 +345,19 @@
     }
 
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
-    const saved = await saveEmployerProfile({ [column]: value });
+    const saved = await saveEmployerProfile({
+      [column]: value,
+      employer_verified: false,
+      verification_status: 'pending'
+    });
 
     if (!saved) return;
+
+    if (currentProfile) {
+      currentProfile[column] = value;
+      currentProfile.employer_verified = false;
+      currentProfile.verification_status = 'pending';
+    }
 
     if (key === 'companyName') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
@@ -312,7 +367,7 @@
     updateVerificationBanner();
   }
 
-  // Saves regular input fields (website, phone)
+  // Saves regular input fields (website, phone, business email, address)
   async function saveInputField(key, el){
     const value = el.value.trim();
     if (!currentUserId) return;
@@ -329,10 +384,38 @@
       return;
     }
 
-    const column = key === 'companyWebsite' ? 'company_website' : 'company_phone';
-    const saved = await saveEmployerProfile({ [column]: value });
+    if (key === 'businessEmail' && !isValidBusinessEmail(value)) {
+      alert('Please use a real business email, not Gmail/Yahoo/Outlook/iCloud.');
+      updateVerificationBanner();
+      return;
+    }
+
+    if (key === 'businessAddress' && !isValidAddress(value)) {
+      alert('Please enter a valid business address with a street number.');
+      updateVerificationBanner();
+      return;
+    }
+
+    let column = '';
+    if (key === 'companyWebsite') column = 'company_website';
+    else if (key === 'companyPhone') column = 'company_phone';
+    else if (key === 'businessEmail') column = 'business_email';
+    else if (key === 'businessAddress') column = 'business_address';
+    else return;
+
+    const saved = await saveEmployerProfile({
+      [column]: value,
+      employer_verified: false,
+      verification_status: 'pending'
+    });
 
     if (!saved) return;
+
+    if (currentProfile) {
+      currentProfile[column] = value;
+      currentProfile.employer_verified = false;
+      currentProfile.verification_status = 'pending';
+    }
 
     updateVerificationBanner();
   }
@@ -356,36 +439,62 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
-  // Shows the verification banner based on which fields are filled
+  // Shows the verification banner based on which fields are filled and whether Alygnn approved the employer
   function updateVerificationBanner(){
     const name    = document.getElementById('company-name').textContent.trim();
     const website = document.getElementById('company-website').value.trim();
     const phone   = document.getElementById('company-phone').value.trim();
+    const businessEmail = document.getElementById('business-email').value.trim();
+    const businessAddress = document.getElementById('business-address').value.trim();
 
     const banner  = document.getElementById('verify-banner');
     const icon    = document.getElementById('verify-icon');
     const title   = document.getElementById('verify-title');
     const steps   = document.getElementById('verify-steps');
+    const dashboardBtn = document.getElementById('dashboard-btn');
 
     const fields = [
       { label: 'Company name', done: isValidCompanyName(name) },
-      { label: 'Website',      done: isValidWebsite(website) },
+      { label: 'Website', done: isValidWebsite(website) },
       { label: 'Phone number', done: isValidPhone(phone) },
+      { label: 'Business email', done: isValidBusinessEmail(businessEmail) },
+      { label: 'Business address', done: isValidAddress(businessAddress) },
     ];
 
-    const allDone = fields.every(f => f.done);
+    const infoComplete = fields.every(f => f.done);
+    const approved = currentProfile?.employer_verified === true;
+    const status = currentProfile?.verification_status || 'not_submitted';
 
     banner.style.display = 'flex';
-    banner.className = 'verify-banner ' + (allDone ? 'complete' : 'incomplete');
-    icon.textContent = allDone ? '✅' : '⚠️';
-    title.className = 'verify-title ' + (allDone ? 'complete' : 'incomplete');
-    title.textContent = allDone
-      ? 'Company verified — pricing is unlocked'
-      : 'Complete your profile to unlock pricing';
+
+    if (approved) {
+      banner.className = 'verify-banner complete';
+      icon.textContent = '✅';
+      title.className = 'verify-title complete';
+      title.textContent = 'Business approved — job posting is unlocked';
+      if (dashboardBtn) dashboardBtn.classList.remove('locked');
+    } else {
+      banner.className = 'verify-banner incomplete';
+      icon.textContent = infoComplete ? '⏳' : '⚠️';
+      title.className = 'verify-title incomplete';
+      title.textContent = infoComplete
+        ? 'Business verification pending — Alygnn must approve you before posting jobs'
+        : 'Complete your business profile to submit verification';
+      if (dashboardBtn) dashboardBtn.classList.add('locked');
+    }
 
     steps.innerHTML = fields.map(f =>
       `<span class="verify-step ${f.done ? 'done' : 'todo'}">${f.done ? '✓' : '○'} ${f.label}</span>`
-    ).join('');
+    ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Alygnn approval: ${approved ? 'approved' : status}</span>`;
+  }
+
+  function goToDashboard() {
+    if (!currentProfile?.employer_verified) {
+      alert('Your business must be approved by Alygnn before you can post jobs.');
+      return;
+    }
+
+    window.location.href = 'employer-dashboard.html';
   }
 
   async function signOut() {
@@ -404,16 +513,22 @@
 
     const { data: profile, error } = await sb
       .from('profiles')
-      .select('company_name, company_headline, company_website, company_phone, full_name')
+      .select('company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name')
       .eq('id', currentUserId)
       .single();
 
     if (error && error.code !== 'PGRST116') console.error('Failed to load employer profile', error);
+    currentProfile = profile || {
+      employer_verified: false,
+      verification_status: 'not_submitted'
+    };
 
     const companyNameEl = document.getElementById('company-name');
     const headlineEl    = document.getElementById('company-headline');
     const websiteEl     = document.getElementById('company-website');
     const phoneEl       = document.getElementById('company-phone');
+    const businessEmailEl = document.getElementById('business-email');
+    const businessAddressEl = document.getElementById('business-address');
 
     const companyName = profile?.company_name || session.user.user_metadata?.company_name || '';
     const displayName = companyName || profile?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
@@ -428,6 +543,8 @@
     }
     if (profile?.company_website) websiteEl.value = profile.company_website;
     if (profile?.company_phone)   phoneEl.value   = profile.company_phone;
+    if (profile?.business_email) businessEmailEl.value = profile.business_email;
+    if (profile?.business_address) businessAddressEl.value = profile.business_address;
 
     document.getElementById('nav-name').textContent = displayName;
 
