@@ -102,24 +102,44 @@
   .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
-
-  /* Posted jobs list */
-  .job-row{
-    background:var(--card-bg); border:1px solid var(--border); border-radius:14px;
-    padding:18px 20px; display:flex; align-items:center; gap:16px; margin-bottom:10px;
-    transition:box-shadow .2s;
+  .account-job-row{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:10px;
   }
-  .job-row:hover{ box-shadow:0 4px 16px rgba(0,0,0,0.06); }
-  .job-status{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--mint); }
-  .job-status.paused{ background:var(--rose); }
-  .job-info{ flex:1; min-width:0; }
-  .job-title-text{ font-size:15px; font-weight:500; color:var(--text); margin-bottom:3px; }
-  .job-meta{ font-size:12px; color:var(--text-muted); }
-  .job-stats{ display:flex; gap:20px; text-align:center; flex-shrink:0; }
-  .js-val{ font-size:16px; font-weight:500; color:var(--text); }
-  .js-label{ font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
-  .btn-view{ font-size:12px; color:var(--brand); background:var(--brand-tint); border:none; border-radius:8px; padding:7px 14px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; text-decoration:none; flex-shrink:0; }
-  .btn-view:hover{ opacity:0.8; }
+  .account-job-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--mint);
+    flex-shrink:0;
+  }
+  .account-job-info{ flex:1; min-width:0; }
+  .account-job-title{
+    font-size:15px;
+    font-weight:500;
+    color:var(--text);
+    margin-bottom:3px;
+  }
+  .account-job-meta{
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .verification-note{
+    margin-top:12px;
+    font-size:12px;
+    color:var(--text-muted);
+    line-height:1.5;
+  }
+  .nav-cta.locked{
+    opacity:.45;
+    cursor:not-allowed;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -133,7 +153,7 @@
   </div>
   <div class="nav-right">
     <span class="nav-name" id="nav-name"></span>
-    <button class="nav-cta" onclick="window.location.href='employer-dashboard.html'">Dashboard</button>
+    <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
@@ -170,6 +190,17 @@
           <input type="tel" class="field-input" id="company-phone" placeholder="Business phone number"
             onblur="saveInputField('companyPhone', this)" />
         </div>
+        <div class="company-field-row">
+          <span class="field-icon">📧</span>
+          <input type="email" class="field-input" id="business-email" placeholder="Business email (e.g. admin@company.com)"
+            onblur="saveInputField('businessEmail', this)" />
+        </div>
+        <div class="company-field-row">
+          <span class="field-icon">📍</span>
+          <input type="text" class="field-input" id="business-address" placeholder="Business address"
+            onblur="saveInputField('businessAddress', this)" />
+        </div>
+        <p class="verification-note">Alygnn can auto-approve companies when the business email domain matches the website domain. Otherwise, the account stays pending for review.</p>
       </div>
     </div>
   </div>
@@ -180,7 +211,7 @@
       <a href="employer-dashboard.html" class="section-link">Post a job →</a>
     </div>
     <div id="posted-jobs-list">
-      <div class="empty-state">Loading your jobs…</div>
+      <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
     </div>
   </div>
 
@@ -214,6 +245,7 @@
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUserId = null;
+  let currentProfile = null;
 
   async function waitForSession(maxWaitMs = 5000) {
     const started = Date.now();
@@ -230,15 +262,6 @@
   function getInitials(name) {
     if (!name) return 'C';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  function escapeHtml(value) {
-    return String(value || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
   }
 
   function handlePhotoUpload(event){
@@ -259,25 +282,192 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
+  function isValidCompanyName(value) {
+    const cleaned = value.trim();
+    return cleaned.length >= 2 && /[a-zA-Z]/.test(cleaned);
+  }
+
+  function isValidWebsite(value) {
+    const cleaned = value.trim();
+
+    try {
+      const url = new URL(cleaned);
+      const hostname = url.hostname.toLowerCase();
+
+      return (
+        url.protocol === 'https:' &&
+        hostname.includes('.') &&
+        !hostname.includes(' ') &&
+        !hostname.endsWith('.')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function isValidPhone(value) {
+    const numbersOnly = value.replace(/\D/g, '');
+    return numbersOnly.length >= 10 && numbersOnly.length <= 15;
+  }
+
+  function isValidBusinessEmail(value) {
+    const cleaned = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned);
+  }
+
+  function isValidAddress(value) {
+    const cleaned = value.trim();
+    return cleaned.length >= 5;
+  }
+
+  function getDomainFromWebsite(value) {
+    try {
+      const url = new URL(value.trim());
+      return url.hostname.toLowerCase().replace(/^www\./, '');
+    } catch {
+      return '';
+    }
+  }
+
+  function getDomainFromEmail(value) {
+    const cleaned = value.trim().toLowerCase();
+    const parts = cleaned.split('@');
+    return parts.length === 2 ? parts[1] : '';
+  }
+
+  async function saveEmployerProfile(payload){
+    if (!currentUserId) return false;
+
+    const { error: updateError } = await sb
+      .from('profiles')
+      .update(payload)
+      .eq('id', currentUserId);
+
+    if (!updateError) return true;
+
+    console.error('Profile update failed:', updateError);
+
+    const { error: insertError } = await sb
+      .from('profiles')
+      .insert({
+        id: currentUserId,
+        role: 'employer',
+        ...payload
+      });
+
+    if (insertError) {
+      console.error('Profile insert failed:', insertError);
+      alert('Profile did not save. Check Supabase: profiles table needs company_name, company_headline, company_website, company_phone, business_email, business_address columns, and RLS policies must allow users to select/update/insert their own row.');
+      return false;
+    }
+
+    return true;
+  }
+
+  // Checks all fields, decides approval, and writes verification status to Supabase
+  async function runAutoVerification(){
+    if (!currentUserId) return;
+
+    const profile = getCurrentBusinessProfileFromPage();
+
+    const allFieldsValid =
+      isValidCompanyName(profile.company_name) &&
+      isValidWebsite(profile.company_website) &&
+      isValidPhone(profile.company_phone) &&
+      isValidBusinessEmail(profile.business_email) &&
+      isValidAddress(profile.business_address);
+
+    const websiteDomain = getDomainFromWebsite(profile.company_website);
+    const emailDomain = getDomainFromEmail(profile.business_email);
+    const domainsMatch = !!websiteDomain && !!emailDomain && websiteDomain === emailDomain;
+
+    let employer_verified = false;
+    let verification_status = 'not_submitted';
+
+    if (allFieldsValid) {
+      verification_status = domainsMatch ? 'approved' : 'pending';
+      employer_verified = domainsMatch;
+    }
+
+    const { error } = await sb
+      .from('profiles')
+      .update({ employer_verified, verification_status })
+      .eq('id', currentUserId);
+
+    if (error) {
+      console.error('Auto-verification update failed:', error);
+      return;
+    }
+
+    currentProfile = { ...currentProfile, employer_verified, verification_status };
+  }
+
   // Saves contenteditable fields (company name, headline)
   async function saveField(key, el){
     const value = el.textContent.trim();
     if (!currentUserId) return;
+
+    if (key === 'companyName' && !isValidCompanyName(value)) {
+      alert('Please enter a valid company name with at least 2 letters.');
+      updateVerificationBanner();
+      return;
+    }
+
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
-    await sb.from('profiles').upsert({ id: currentUserId, role: 'employer', [column]: value }, { onConflict: 'id' });
+    const saved = await saveEmployerProfile({ [column]: value });
+
+    if (!saved) return;
+
     if (key === 'companyName') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
       document.getElementById('nav-name').textContent = value;
     }
+
+    await runAutoVerification();
     updateVerificationBanner();
   }
 
-  // Saves regular input fields (website, phone)
+  // Saves regular input fields (website, phone, business email, business address)
   async function saveInputField(key, el){
     const value = el.value.trim();
     if (!currentUserId) return;
-    const column = key === 'companyWebsite' ? 'company_website' : 'company_phone';
-    await sb.from('profiles').upsert({ id: currentUserId, role: 'employer', [column]: value }, { onConflict: 'id' });
+
+    if (key === 'companyWebsite' && !isValidWebsite(value)) {
+      alert('Please enter a valid website starting with https:// and using a real domain, like https://company.com');
+      updateVerificationBanner();
+      return;
+    }
+
+    if (key === 'companyPhone' && !isValidPhone(value)) {
+      alert('Please enter a valid business phone number with 10 to 15 digits.');
+      updateVerificationBanner();
+      return;
+    }
+
+    if (key === 'businessEmail' && value && !isValidBusinessEmail(value)) {
+      alert('Please enter a valid business email address.');
+      updateVerificationBanner();
+      return;
+    }
+
+    if (key === 'businessAddress' && value && !isValidAddress(value)) {
+      alert('Please enter a valid business address.');
+      updateVerificationBanner();
+      return;
+    }
+
+    const columnMap = {
+      companyWebsite: 'company_website',
+      companyPhone: 'company_phone',
+      businessEmail: 'business_email',
+      businessAddress: 'business_address'
+    };
+    const column = columnMap[key];
+    const saved = await saveEmployerProfile({ [column]: value });
+
+    if (!saved) return;
+
+    await runAutoVerification();
     updateVerificationBanner();
   }
 
@@ -300,76 +490,115 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
-  // Shows the verification banner based on which fields are filled
+  function getCurrentBusinessProfileFromPage() {
+    return {
+      company_name: document.getElementById('company-name')?.textContent.trim() || '',
+      company_headline: document.getElementById('company-headline')?.textContent.trim() || '',
+      company_website: document.getElementById('company-website')?.value.trim() || '',
+      company_phone: document.getElementById('company-phone')?.value.trim() || '',
+      business_email: document.getElementById('business-email')?.value.trim() || '',
+      business_address: document.getElementById('business-address')?.value.trim() || ''
+    };
+  }
+
+  // Shows the verification banner based on field validation and auto-approval status
   function updateVerificationBanner(){
-    const name    = document.getElementById('company-name').textContent.trim();
-    const website = document.getElementById('company-website').value.trim();
-    const phone   = document.getElementById('company-phone').value.trim();
+    const profile = getCurrentBusinessProfileFromPage();
 
     const banner  = document.getElementById('verify-banner');
     const icon    = document.getElementById('verify-icon');
     const title   = document.getElementById('verify-title');
     const steps   = document.getElementById('verify-steps');
+    const dashboardBtn = document.getElementById('dashboard-btn');
 
     const fields = [
-      { label: 'Company name', done: !!name },
-      { label: 'Website',      done: !!website },
-      { label: 'Phone number', done: !!phone },
+      { label: 'Company name', done: isValidCompanyName(profile.company_name) },
+      { label: 'Website', done: isValidWebsite(profile.company_website) },
+      { label: 'Phone number', done: isValidPhone(profile.company_phone) },
+      { label: 'Business email', done: isValidBusinessEmail(profile.business_email) },
+      { label: 'Business address', done: isValidAddress(profile.business_address) },
+      {
+        label: 'Email matches website',
+        done: getDomainFromWebsite(profile.company_website) === getDomainFromEmail(profile.business_email)
+      }
     ];
 
-    const allDone = fields.every(f => f.done);
+    const approved = currentProfile?.employer_verified === true;
+    const status = currentProfile?.verification_status || 'not_submitted';
 
     banner.style.display = 'flex';
-    banner.className = 'verify-banner ' + (allDone ? 'complete' : 'incomplete');
-    icon.textContent = allDone ? '✅' : '⚠️';
-    title.className = 'verify-title ' + (allDone ? 'complete' : 'incomplete');
-    title.textContent = allDone
-      ? 'Company verified — pricing is unlocked'
-      : 'Complete your profile to unlock pricing';
+
+    if (approved) {
+      banner.className = 'verify-banner complete';
+      icon.textContent = '✅';
+      title.className = 'verify-title complete';
+      title.textContent = 'Business auto-approved — job posting is unlocked';
+      if (dashboardBtn) dashboardBtn.classList.remove('locked');
+    } else {
+      banner.className = 'verify-banner incomplete';
+      icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
+      title.className = 'verify-title incomplete';
+      title.textContent = fields.every(f => f.done)
+        ? 'Business verification pending — Alygnn review may be needed'
+        : 'Complete your business profile to unlock posting';
+      if (dashboardBtn) dashboardBtn.classList.add('locked');
+    }
 
     steps.innerHTML = fields.map(f =>
       `<span class="verify-step ${f.done ? 'done' : 'todo'}">${f.done ? '✓' : '○'} ${f.label}</span>`
-    ).join('');
+    ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Status: ${approved ? 'approved' : status}</span>`;
   }
 
-  // Loads and renders the employer's posted jobs (same 'jobs' table the dashboard uses)
-  async function loadPostedJobs(){
-    const container = document.getElementById('posted-jobs-list');
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  async function loadEmployerJobs() {
     if (!currentUserId) return;
 
-    const { data, error } = await sb
+    const jobsBox = document.getElementById('posted-jobs-list');
+    if (!jobsBox) return;
+
+    const { data: jobs, error } = await sb
       .from('jobs')
-      .select('*')
+      .select('id, title, location, job_type, work_style, salary, status, created_at')
       .eq('employer_id', currentUserId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Failed to load posted jobs', error);
-      container.innerHTML = `<div class="empty-state">Couldn't load your jobs right now.</div>`;
+      console.error('Failed to load employer jobs:', error);
+      jobsBox.innerHTML = '<div class="empty-state">Could not load jobs right now. Open the console for the Supabase error.</div>';
       return;
     }
 
-    const jobs = (data || []).filter(job => job.status !== 'deleted');
-
-    if (jobs.length === 0) {
-      container.innerHTML = `<div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>`;
+    if (!jobs || jobs.length === 0) {
+      jobsBox.innerHTML = '<div class="empty-state">No jobs posted yet. Once you post a role, it\'ll show up here.</div>';
       return;
     }
 
-    container.innerHTML = jobs.map(job => `
-      <div class="job-row">
-        <div class="job-status ${job.status === 'paused' ? 'paused' : ''}"></div>
-        <div class="job-info">
-          <div class="job-title-text">${escapeHtml(job.title)}</div>
-          <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
+    jobsBox.innerHTML = jobs.map(job => `
+      <div class="account-job-row">
+        <div class="account-job-dot"></div>
+        <div class="account-job-info">
+          <div class="account-job-title">${escapeHtml(job.title)}</div>
+          <div class="account-job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.location ? ' · ' + escapeHtml(job.location) : ''}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}</div>
         </div>
-        <div class="job-stats">
-          <div><div class="js-val">${job.views || 0}</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">${job.applied || 0}</div><div class="js-label">Applied</div></div>
-        </div>
-        <a href="employer-dashboard.html" class="btn-view">Manage →</a>
+        <a href="employer-dashboard.html" class="section-link">Manage →</a>
       </div>
     `).join('');
+  }
+
+  function goToDashboard() {
+    if (!currentProfile?.employer_verified) {
+      alert('Your business must be approved before you can post jobs. Use a business email that matches your website domain for automatic approval.');
+      return;
+    }
+    window.location.href = 'employer-dashboard.html';
   }
 
   async function signOut() {
@@ -388,16 +617,22 @@
 
     const { data: profile, error } = await sb
       .from('profiles')
-      .select('company_name, company_headline, company_website, company_phone, full_name')
+      .select('company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name')
       .eq('id', currentUserId)
       .single();
 
     if (error && error.code !== 'PGRST116') console.error('Failed to load employer profile', error);
+    currentProfile = profile || {
+      employer_verified: false,
+      verification_status: 'not_submitted'
+    };
 
     const companyNameEl = document.getElementById('company-name');
     const headlineEl    = document.getElementById('company-headline');
     const websiteEl     = document.getElementById('company-website');
     const phoneEl       = document.getElementById('company-phone');
+    const businessEmailEl = document.getElementById('business-email');
+    const businessAddressEl = document.getElementById('business-address');
 
     const companyName = profile?.company_name || session.user.user_metadata?.company_name || '';
     const displayName = companyName || profile?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
@@ -412,11 +647,13 @@
     }
     if (profile?.company_website) websiteEl.value = profile.company_website;
     if (profile?.company_phone)   phoneEl.value   = profile.company_phone;
+    if (profile?.business_email) businessEmailEl.value = profile.business_email;
+    if (profile?.business_address) businessAddressEl.value = profile.business_address;
 
     document.getElementById('nav-name').textContent = displayName;
 
     updateVerificationBanner();
-    await loadPostedJobs();
+    await loadEmployerJobs();
   }
 
   initEmployerAccountPage();
