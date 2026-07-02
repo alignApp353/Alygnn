@@ -230,6 +230,35 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
+  function isValidCompanyName(value) {
+    const cleaned = value.trim();
+    return cleaned.length >= 2 && /[a-zA-Z]/.test(cleaned);
+  }
+
+  function isValidWebsite(value) {
+    const cleaned = value.trim();
+
+    try {
+      const url = new URL(cleaned);
+      const hostname = url.hostname.toLowerCase();
+
+      return (
+        url.protocol === 'https:' &&
+        hostname.includes('.') &&
+        !hostname.includes(' ') &&
+        !hostname.endsWith('.')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function isValidPhone(value) {
+    const numbersOnly = value.replace(/\D/g, '');
+    return numbersOnly.length >= 10 && numbersOnly.length <= 15;
+  }
+
+
   async function saveEmployerProfile(payload){
     if (!currentUserId) return false;
 
@@ -264,6 +293,12 @@
     const value = el.textContent.trim();
     if (!currentUserId) return;
 
+    if (key === 'companyName' && !isValidCompanyName(value)) {
+      alert('Please enter a valid company name with at least 2 letters.');
+      updateVerificationBanner();
+      return;
+    }
+
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
     const saved = await saveEmployerProfile({ [column]: value });
 
@@ -281,6 +316,18 @@
   async function saveInputField(key, el){
     const value = el.value.trim();
     if (!currentUserId) return;
+
+    if (key === 'companyWebsite' && !isValidWebsite(value)) {
+      alert('Please enter a valid website starting with https:// and using a real domain, like https://company.com');
+      updateVerificationBanner();
+      return;
+    }
+
+    if (key === 'companyPhone' && !isValidPhone(value)) {
+      alert('Please enter a valid business phone number with 10 to 15 digits.');
+      updateVerificationBanner();
+      return;
+    }
 
     const column = key === 'companyWebsite' ? 'company_website' : 'company_phone';
     const saved = await saveEmployerProfile({ [column]: value });
@@ -321,9 +368,9 @@
     const steps   = document.getElementById('verify-steps');
 
     const fields = [
-      { label: 'Company name', done: !!name },
-      { label: 'Website',      done: !!website },
-      { label: 'Phone number', done: !!phone },
+      { label: 'Company name', done: isValidCompanyName(name) },
+      { label: 'Website',      done: isValidWebsite(website) },
+      { label: 'Phone number', done: isValidPhone(phone) },
     ];
 
     const allDone = fields.every(f => f.done);
