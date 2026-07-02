@@ -328,7 +328,8 @@ async function checkSession(){
     const { data } = await sb.auth.getSession();
 
     if(data.session){
-       window.location.href = "app-account.html";
+    window.location.href = "app-account.html";
+}
     }
 }
 
@@ -375,7 +376,7 @@ async function signIn(){
     showMessage("Login successful. Redirecting...", "success");
 
     setTimeout(function(){
-        window.location.href = "app-swipe.html";
+        window.location.href = "app-account.html";
     }, 600);
 }
 
