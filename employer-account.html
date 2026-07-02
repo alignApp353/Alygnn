@@ -230,16 +230,50 @@
     document.getElementById('avatar-initials').style.display = 'none';
   }
 
+  async function saveEmployerProfile(payload){
+    if (!currentUserId) return false;
+
+    const { error: updateError } = await sb
+      .from('profiles')
+      .update(payload)
+      .eq('id', currentUserId);
+
+    if (!updateError) return true;
+
+    console.error('Profile update failed:', updateError);
+
+    const { error: insertError } = await sb
+      .from('profiles')
+      .insert({
+        id: currentUserId,
+        role: 'employer',
+        ...payload
+      });
+
+    if (insertError) {
+      console.error('Profile insert failed:', insertError);
+      alert('Profile did not save. Check Supabase: profiles table needs company_name, company_headline, company_website, company_phone columns, and RLS policies must allow users to update their own row.');
+      return false;
+    }
+
+    return true;
+  }
+
   // Saves contenteditable fields (company name, headline)
   async function saveField(key, el){
     const value = el.textContent.trim();
     if (!currentUserId) return;
+
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
-    await sb.from('profiles').upsert({ id: currentUserId, role: 'employer', [column]: value }, { onConflict: 'id' });
+    const saved = await saveEmployerProfile({ [column]: value });
+
+    if (!saved) return;
+
     if (key === 'companyName') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
       document.getElementById('nav-name').textContent = value;
     }
+
     updateVerificationBanner();
   }
 
@@ -247,8 +281,12 @@
   async function saveInputField(key, el){
     const value = el.value.trim();
     if (!currentUserId) return;
+
     const column = key === 'companyWebsite' ? 'company_website' : 'company_phone';
-    await sb.from('profiles').upsert({ id: currentUserId, role: 'employer', [column]: value }, { onConflict: 'id' });
+    const saved = await saveEmployerProfile({ [column]: value });
+
+    if (!saved) return;
+
     updateVerificationBanner();
   }
 
