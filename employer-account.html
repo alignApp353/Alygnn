@@ -102,6 +102,37 @@
   .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
+  .account-job-row{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px 20px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:10px;
+  }
+  .account-job-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--mint);
+    flex-shrink:0;
+  }
+  .account-job-info{
+    flex:1;
+    min-width:0;
+  }
+  .account-job-title{
+    font-size:15px;
+    font-weight:500;
+    color:var(--text);
+    margin-bottom:3px;
+  }
+  .account-job-meta{
+    font-size:12px;
+    color:var(--text-muted);
+  }
   .verification-note{
     margin-top:12px;
     font-size:12px;
@@ -427,6 +458,52 @@
     ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Status: ${approved ? 'approved' : status}</span>`;
   }
 
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  async function loadEmployerJobs() {
+    if (!currentUserId) return;
+
+    const jobsBox = document.getElementById('posted-jobs-list');
+    if (!jobsBox) return;
+
+    const { data: jobs, error } = await sb
+      .from('jobs')
+      .select('id, title, location, job_type, work_style, salary, status, created_at')
+      .eq('employer_id', currentUserId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to load employer jobs:', error);
+      jobsBox.innerHTML = '<div class="empty-state">Could not load jobs right now.</div>';
+      return;
+    }
+
+    if (!jobs || jobs.length === 0) {
+      jobsBox.innerHTML = '<div class="empty-state">No jobs posted yet. Once you post a role, it\'ll show up here.</div>';
+      return;
+    }
+
+    jobsBox.innerHTML = jobs.map(job => `
+      <div class="account-job-row">
+        <div class="account-job-dot"></div>
+        <div class="account-job-info">
+          <div class="account-job-title">${escapeHtml(job.title)}</div>
+          <div class="account-job-meta">
+            ${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.location ? ' · ' + escapeHtml(job.location) : ''}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}
+          </div>
+        </div>
+        <a href="employer-dashboard.html" class="section-link">Manage →</a>
+      </div>
+    `).join('');
+  }
+
   function goToDashboard() {
     if (!currentProfile?.employer_verified) {
       alert('Your business must be approved before you can post jobs. Use a business email that matches your website domain for automatic approval.');
@@ -487,6 +564,7 @@
     document.getElementById('nav-name').textContent = displayName;
 
     updateVerificationBanner();
+    await loadEmployerJobs();
   }
 
   initEmployerAccountPage();
