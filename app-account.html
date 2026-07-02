@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alygnn Account Hub</title>
+<title>Alygnn My Profile</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +20,14 @@
     --rose:#D79A9A;
 }
 
+body.light{
+    --bg:#F6F8F7;
+    --card-bg:#FFFFFF;
+    --text:#1A2530;
+    --border:#DDE3E8;
+    --text-muted:#4A5968;
+}
+
 *{
     box-sizing:border-box;
     font-family:'DM Sans', Arial, sans-serif !important;
@@ -33,8 +41,8 @@ body{
     margin:0;
     min-height:100vh;
     background:
-        radial-gradient(circle at top, rgba(93,127,163,.35), transparent 35%),
-        linear-gradient(180deg,#05080D,#0A0F17);
+        radial-gradient(circle at top, rgba(93,127,163,.25), transparent 35%),
+        var(--bg);
     color:var(--text);
 }
 
@@ -42,19 +50,18 @@ body{
     min-height:100vh;
     max-width:520px;
     margin:auto;
-    padding:28px 22px;
+    padding:28px 22px 100px;
 }
 
 .logo{
     font-size:36px;
     font-weight:900;
     color:var(--brand);
-    letter-spacing:-1px;
 }
 
 .title{
     margin-top:28px;
-    font-size:34px;
+    font-size:38px;
     font-weight:900;
 }
 
@@ -71,13 +78,41 @@ body{
     border:1px solid var(--border);
     border-radius:28px;
     padding:22px;
-    box-shadow:0 18px 50px rgba(0,0,0,.35);
+    box-shadow:0 18px 50px rgba(0,0,0,.25);
+}
+
+.profile-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
+.avatar{
+    width:72px;
+    height:72px;
+    border-radius:50%;
+    background:var(--brand);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:34px;
+    font-weight:900;
+}
+
+.name{
+    font-size:22px;
+    font-weight:900;
+}
+
+.meta{
+    color:var(--text-muted);
+    margin-top:4px;
 }
 
 .card-title{
     font-size:20px;
     font-weight:900;
-    margin-bottom:6px;
+    margin-bottom:8px;
 }
 
 .card-sub{
@@ -86,30 +121,68 @@ body{
     line-height:1.5;
 }
 
+.progress{
+    margin-top:18px;
+}
+
+.progress-top{
+    display:flex;
+    justify-content:space-between;
+    font-weight:900;
+    margin-bottom:10px;
+}
+
+.bar{
+    height:10px;
+    background:rgba(93,127,163,.2);
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.fill{
+    width:80%;
+    height:100%;
+    background:var(--brand);
+}
+
+.checklist{
+    margin-top:16px;
+    display:grid;
+    gap:10px;
+    color:var(--text-muted);
+    font-weight:700;
+}
+
+.good{
+    color:var(--mint);
+}
+
+.warn{
+    color:#F5A623;
+}
+
 .stats{
     display:flex;
     gap:12px;
-    margin-top:18px;
 }
 
 .stat{
     flex:1;
     border:1px solid var(--border);
     border-radius:20px;
-    padding:14px;
+    padding:16px;
     text-align:center;
-    background:rgba(255,255,255,.03);
 }
 
 .stat-number{
-    font-size:24px;
+    font-size:28px;
     font-weight:900;
     color:var(--brand);
 }
 
 .stat-label{
-    font-size:13px;
     color:var(--text-muted);
+    font-size:13px;
     margin-top:4px;
 }
 
@@ -136,7 +209,7 @@ body{
 
 .secondary{
     background:transparent;
-    color:white;
+    color:var(--text);
     border:1px solid var(--border);
 }
 
@@ -151,7 +224,7 @@ body{
     border:1px solid var(--border);
     border-radius:20px;
     padding:18px;
-    color:white;
+    color:var(--text);
     font-weight:800;
     display:flex;
     justify-content:space-between;
@@ -159,8 +232,28 @@ body{
     cursor:pointer;
 }
 
-.menu-item span{
-    color:var(--text-muted);
+.theme-options{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-top:14px;
+}
+
+.theme-btn{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px;
+    font-size:16px;
+    font-weight:900;
+    cursor:pointer;
+    text-align:left;
+}
+
+.theme-btn.active{
+    border-color:var(--brand);
+    background:rgba(93,127,163,.18);
 }
 
 .logout{
@@ -169,6 +262,32 @@ body{
     margin:28px 0 10px;
     font-weight:900;
     cursor:pointer;
+}
+
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    max-width:520px;
+    margin:auto;
+    background:var(--card-bg);
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:space-around;
+    padding:12px 10px 20px;
+}
+
+.nav-item{
+    color:var(--text-muted);
+    font-size:13px;
+    font-weight:800;
+    text-align:center;
+    cursor:pointer;
+}
+
+.nav-item.active{
+    color:var(--brand);
 }
 </style>
 </head>
@@ -179,67 +298,91 @@ body{
 
     <div class="logo">Alygnn.</div>
 
-    <div class="title">Account Hub</div>
+    <div class="title">My Profile</div>
 
     <div class="subtitle">
-        Manage your resume, job matches, applications, and preferences before you start swiping.
+        Manage your resume, preferences, and profile to get better job matches.
     </div>
 
     <div class="card">
-        <div class="card-title">Your job search</div>
+        <div class="profile-row">
+            <div class="avatar">J</div>
+
+            <div>
+                <div class="name">Jesus Fajardo</div>
+                <div class="meta">Business Development Professional</div>
+                <div class="meta">Raleigh, NC</div>
+            </div>
+        </div>
+
+        <div class="progress">
+            <div class="progress-top">
+                <span>Profile Completion</span>
+                <span>80%</span>
+            </div>
+
+            <div class="bar">
+                <div class="fill"></div>
+            </div>
+        </div>
+
+        <div class="checklist">
+            <div><span class="good">✓</span> Resume Uploaded</div>
+            <div><span class="good">✓</span> Job Preferences Complete</div>
+            <div><span class="warn">!</span> Add Work Experience</div>
+        </div>
+    </div>
+
+    <button class="btn primary" onclick="window.location.href='app-swipe.html'">
+        Start Swiping
+    </button>
+
+    <div class="card">
+        <div class="card-title">Finish Setting Up Your Profile</div>
         <div class="card-sub">
-            Alygnn uses your resume and preferences to recommend jobs that match your experience.
+            Complete these steps to improve your matches.
         </div>
 
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-number">0</div>
-                <div class="stat-label">Saved</div>
+        <div class="menu">
+            <div class="menu-item" onclick="window.location.href='align-upload.html'">
+                Upload Resume <span>›</span>
             </div>
 
-            <div class="stat">
-                <div class="stat-number">0</div>
-                <div class="stat-label">Applied</div>
+            <div class="menu-item" onclick="window.location.href='preferences.html'">
+                Job Preferences <span>›</span>
             </div>
 
-            <div class="stat">
-                <div class="stat-number">3</div>
-                <div class="stat-label">Matches</div>
+            <div class="menu-item" onclick="alert('Work Experience page coming next')">
+                Work Experience <span>›</span>
             </div>
         </div>
-
-        <button class="btn primary" onclick="window.location.href='app-swipe.html'">
-            Start Swiping
-        </button>
     </div>
 
     <div class="card">
-        <div class="card-title">Profile setup</div>
+        <div class="card-title">Appearance</div>
         <div class="card-sub">
-            Improve your matches by completing your profile.
+            Choose how Alygnn looks on your device.
         </div>
 
-        <button class="btn secondary" onclick="window.location.href='align-upload.html'">
-            Upload Resume
-        </button>
+        <div class="theme-options">
+            <button class="theme-btn" id="theme-system" onclick="setTheme('system')">
+                System Default
+            </button>
 
-        <button class="btn secondary" onclick="window.location.href='preferences.html'">
-            Job Preferences
-        </button>
+            <button class="theme-btn" id="theme-dark" onclick="setTheme('dark')">
+                Dark Mode
+            </button>
+
+            <button class="theme-btn" id="theme-light" onclick="setTheme('light')">
+                Light Mode
+            </button>
+        </div>
     </div>
 
     <div class="card">
         <div class="card-title">Account</div>
 
         <div class="menu">
-            <div class="menu-item" onclick="alert('Saved Jobs page coming next')">
-                Saved Jobs <span>›</span>
-            </div>
-
-            <div class="menu-item" onclick="alert('Applications page coming next')">
-                Applications <span>›</span>
-            </div>
-
             <div class="menu-item" onclick="window.location.href='account-settings.html'">
                 Settings <span>›</span>
             </div>
@@ -251,6 +394,56 @@ body{
     </div>
 
 </div>
+
+<div class="bottom-nav">
+    <div class="nav-item" onclick="window.location.href='app-swipe.html'">
+        Swipe
+    </div>
+
+    <div class="nav-item" onclick="alert('Applied page coming next')">
+        Applied
+    </div>
+
+    <div class="nav-item active">
+        My Profile
+    </div>
+</div>
+
+<script>
+function applyTheme(theme){
+    document.body.classList.remove("light");
+
+    if(theme === "light"){
+        document.body.classList.add("light");
+    }
+
+    if(theme === "system"){
+        const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+
+        if(prefersLight){
+            document.body.classList.add("light");
+        }
+    }
+
+    document.querySelectorAll(".theme-btn").forEach(btn => {
+        btn.classList.remove("active");
+    });
+
+    const activeBtn = document.getElementById("theme-" + theme);
+
+    if(activeBtn){
+        activeBtn.classList.add("active");
+    }
+}
+
+function setTheme(theme){
+    localStorage.setItem("alygnn-theme", theme);
+    applyTheme(theme);
+}
+
+const savedTheme = localStorage.getItem("alygnn-theme") || "system";
+applyTheme(savedTheme);
+</script>
 
 </body>
 </html>
