@@ -172,7 +172,7 @@
           <input type="text" class="field-input" id="business-address" placeholder="Business address"
             onblur="saveInputField('businessAddress', this)" />
         </div>
-        <p class="verification-note">Your business info will be reviewed by Alygnn before job posting is unlocked.</p>
+        <p class="verification-note">Alygnn can auto-approve companies when the business email domain matches the website domain. Otherwise, the account stays pending for review.</p>
       </div>
     </div>
   </div>
@@ -180,7 +180,7 @@
   <div class="section">
     <div class="section-header">
       <h2>Posted jobs</h2>
-      <a href="#" onclick="goToDashboard(); return false;" class="section-link">Post a job →</a>
+      <a href="employer-dashboard.html" class="section-link">Post a job →</a>
     </div>
     <div class="empty-state">No jobs posted yet. Once you post a role, it'll show up here.</div>
   </div>
@@ -193,7 +193,7 @@
   <div class="section">
     <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
-      <a href="#" onclick="goToDashboard(); return false;" class="link-card">
+      <a href="employer-dashboard.html" class="link-card">
         <span class="icon">📋</span>
         <div class="label">Manage job posts</div>
         <div class="sub">Edit or close active listings</div>
@@ -280,29 +280,6 @@
     return numbersOnly.length >= 10 && numbersOnly.length <= 15;
   }
 
-  function isValidBusinessEmail(value) {
-    const cleaned = value.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) return false;
-
-    const blockedDomains = [
-      'gmail.com',
-      'yahoo.com',
-      'hotmail.com',
-      'outlook.com',
-      'icloud.com',
-      'aol.com',
-      'proton.me',
-      'protonmail.com'
-    ];
-
-    const domain = cleaned.split('@')[1];
-    return domain && !blockedDomains.includes(domain);
-  }
-
-  function isValidAddress(value) {
-    return value.trim().length >= 8 && /[a-zA-Z]/.test(value) && /\d/.test(value);
-  }
-
 
   async function saveEmployerProfile(payload){
     if (!currentUserId) return false;
@@ -345,29 +322,20 @@
     }
 
     const column = key === 'companyName' ? 'company_name' : 'company_headline';
-    const saved = await saveEmployerProfile({
-      [column]: value,
-      employer_verified: false,
-      verification_status: 'pending'
-    });
+    const saved = await saveEmployerProfile({ [column]: value });
 
     if (!saved) return;
-
-    if (currentProfile) {
-      currentProfile[column] = value;
-      currentProfile.employer_verified = false;
-      currentProfile.verification_status = 'pending';
-    }
 
     if (key === 'companyName') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
       document.getElementById('nav-name').textContent = value;
     }
 
+    await runAutoVerification();
     updateVerificationBanner();
   }
 
-  // Saves regular input fields (website, phone, business email, address)
+  // Saves regular input fields (website, phone)
   async function saveInputField(key, el){
     const value = el.value.trim();
     if (!currentUserId) return;
@@ -384,38 +352,10 @@
       return;
     }
 
-    if (key === 'businessEmail' && !isValidBusinessEmail(value)) {
-      alert('Please use a real business email, not Gmail/Yahoo/Outlook/iCloud.');
-      updateVerificationBanner();
-      return;
-    }
-
-    if (key === 'businessAddress' && !isValidAddress(value)) {
-      alert('Please enter a valid business address with a street number.');
-      updateVerificationBanner();
-      return;
-    }
-
-    let column = '';
-    if (key === 'companyWebsite') column = 'company_website';
-    else if (key === 'companyPhone') column = 'company_phone';
-    else if (key === 'businessEmail') column = 'business_email';
-    else if (key === 'businessAddress') column = 'business_address';
-    else return;
-
-    const saved = await saveEmployerProfile({
-      [column]: value,
-      employer_verified: false,
-      verification_status: 'pending'
-    });
+    const column = key === 'companyWebsite' ? 'company_website' : 'company_phone';
+    const saved = await saveEmployerProfile({ [column]: value });
 
     if (!saved) return;
-
-    if (currentProfile) {
-      currentProfile[column] = value;
-      currentProfile.employer_verified = false;
-      currentProfile.verification_status = 'pending';
-    }
 
     updateVerificationBanner();
   }
@@ -439,13 +379,9 @@
   limitLength(document.getElementById('company-name'), 60);
   limitLength(document.getElementById('company-headline'), 200);
 
-  // Shows the verification banner based on which fields are filled and whether Alygnn approved the employer
+  // Shows the verification banner based on field validation and auto-approval status
   function updateVerificationBanner(){
-    const name    = document.getElementById('company-name').textContent.trim();
-    const website = document.getElementById('company-website').value.trim();
-    const phone   = document.getElementById('company-phone').value.trim();
-    const businessEmail = document.getElementById('business-email').value.trim();
-    const businessAddress = document.getElementById('business-address').value.trim();
+    const profile = getCurrentBusinessProfileFromPage();
 
     const banner  = document.getElementById('verify-banner');
     const icon    = document.getElementById('verify-icon');
@@ -454,14 +390,17 @@
     const dashboardBtn = document.getElementById('dashboard-btn');
 
     const fields = [
-      { label: 'Company name', done: isValidCompanyName(name) },
-      { label: 'Website', done: isValidWebsite(website) },
-      { label: 'Phone number', done: isValidPhone(phone) },
-      { label: 'Business email', done: isValidBusinessEmail(businessEmail) },
-      { label: 'Business address', done: isValidAddress(businessAddress) },
+      { label: 'Company name', done: isValidCompanyName(profile.company_name) },
+      { label: 'Website', done: isValidWebsite(profile.company_website) },
+      { label: 'Phone number', done: isValidPhone(profile.company_phone) },
+      { label: 'Business email', done: isValidBusinessEmail(profile.business_email) },
+      { label: 'Business address', done: isValidAddress(profile.business_address) },
+      {
+        label: 'Email matches website',
+        done: getDomainFromWebsite(profile.company_website) === getDomainFromEmail(profile.business_email)
+      }
     ];
 
-    const infoComplete = fields.every(f => f.done);
     const approved = currentProfile?.employer_verified === true;
     const status = currentProfile?.verification_status || 'not_submitted';
 
@@ -471,29 +410,28 @@
       banner.className = 'verify-banner complete';
       icon.textContent = '✅';
       title.className = 'verify-title complete';
-      title.textContent = 'Business approved — job posting is unlocked';
+      title.textContent = 'Business auto-approved — job posting is unlocked';
       if (dashboardBtn) dashboardBtn.classList.remove('locked');
     } else {
       banner.className = 'verify-banner incomplete';
-      icon.textContent = infoComplete ? '⏳' : '⚠️';
+      icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
       title.className = 'verify-title incomplete';
-      title.textContent = infoComplete
-        ? 'Business verification pending — Alygnn must approve you before posting jobs'
-        : 'Complete your business profile to submit verification';
+      title.textContent = fields.every(f => f.done)
+        ? 'Business verification pending — Alygnn review may be needed'
+        : 'Complete your business profile to unlock posting';
       if (dashboardBtn) dashboardBtn.classList.add('locked');
     }
 
     steps.innerHTML = fields.map(f =>
       `<span class="verify-step ${f.done ? 'done' : 'todo'}">${f.done ? '✓' : '○'} ${f.label}</span>`
-    ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Alygnn approval: ${approved ? 'approved' : status}</span>`;
+    ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Status: ${approved ? 'approved' : status}</span>`;
   }
 
   function goToDashboard() {
     if (!currentProfile?.employer_verified) {
-      alert('Your business must be approved by Alygnn before you can post jobs.');
+      alert('Your business must be approved before you can post jobs. Use a business email that matches your website domain for automatic approval.');
       return;
     }
-
     window.location.href = 'employer-dashboard.html';
   }
 
