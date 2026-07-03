@@ -115,6 +115,7 @@
   .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .form-group.full { grid-column: 1 / -1; }
   .form-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+  .form-label-row { display: flex; align-items: center; justify-content: space-between; }
   .form-input { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; }
   .form-input:focus { border-color: var(--brand); }
   .form-input::placeholder { color: #aab4bc; }
@@ -136,6 +137,24 @@
   .job-actions { display:flex; gap:8px; align-items:center; }
   .btn-danger { font-size: 12px; color: #a05858; background: rgba(215,154,154,0.15); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
   .btn-danger:hover { opacity: .8; }
+
+  .btn-ai {
+    font-size: 12px; font-weight: 500; color: var(--brand);
+    background: var(--brand-light); border: 1px solid rgba(93,127,163,0.25);
+    border-radius: 100px; padding: 6px 14px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-ai:hover { opacity: 0.85; }
+  .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ai .spinner {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid rgba(93,127,163,0.3); border-top-color: var(--brand);
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  .btn-ai.loading .spinner { display: inline-block; }
+  .btn-ai.loading .ai-label { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
   .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
@@ -291,8 +310,15 @@
             <input type="text" class="form-input" id="f-salary" placeholder="e.g. $80k–$110k">
           </div>
           <div class="form-group full">
-            <label class="form-label">Job description</label>
+            <div class="form-label-row">
+              <label class="form-label">Job description</label>
+              <button type="button" class="btn-ai" id="ai-generate-btn" onclick="generateDescription()">
+                <span class="spinner"></span>
+                <span class="ai-label">✨ Generate with AI</span>
+              </button>
+            </div>
             <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..."></textarea>
+            <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
           </div>
           <div class="form-group full">
             <label class="form-label">Requirements (one per line)</label>
@@ -649,6 +675,55 @@
     return '';
   }
 
+  // ---- AI job description generation ----
+  async function generateDescription() {
+    const btn = document.getElementById('ai-generate-btn');
+    const title = document.getElementById('f-title').value.trim();
+    const company = document.getElementById('f-company').value.trim();
+
+    if (!isValidJobTitle(title)) {
+      showToast('Enter a real job title first, like "Sales Manager".');
+      return;
+    }
+    if (!isValidCompanyName(company)) {
+      showToast('Enter your company name first.');
+      return;
+    }
+
+    const payload = {
+      title,
+      company,
+      location: document.getElementById('f-location').value.trim(),
+      job_type: document.getElementById('f-type').value,
+      work_style: document.getElementById('f-style').value,
+      salary: document.getElementById('f-salary').value.trim()
+    };
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+      const { data, error } = await sb.functions.invoke('generate-job-description', {
+        body: payload
+      });
+
+      if (error || !data?.description) {
+        console.error('Generate description failed:', error);
+        showToast('Could not generate a description. Try again in a moment.');
+        return;
+      }
+
+      document.getElementById('f-desc').value = data.description;
+      showToast('✨ Draft generated — feel free to edit it.');
+    } catch (err) {
+      console.error('Generate description error:', err);
+      showToast('Could not generate a description. Try again in a moment.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+
   function initLocationAutocomplete() {
     const input = document.getElementById('f-location');
     if (!input || !(window.google && google.maps && google.maps.places)) return;
@@ -806,7 +881,6 @@
 
 
 <!-- Google Places Autocomplete -->
-<!-- IMPORTANT: Replace the placeholder below with your NEW rotated Google Maps API key. Do not use the key you pasted in chat. -->
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0&libraries=places&callback=initAlygnnPlaces"></script>
 </body>
 </html>
