@@ -110,7 +110,10 @@
   .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
 
-  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; max-width: 640px; }
+  /* ---- Post Job layout: form + live preview ---- */
+  .post-job-grid { display: grid; grid-template-columns: minmax(0, 640px) minmax(280px, 380px); gap: 24px; align-items: start; }
+
+  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .form-group.full { grid-column: 1 / -1; }
@@ -156,6 +159,38 @@
   .btn-ai.loading .ai-label { display: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ---- Indeed-style pay builder ---- */
+  .pay-builder { display: flex; flex-direction: column; gap: 10px; }
+  .pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pay-amounts { display: grid; gap: 10px; }
+  .pay-amounts.range { grid-template-columns: 1fr 1fr; }
+  .pay-amounts.single { grid-template-columns: 1fr; }
+  .pay-prefix-input { position: relative; }
+  .pay-prefix-input span {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); font-size: 14px; pointer-events: none;
+  }
+  .pay-prefix-input input { padding-left: 26px; }
+  .pay-preview-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ---- Live preview panel ---- */
+  .preview-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px; position: sticky; top: 88px;
+  }
+  .preview-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 16px; }
+  .preview-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); line-height: 1.25; margin-bottom: 6px; word-break: break-word; }
+  .preview-title.placeholder { color: #aab4bc; }
+  .preview-company { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .preview-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6; }
+  .preview-salary { display: inline-block; font-size: 13px; font-weight: 500; color: var(--mint); background: var(--mint-light); border-radius: 100px; padding: 4px 12px; margin-bottom: 16px; }
+  .preview-section-title { font-size: 12px; font-weight: 500; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; }
+  .preview-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .preview-desc.placeholder { color: #aab4bc; font-style: italic; }
+  .preview-reqs { list-style: disc; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+  .preview-reqs .placeholder { list-style: none; margin-left: -18px; color: #aab4bc; font-style: italic; }
+  .preview-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
   .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
   .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
   .empty-state .empty-title { font-weight: 500; color: var(--text); margin-bottom: 6px; font-size: 15px; }
@@ -165,11 +200,18 @@
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
+  @media (max-width: 1150px) {
+    .post-job-grid { grid-template-columns: 1fr; }
+    .preview-card { position: static; }
+  }
+
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
     .stats-row { grid-template-columns: 1fr 1fr; }
     .form-grid { grid-template-columns: 1fr; }
+    .pay-row { grid-template-columns: 1fr; }
+    .pay-amounts.range { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -273,60 +315,116 @@
       <div class="verification-lock" id="verification-lock" style="display:none;">
         Your business must be approved by Alygnn before you can post jobs.
       </div>
-      <div class="form-card">
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Job title</label>
-            <input type="text" class="form-input" id="f-title" placeholder="e.g. Senior Designer">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Company name</label>
-            <input type="text" class="form-input" id="f-company" placeholder="Your company">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Location</label>
-            <input type="text" class="form-input" id="f-location" placeholder="Start typing a city, like Raleigh, NC" autocomplete="off">
-            <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Select a real location from Google suggestions.</small>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Job type</label>
-            <select class="form-input" id="f-type">
-              <option>Full-time</option>
-              <option>Part-time</option>
-              <option>Contract</option>
-              <option>Internship</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Work style</label>
-            <select class="form-input" id="f-style">
-              <option>Remote</option>
-              <option>Hybrid</option>
-              <option>On-site</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Salary range</label>
-            <input type="text" class="form-input" id="f-salary" placeholder="e.g. $80k–$110k">
-          </div>
-          <div class="form-group full">
-            <div class="form-label-row">
-              <label class="form-label">Job description</label>
-              <button type="button" class="btn-ai" id="ai-generate-btn" onclick="generateDescription()">
-                <span class="spinner"></span>
-                <span class="ai-label">✨ Generate with AI</span>
-              </button>
+
+      <div class="post-job-grid">
+        <div class="form-card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Job title</label>
+              <input type="text" class="form-input" id="f-title" placeholder="e.g. Senior Designer" oninput="updatePreview()">
             </div>
-            <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..."></textarea>
-            <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
+            <div class="form-group">
+              <label class="form-label">Company name</label>
+              <input type="text" class="form-input" id="f-company" placeholder="Your company" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-input" id="f-location" placeholder="Start typing a city, like Raleigh, NC" autocomplete="off" oninput="updatePreview()">
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Select a real location from Google suggestions.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job type</label>
+              <select class="form-input" id="f-type" onchange="updatePreview()">
+                <option>Full-time</option>
+                <option>Part-time</option>
+                <option>Contract</option>
+                <option>Internship</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job location type</label>
+              <select class="form-input" id="f-style" onchange="updatePreview()">
+                <option value="Remote">Remote</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="On-site">In person</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <!-- spacer to keep grid aligned; pay builder spans full width below -->
+            </div>
+
+            <div class="form-group full">
+              <label class="form-label">Pay</label>
+              <div class="pay-builder">
+                <div class="pay-row">
+                  <select class="form-input" id="f-pay-type" onchange="onPayTypeChange()">
+                    <option value="range">Range</option>
+                    <option value="exact">Exact amount</option>
+                    <option value="starting">Starting amount</option>
+                    <option value="maximum">Maximum amount</option>
+                  </select>
+                  <select class="form-input" id="f-pay-period" onchange="updatePreview()">
+                    <option value="year">Per year</option>
+                    <option value="hour">Per hour</option>
+                    <option value="month">Per month</option>
+                    <option value="week">Per week</option>
+                  </select>
+                </div>
+                <div class="pay-amounts range" id="pay-amounts-wrap">
+                  <div class="pay-prefix-input">
+                    <span>$</span>
+                    <input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="Minimum" oninput="updatePreview()">
+                  </div>
+                  <div class="pay-prefix-input">
+                    <span>$</span>
+                    <input type="number" min="0" step="1" class="form-input" id="f-pay-max" placeholder="Maximum" oninput="updatePreview()">
+                  </div>
+                </div>
+                <div class="pay-preview-line" id="pay-preview-line">Enter an amount to see a preview.</div>
+              </div>
+              <!-- Hidden field kept for backward compatibility with existing validation / Supabase column -->
+              <input type="hidden" id="f-salary">
+            </div>
+
+            <div class="form-group full">
+              <div class="form-label-row">
+                <label class="form-label">Job description</label>
+                <button type="button" class="btn-ai" id="ai-generate-btn" onclick="generateDescription()">
+                  <span class="spinner"></span>
+                  <span class="ai-label">✨ Generate with AI</span>
+                </button>
+              </div>
+              <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..." oninput="updatePreview()"></textarea>
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Requirements (one per line)</label>
+              <textarea class="form-input" id="f-reqs" placeholder="3+ years of experience&#10;Proficiency in React&#10;Strong communication skills" style="min-height:90px" oninput="updatePreview()"></textarea>
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Each line becomes a bullet point in the live preview →</small>
+            </div>
           </div>
-          <div class="form-group full">
-            <label class="form-label">Requirements (one per line)</label>
-            <textarea class="form-input" id="f-reqs" placeholder="3+ years of experience&#10;Proficiency in React&#10;Strong communication skills" style="min-height:90px"></textarea>
-          </div>
+          <button class="btn-post" id="post-job-btn" onclick="postJob()">Post job →</button>
+          <button class="btn-view" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none; margin-left:8px;">Cancel edit</button>
         </div>
-        <button class="btn-post" id="post-job-btn" onclick="postJob()">Post job →</button>
-        <button class="btn-view" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none; margin-left:8px;">Cancel edit</button>
+
+        <!-- LIVE PREVIEW -->
+        <div class="preview-card">
+          <div class="preview-label">Live preview</div>
+          <div class="preview-title placeholder" id="pv-title">Job title will appear here</div>
+          <div class="preview-company" id="pv-company"></div>
+          <div class="preview-meta" id="pv-meta"></div>
+          <div id="pv-salary-wrap"></div>
+
+          <hr class="preview-divider">
+
+          <div class="preview-section-title">Description</div>
+          <div class="preview-desc placeholder" id="pv-desc">Your job description will show up here as you type.</div>
+
+          <div class="preview-section-title">Requirements</div>
+          <ul class="preview-reqs" id="pv-reqs">
+            <li class="placeholder">Add requirements, one per line, to see them listed here.</li>
+          </ul>
+        </div>
       </div>
     </div>
 
@@ -397,6 +495,7 @@
 
     updateVerificationUI();
     await loadJobs();
+    updatePreview();
   }
 
   checkAuth();
@@ -451,6 +550,8 @@
 
     if (navButton) navButton.classList.add('active');
     updateVerificationUI();
+
+    if (name === 'post') updatePreview();
   }
 
   function escapeHtml(value) {
@@ -501,7 +602,7 @@
         <div class="job-status active"></div>
         <div class="job-info">
           <div class="job-title-text">${escapeHtml(job.title)}</div>
-          <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(job.work_style || '')}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
+          <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(formatWorkStyleLabel(job.work_style))}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
         </div>
         <div class="job-stats">
           <div><div class="js-val">${job.views || 0}</div><div class="js-label">Views</div></div>
@@ -518,6 +619,155 @@
     overviewJobs.innerHTML = jobRows;
   }
 
+  function formatWorkStyleLabel(workStyle) {
+    if (workStyle === 'On-site') return 'In person';
+    return workStyle || '';
+  }
+
+  // ---- Indeed-style pay builder ----
+  function onPayTypeChange() {
+    const payType = document.getElementById('f-pay-type').value;
+    const wrap = document.getElementById('pay-amounts-wrap');
+
+    if (payType === 'range') {
+      wrap.className = 'pay-amounts range';
+      wrap.innerHTML = `
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="Minimum" oninput="updatePreview()"></div>
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-max" placeholder="Maximum" oninput="updatePreview()"></div>
+      `;
+    } else {
+      const placeholder = payType === 'starting' ? 'Starting amount' : payType === 'maximum' ? 'Maximum amount' : 'Amount';
+      wrap.className = 'pay-amounts single';
+      wrap.innerHTML = `
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="${placeholder}" oninput="updatePreview()"></div>
+      `;
+    }
+
+    updatePreview();
+  }
+
+  function buildSalaryString() {
+    const payType = document.getElementById('f-pay-type').value;
+    const period = document.getElementById('f-pay-period').value;
+    const periodLabel = { year: 'year', hour: 'hour', month: 'month', week: 'week' }[period] || 'year';
+
+    const minEl = document.getElementById('f-pay-min');
+    const maxEl = document.getElementById('f-pay-max');
+    const min = minEl ? minEl.value.trim() : '';
+    const max = maxEl ? maxEl.value.trim() : '';
+
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+
+    if (payType === 'range') {
+      if (!min || !max) return '';
+      return `$${fmt(min)} - $${fmt(max)} per ${periodLabel}`;
+    }
+    if (payType === 'starting') {
+      if (!min) return '';
+      return `From $${fmt(min)} per ${periodLabel}`;
+    }
+    if (payType === 'maximum') {
+      if (!min) return '';
+      return `Up to $${fmt(min)} per ${periodLabel}`;
+    }
+    // exact
+    if (!min) return '';
+    return `$${fmt(min)} per ${periodLabel}`;
+  }
+
+  function parseSalaryIntoBuilder(salaryText) {
+    // Best-effort parse of a previously stored salary string back into the builder.
+    // If it doesn't match a known pattern, leave the builder blank and show the
+    // original text as a note so the employer can see what's currently saved.
+    const note = document.getElementById('pay-preview-line');
+    if (!salaryText) return;
+
+    const periodMatch = /per\s+(year|hour|month|week)/i.exec(salaryText);
+    const period = periodMatch ? periodMatch[1].toLowerCase() : 'year';
+    document.getElementById('f-pay-period').value = period;
+
+    const rangeMatch = /\$([\d,]+)\s*-\s*\$([\d,]+)/.exec(salaryText);
+    const fromMatch = /From\s+\$([\d,]+)/i.exec(salaryText);
+    const upToMatch = /Up to\s+\$([\d,]+)/i.exec(salaryText);
+    const exactMatch = /^\$([\d,]+)/.exec(salaryText);
+
+    if (rangeMatch) {
+      document.getElementById('f-pay-type').value = 'range';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = rangeMatch[1].replace(/,/g, '');
+      document.getElementById('f-pay-max').value = rangeMatch[2].replace(/,/g, '');
+    } else if (fromMatch) {
+      document.getElementById('f-pay-type').value = 'starting';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = fromMatch[1].replace(/,/g, '');
+    } else if (upToMatch) {
+      document.getElementById('f-pay-type').value = 'maximum';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = upToMatch[1].replace(/,/g, '');
+    } else if (exactMatch) {
+      document.getElementById('f-pay-type').value = 'exact';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = exactMatch[1].replace(/,/g, '');
+    } else if (note) {
+      note.textContent = `Currently saved: "${salaryText}". Enter a new amount above to replace it.`;
+    }
+  }
+
+  // ---- Live preview ----
+  function updatePreview() {
+    const title = document.getElementById('f-title').value.trim();
+    const company = document.getElementById('f-company').value.trim();
+    const location = document.getElementById('f-location').value.trim();
+    const jobType = document.getElementById('f-type').value;
+    const workStyle = document.getElementById('f-style').value;
+    const description = document.getElementById('f-desc').value.trim();
+    const reqsRaw = document.getElementById('f-reqs').value;
+
+    const salaryString = buildSalaryString();
+    document.getElementById('f-salary').value = salaryString;
+
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine && !payLine.textContent.startsWith('Currently saved')) {
+      payLine.textContent = salaryString ? salaryString : 'Enter an amount to see a preview.';
+    }
+
+    const titleEl = document.getElementById('pv-title');
+    if (title) {
+      titleEl.textContent = title;
+      titleEl.classList.remove('placeholder');
+    } else {
+      titleEl.textContent = 'Job title will appear here';
+      titleEl.classList.add('placeholder');
+    }
+
+    document.getElementById('pv-company').textContent = company;
+
+    const metaParts = [jobType, formatWorkStyleLabel(workStyle), location].filter(Boolean);
+    document.getElementById('pv-meta').textContent = metaParts.join(' · ');
+
+    const salaryWrap = document.getElementById('pv-salary-wrap');
+    salaryWrap.innerHTML = salaryString
+      ? `<div class="preview-salary">${escapeHtml(salaryString)}</div>`
+      : '';
+
+    const descEl = document.getElementById('pv-desc');
+    if (description) {
+      descEl.textContent = description;
+      descEl.classList.remove('placeholder');
+    } else {
+      descEl.textContent = 'Your job description will show up here as you type.';
+      descEl.classList.add('placeholder');
+    }
+
+    const reqLines = reqsRaw.split('\n').map(r => r.trim()).filter(Boolean);
+    const reqsEl = document.getElementById('pv-reqs');
+    if (reqLines.length === 0) {
+      reqsEl.innerHTML = '<li class="placeholder">Add requirements, one per line, to see them listed here.</li>';
+    } else {
+      reqsEl.innerHTML = reqLines.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+    }
+  }
+
   function collectJobForm() {
     return {
       title: document.getElementById('f-title').value.trim(),
@@ -525,7 +775,7 @@
       location: document.getElementById('f-location').value.trim(),
       job_type: document.getElementById('f-type').value,
       work_style: document.getElementById('f-style').value,
-      salary: document.getElementById('f-salary').value.trim(),
+      salary: buildSalaryString(),
       description: document.getElementById('f-desc').value.trim(),
       requirements: document.getElementById('f-reqs').value.trim()
     };
@@ -538,20 +788,33 @@
     selectedGooglePlace = job.location ? { formatted_address: job.location } : null;
     document.getElementById('f-type').value = job.job_type || 'Full-time';
     document.getElementById('f-style').value = job.work_style || 'Remote';
-    document.getElementById('f-salary').value = job.salary || '';
+
+    document.getElementById('f-pay-type').value = 'range';
+    onPayTypeChange();
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine) payLine.textContent = 'Enter an amount to see a preview.';
+    parseSalaryIntoBuilder(job.salary || '');
+
     document.getElementById('f-desc').value = job.description || '';
     document.getElementById('f-reqs').value = job.requirements || '';
+    updatePreview();
   }
 
   function clearJobForm() {
-    ['f-title','f-location','f-salary','f-desc','f-reqs'].forEach(id => {
+    ['f-title','f-location','f-desc','f-reqs'].forEach(id => {
       document.getElementById(id).value = '';
     });
 
     document.getElementById('f-company').value = currentProfile?.company_name || '';
     document.getElementById('f-type').value = 'Full-time';
     document.getElementById('f-style').value = 'Remote';
+    document.getElementById('f-pay-type').value = 'range';
+    document.getElementById('f-pay-period').value = 'year';
+    onPayTypeChange();
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine) payLine.textContent = 'Enter an amount to see a preview.';
     selectedGooglePlace = null;
+    updatePreview();
   }
 
 
@@ -607,7 +870,7 @@
       return /remote|united states|usa|u\.s\.|[A-Za-z]{3,}/i.test(clean);
     }
 
-    // For Hybrid and On-site jobs, require a Google-selected place when Google Places loads.
+    // For Hybrid and In person (On-site) jobs, require a Google-selected place when Google Places loads.
     // This stops random text like "asdf", "dcm", or "abc123".
     if (window.google && google.maps && google.maps.places) {
       return !!selectedGooglePlace && clean === normalizeText(selectedGooglePlace.formatted_address || selectedGooglePlace.name || clean);
@@ -652,7 +915,7 @@
     }
 
     if (!isValidSalary(job.salary)) {
-      return 'Enter a real salary, like "$18/hour", "$45,000-$60,000", or "$55k/year".';
+      return 'Enter a pay amount above so candidates know what this role pays.';
     }
 
     if (!isValidDescription(job.description)) {
@@ -696,7 +959,7 @@
       location: document.getElementById('f-location').value.trim(),
       job_type: document.getElementById('f-type').value,
       work_style: document.getElementById('f-style').value,
-      salary: document.getElementById('f-salary').value.trim()
+      salary: buildSalaryString()
     };
 
     btn.disabled = true;
@@ -714,6 +977,7 @@
       }
 
       document.getElementById('f-desc').value = data.description;
+      updatePreview();
       showToast('✨ Draft generated — feel free to edit it.');
     } catch (err) {
       console.error('Generate description error:', err);
@@ -753,6 +1017,7 @@
       };
 
       input.value = selectedGooglePlace.formatted_address;
+      updatePreview();
     });
   }
 
