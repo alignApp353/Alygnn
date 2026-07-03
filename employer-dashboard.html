@@ -628,13 +628,37 @@
     }
   }
 
+  const PROFANITY_BLOCKLIST = [
+    'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
+    'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard',
+    'blowjob', 'handjob', 'porn', 'kill yourself'
+  ];
+
+  function containsProfanity(value) {
+    const text = normalizeText(value).toLowerCase();
+    return PROFANITY_BLOCKLIST.some(word => {
+      if (word.includes(' ')) return text.includes(word);
+      return new RegExp('\\b' + word + '\\b', 'i').test(text);
+    });
+  }
+
+  function isValidNewEntry(value) {
+    const clean = normalizeText(value);
+    if (clean.length < 3 || clean.length > 60) return false;
+    if (containsProfanity(clean)) return false;
+    if (containsBlockedJunk(clean)) return false;
+    if (hasRepeatedJunk(clean)) return false;
+    return true;
+  }
+
   function filterResults(type) {
     const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
     const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
     const input = document.getElementById(inputId);
     const resultsBox = document.getElementById(resultsId);
     const state = chipState[type];
-    const query = input.value.trim().toLowerCase();
+    const rawQuery = input.value.trim();
+    const query = rawQuery.toLowerCase();
 
     const available = presetsFor(type).filter(v => !state.selected.has(v));
     const matches = (query === ''
@@ -644,27 +668,85 @@
 
     resultsBox.innerHTML = '';
 
-    if (matches.length === 0) {
+    matches.forEach(value => {
+      const row = document.createElement('div');
+      row.className = 'chip-result-row';
+      row.textContent = value;
+      // mousedown fires before the input's blur handler, so the click
+      // registers before the dropdown gets hidden.
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectResult(type, value);
+      });
+      resultsBox.appendChild(row);
+    });
+
+    if (query === '' && matches.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'chip-results-empty';
-      empty.textContent = query === '' ? 'Start typing to search the list.' : 'No matches. Try a different search term.';
+      empty.textContent = 'Start typing to search the list.';
       resultsBox.appendChild(empty);
-    } else {
-      matches.forEach(value => {
-        const row = document.createElement('div');
-        row.className = 'chip-result-row';
-        row.textContent = value;
-        // mousedown fires before the input's blur handler, so the click
-        // registers before the dropdown gets hidden.
-        row.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          selectResult(type, value);
-        });
-        resultsBox.appendChild(row);
-      });
+    } else if (query !== '') {
+      // Not on the preset list (or not a full match) — offer to add exactly
+      // what was typed, as long as it's not junk/profanity.
+      const alreadyExists = [...presetsFor(type), ...state.custom]
+        .some(v => v.toLowerCase() === query);
+
+      if (!alreadyExists) {
+        if (isValidNewEntry(rawQuery)) {
+          const addRow = document.createElement('div');
+          addRow.className = 'chip-result-row';
+          addRow.innerHTML = `<strong>+ Add</strong> "${escapeHtml(rawQuery)}"`;
+          addRow.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            addNewEntry(type, rawQuery);
+          });
+          resultsBox.appendChild(addRow);
+        } else if (matches.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'chip-results-empty';
+          empty.textContent = 'No matches, and that doesn\'t look like a valid entry.';
+          resultsBox.appendChild(empty);
+        }
+      } else if (matches.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'chip-results-empty';
+        empty.textContent = 'Already added.';
+        resultsBox.appendChild(empty);
+      }
     }
 
     resultsBox.classList.add('show');
+  }
+
+  function addNewEntry(type, rawValue) {
+    const clean = normalizeText(rawValue);
+    if (!isValidNewEntry(clean)) {
+      showToast(type === 'req'
+        ? 'Enter a real requirement, like "TIG Welding" or "OSHA 10 certification".'
+        : 'Enter a real benefit, like "Company vehicle" or "On-site childcare".');
+      return;
+    }
+
+    const state = chipState[type];
+    const exists = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === clean.toLowerCase());
+    if (exists) {
+      showToast('That one is already in the list.');
+      return;
+    }
+
+    state.custom.push(clean);
+    state.selected.add(clean);
+
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const input = document.getElementById(inputId);
+    input.value = '';
+    input.focus();
+
+    renderSelectedChips(type);
+    filterResults(type);
+    syncChipHiddenField(type);
+    updatePreview();
   }
 
   function hideResults(type) {
