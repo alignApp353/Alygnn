@@ -10,9 +10,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 
-    <button class="action-btn" onclick="debugSupabase()">
-    Test Supabase Session
-</button>
 <style>
 :root{
     --brand:#5D7FA3;
@@ -218,16 +215,31 @@ body{
             </div>
         </div>
     </div>
-<button class="theme-btn" onclick="debugSupabase()">
-    Test Session
-</button>
+
+    <button class="theme-btn" onclick="debugSupabase()">
+        Test Session
+    </button>
+
     <div class="logout" onclick="logoutUser()">
         Log Out
     </div>
 
 </div>
-async function debugSupabase(){
 
+<script>
+const SUPABASE_URL = "https://auth.alygnn.com";
+const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function showMessage(text, type){
+    const message = document.getElementById("message");
+    message.textContent = text;
+    message.className = "message " + type;
+    message.style.display = "block";
+}
+
+async function debugSupabase(){
     const { data, error } = await sb.auth.getSession();
 
     if(error){
@@ -241,18 +253,6 @@ async function debugSupabase(){
     }
 
     alert("Logged in as: " + data.session.user.email);
-}
-<script>
-const SUPABASE_URL = "https://auth.alygnn.com";
-const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-function showMessage(text, type){
-    const message = document.getElementById("message");
-    message.textContent = text;
-    message.className = "message " + type;
-    message.style.display = "block";
 }
 
 async function checkSession(){
@@ -343,9 +343,6 @@ async function changePassword(){
 
 async function logoutUser(){
     await sb.auth.signOut();
-
-    localStorage.removeItem("supabase.auth.token");
-    sessionStorage.clear();
 
     window.location.replace("app-login.html");
 }
