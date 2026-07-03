@@ -423,26 +423,18 @@
               <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
             </div>
 
-            <!-- REQUIREMENTS: chip picker -->
+            <!-- REQUIREMENTS: fixed preset list only, no free text -->
             <div class="form-group full">
               <label class="form-label">Requirements</label>
               <div class="chip-wrap" id="req-chip-wrap"></div>
-              <div class="chip-add-row">
-                <input type="text" class="form-input" id="req-custom-input" placeholder="Add your own requirement..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomChip('req');}">
-                <button type="button" class="btn-chip-add" onclick="addCustomChip('req')">+ Add</button>
-              </div>
               <div class="chip-count-note" id="req-count-note">Select at least 3.</div>
               <input type="hidden" id="f-reqs">
             </div>
 
-            <!-- BENEFITS: chip picker -->
+            <!-- BENEFITS: fixed preset list only, no free text -->
             <div class="form-group full">
               <label class="form-label">Benefits <span style="text-transform:none; font-weight:400;">(optional)</span></label>
               <div class="chip-wrap" id="benefit-chip-wrap"></div>
-              <div class="chip-add-row">
-                <input type="text" class="form-input" id="benefit-custom-input" placeholder="Add your own benefit..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomChip('benefit');}">
-                <button type="button" class="btn-chip-add" onclick="addCustomChip('benefit')">+ Add</button>
-              </div>
               <input type="hidden" id="f-benefits">
             </div>
           </div>
@@ -497,17 +489,26 @@
   const REQUIREMENT_PRESETS = [
     'High school diploma or equivalent',
     "Bachelor's degree",
+    "Associate degree",
     '1+ years of experience',
     '2+ years of experience',
     '3+ years of experience',
     '5+ years of experience',
     "Valid driver's license",
     'Reliable transportation',
+    'Own vehicle',
     'Weekend availability',
+    'Evening availability',
     'Bilingual (English/Spanish)',
     'Strong communication skills',
     'Customer service experience',
-    'Proficiency in Microsoft Office'
+    'Proficiency in Microsoft Office',
+    'CPR certified',
+    'Food handler certification',
+    'Forklift certified',
+    'Able to lift 30+ lbs',
+    'Background check required',
+    'Drug test required'
   ];
 
   const BENEFIT_PRESETS = [
@@ -516,14 +517,21 @@
     'Vision insurance',
     'Paid time off',
     'Parental leave',
+    'Sick leave',
     '401(k)',
     '401(k) matching',
     '403(b)',
     'Flexible schedule',
     'Flexible spending account',
+    'Health savings account',
     'Tuition reimbursement',
     'Retirement plan',
-    'Employee discount'
+    'Employee discount',
+    'Life insurance',
+    'Disability insurance',
+    'Referral program',
+    'Professional development assistance',
+    'Employee assistance program'
   ];
 
   const chipState = {
@@ -537,10 +545,11 @@
 
   function toggleChip(type, value) {
     const state = chipState[type];
-    const isCustom = state.custom.includes(value);
+    const isLegacyCustom = state.custom.includes(value);
 
-    if (isCustom) {
-      // Custom chips: clicking again removes them entirely.
+    if (isLegacyCustom) {
+      // Only reachable for text saved before the preset-only list existed.
+      // Deselecting removes it entirely since it's not part of the fixed list.
       state.custom = state.custom.filter(v => v !== value);
       state.selected.delete(value);
     } else if (state.selected.has(value)) {
@@ -548,59 +557,6 @@
     } else {
       state.selected.add(value);
     }
-
-    renderChips(type);
-    syncChipHiddenField(type);
-    updatePreview();
-  }
-
-  const PROFANITY_BLOCKLIST = [
-    'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
-    'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard', 'suck dick',
-    'suck my', 'blowjob', 'handjob', 'porn', 'sex worker', 'kill yourself'
-  ];
-
-  function containsProfanity(value) {
-    const text = normalizeText(value).toLowerCase();
-    return PROFANITY_BLOCKLIST.some(word => {
-      // Word-boundary check for single words; plain substring check for phrases.
-      if (word.includes(' ')) return text.includes(word);
-      return new RegExp('\\b' + word + '\\b', 'i').test(text);
-    });
-  }
-
-  function isValidCustomChipEntry(value, type) {
-    const clean = normalizeText(value);
-    if (clean.length < 3 || clean.length > 60) return false;
-    if (containsProfanity(clean)) return false;
-    if (containsBlockedJunk(clean)) return false;
-    if (hasRepeatedJunk(clean)) return false;
-    return true;
-  }
-
-  function addCustomChip(type) {
-    const inputId = type === 'req' ? 'req-custom-input' : 'benefit-custom-input';
-    const input = document.getElementById(inputId);
-    const value = input.value.trim();
-    if (!value) return;
-
-    if (!isValidCustomChipEntry(value, type)) {
-      showToast(type === 'req'
-        ? 'Enter a real requirement, like "Must lift 30 lbs" or "Food handler certification".'
-        : 'Enter a real benefit, like "Gym membership" or "Company laptop".');
-      return;
-    }
-
-    const state = chipState[type];
-    const allValues = [...presetsFor(type), ...state.custom];
-    if (allValues.some(v => v.toLowerCase() === value.toLowerCase())) {
-      showToast('That one is already in the list.');
-      return;
-    }
-
-    state.custom.push(value);
-    state.selected.add(value);
-    input.value = '';
 
     renderChips(type);
     syncChipHiddenField(type);
