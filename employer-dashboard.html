@@ -554,11 +554,45 @@
     updatePreview();
   }
 
+  const PROFANITY_BLOCKLIST = [
+    'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
+    'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard', 'suck dick',
+    'suck my', 'blowjob', 'handjob', 'porn', 'sex worker', 'kill yourself'
+  ];
+
+  function containsProfanity(value) {
+    const text = normalizeText(value).toLowerCase();
+    return PROFANITY_BLOCKLIST.some(word => {
+      // Word-boundary check for single words; plain substring check for phrases.
+      if (word.includes(' ')) return text.includes(word);
+      return new RegExp('\\b' + word + '\\b', 'i').test(text);
+    });
+  }
+
+  function isValidCustomChipEntry(value, type) {
+    const clean = normalizeText(value);
+    if (clean.length < 3 || clean.length > 60) return false;
+    if (containsProfanity(clean)) return false;
+    if (containsBlockedJunk(clean)) return false;
+    if (hasRepeatedJunk(clean)) return false;
+    // Requirements should read like a real phrase; benefits can be a single
+    // term (e.g. "401(k)"), so only enforce the word-count check for requirements.
+    if (type === 'req' && countRealWords(clean) < 2) return false;
+    return true;
+  }
+
   function addCustomChip(type) {
     const inputId = type === 'req' ? 'req-custom-input' : 'benefit-custom-input';
     const input = document.getElementById(inputId);
     const value = input.value.trim();
     if (!value) return;
+
+    if (!isValidCustomChipEntry(value, type)) {
+      showToast(type === 'req'
+        ? 'Enter a real requirement, like "Must lift 30 lbs" or "Food handler certification".'
+        : 'Enter a real benefit, like "Gym membership" or "Company laptop".');
+      return;
+    }
 
     const state = chipState[type];
     const allValues = [...presetsFor(type), ...state.custom];
@@ -582,11 +616,28 @@
     const state = chipState[type];
     const all = [...presetsFor(type), ...state.custom];
 
-    wrap.innerHTML = all.map(value => {
+    wrap.innerHTML = '';
+
+    all.forEach(value => {
       const selected = state.selected.has(value);
-      const icon = selected ? '✓' : '+';
-      return `<button type="button" class="chip-option${selected ? ' chip-selected' : ''}" onclick="toggleChip('${type}', ${JSON.stringify(value).replace(/'/g, "\\'")})"><span class="chip-icon">${icon}</span>${escapeHtml(value)}</button>`;
-    }).join('');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip-option' + (selected ? ' chip-selected' : '');
+
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'chip-icon';
+      iconSpan.textContent = selected ? '✓' : '+';
+
+      btn.appendChild(iconSpan);
+      btn.appendChild(document.createTextNode(value));
+
+      // Attach the handler directly instead of building an inline onclick
+      // string — embedding raw text in an HTML attribute is fragile
+      // (quotes/apostrophes in custom entries broke it before).
+      btn.addEventListener('click', () => toggleChip(type, value));
+
+      wrap.appendChild(btn);
+    });
 
     if (type === 'req') {
       const note = document.getElementById('req-count-note');
