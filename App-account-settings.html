@@ -1,99 +1,227 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn Settings</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+
 <style>
-body{
-    margin:0;
-    font-family:Arial,sans-serif;
-    background:#020817;
-    color:white;
+:root{
+    --brand:#5D7FA3;
+    --bg:#05080D;
+    --card-bg:rgba(18,24,36,.94);
+    --text:#FFFFFF;
+    --border:rgba(255,255,255,.12);
+    --text-muted:#A7B0BC;
+    --danger:#D79A9A;
 }
 
-.header{
-    padding:25px;
-    font-size:32px;
-    font-weight:bold;
+body.light{
+    --bg:#F6F8F7;
+    --card-bg:#FFFFFF;
+    --text:#1A2530;
+    --border:#DDE3E8;
+    --text-muted:#4A5968;
+}
+
+*{
+    box-sizing:border-box;
+    font-family:'DM Sans',sans-serif;
+}
+
+body{
+    margin:0;
+    background:
+        radial-gradient(circle at top, rgba(93,127,163,.25), transparent 35%),
+        var(--bg);
+    color:var(--text);
+}
+
+.screen{
+    max-width:520px;
+    margin:auto;
+    min-height:100vh;
+    padding:30px 22px 100px;
+}
+
+.back{
+    font-size:16px;
+    color:var(--brand);
+    font-weight:800;
+    cursor:pointer;
+    margin-bottom:20px;
+}
+
+.title{
+    font-size:38px;
+    font-weight:900;
+}
+
+.subtitle{
+    color:var(--text-muted);
+    margin-top:8px;
+    line-height:1.5;
 }
 
 .card{
-    background:#0f172a;
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:24px;
-    margin:20px;
-    padding:24px;
+    margin-top:22px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:28px;
+    padding:22px;
 }
 
-.card h2{
-    margin-top:0;
+.card-title{
+    font-size:22px;
+    font-weight:900;
+    margin-bottom:16px;
 }
 
-.option{
-    background:#111827;
-    border:1px solid rgba(255,255,255,.08);
+.menu{
+    display:grid;
+    gap:12px;
+}
+
+.menu-item{
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--border);
+    border-radius:20px;
     padding:18px;
-    border-radius:18px;
-    margin-top:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:800;
     cursor:pointer;
 }
 
-.option.active{
-    border:1px solid #6b8db6;
-    background:#23314b;
+.theme-btn{
+    width:100%;
+    padding:18px;
+    border-radius:20px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text);
+    font-size:17px;
+    font-weight:800;
+    margin-top:10px;
+    cursor:pointer;
 }
 
-.back-btn{
-    display:block;
-    margin:30px 20px;
-    text-align:center;
-    background:#6b8db6;
+.theme-btn.active{
+    background:var(--brand);
     color:white;
-    text-decoration:none;
-    padding:18px;
-    border-radius:18px;
-    font-weight:bold;
+}
+
+.logout{
+    text-align:center;
+    color:var(--danger);
+    font-size:20px;
+    font-weight:900;
+    margin-top:35px;
+    cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">Settings</div>
+<div class="screen">
 
-<div class="card">
-    <h2>Appearance</h2>
-
-    <div class="option active">
-        System Default
+    <div class="back" onclick="window.location.href='app-account.html'">
+        ← Back
     </div>
 
-    <div class="option">
-        Dark Mode
+    <div class="title">Settings</div>
+
+    <div class="subtitle">
+        Manage your Alygnn account and personalize your experience.
     </div>
 
-    <div class="option">
-        Light Mode
+    <div class="card">
+        <div class="card-title">Appearance</div>
+
+        <button class="theme-btn" onclick="setTheme('system')">
+            System Default
+        </button>
+
+        <button class="theme-btn" onclick="setTheme('dark')">
+            Dark Mode
+        </button>
+
+        <button class="theme-btn" onclick="setTheme('light')">
+            Light Mode
+        </button>
     </div>
+
+    <div class="card">
+        <div class="card-title">Account</div>
+
+        <div class="menu">
+
+            <div class="menu-item"
+                 onclick="alert('Change password coming soon')">
+                Change Password <span>›</span>
+            </div>
+
+            <div class="menu-item"
+                 onclick="alert('Notification settings coming soon')">
+                Notifications <span>›</span>
+            </div>
+
+            <div class="menu-item"
+                 onclick="alert('Help Center coming soon')">
+                Help & Support <span>›</span>
+            </div>
+
+            <div class="menu-item"
+                 onclick="alert('Alygnn Version 1.0')">
+                About Alygnn <span>›</span>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="logout"
+         onclick="window.location.href='app-login.html'">
+        Log Out
+    </div>
+
 </div>
 
-<div class="card">
-    <h2>Notifications</h2>
+<script>
+function applyTheme(theme){
+    document.body.classList.remove("light");
 
-    <div class="option">
-        Job Alerts
-    </div>
+    if(theme === "light"){
+        document.body.classList.add("light");
+    }
 
-    <div class="option">
-        Application Updates
-    </div>
-</div>
+    if(theme === "system"){
+        if(window.matchMedia("(prefers-color-scheme: light)").matches){
+            document.body.classList.add("light");
+        }
+    }
 
-<a class="back-btn" href="app-account.html">
-    Back to Profile
-</a>
+    document.querySelectorAll(".theme-btn").forEach(btn=>{
+        btn.classList.remove("active");
+
+        if(btn.textContent.toLowerCase().includes(theme)){
+            btn.classList.add("active");
+        }
+    });
+}
+
+function setTheme(theme){
+    localStorage.setItem("alygnn-theme", theme);
+    applyTheme(theme);
+}
+
+const savedTheme = localStorage.getItem("alygnn-theme") || "system";
+applyTheme(savedTheme);
+</script>
 
 </body>
 </html>
