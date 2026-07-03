@@ -9,6 +9,12 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  @view-transition {
+    navigation: auto;
+  }
+
+  html { background: var(--bg, #F6F8F7); }
+
   :root {
     --brand: #5D7FA3;
     --sage: #8CB69B;
@@ -84,6 +90,14 @@
   }
 
   .nav-cta:hover { opacity: 0.88; }
+
+  /* These two swap text/href once the auth check resolves (Sign in ->
+     My account, Get started -> Swipe jobs). Keeping them invisible until
+     that resolves means any width change happens off-screen instead of
+     visibly shoving the "How it works / Features / About" links sideways
+     mid-page-load. */
+  #nav-auth-link, #nav-cta-btn { opacity: 0; transition: opacity 0.15s ease; }
+  #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; }
 
   .hero {
     min-height: 92vh;
@@ -1069,31 +1083,38 @@
     // This is the JOB SEEKER homepage.
     // Employers are allowed to view this page, but we do NOT redirect them
     // and we do NOT change the top buttons into employer-account buttons.
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return;
 
-    const { data: profile } = await sb
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .maybeSingle();
+      const { data: profile } = await sb
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-    const role = profile?.role || session.user.user_metadata?.role || 'seeker';
+      const role = profile?.role || session.user.user_metadata?.role || 'seeker';
 
-    // Only change the navbar for real job seekers.
-    // If the logged-in user is an employer, keep this page looking like the job seeker homepage.
-    if (role === 'seeker' || role === 'jobseeker' || role === 'employee') {
-      if (authLink) {
-        authLink.textContent = 'My account';
-        authLink.href = 'account.html';
+      // Only change the navbar for real job seekers.
+      // If the logged-in user is an employer, keep this page looking like the job seeker homepage.
+      if (role === 'seeker' || role === 'jobseeker' || role === 'employee') {
+        if (authLink) {
+          authLink.textContent = 'My account';
+          authLink.href = 'account.html';
+        }
+
+        if (ctaBtn) {
+          ctaBtn.textContent = 'Swipe jobs';
+          ctaBtn.onclick = () => {
+            window.location.href = 'swipe.html';
+          };
+        }
       }
-
-      if (ctaBtn) {
-        ctaBtn.textContent = 'Swipe jobs';
-        ctaBtn.onclick = () => {
-          window.location.href = 'swipe.html';
-        };
-      }
+    } finally {
+      // Whatever happened above — logged out, seeker, or employer — the
+      // text/href is now final, so it's safe to fade the buttons in.
+      if (authLink) authLink.classList.add('auth-ready');
+      if (ctaBtn) ctaBtn.classList.add('auth-ready');
     }
   })();
 </script>
