@@ -173,6 +173,29 @@
   .pay-prefix-input input { padding-left: 26px; }
   .pay-preview-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
+  /* ---- Chip pickers (requirements + benefits) ---- */
+  .chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-option {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text);
+    background: white; border: 1.5px solid var(--border); border-radius: 100px;
+    padding: 8px 14px; cursor: pointer; transition: all 0.15s;
+  }
+  .chip-option:hover { border-color: var(--brand); }
+  .chip-option .chip-icon { font-size: 12px; line-height: 1; }
+  .chip-option.chip-selected {
+    background: var(--brand); border-color: var(--brand); color: white;
+  }
+  .chip-add-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chip-add-row input { flex: 1; }
+  .btn-chip-add {
+    background: white; color: var(--brand); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 0 18px; font-size: 13px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-chip-add:hover { border-color: var(--brand); background: var(--brand-light); }
+  .chip-count-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
   /* ---- Live preview panel ---- */
   .preview-card {
     background: var(--card-bg); border: 1px solid var(--border);
@@ -189,6 +212,8 @@
   .preview-desc.placeholder { color: #aab4bc; font-style: italic; }
   .preview-reqs { list-style: disc; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.7; }
   .preview-reqs .placeholder { list-style: none; margin-left: -18px; color: #aab4bc; font-style: italic; }
+  .preview-benefit-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preview-benefit-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: var(--mint-light); color: var(--text); }
   .preview-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 
   .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
@@ -397,10 +422,28 @@
               <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..." oninput="updatePreview()"></textarea>
               <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
             </div>
+
+            <!-- REQUIREMENTS: chip picker -->
             <div class="form-group full">
-              <label class="form-label">Requirements (one per line)</label>
-              <textarea class="form-input" id="f-reqs" placeholder="3+ years of experience&#10;Proficiency in React&#10;Strong communication skills" style="min-height:90px" oninput="updatePreview()"></textarea>
-              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Each line becomes a bullet point in the live preview →</small>
+              <label class="form-label">Requirements</label>
+              <div class="chip-wrap" id="req-chip-wrap"></div>
+              <div class="chip-add-row">
+                <input type="text" class="form-input" id="req-custom-input" placeholder="Add your own requirement..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomChip('req');}">
+                <button type="button" class="btn-chip-add" onclick="addCustomChip('req')">+ Add</button>
+              </div>
+              <div class="chip-count-note" id="req-count-note">Select at least 3.</div>
+              <input type="hidden" id="f-reqs">
+            </div>
+
+            <!-- BENEFITS: chip picker -->
+            <div class="form-group full">
+              <label class="form-label">Benefits <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+              <div class="chip-wrap" id="benefit-chip-wrap"></div>
+              <div class="chip-add-row">
+                <input type="text" class="form-input" id="benefit-custom-input" placeholder="Add your own benefit..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomChip('benefit');}">
+                <button type="button" class="btn-chip-add" onclick="addCustomChip('benefit')">+ Add</button>
+              </div>
+              <input type="hidden" id="f-benefits">
             </div>
           </div>
           <button class="btn-post" id="post-job-btn" onclick="postJob()">Post job →</button>
@@ -422,8 +465,11 @@
 
           <div class="preview-section-title">Requirements</div>
           <ul class="preview-reqs" id="pv-reqs">
-            <li class="placeholder">Add requirements, one per line, to see them listed here.</li>
+            <li class="placeholder">Select requirements above to see them listed here.</li>
           </ul>
+
+          <div class="preview-section-title" id="pv-benefits-title" style="display:none;">Benefits</div>
+          <div class="preview-benefit-tags" id="pv-benefits"></div>
         </div>
       </div>
     </div>
@@ -446,6 +492,125 @@
   let editingJobId = null;
   let selectedGooglePlace = null;
   let locationAutocomplete = null;
+
+  // ---- Chip picker state ----
+  const REQUIREMENT_PRESETS = [
+    'High school diploma or equivalent',
+    "Bachelor's degree",
+    '1+ years of experience',
+    '2+ years of experience',
+    '3+ years of experience',
+    '5+ years of experience',
+    "Valid driver's license",
+    'Reliable transportation',
+    'Weekend availability',
+    'Bilingual (English/Spanish)',
+    'Strong communication skills',
+    'Customer service experience',
+    'Proficiency in Microsoft Office'
+  ];
+
+  const BENEFIT_PRESETS = [
+    'Health insurance',
+    'Dental insurance',
+    'Vision insurance',
+    'Paid time off',
+    'Parental leave',
+    '401(k)',
+    '401(k) matching',
+    '403(b)',
+    'Flexible schedule',
+    'Flexible spending account',
+    'Tuition reimbursement',
+    'Retirement plan',
+    'Employee discount'
+  ];
+
+  const chipState = {
+    req: { selected: new Set(), custom: [] },
+    benefit: { selected: new Set(), custom: [] }
+  };
+
+  function presetsFor(type) {
+    return type === 'req' ? REQUIREMENT_PRESETS : BENEFIT_PRESETS;
+  }
+
+  function toggleChip(type, value) {
+    const state = chipState[type];
+    const isCustom = state.custom.includes(value);
+
+    if (isCustom) {
+      // Custom chips: clicking again removes them entirely.
+      state.custom = state.custom.filter(v => v !== value);
+      state.selected.delete(value);
+    } else if (state.selected.has(value)) {
+      state.selected.delete(value);
+    } else {
+      state.selected.add(value);
+    }
+
+    renderChips(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
+  function addCustomChip(type) {
+    const inputId = type === 'req' ? 'req-custom-input' : 'benefit-custom-input';
+    const input = document.getElementById(inputId);
+    const value = input.value.trim();
+    if (!value) return;
+
+    const state = chipState[type];
+    const allValues = [...presetsFor(type), ...state.custom];
+    if (allValues.some(v => v.toLowerCase() === value.toLowerCase())) {
+      showToast('That one is already in the list.');
+      return;
+    }
+
+    state.custom.push(value);
+    state.selected.add(value);
+    input.value = '';
+
+    renderChips(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
+  function renderChips(type) {
+    const wrapId = type === 'req' ? 'req-chip-wrap' : 'benefit-chip-wrap';
+    const wrap = document.getElementById(wrapId);
+    const state = chipState[type];
+    const all = [...presetsFor(type), ...state.custom];
+
+    wrap.innerHTML = all.map(value => {
+      const selected = state.selected.has(value);
+      const icon = selected ? '✓' : '+';
+      return `<button type="button" class="chip-option${selected ? ' chip-selected' : ''}" onclick="toggleChip('${type}', ${JSON.stringify(value).replace(/'/g, "\\'")})"><span class="chip-icon">${icon}</span>${escapeHtml(value)}</button>`;
+    }).join('');
+
+    if (type === 'req') {
+      const note = document.getElementById('req-count-note');
+      const count = state.selected.size;
+      note.textContent = count >= 3
+        ? `${count} selected`
+        : `Select at least 3 (${count} selected).`;
+    }
+  }
+
+  function syncChipHiddenField(type) {
+    const fieldId = type === 'req' ? 'f-reqs' : 'f-benefits';
+    const state = chipState[type];
+    // Preserve preset order first, then custom additions.
+    const ordered = [...presetsFor(type), ...state.custom].filter(v => state.selected.has(v));
+    document.getElementById(fieldId).value = ordered.join('\n');
+  }
+
+  function resetChips(type, presetValues) {
+    chipState[type].selected = new Set(presetValues || []);
+    chipState[type].custom = (presetValues || []).filter(v => !presetsFor(type).includes(v));
+    renderChips(type);
+    syncChipHiddenField(type);
+  }
 
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
@@ -492,6 +657,9 @@
     if (companyInput && profile?.company_name) {
       companyInput.value = profile.company_name;
     }
+
+    renderChips('req');
+    renderChips('benefit');
 
     updateVerificationUI();
     await loadJobs();
@@ -676,9 +844,6 @@
   }
 
   function parseSalaryIntoBuilder(salaryText) {
-    // Best-effort parse of a previously stored salary string back into the builder.
-    // If it doesn't match a known pattern, leave the builder blank and show the
-    // original text as a note so the employer can see what's currently saved.
     const note = document.getElementById('pay-preview-line');
     if (!salaryText) return;
 
@@ -722,6 +887,7 @@
     const workStyle = document.getElementById('f-style').value;
     const description = document.getElementById('f-desc').value.trim();
     const reqsRaw = document.getElementById('f-reqs').value;
+    const benefitsRaw = document.getElementById('f-benefits').value;
 
     const salaryString = buildSalaryString();
     document.getElementById('f-salary').value = salaryString;
@@ -762,9 +928,20 @@
     const reqLines = reqsRaw.split('\n').map(r => r.trim()).filter(Boolean);
     const reqsEl = document.getElementById('pv-reqs');
     if (reqLines.length === 0) {
-      reqsEl.innerHTML = '<li class="placeholder">Add requirements, one per line, to see them listed here.</li>';
+      reqsEl.innerHTML = '<li class="placeholder">Select requirements above to see them listed here.</li>';
     } else {
       reqsEl.innerHTML = reqLines.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+    }
+
+    const benefitLines = benefitsRaw.split('\n').map(b => b.trim()).filter(Boolean);
+    const benefitsTitleEl = document.getElementById('pv-benefits-title');
+    const benefitsEl = document.getElementById('pv-benefits');
+    if (benefitLines.length === 0) {
+      benefitsTitleEl.style.display = 'none';
+      benefitsEl.innerHTML = '';
+    } else {
+      benefitsTitleEl.style.display = 'block';
+      benefitsEl.innerHTML = benefitLines.map(b => `<span class="preview-benefit-tag">${escapeHtml(b)}</span>`).join('');
     }
   }
 
@@ -777,7 +954,8 @@
       work_style: document.getElementById('f-style').value,
       salary: buildSalaryString(),
       description: document.getElementById('f-desc').value.trim(),
-      requirements: document.getElementById('f-reqs').value.trim()
+      requirements: document.getElementById('f-reqs').value.trim(),
+      benefits: document.getElementById('f-benefits').value.trim()
     };
   }
 
@@ -796,12 +974,18 @@
     parseSalaryIntoBuilder(job.salary || '');
 
     document.getElementById('f-desc').value = job.description || '';
-    document.getElementById('f-reqs').value = job.requirements || '';
+
+    const reqValues = (job.requirements || '').split('\n').map(r => r.trim()).filter(Boolean);
+    resetChips('req', reqValues);
+
+    const benefitValues = (job.benefits || '').split('\n').map(b => b.trim()).filter(Boolean);
+    resetChips('benefit', benefitValues);
+
     updatePreview();
   }
 
   function clearJobForm() {
-    ['f-title','f-location','f-desc','f-reqs'].forEach(id => {
+    ['f-title','f-location','f-desc'].forEach(id => {
       document.getElementById(id).value = '';
     });
 
@@ -814,6 +998,10 @@
     const payLine = document.getElementById('pay-preview-line');
     if (payLine) payLine.textContent = 'Enter an amount to see a preview.';
     selectedGooglePlace = null;
+
+    resetChips('req', []);
+    resetChips('benefit', []);
+
     updatePreview();
   }
 
@@ -870,13 +1058,10 @@
       return /remote|united states|usa|u\.s\.|[A-Za-z]{3,}/i.test(clean);
     }
 
-    // For Hybrid and In person (On-site) jobs, require a Google-selected place when Google Places loads.
-    // This stops random text like "asdf", "dcm", or "abc123".
     if (window.google && google.maps && google.maps.places) {
       return !!selectedGooglePlace && clean === normalizeText(selectedGooglePlace.formatted_address || selectedGooglePlace.name || clean);
     }
 
-    // Fallback if Google does not load: must look like City, ST.
     return /^[A-Za-z .'-]{3,},\s*[A-Za-z]{2,}(,\s*[A-Za-z .'-]+)?$/.test(clean);
   }
 
@@ -928,11 +1113,7 @@
       .filter(Boolean);
 
     if (requirements.length < 3) {
-      return 'Add at least 3 real requirements, one per line.';
-    }
-
-    if (requirements.some(req => req.length < 12 || countRealWords(req) < 2 || containsBlockedJunk(req) || hasRepeatedJunk(req))) {
-      return 'Each requirement must be a real sentence or phrase, not random text.';
+      return 'Select at least 3 requirements.';
     }
 
     return '';
