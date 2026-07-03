@@ -173,27 +173,33 @@
   .pay-prefix-input input { padding-left: 26px; }
   .pay-preview-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
-  /* ---- Chip pickers (requirements + benefits) ---- */
-  .chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip-option {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text);
-    background: white; border: 1.5px solid var(--border); border-radius: 100px;
-    padding: 8px 14px; cursor: pointer; transition: all 0.15s;
+  /* ---- Search-to-add pickers (requirements + benefits) ---- */
+  .chip-selected-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .chip-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: white;
+    background: var(--brand); border-radius: 100px; padding: 7px 8px 7px 14px;
   }
-  .chip-option:hover { border-color: var(--brand); }
-  .chip-option .chip-icon { font-size: 12px; line-height: 1; }
-  .chip-option.chip-selected {
-    background: var(--brand); border-color: var(--brand); color: white;
+  .chip-tag button {
+    background: rgba(255,255,255,0.25); border: none; color: white;
+    border-radius: 50%; width: 18px; height: 18px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 11px; line-height: 1; transition: background 0.15s;
   }
-  .chip-add-row { display: flex; gap: 8px; margin-top: 10px; }
-  .chip-add-row input { flex: 1; }
-  .btn-chip-add {
-    background: white; color: var(--brand); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 0 18px; font-size: 13px; font-weight: 500;
-    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  .chip-tag button:hover { background: rgba(255,255,255,0.4); }
+  .chip-search-wrap { position: relative; }
+  .chip-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: white; border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-height: 220px; overflow-y: auto;
+    z-index: 20; display: none;
   }
-  .btn-chip-add:hover { border-color: var(--brand); background: var(--brand-light); }
+  .chip-results.show { display: block; }
+  .chip-result-row {
+    padding: 10px 16px; font-size: 13px; cursor: pointer; transition: background 0.15s;
+  }
+  .chip-result-row:hover { background: var(--brand-light); }
+  .chip-results-empty { padding: 10px 16px; font-size: 12px; color: var(--text-muted); }
   .chip-count-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
   /* ---- Live preview panel ---- */
@@ -423,18 +429,28 @@
               <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
             </div>
 
-            <!-- REQUIREMENTS: fixed preset list only, no free text -->
+            <!-- REQUIREMENTS: search to add from a fixed list -->
             <div class="form-group full">
               <label class="form-label">Requirements</label>
-              <div class="chip-wrap" id="req-chip-wrap"></div>
+              <div class="chip-selected-wrap" id="req-selected-wrap"></div>
+              <div class="chip-search-wrap">
+                <input type="text" class="form-input" id="req-search-input" placeholder="Search requirements, e.g. Forklift, Spanish, CPR" autocomplete="off"
+                  oninput="filterResults('req')" onfocus="filterResults('req')" onblur="setTimeout(() => hideResults('req'), 150)">
+                <div class="chip-results" id="req-results"></div>
+              </div>
               <div class="chip-count-note" id="req-count-note">Select at least 3.</div>
               <input type="hidden" id="f-reqs">
             </div>
 
-            <!-- BENEFITS: fixed preset list only, no free text -->
+            <!-- BENEFITS: search to add from a fixed list -->
             <div class="form-group full">
               <label class="form-label">Benefits <span style="text-transform:none; font-weight:400;">(optional)</span></label>
-              <div class="chip-wrap" id="benefit-chip-wrap"></div>
+              <div class="chip-selected-wrap" id="benefit-selected-wrap"></div>
+              <div class="chip-search-wrap">
+                <input type="text" class="form-input" id="benefit-search-input" placeholder="Search benefits, e.g. Gym, 401k, PTO" autocomplete="off"
+                  oninput="filterResults('benefit')" onfocus="filterResults('benefit')" onblur="setTimeout(() => hideResults('benefit'), 150)">
+                <div class="chip-results" id="benefit-results"></div>
+              </div>
               <input type="hidden" id="f-benefits">
             </div>
           </div>
@@ -485,11 +501,11 @@
   let selectedGooglePlace = null;
   let locationAutocomplete = null;
 
-  // ---- Chip picker state ----
+  // ---- Search-to-add picker state ----
   const REQUIREMENT_PRESETS = [
     'High school diploma or equivalent',
     "Bachelor's degree",
-    "Associate degree",
+    'Associate degree',
     '1+ years of experience',
     '2+ years of experience',
     '3+ years of experience',
@@ -499,14 +515,33 @@
     'Own vehicle',
     'Weekend availability',
     'Evening availability',
+    'Overnight availability',
     'Bilingual (English/Spanish)',
+    'Fluent in Spanish',
+    'Fluent in French',
+    'Fluent in Mandarin',
+    'Fluent in Turkish',
     'Strong communication skills',
     'Customer service experience',
+    'Cash handling experience',
+    'Sales experience',
+    'Leadership experience',
+    'Project management experience',
+    'Data entry experience',
+    'Time management skills',
     'Proficiency in Microsoft Office',
+    'Proficiency in Excel',
+    'Proficiency in Photoshop',
+    'Proficiency in Adobe Creative Suite',
+    'Social media management experience',
+    'Typing 40+ WPM',
     'CPR certified',
+    'First aid certified',
     'Food handler certification',
     'Forklift certified',
     'Able to lift 30+ lbs',
+    'Able to lift 50+ lbs',
+    'Able to stand for long periods',
     'Background check required',
     'Drug test required'
   ];
@@ -515,6 +550,9 @@
     'Health insurance',
     'Dental insurance',
     'Vision insurance',
+    'Life insurance',
+    'Disability insurance',
+    'Pet insurance',
     'Paid time off',
     'Parental leave',
     'Sick leave',
@@ -527,11 +565,19 @@
     'Tuition reimbursement',
     'Retirement plan',
     'Employee discount',
-    'Life insurance',
-    'Disability insurance',
     'Referral program',
     'Professional development assistance',
-    'Employee assistance program'
+    'Employee assistance program',
+    'Gym membership',
+    'Wellness program',
+    'Commuter benefits',
+    'Free parking',
+    'Free snacks',
+    'Company car',
+    'Signing bonus',
+    'Relocation assistance',
+    'Childcare assistance',
+    'Remote work stipend'
   ];
 
   const chipState = {
@@ -539,57 +585,38 @@
     benefit: { selected: new Set(), custom: [] }
   };
 
+  const MAX_RESULTS_SHOWN = 8;
+
   function presetsFor(type) {
     return type === 'req' ? REQUIREMENT_PRESETS : BENEFIT_PRESETS;
   }
 
-  function toggleChip(type, value) {
+  function labelsFor(type) {
     const state = chipState[type];
-    const isLegacyCustom = state.custom.includes(value);
-
-    if (isLegacyCustom) {
-      // Only reachable for text saved before the preset-only list existed.
-      // Deselecting removes it entirely since it's not part of the fixed list.
-      state.custom = state.custom.filter(v => v !== value);
-      state.selected.delete(value);
-    } else if (state.selected.has(value)) {
-      state.selected.delete(value);
-    } else {
-      state.selected.add(value);
-    }
-
-    renderChips(type);
-    syncChipHiddenField(type);
-    updatePreview();
+    return [...presetsFor(type), ...state.custom];
   }
 
-  function renderChips(type) {
-    const wrapId = type === 'req' ? 'req-chip-wrap' : 'benefit-chip-wrap';
+  function renderSelectedChips(type) {
+    const wrapId = type === 'req' ? 'req-selected-wrap' : 'benefit-selected-wrap';
     const wrap = document.getElementById(wrapId);
     const state = chipState[type];
-    const all = [...presetsFor(type), ...state.custom];
+    const ordered = labelsFor(type).filter(v => state.selected.has(v));
 
     wrap.innerHTML = '';
 
-    all.forEach(value => {
-      const selected = state.selected.has(value);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'chip-option' + (selected ? ' chip-selected' : '');
+    ordered.forEach(value => {
+      const tag = document.createElement('span');
+      tag.className = 'chip-tag';
+      tag.appendChild(document.createTextNode(value));
 
-      const iconSpan = document.createElement('span');
-      iconSpan.className = 'chip-icon';
-      iconSpan.textContent = selected ? '✓' : '+';
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '✕';
+      removeBtn.setAttribute('aria-label', 'Remove ' + value);
+      removeBtn.addEventListener('click', () => removeSelected(type, value));
 
-      btn.appendChild(iconSpan);
-      btn.appendChild(document.createTextNode(value));
-
-      // Attach the handler directly instead of building an inline onclick
-      // string — embedding raw text in an HTML attribute is fragile
-      // (quotes/apostrophes in custom entries broke it before).
-      btn.addEventListener('click', () => toggleChip(type, value));
-
-      wrap.appendChild(btn);
+      tag.appendChild(removeBtn);
+      wrap.appendChild(tag);
     });
 
     if (type === 'req') {
@@ -601,18 +628,88 @@
     }
   }
 
+  function filterResults(type) {
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
+    const input = document.getElementById(inputId);
+    const resultsBox = document.getElementById(resultsId);
+    const state = chipState[type];
+    const query = input.value.trim().toLowerCase();
+
+    const available = presetsFor(type).filter(v => !state.selected.has(v));
+    const matches = (query === ''
+      ? available
+      : available.filter(v => v.toLowerCase().includes(query))
+    ).slice(0, MAX_RESULTS_SHOWN);
+
+    resultsBox.innerHTML = '';
+
+    if (matches.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'chip-results-empty';
+      empty.textContent = query === '' ? 'Start typing to search the list.' : 'No matches. Try a different search term.';
+      resultsBox.appendChild(empty);
+    } else {
+      matches.forEach(value => {
+        const row = document.createElement('div');
+        row.className = 'chip-result-row';
+        row.textContent = value;
+        // mousedown fires before the input's blur handler, so the click
+        // registers before the dropdown gets hidden.
+        row.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          selectResult(type, value);
+        });
+        resultsBox.appendChild(row);
+      });
+    }
+
+    resultsBox.classList.add('show');
+  }
+
+  function hideResults(type) {
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
+    document.getElementById(resultsId).classList.remove('show');
+  }
+
+  function selectResult(type, value) {
+    const state = chipState[type];
+    state.selected.add(value);
+
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const input = document.getElementById(inputId);
+    input.value = '';
+    input.focus();
+
+    renderSelectedChips(type);
+    filterResults(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
+  function removeSelected(type, value) {
+    const state = chipState[type];
+    state.selected.delete(value);
+    // Legacy custom entries saved before the search picker existed —
+    // once removed they can't be re-added since there's no free text anymore.
+    state.custom = state.custom.filter(v => v !== value);
+
+    renderSelectedChips(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
   function syncChipHiddenField(type) {
     const fieldId = type === 'req' ? 'f-reqs' : 'f-benefits';
     const state = chipState[type];
-    // Preserve preset order first, then custom additions.
-    const ordered = [...presetsFor(type), ...state.custom].filter(v => state.selected.has(v));
+    const ordered = labelsFor(type).filter(v => state.selected.has(v));
     document.getElementById(fieldId).value = ordered.join('\n');
   }
 
   function resetChips(type, presetValues) {
     chipState[type].selected = new Set(presetValues || []);
     chipState[type].custom = (presetValues || []).filter(v => !presetsFor(type).includes(v));
-    renderChips(type);
+    renderSelectedChips(type);
     syncChipHiddenField(type);
   }
 
@@ -662,8 +759,8 @@
       companyInput.value = profile.company_name;
     }
 
-    renderChips('req');
-    renderChips('benefit');
+    renderSelectedChips('req');
+    renderSelectedChips('benefit');
 
     updateVerificationUI();
     await loadJobs();
