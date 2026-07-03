@@ -92,11 +92,24 @@
   .nav-cta:hover { opacity: 0.88; }
 
   /* These two swap text/href once the auth check resolves (Sign in ->
-     My account, Get started -> Swipe jobs). Keeping them invisible until
-     that resolves means any width change happens off-screen instead of
-     visibly shoving the "How it works / Features / About" links sideways
-     mid-page-load. */
-  #nav-auth-link, #nav-cta-btn { opacity: 0; transition: opacity 0.15s ease; }
+     My account, Get started -> Swipe jobs). Two things are needed to
+     avoid a visible glitch:
+     1. min-width reserves enough space for the LONGER of the two
+        possible strings, so the box never changes size when the text
+        swaps — this is what actually stops "How it works / Features /
+        About" from sliding sideways (opacity alone doesn't help here,
+        since a resized box still pushes its siblings even while
+        invisible).
+     2. opacity keeps the text itself from visibly flashing
+        "Sign in" -> "My account" before settling. */
+  #nav-auth-link {
+    opacity: 0; transition: opacity 0.15s ease;
+    display: inline-block; min-width: 84px;
+  }
+  #nav-cta-btn {
+    opacity: 0; transition: opacity 0.15s ease;
+    min-width: 148px;
+  }
   #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; }
 
   .hero {
