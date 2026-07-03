@@ -688,7 +688,8 @@
       resultsBox.appendChild(empty);
     } else if (query !== '') {
       // Not on the preset list (or not a full match) — offer to add exactly
-      // what was typed, as long as it's not junk/profanity.
+      // what was typed, as long as it's not junk/profanity. Anything typed
+      // here still gets checked by Claude before it's actually added.
       const alreadyExists = [...presetsFor(type), ...state.custom]
         .some(v => v.toLowerCase() === query);
 
@@ -719,8 +720,14 @@
     resultsBox.classList.add('show');
   }
 
-  function addNewEntry(type, rawValue) {
+  // Custom entries are checked by Claude (via the validate-chip-entry Edge
+  // Function) before they're actually added — the local isValidNewEntry
+  // check above is just a fast pre-filter to avoid an API call for obvious
+  // profanity/junk. Claude catches typos and meaningless words that regex
+  // can't (e.g. "optt", "extra") and can auto-correct small typos.
+  async function addNewEntry(type, rawValue) {
     const clean = normalizeText(rawValue);
+
     if (!isValidNewEntry(clean)) {
       showToast(type === 'req'
         ? 'Enter a real requirement, like "TIG Welding" or "OSHA 10 certification".'
@@ -729,24 +736,63 @@
     }
 
     const state = chipState[type];
-    const exists = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === clean.toLowerCase());
-    if (exists) {
+    const existsLocally = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === clean.toLowerCase());
+    if (existsLocally) {
       showToast('That one is already in the list.');
       return;
     }
 
-    state.custom.push(clean);
-    state.selected.add(clean);
-
     const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
     const input = document.getElementById(inputId);
-    input.value = '';
-    input.focus();
+    const resultsBox = document.getElementById(resultsId);
 
-    renderSelectedChips(type);
-    filterResults(type);
-    syncChipHiddenField(type);
-    updatePreview();
+    resultsBox.innerHTML = `<div class="chip-results-empty">Checking "${escapeHtml(clean)}"...</div>`;
+    resultsBox.classList.add('show');
+
+    try {
+      const { data, error } = await sb.functions.invoke('validate-chip-entry', {
+        body: { type: type === 'req' ? 'requirement' : 'benefit', text: clean }
+      });
+
+      if (error || !data) {
+        console.error('Validate chip entry failed:', error);
+        showToast('Could not check that entry. Try again in a moment.');
+        filterResults(type);
+        return;
+      }
+
+      if (!data.valid) {
+        showToast(type === 'req'
+          ? 'That doesn\'t look like a real requirement — check the spelling or try being more specific.'
+          : 'That doesn\'t look like a real benefit — check the spelling or try being more specific.');
+        filterResults(type);
+        return;
+      }
+
+      const finalValue = normalizeText(data.corrected || clean);
+      const existsNow = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === finalValue.toLowerCase());
+      if (existsNow) {
+        showToast('That one is already in the list.');
+        filterResults(type);
+        return;
+      }
+
+      state.custom.push(finalValue);
+      state.selected.add(finalValue);
+
+      input.value = '';
+      input.focus();
+
+      renderSelectedChips(type);
+      filterResults(type);
+      syncChipHiddenField(type);
+      updatePreview();
+    } catch (err) {
+      console.error('Validate chip entry error:', err);
+      showToast('Could not check that entry. Try again in a moment.');
+      filterResults(type);
+    }
   }
 
   function hideResults(type) {
