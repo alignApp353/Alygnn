@@ -64,6 +64,17 @@
   .verify-step.done{ background:var(--mint-tint); color:#2d8a57; }
   .verify-step.todo{ background:rgba(231,184,109,0.15); color:#7a5a1a; }
 
+  /* Small, quiet badge shown next to the company name once approved —
+     replaces the big banner so a verified employer isn't stuck staring
+     at a giant green box every time they visit. */
+  .verified-badge{
+    display:none; align-items:center; gap:4px;
+    font-size:12px; font-weight:500; color:#2d8a57;
+    background:var(--mint-tint); border-radius:100px;
+    padding:3px 10px; margin-top:6px; width:fit-content;
+  }
+  .verified-badge.show{ display:inline-flex; }
+
   .profile-card{ display:flex; align-items:flex-start; gap:22px; background:var(--card-bg); border:1px solid var(--border); border-radius:20px; padding:32px; margin-bottom:28px; min-width:0; }
   .avatar{ width:76px; height:76px; border-radius:16px; background:var(--brand); display:flex; align-items:center; justify-content:center; font-family:'DM Serif Display',serif; font-size:1.7rem; color:white; flex-shrink:0; overflow:hidden; cursor:pointer; position:relative; }
   .avatar img{ width:100%; height:100%; object-fit:cover; }
@@ -160,7 +171,7 @@
 
 <div class="page">
 
-  <!-- Verification status banner -->
+  <!-- Verification status banner: only shown while NOT yet approved -->
   <div class="verify-banner" id="verify-banner">
     <div class="verify-icon" id="verify-icon"></div>
     <div class="verify-text">
@@ -178,6 +189,9 @@
     <div class="profile-info">
       <h1 id="company-name" contenteditable="true" data-placeholder="Company name" onblur="saveField('companyName', this)"></h1>
       <p id="company-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a company description" onblur="saveField('companyHeadline', this)" onfocus="clearPlaceholder(this)"></p>
+
+      <!-- Small quiet confirmation shown once the business is approved -->
+      <div class="verified-badge" id="verified-badge">✓ Verified business</div>
 
       <div class="company-fields">
         <div class="company-field-row">
@@ -501,7 +515,9 @@
     };
   }
 
-  // Shows the verification banner based on field validation and auto-approval status
+  // Shows the verification banner based on field validation and auto-approval status.
+  // Once approved, the big banner is hidden entirely and a small quiet badge
+  // next to the company name takes its place instead.
   function updateVerificationBanner(){
     const profile = getCurrentBusinessProfileFromPage();
 
@@ -509,6 +525,7 @@
     const icon    = document.getElementById('verify-icon');
     const title   = document.getElementById('verify-title');
     const steps   = document.getElementById('verify-steps');
+    const badge   = document.getElementById('verified-badge');
     const dashboardBtn = document.getElementById('dashboard-btn');
 
     const fields = [
@@ -526,27 +543,28 @@
     const approved = currentProfile?.employer_verified === true;
     const status = currentProfile?.verification_status || 'not_submitted';
 
-    banner.style.display = 'flex';
-
     if (approved) {
-      banner.className = 'verify-banner complete';
-      icon.textContent = '✅';
-      title.className = 'verify-title complete';
-      title.textContent = 'Business auto-approved — job posting is unlocked';
+      // Hide the big banner now that there's nothing left to do — show the
+      // small quiet badge next to the company name instead.
+      banner.style.display = 'none';
+      if (badge) badge.classList.add('show');
       if (dashboardBtn) dashboardBtn.classList.remove('locked');
-    } else {
-      banner.className = 'verify-banner incomplete';
-      icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
-      title.className = 'verify-title incomplete';
-      title.textContent = fields.every(f => f.done)
-        ? 'Business verification pending — Alygnn review may be needed'
-        : 'Complete your business profile to unlock posting';
-      if (dashboardBtn) dashboardBtn.classList.add('locked');
+      return;
     }
+
+    if (badge) badge.classList.remove('show');
+    banner.style.display = 'flex';
+    banner.className = 'verify-banner incomplete';
+    icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
+    title.className = 'verify-title incomplete';
+    title.textContent = fields.every(f => f.done)
+      ? 'Business verification pending — Alygnn review may be needed'
+      : 'Complete your business profile to unlock posting';
+    if (dashboardBtn) dashboardBtn.classList.add('locked');
 
     steps.innerHTML = fields.map(f =>
       `<span class="verify-step ${f.done ? 'done' : 'todo'}">${f.done ? '✓' : '○'} ${f.label}</span>`
-    ).join('') + `<span class="verify-step ${approved ? 'done' : 'todo'}">${approved ? '✓' : '○'} Status: ${approved ? 'approved' : status}</span>`;
+    ).join('') + `<span class="verify-step todo">○ Status: ${status}</span>`;
   }
 
   function escapeHtml(value) {
