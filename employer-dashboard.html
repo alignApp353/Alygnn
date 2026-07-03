@@ -575,9 +575,6 @@
     if (containsProfanity(clean)) return false;
     if (containsBlockedJunk(clean)) return false;
     if (hasRepeatedJunk(clean)) return false;
-    // Requirements should read like a real phrase; benefits can be a single
-    // term (e.g. "401(k)"), so only enforce the word-count check for requirements.
-    if (type === 'req' && countRealWords(clean) < 2) return false;
     return true;
   }
 
