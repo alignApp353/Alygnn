@@ -192,12 +192,12 @@ body{
 </div>
 
 <script>
-const supabaseUrl = "YOUR_SUPABASE_URL";
-const supabaseKey = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://auth.alygnn.com";
+const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
 
-const sb = window.supabase.createClient(
-    supabaseUrl,
-    supabaseKey
+const sb = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
 );
 
 function applyTheme(theme){
@@ -216,13 +216,7 @@ function applyTheme(theme){
     document.querySelectorAll(".theme-btn").forEach(btn=>{
         btn.classList.remove("active");
 
-        const text = btn.textContent.toLowerCase();
-
-        if(
-            (theme === "system" && text.includes("system")) ||
-            (theme === "dark" && text.includes("dark")) ||
-            (theme === "light" && text.includes("light"))
-        ){
+        if(btn.textContent.toLowerCase().includes(theme)){
             btn.classList.add("active");
         }
     });
@@ -234,7 +228,6 @@ function setTheme(theme){
 }
 
 async function changePassword(){
-
     const newPassword = prompt(
         "Enter your new password (minimum 8 characters):"
     );
@@ -259,7 +252,6 @@ async function changePassword(){
 }
 
 async function logoutUser(){
-
     const confirmed = confirm(
         "Are you sure you want to log out?"
     );
@@ -267,7 +259,6 @@ async function logoutUser(){
     if(!confirmed) return;
 
     await sb.auth.signOut();
-
     window.location.href = "app-login.html";
 }
 
