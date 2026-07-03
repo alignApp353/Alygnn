@@ -218,13 +218,30 @@ body{
             </div>
         </div>
     </div>
-
+<button class="theme-btn" onclick="debugSupabase()">
+    Test Session
+</button>
     <div class="logout" onclick="logoutUser()">
         Log Out
     </div>
 
 </div>
+async function debugSupabase(){
 
+    const { data, error } = await sb.auth.getSession();
+
+    if(error){
+        alert("Supabase error: " + error.message);
+        return;
+    }
+
+    if(!data.session){
+        alert("No active session found.");
+        return;
+    }
+
+    alert("Logged in as: " + data.session.user.email);
+}
 <script>
 const SUPABASE_URL = "https://auth.alygnn.com";
 const SUPABASE_KEY = "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
