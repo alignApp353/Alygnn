@@ -10,6 +10,12 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  @view-transition {
+    navigation: auto;
+  }
+
+  html { background: #F6F8F7; }
+
   :root{
     --brand:#5D7FA3;
     --sage:#8CB69B;
@@ -154,6 +160,13 @@
   .link-card .label{ font-weight:500; font-size:15px; }
   .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
   .link-card .sub a{ color:var(--brand); text-decoration:underline; }
+
+  /* The resume card's label/sub text flips once we know whether a resume
+     is already on file (Upload resume -> View resume). Keeping it invisible
+     until that check resolves avoids a visible "wrong text, then right text"
+     flash on page load. */
+  #resume-card-label, #resume-card-sub { opacity: 0; transition: opacity 0.15s ease; }
+  #resume-card-label.ready, #resume-card-sub.ready { opacity: 1; }
 </style>
 </head>
 <body>
@@ -276,6 +289,8 @@
       labelEl.textContent = 'Upload resume';
       subEl.textContent = 'Add your resume so employers can see your background';
       cardEl.href = 'align-upload.html';
+      labelEl.classList.add('ready');
+      subEl.classList.add('ready');
       return;
     }
 
@@ -288,12 +303,16 @@
     if (signedUrlError) {
       subEl.textContent = 'Replace or re-upload your resume';
       cardEl.href = 'align-upload.html';
+      labelEl.classList.add('ready');
+      subEl.classList.add('ready');
       return;
     }
 
     cardEl.href = signedUrlData.signedUrl;
     cardEl.target = '_blank';
     subEl.innerHTML = 'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
+    labelEl.classList.add('ready');
+    subEl.classList.add('ready');
   }
 
   async function initAccountPage() {
