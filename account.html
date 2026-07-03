@@ -6,315 +6,299 @@
 <title>Account — Alygnn</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-  *, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'DM Sans', Arial, sans-serif !important;
-  }
+:root{
+  --brand:#5D7FA3;
+  --sage:#8CB69B;
+  --bg:#F6F8F7;
+  --card-bg:#FCFCFA;
+  --text:#1A2530;
+  --text-muted:#4A5968;
+  --border:#DDE3E8;
+}
 
-  @view-transition {
-    navigation: auto;
-  }
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family:'DM Sans', Arial, sans-serif !important;
+}
 
-  html { background: #F6F8F7; }
+html,
+body{
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+}
 
-  :root{
-    --brand:#5D7FA3;
-    --sage:#8CB69B;
-    --mint:#6FBF8F;
-    --rose:#D79A9A;
-    --bg:#F6F8F7;
-    --card-bg:#FCFCFA;
-    --text:#1A2530;
-    --text-muted:#4A5968;
-    --border:#DDE3E8;
-    --brand-tint:rgba(93,127,163,0.1);
-    --mint-tint:rgba(111,191,143,0.15);
-    --rose-tint:rgba(215,154,154,0.15);
-  }
+body{
+  min-height:100vh;
+}
 
-  body{
-    background:var(--bg);
-    color:var(--text);
-    min-height:100vh;
-  }
+nav{
+  position:sticky;
+  top:0;
+  z-index:100;
+  height:64px;
+  padding:0 5%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:rgba(246,248,247,.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
 
+.logo{
+  font-family:'DM Serif Display', serif !important;
+  font-size:22px;
+  color:var(--brand);
+  letter-spacing:-.5px;
+  text-decoration:none;
+}
+
+.logo span{
+  font-family:'DM Serif Display', serif !important;
+  color:var(--sage);
+}
+
+.nav-links{
+  display:flex;
+  align-items:center;
+  gap:28px;
+}
+
+.nav-links a{
+  color:var(--text-muted);
+  text-decoration:none;
+  font-size:14px;
+  padding:6px 0;
+  border-bottom:2px solid transparent;
+}
+
+.nav-links a.active{
+  color:var(--text);
+  border-bottom-color:var(--brand);
+}
+
+.nav-links a:hover{
+  color:var(--text);
+}
+
+.page{
+  max-width:880px;
+  margin:0 auto;
+  padding:56px 6% 100px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .25s ease, transform .25s ease;
+}
+
+.page.ready{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.loading{
+  max-width:880px;
+  margin:0 auto;
+  padding:56px 6%;
+  color:var(--text-muted);
+  font-size:14px;
+}
+
+.loading.hide{
+  display:none;
+}
+
+.profile-card{
+  display:flex;
+  align-items:center;
+  gap:22px;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:32px;
+  margin-bottom:40px;
+}
+
+.avatar{
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  background:var(--brand);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  font-family:'DM Serif Display', serif !important;
+  font-size:1.7rem;
+}
+
+.avatar span{
+  font-family:'DM Serif Display', serif !important;
+}
+
+.profile-info{
+  flex:1;
+  min-width:0;
+}
+
+.profile-info h1{
+  font-family:'DM Serif Display', serif !important;
+  font-size:1.6rem;
+  letter-spacing:-.5px;
+  margin-bottom:4px;
+  color:var(--text);
+  word-break:break-word;
+}
+
+.profile-info p{
+  color:var(--text-muted);
+  font-size:14px;
+  font-weight:300;
+  word-break:break-word;
+}
+
+.headline-empty{
+  color:#9BA8B3;
+  font-style:italic;
+}
+
+[contenteditable="true"]{
+  outline:none;
+  border-radius:6px;
+}
+
+[contenteditable="true"]:hover{
+  background:rgba(93,127,163,.06);
+}
+
+[contenteditable="true"]:focus{
+  background:rgba(93,127,163,.08);
+}
+
+[contenteditable="true"]:empty::before{
+  content:attr(data-placeholder);
+  color:#9BA8B3;
+  font-style:italic;
+}
+
+#profile-name:empty::before{
+  font-family:'DM Serif Display', serif !important;
+  font-style:normal;
+}
+
+.section{
+  margin-bottom:40px;
+}
+
+.section-header{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+
+.section-header h2{
+  font-family:'DM Serif Display', serif !important;
+  font-size:1.15rem;
+  letter-spacing:-.3px;
+}
+
+.empty-state{
+  background:var(--card-bg);
+  border:1px dashed var(--border);
+  border-radius:14px;
+  padding:28px;
+  text-align:center;
+  color:var(--text-muted);
+  font-size:14px;
+}
+
+.links-row{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.link-card{
+  flex:1;
+  min-width:200px;
+  display:block;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px;
+  text-decoration:none;
+  color:var(--text);
+  transition:border-color .2s, transform .2s;
+}
+
+.link-card:hover{
+  border-color:var(--brand);
+  transform:translateY(-2px);
+}
+
+.link-card .icon{
+  font-size:1.3rem;
+  margin-bottom:8px;
+  display:block;
+}
+
+.link-card .label{
+  font-weight:500;
+  font-size:15px;
+}
+
+.link-card .sub{
+  font-size:13px;
+  color:var(--text-muted);
+  margin-top:2px;
+  font-weight:300;
+}
+
+.link-card .sub a{
+  color:var(--brand);
+  text-decoration:underline;
+}
+
+@media(max-width:640px){
   nav{
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(246,248,247,0.92);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 5%;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    height: 64px;
-  }
-
-  .logo{
-    font-family: 'DM Serif Display', serif !important;
-    font-size: 22px;
-    color: var(--brand);
-    letter-spacing: -0.5px;
-    text-decoration:none;
-  }
-
-  .logo span{
-    color: var(--sage);
-    font-family: 'DM Serif Display', serif !important;
+    padding:0 18px;
   }
 
   .nav-links{
-    display:flex;
-    gap:32px;
-    align-items:center;
+    gap:14px;
   }
 
   .nav-links a{
-    text-decoration:none;
-    color:var(--text-muted);
-    font-size:14px;
-    padding:6px 0;
-    border-bottom:2px solid transparent;
-    transition:color .2s, border-color .2s;
-  }
-
-  .nav-links a.active{
-    color:var(--text);
-    border-bottom-color:var(--brand);
-  }
-
-  .nav-links a:hover{
-    color:var(--text);
-  }
-
-  .nav-home{
-    font-size:14px;
-    color:var(--text-muted);
-    text-decoration:none;
-    transition:color .2s;
-  }
-
-  .nav-home:hover{
-    color:var(--brand);
-  }
-
-  .page{
-    max-width:880px;
-    margin:0 auto;
-    padding:56px 6% 100px;
+    font-size:13px;
   }
 
   .profile-card{
-    display:flex;
-    align-items:center;
-    gap:22px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:20px;
-    padding:32px;
-    margin-bottom:40px;
-    min-width:0;
+    padding:24px;
+    align-items:flex-start;
   }
 
   .avatar{
-    width:76px;
-    height:76px;
-    border-radius:50%;
-    background:var(--brand);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:'DM Serif Display', serif !important;
-    font-size:1.7rem;
-    color:white;
-    flex-shrink:0;
+    width:60px;
+    height:60px;
+    font-size:1.35rem;
   }
 
-  .avatar span{
-    font-family:'DM Serif Display', serif !important;
+  .page{
+    padding-top:36px;
   }
-
-  .profile-info{
-    min-width:0;
-    flex:1;
-  }
-
-  .profile-info h1{
-    font-family:'DM Serif Display', serif !important;
-    font-size:1.6rem;
-    letter-spacing:-0.5px;
-    color:var(--text);
-    margin-bottom:4px;
-    word-wrap:break-word;
-    overflow-wrap:break-word;
-    white-space:normal;
-  }
-
-  .profile-info p{
-    color:var(--text-muted);
-    font-size:14px;
-    font-weight:300;
-    word-wrap:break-word;
-    overflow-wrap:break-word;
-    white-space:normal;
-  }
-
-  .headline-empty{
-    color:#9BA8B3;
-    font-style:italic;
-  }
-
-  [contenteditable="true"]{
-    outline:none;
-    border-radius:6px;
-    transition:background .15s;
-  }
-
-  [contenteditable="true"]:hover{
-    background:rgba(93,127,163,0.06);
-  }
-
-  [contenteditable="true"]:focus{
-    background:rgba(93,127,163,0.08);
-  }
-
-  [contenteditable="true"]:empty::before{
-    content: attr(data-placeholder);
-    color:#9BA8B3;
-    font-style:italic;
-  }
-
-  #profile-name:empty::before{
-    font-style:normal;
-    font-family:'DM Serif Display', serif !important;
-  }
-
-  .section{
-    margin-bottom:40px;
-  }
-
-  .section-header{
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    margin-bottom:16px;
-  }
-
-  .section-header h2{
-    font-family:'DM Serif Display', serif !important;
-    font-size:1.15rem;
-    letter-spacing:-0.3px;
-    color:var(--text);
-  }
-
-  .empty-state{
-    background:var(--card-bg);
-    border:1px dashed var(--border);
-    border-radius:14px;
-    padding:28px;
-    text-align:center;
-    color:var(--text-muted);
-    font-size:14px;
-  }
-
-  .links-row{
-    display:flex;
-    gap:14px;
-    flex-wrap:wrap;
-  }
-
-  .link-card{
-    flex:1;
-    min-width:200px;
-    background:var(--card-bg);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:20px;
-    text-decoration:none;
-    color:var(--text);
-    transition:border-color .2s, transform .2s;
-    display:block;
-  }
-
-  .link-card:hover{
-    border-color:var(--brand);
-    transform:translateY(-2px);
-  }
-
-  .link-card .icon{
-    font-size:1.3rem;
-    margin-bottom:8px;
-    display:block;
-  }
-
-  .link-card .label{
-    font-weight:500;
-    font-size:15px;
-  }
-
-  .link-card .sub{
-    font-size:13px;
-    color:var(--text-muted);
-    margin-top:2px;
-    font-weight:300;
-  }
-
-  .link-card .sub a{
-    color:var(--brand);
-    text-decoration:underline;
-  }
-
-  #resume-card-label,
-  #resume-card-sub{
-    opacity:0;
-    transition:opacity 0.15s ease;
-  }
-
-  #resume-card-label.ready,
-  #resume-card-sub.ready{
-    opacity:1;
-  }
-
-  #profile-name,
-  #profile-headline{
-    opacity:0;
-    transition:opacity 0.15s ease;
-  }
-
-  #profile-name.ready,
-  #profile-headline.ready{
-    opacity:1;
-  }
-
-  @media(max-width:640px){
-    .nav-links{
-      gap:14px;
-    }
-
-    .profile-card{
-      padding:24px;
-      align-items:flex-start;
-    }
-
-    .avatar{
-      width:60px;
-      height:60px;
-      font-size:1.35rem;
-    }
-
-    .page{
-      padding-top:36px;
-    }
-  }
+}
 </style>
 </head>
 
@@ -322,37 +306,25 @@
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
-
   <div class="nav-links">
-    <a href="index.html" class="nav-home">← Home</a>
+    <a href="index.html">← Home</a>
     <a href="account.html" class="active">Account</a>
     <a href="swipe.html">Swipe</a>
   </div>
 </nav>
 
-<div class="page">
+<div class="loading" id="loading">Loading your account...</div>
+
+<div class="page" id="page">
 
   <div class="profile-card">
-    <div class="avatar" id="avatar">
+    <div class="avatar">
       <span id="avatar-initials">?</span>
     </div>
 
     <div class="profile-info">
-      <h1
-        id="profile-name"
-        contenteditable="true"
-        data-placeholder="Your name"
-        onblur="saveField('profileName', this)"
-      ></h1>
-
-      <p
-        id="profile-headline"
-        contenteditable="true"
-        class="headline-empty"
-        data-placeholder="Add a headline"
-        onblur="saveField('profileHeadline', this)"
-        onfocus="clearPlaceholder(this)"
-      ></p>
+      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name"></h1>
+      <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline"></p>
     </div>
   </div>
 
@@ -360,18 +332,14 @@
     <div class="section-header">
       <h2>Applied jobs</h2>
     </div>
-    <div class="empty-state">
-      No applied jobs yet. Once you swipe right on a job, you'll see it here.
-    </div>
+    <div class="empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
   </div>
 
   <div class="section">
     <div class="section-header">
       <h2>Skipped jobs</h2>
     </div>
-    <div class="empty-state">
-      No skipped jobs yet. Once you swipe left on a job, you'll see it here.
-    </div>
+    <div class="empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
   </div>
 
   <div class="section">
@@ -389,9 +357,7 @@
       <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
         <div class="label" id="resume-card-label">Upload resume</div>
-        <div class="sub" id="resume-card-sub">
-          Add your resume so employers can see your background
-        </div>
+        <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
       </a>
 
       <a href="account-settings.html" class="link-card">
@@ -405,204 +371,172 @@
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://auth.alygnn.com';
-  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+const SUPABASE_URL = 'https://auth.alygnn.com';
+const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 
-  const { createClient } = supabase;
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let currentUserId = null;
+let currentUserId = null;
 
-  function getInitials(name) {
-    if (!name) return '?';
+const pageEl = document.getElementById('page');
+const loadingEl = document.getElementById('loading');
+const nameEl = document.getElementById('profile-name');
+const headlineEl = document.getElementById('profile-headline');
+const initialsEl = document.getElementById('avatar-initials');
+const resumeCard = document.getElementById('resume-card');
+const resumeLabel = document.getElementById('resume-card-label');
+const resumeSub = document.getElementById('resume-card-sub');
 
-    return name
-      .trim()
-      .split(/\s+/)
-      .map(part => part[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  }
+function showPage(){
+  loadingEl.classList.add('hide');
+  pageEl.classList.add('ready');
+}
 
-  async function saveField(key, el) {
-    if (!currentUserId) return;
+function getInitials(name){
+  if(!name) return '?';
 
-    const value = el.textContent.trim();
-    const column = key === 'profileName' ? 'full_name' : 'headline';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(part => part[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+}
 
-    const { error } = await sb
-      .from('profiles')
-      .upsert({
-        id: currentUserId,
-        [column]: value
-      });
+function limitLength(el, max){
+  el.addEventListener('input', () => {
+    if(el.textContent.length > max){
+      el.textContent = el.textContent.slice(0, max);
 
-    if (error) {
-      console.error('Failed to save', column, error);
-      return;
+      const range = document.createRange();
+      const sel = window.getSelection();
+
+      range.selectNodeContents(el);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
     }
+  });
+}
 
-    if (column === 'full_name') {
-      document.getElementById('avatar-initials').textContent = getInitials(value);
-    }
-  }
+limitLength(nameEl, 60);
+limitLength(headlineEl, 200);
 
-  function clearPlaceholder(el) {
-    el.classList.remove('headline-empty');
-  }
+headlineEl.addEventListener('focus', () => {
+  headlineEl.classList.remove('headline-empty');
+});
 
-  function limitLength(el, max) {
-    el.addEventListener('input', function () {
-      if (el.textContent.length > max) {
-        el.textContent = el.textContent.slice(0, max);
+nameEl.addEventListener('blur', () => {
+  saveProfileField('full_name', nameEl.textContent.trim());
+});
 
-        const range = document.createRange();
-        const sel = window.getSelection();
+headlineEl.addEventListener('blur', () => {
+  saveProfileField('headline', headlineEl.textContent.trim());
+});
 
-        range.selectNodeContents(el);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
+async function saveProfileField(column, value){
+  if(!currentUserId) return;
+
+  const { error } = await sb
+    .from('profiles')
+    .upsert({
+      id: currentUserId,
+      [column]: value
     });
+
+  if(error){
+    console.error('Failed to save profile field:', error);
+    return;
   }
 
-  limitLength(document.getElementById('profile-name'), 60);
-  limitLength(document.getElementById('profile-headline'), 200);
+  if(column === 'full_name'){
+    initialsEl.textContent = getInitials(value);
+  }
+}
 
-  async function waitForSession(maxWaitMs = 5000) {
-    const started = Date.now();
-
-    let result = await sb.auth.getSession();
-    let session = result.data.session;
-
-    while (!session && Date.now() - started < maxWaitMs) {
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      result = await sb.auth.getSession();
-      session = result.data.session;
-    }
-
-    return session;
+function renderResumeCardFast(resumeFilePath){
+  if(!resumeFilePath){
+    resumeLabel.textContent = 'Upload resume';
+    resumeSub.textContent = 'Add your resume so employers can see your background';
+    resumeCard.href = 'align-upload.html';
+    resumeCard.removeAttribute('target');
+    return;
   }
 
-  async function renderResumeCard(resumeFilePath) {
-    const labelEl = document.getElementById('resume-card-label');
-    const subEl = document.getElementById('resume-card-sub');
-    const cardEl = document.getElementById('resume-card');
+  resumeLabel.textContent = 'View resume';
+  resumeSub.innerHTML = 'Open or replace your uploaded resume';
+  resumeCard.href = 'align-upload.html';
+  resumeCard.removeAttribute('target');
+}
 
-    if (!resumeFilePath) {
-      labelEl.textContent = 'Upload resume';
-      subEl.textContent = 'Add your resume so employers can see your background';
-      cardEl.href = 'align-upload.html';
-      cardEl.removeAttribute('target');
+async function initAccountPage(){
+  const {
+    data: { session }
+  } = await sb.auth.getSession();
 
-      labelEl.classList.add('ready');
-      subEl.classList.add('ready');
-      return;
-    }
-
-    const { data: signedUrlData, error: signedUrlError } = await sb.storage
-      .from('resumes')
-      .createSignedUrl(resumeFilePath, 60 * 5);
-
-    labelEl.textContent = 'View resume';
-
-    if (signedUrlError) {
-      console.error('Failed to create resume signed URL', signedUrlError);
-
-      subEl.textContent = 'Replace or re-upload your resume';
-      cardEl.href = 'align-upload.html';
-      cardEl.removeAttribute('target');
-
-      labelEl.classList.add('ready');
-      subEl.classList.add('ready');
-      return;
-    }
-
-    cardEl.href = signedUrlData.signedUrl;
-    cardEl.target = '_blank';
-
-    subEl.innerHTML =
-      'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
-
-    labelEl.classList.add('ready');
-    subEl.classList.add('ready');
+  if(!session){
+    window.location.href = 'login.html';
+    return;
   }
 
-  async function initAccountPage() {
-    const session = await waitForSession();
+  currentUserId = session.user.id;
 
-    if (!session) {
-      window.location.href = 'login.html';
-      return;
-    }
+  const { data: profile, error } = await sb
+    .from('profiles')
+    .select('has_password, role, full_name, headline, resume_file_path')
+    .eq('id', currentUserId)
+    .maybeSingle();
 
-    currentUserId = session.user.id;
-
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select(`
-        has_password,
-        role,
-        full_name,
-        headline,
-        resume_file_path
-      `)
-      .eq('id', currentUserId)
-      .maybeSingle();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Failed to load profile', error);
-    }
-
-    if (!profile?.has_password) {
-      const referrer = document.referrer;
-      const cameFromSetPassword =
-        referrer && referrer.includes('set-password');
-
-      if (!cameFromSetPassword) {
-        window.location.href = 'set-password.html';
-        return;
-      }
-    }
-
-    const role =
-      profile?.role ||
-      session.user.user_metadata?.role ||
-      'seeker';
-
-    if (role === 'employer') {
-      window.location.href = 'employer-account.html';
-      return;
-    }
-
-    const nameEl = document.getElementById('profile-name');
-    const headlineEl = document.getElementById('profile-headline');
-
-    const fullName =
-      profile?.full_name ||
-      session.user.user_metadata?.full_name ||
-      session.user.user_metadata?.name ||
-      session.user.email?.split('@')[0] ||
-      '';
-
-    nameEl.textContent = fullName;
-    document.getElementById('avatar-initials').textContent = getInitials(fullName);
-
-    if (profile?.headline) {
-      headlineEl.textContent = profile.headline;
-      headlineEl.classList.remove('headline-empty');
-    }
-
-    nameEl.classList.add('ready');
-    headlineEl.classList.add('ready');
-
-    renderResumeCard(profile?.resume_file_path);
+  if(error && error.code !== 'PGRST116'){
+    console.error('Failed to load profile:', error);
   }
 
-  initAccountPage();
+  if(!profile?.has_password){
+    const cameFromSetPassword =
+      document.referrer && document.referrer.includes('set-password');
+
+    if(!cameFromSetPassword){
+      window.location.href = 'set-password.html';
+      return;
+    }
+  }
+
+  const role =
+    profile?.role ||
+    session.user.user_metadata?.role ||
+    'seeker';
+
+  if(role === 'employer'){
+    window.location.href = 'employer-account.html';
+    return;
+  }
+
+  const fullName =
+    profile?.full_name ||
+    session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
+    session.user.email?.split('@')[0] ||
+    '';
+
+  nameEl.textContent = fullName;
+  initialsEl.textContent = getInitials(fullName);
+
+  if(profile?.headline){
+    headlineEl.textContent = profile.headline;
+    headlineEl.classList.remove('headline-empty');
+  } else {
+    headlineEl.textContent = '';
+    headlineEl.classList.add('headline-empty');
+  }
+
+  renderResumeCardFast(profile?.resume_file_path);
+
+  showPage();
+}
+
+initAccountPage();
 </script>
 
 </body>
