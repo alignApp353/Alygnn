@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 :root{
     --brand:#5D7FA3;
@@ -29,7 +31,7 @@ body.light{
 
 *{
     box-sizing:border-box;
-    font-family:'DM Sans',sans-serif;
+    font-family:'DM Sans', Arial, sans-serif !important;
 }
 
 body{
@@ -161,8 +163,7 @@ body{
 
         <div class="menu">
 
-            <div class="menu-item"
-                 onclick="alert('Change password coming soon')">
+            <div class="menu-item" onclick="changePassword()">
                 Change Password <span>›</span>
             </div>
 
@@ -184,14 +185,21 @@ body{
         </div>
     </div>
 
-    <div class="logout"
-         onclick="window.location.href='app-login.html'">
+    <div class="logout" onclick="logoutUser()">
         Log Out
     </div>
 
 </div>
 
 <script>
+const supabaseUrl = "YOUR_SUPABASE_URL";
+const supabaseKey = "YOUR_SUPABASE_ANON_KEY";
+
+const sb = window.supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+);
+
 function applyTheme(theme){
     document.body.classList.remove("light");
 
@@ -208,7 +216,13 @@ function applyTheme(theme){
     document.querySelectorAll(".theme-btn").forEach(btn=>{
         btn.classList.remove("active");
 
-        if(btn.textContent.toLowerCase().includes(theme)){
+        const text = btn.textContent.toLowerCase();
+
+        if(
+            (theme === "system" && text.includes("system")) ||
+            (theme === "dark" && text.includes("dark")) ||
+            (theme === "light" && text.includes("light"))
+        ){
             btn.classList.add("active");
         }
     });
@@ -219,7 +233,47 @@ function setTheme(theme){
     applyTheme(theme);
 }
 
-const savedTheme = localStorage.getItem("alygnn-theme") || "system";
+async function changePassword(){
+
+    const newPassword = prompt(
+        "Enter your new password (minimum 8 characters):"
+    );
+
+    if(!newPassword) return;
+
+    if(newPassword.length < 8){
+        alert("Password must be at least 8 characters.");
+        return;
+    }
+
+    const { error } = await sb.auth.updateUser({
+        password: newPassword
+    });
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    alert("Password updated successfully!");
+}
+
+async function logoutUser(){
+
+    const confirmed = confirm(
+        "Are you sure you want to log out?"
+    );
+
+    if(!confirmed) return;
+
+    await sb.auth.signOut();
+
+    window.location.href = "app-login.html";
+}
+
+const savedTheme =
+    localStorage.getItem("alygnn-theme") || "system";
+
 applyTheme(savedTheme);
 </script>
 
