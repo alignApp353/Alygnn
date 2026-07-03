@@ -266,7 +266,8 @@
           </div>
           <div class="form-group">
             <label class="form-label">Location</label>
-            <input type="text" class="form-input" id="f-location" placeholder="e.g. New York, NY">
+            <input type="text" class="form-input" id="f-location" placeholder="Start typing a city, like Raleigh, NC" autocomplete="off">
+            <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Select a real location from Google suggestions.</small>
           </div>
           <div class="form-group">
             <label class="form-label">Job type</label>
@@ -319,6 +320,8 @@
   let currentProfile = null;
   let currentUser = null;
   let editingJobId = null;
+  let selectedGooglePlace = null;
+  let locationAutocomplete = null;
 
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
@@ -506,6 +509,7 @@
     document.getElementById('f-title').value = job.title || '';
     document.getElementById('f-company').value = job.company || currentProfile?.company_name || '';
     document.getElementById('f-location').value = job.location || '';
+    selectedGooglePlace = job.location ? { formatted_address: job.location } : null;
     document.getElementById('f-type').value = job.job_type || 'Full-time';
     document.getElementById('f-style').value = job.work_style || 'Remote';
     document.getElementById('f-salary').value = job.salary || '';
@@ -521,6 +525,7 @@
     document.getElementById('f-company').value = currentProfile?.company_name || '';
     document.getElementById('f-type').value = 'Full-time';
     document.getElementById('f-style').value = 'Remote';
+    selectedGooglePlace = null;
   }
 
 
@@ -568,15 +573,22 @@
 
   function isValidLocation(location, workStyle) {
     const clean = normalizeText(location);
-    if (clean.length < 4 || clean.length > 80) return false;
+
+    if (clean.length < 4 || clean.length > 120) return false;
     if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
 
     if (workStyle === 'Remote') {
       return /remote|united states|usa|u\.s\.|[A-Za-z]{3,}/i.test(clean);
     }
 
-    // Requires something that looks like City, ST or City State.
-    return /^[A-Za-z .'-]{3,},?\s+[A-Za-z]{2,}(\s+[A-Za-z]{2,})*$/.test(clean);
+    // For Hybrid and On-site jobs, require a Google-selected place when Google Places loads.
+    // This stops random text like "asdf", "dcm", or "abc123".
+    if (window.google && google.maps && google.maps.places) {
+      return !!selectedGooglePlace && clean === normalizeText(selectedGooglePlace.formatted_address || selectedGooglePlace.name || clean);
+    }
+
+    // Fallback if Google does not load: must look like City, ST.
+    return /^[A-Za-z .'-]{3,},\s*[A-Za-z]{2,}(,\s*[A-Za-z .'-]+)?$/.test(clean);
   }
 
   function isValidSalary(salary) {
@@ -636,6 +648,42 @@
 
     return '';
   }
+
+  function initLocationAutocomplete() {
+    const input = document.getElementById('f-location');
+    if (!input || !(window.google && google.maps && google.maps.places)) return;
+
+    locationAutocomplete = new google.maps.places.Autocomplete(input, {
+      types: ['(cities)'],
+      componentRestrictions: { country: 'us' },
+      fields: ['formatted_address', 'name', 'place_id', 'address_components']
+    });
+
+    input.addEventListener('input', () => {
+      selectedGooglePlace = null;
+    });
+
+    locationAutocomplete.addListener('place_changed', () => {
+      const place = locationAutocomplete.getPlace();
+
+      if (!place || !place.place_id) {
+        selectedGooglePlace = null;
+        showToast('Please select a location from the Google suggestions.');
+        return;
+      }
+
+      selectedGooglePlace = {
+        formatted_address: place.formatted_address || place.name || input.value,
+        place_id: place.place_id
+      };
+
+      input.value = selectedGooglePlace.formatted_address;
+    });
+  }
+
+  window.initAlygnnPlaces = function () {
+    initLocationAutocomplete();
+  };
 
   async function postJob() {
     if (!employerVerified) {
@@ -755,5 +803,10 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
   }
 </script>
+
+
+<!-- Google Places Autocomplete -->
+<!-- IMPORTANT: Replace the placeholder below with your NEW rotated Google Maps API key. Do not use the key you pasted in chat. -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0&libraries=places&callback=initAlygnnPlaces"></script>
 </body>
 </html>
