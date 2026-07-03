@@ -167,6 +167,14 @@
      flash on page load. */
   #resume-card-label, #resume-card-sub { opacity: 0; transition: opacity 0.15s ease; }
   #resume-card-label.ready, #resume-card-sub.ready { opacity: 1; }
+
+  /* Same problem as the resume card: profile-name/headline used to show
+     the empty-state placeholder ("Your name" / "Add a headline") and then
+     abruptly swap to the real value once the Supabase profile fetch
+     resolves — a visible flash of wrong-then-right content. Hiding both
+     until the real value is set avoids that. */
+  #profile-name, #profile-headline { opacity: 0; transition: opacity 0.15s ease; }
+  #profile-name.ready, #profile-headline.ready { opacity: 1; }
 </style>
 </head>
 <body>
@@ -380,6 +388,9 @@
       headlineEl.textContent = profile.headline;
       headlineEl.classList.remove('headline-empty');
     }
+
+    nameEl.classList.add('ready');
+    headlineEl.classList.add('ready');
 
     renderResumeCard(profile?.resume_file_path);
   }
