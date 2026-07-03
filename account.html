@@ -4,11 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Account — Alygnn</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'DM Sans', Arial, sans-serif !important;
+  }
 
   @view-transition {
     navigation: auto;
@@ -32,14 +40,15 @@
   }
 
   body{
-    font-family:'DM Sans', sans-serif;
     background:var(--bg);
     color:var(--text);
     min-height:100vh;
   }
 
   nav{
-    position: sticky; top: 0; z-index: 100;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     background: rgba(246,248,247,0.92);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
@@ -49,15 +58,26 @@
     justify-content:space-between;
     height: 64px;
   }
+
   .logo{
-    font-family: 'DM Serif Display', serif;
+    font-family: 'DM Serif Display', serif !important;
     font-size: 22px;
     color: var(--brand);
     letter-spacing: -0.5px;
     text-decoration:none;
   }
-  .logo span{ color: var(--sage); }
-  .nav-links{ display:flex; gap:32px; align-items:center; }
+
+  .logo span{
+    color: var(--sage);
+    font-family: 'DM Serif Display', serif !important;
+  }
+
+  .nav-links{
+    display:flex;
+    gap:32px;
+    align-items:center;
+  }
+
   .nav-links a{
     text-decoration:none;
     color:var(--text-muted);
@@ -66,15 +86,26 @@
     border-bottom:2px solid transparent;
     transition:color .2s, border-color .2s;
   }
-  .nav-links a.active{ color:var(--text); border-bottom-color:var(--brand); }
-  .nav-links a:hover{ color:var(--text); }
+
+  .nav-links a.active{
+    color:var(--text);
+    border-bottom-color:var(--brand);
+  }
+
+  .nav-links a:hover{
+    color:var(--text);
+  }
+
   .nav-home{
     font-size:14px;
     color:var(--text-muted);
     text-decoration:none;
     transition:color .2s;
   }
-  .nav-home:hover{ color:var(--brand); }
+
+  .nav-home:hover{
+    color:var(--brand);
+  }
 
   .page{
     max-width:880px;
@@ -93,19 +124,32 @@
     margin-bottom:40px;
     min-width:0;
   }
+
   .avatar{
-    width:76px; height:76px;
+    width:76px;
+    height:76px;
     border-radius:50%;
     background:var(--brand);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'DM Serif Display', serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'DM Serif Display', serif !important;
     font-size:1.7rem;
     color:white;
     flex-shrink:0;
   }
-  .profile-info{ min-width:0; flex:1; }
+
+  .avatar span{
+    font-family:'DM Serif Display', serif !important;
+  }
+
+  .profile-info{
+    min-width:0;
+    flex:1;
+  }
+
   .profile-info h1{
-    font-family:'DM Serif Display', serif;
+    font-family:'DM Serif Display', serif !important;
     font-size:1.6rem;
     letter-spacing:-0.5px;
     color:var(--text);
@@ -114,6 +158,7 @@
     overflow-wrap:break-word;
     white-space:normal;
   }
+
   .profile-info p{
     color:var(--text-muted);
     font-size:14px;
@@ -122,16 +167,54 @@
     overflow-wrap:break-word;
     white-space:normal;
   }
-  .headline-empty{ color:#9BA8B3; font-style:italic; }
-  [contenteditable="true"]{ outline:none; border-radius:6px; transition:background .15s; }
-  [contenteditable="true"]:hover{ background:rgba(93,127,163,0.06); }
-  [contenteditable="true"]:focus{ background:rgba(93,127,163,0.08); }
-  [contenteditable="true"]:empty::before{ content: attr(data-placeholder); color:#9BA8B3; font-style:italic; }
-  #profile-name:empty::before{ font-style:normal; font-family:'DM Serif Display', serif; }
 
-  .section{ margin-bottom:40px; }
-  .section-header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
-  .section-header h2{ font-family:'DM Serif Display', serif; font-size:1.15rem; letter-spacing:-0.3px; color:var(--text); }
+  .headline-empty{
+    color:#9BA8B3;
+    font-style:italic;
+  }
+
+  [contenteditable="true"]{
+    outline:none;
+    border-radius:6px;
+    transition:background .15s;
+  }
+
+  [contenteditable="true"]:hover{
+    background:rgba(93,127,163,0.06);
+  }
+
+  [contenteditable="true"]:focus{
+    background:rgba(93,127,163,0.08);
+  }
+
+  [contenteditable="true"]:empty::before{
+    content: attr(data-placeholder);
+    color:#9BA8B3;
+    font-style:italic;
+  }
+
+  #profile-name:empty::before{
+    font-style:normal;
+    font-family:'DM Serif Display', serif !important;
+  }
+
+  .section{
+    margin-bottom:40px;
+  }
+
+  .section-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+
+  .section-header h2{
+    font-family:'DM Serif Display', serif !important;
+    font-size:1.15rem;
+    letter-spacing:-0.3px;
+    color:var(--text);
+  }
 
   .empty-state{
     background:var(--card-bg);
@@ -143,9 +226,15 @@
     font-size:14px;
   }
 
-  .links-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .links-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+
   .link-card{
-    flex:1; min-width:200px;
+    flex:1;
+    min-width:200px;
     background:var(--card-bg);
     border:1px solid var(--border);
     border-radius:14px;
@@ -155,32 +244,85 @@
     transition:border-color .2s, transform .2s;
     display:block;
   }
-  .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
-  .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
-  .link-card .label{ font-weight:500; font-size:15px; }
-  .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
-  .link-card .sub a{ color:var(--brand); text-decoration:underline; }
 
-  /* The resume card's label/sub text flips once we know whether a resume
-     is already on file (Upload resume -> View resume). Keeping it invisible
-     until that check resolves avoids a visible "wrong text, then right text"
-     flash on page load. */
-  #resume-card-label, #resume-card-sub { opacity: 0; transition: opacity 0.15s ease; }
-  #resume-card-label.ready, #resume-card-sub.ready { opacity: 1; }
+  .link-card:hover{
+    border-color:var(--brand);
+    transform:translateY(-2px);
+  }
 
-  /* Same problem as the resume card: profile-name/headline used to show
-     the empty-state placeholder ("Your name" / "Add a headline") and then
-     abruptly swap to the real value once the Supabase profile fetch
-     resolves — a visible flash of wrong-then-right content. Hiding both
-     until the real value is set avoids that. */
-  #profile-name, #profile-headline { opacity: 0; transition: opacity 0.15s ease; }
-  #profile-name.ready, #profile-headline.ready { opacity: 1; }
+  .link-card .icon{
+    font-size:1.3rem;
+    margin-bottom:8px;
+    display:block;
+  }
+
+  .link-card .label{
+    font-weight:500;
+    font-size:15px;
+  }
+
+  .link-card .sub{
+    font-size:13px;
+    color:var(--text-muted);
+    margin-top:2px;
+    font-weight:300;
+  }
+
+  .link-card .sub a{
+    color:var(--brand);
+    text-decoration:underline;
+  }
+
+  #resume-card-label,
+  #resume-card-sub{
+    opacity:0;
+    transition:opacity 0.15s ease;
+  }
+
+  #resume-card-label.ready,
+  #resume-card-sub.ready{
+    opacity:1;
+  }
+
+  #profile-name,
+  #profile-headline{
+    opacity:0;
+    transition:opacity 0.15s ease;
+  }
+
+  #profile-name.ready,
+  #profile-headline.ready{
+    opacity:1;
+  }
+
+  @media(max-width:640px){
+    .nav-links{
+      gap:14px;
+    }
+
+    .profile-card{
+      padding:24px;
+      align-items:flex-start;
+    }
+
+    .avatar{
+      width:60px;
+      height:60px;
+      font-size:1.35rem;
+    }
+
+    .page{
+      padding-top:36px;
+    }
+  }
 </style>
 </head>
+
 <body>
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
+
   <div class="nav-links">
     <a href="index.html" class="nav-home">← Home</a>
     <a href="account.html" class="active">Account</a>
@@ -192,37 +334,66 @@
 
   <div class="profile-card">
     <div class="avatar" id="avatar">
-      <span id="avatar-initials">LU</span>
+      <span id="avatar-initials">?</span>
     </div>
+
     <div class="profile-info">
-      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name" onblur="saveField('profileName', this)"></h1>
-      <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline" onblur="saveField('profileHeadline', this)" onfocus="clearPlaceholder(this)"></p>
+      <h1
+        id="profile-name"
+        contenteditable="true"
+        data-placeholder="Your name"
+        onblur="saveField('profileName', this)"
+      ></h1>
+
+      <p
+        id="profile-headline"
+        contenteditable="true"
+        class="headline-empty"
+        data-placeholder="Add a headline"
+        onblur="saveField('profileHeadline', this)"
+        onfocus="clearPlaceholder(this)"
+      ></p>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-header"><h2>Applied jobs</h2></div>
-    <div class="empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
+    <div class="section-header">
+      <h2>Applied jobs</h2>
+    </div>
+    <div class="empty-state">
+      No applied jobs yet. Once you swipe right on a job, you'll see it here.
+    </div>
   </div>
 
   <div class="section">
-    <div class="section-header"><h2>Skipped jobs</h2></div>
-    <div class="empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
+    <div class="section-header">
+      <h2>Skipped jobs</h2>
+    </div>
+    <div class="empty-state">
+      No skipped jobs yet. Once you swipe left on a job, you'll see it here.
+    </div>
   </div>
 
   <div class="section">
-    <div class="section-header"><h2>Settings</h2></div>
+    <div class="section-header">
+      <h2>Settings</h2>
+    </div>
+
     <div class="links-row">
       <a href="preferences.html" class="link-card">
         <span class="icon">⚙️</span>
         <div class="label">Edit preferences</div>
         <div class="sub">Update salary, location, work style</div>
       </a>
+
       <a href="align-upload.html" class="link-card" id="resume-card">
         <span class="icon">📄</span>
         <div class="label" id="resume-card-label">Upload resume</div>
-        <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
+        <div class="sub" id="resume-card-sub">
+          Add your resume so employers can see your background
+        </div>
       </a>
+
       <a href="account-settings.html" class="link-card">
         <span class="icon">🔒</span>
         <div class="label">Account settings</div>
@@ -236,6 +407,7 @@
 <script>
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -243,28 +415,51 @@
 
   function getInitials(name) {
     if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(part => part[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   }
 
   async function saveField(key, el) {
     if (!currentUserId) return;
+
     const value = el.textContent.trim();
     const column = key === 'profileName' ? 'full_name' : 'headline';
-    const { error } = await sb.from('profiles').upsert({ id: currentUserId, [column]: value });
-    if (error) console.error('Failed to save', column, error);
+
+    const { error } = await sb
+      .from('profiles')
+      .upsert({
+        id: currentUserId,
+        [column]: value
+      });
+
+    if (error) {
+      console.error('Failed to save', column, error);
+      return;
+    }
+
     if (column === 'full_name') {
       document.getElementById('avatar-initials').textContent = getInitials(value);
     }
   }
 
-  function clearPlaceholder(el){ el.classList.remove('headline-empty'); }
+  function clearPlaceholder(el) {
+    el.classList.remove('headline-empty');
+  }
 
-  function limitLength(el, max){
-    el.addEventListener('input', function(){
-      if(el.textContent.length > max){
+  function limitLength(el, max) {
+    el.addEventListener('input', function () {
+      if (el.textContent.length > max) {
         el.textContent = el.textContent.slice(0, max);
+
         const range = document.createRange();
         const sel = window.getSelection();
+
         range.selectNodeContents(el);
         range.collapse(false);
         sel.removeAllRanges();
@@ -278,13 +473,17 @@
 
   async function waitForSession(maxWaitMs = 5000) {
     const started = Date.now();
+
     let result = await sb.auth.getSession();
     let session = result.data.session;
+
     while (!session && Date.now() - started < maxWaitMs) {
       await new Promise(resolve => setTimeout(resolve, 400));
+
       result = await sb.auth.getSession();
       session = result.data.session;
     }
+
     return session;
   }
 
@@ -297,6 +496,8 @@
       labelEl.textContent = 'Upload resume';
       subEl.textContent = 'Add your resume so employers can see your background';
       cardEl.href = 'align-upload.html';
+      cardEl.removeAttribute('target');
+
       labelEl.classList.add('ready');
       subEl.classList.add('ready');
       return;
@@ -309,8 +510,12 @@
     labelEl.textContent = 'View resume';
 
     if (signedUrlError) {
+      console.error('Failed to create resume signed URL', signedUrlError);
+
       subEl.textContent = 'Replace or re-upload your resume';
       cardEl.href = 'align-upload.html';
+      cardEl.removeAttribute('target');
+
       labelEl.classList.add('ready');
       subEl.classList.add('ready');
       return;
@@ -318,7 +523,10 @@
 
     cardEl.href = signedUrlData.signedUrl;
     cardEl.target = '_blank';
-    subEl.innerHTML = 'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
+
+    subEl.innerHTML =
+      'Click to open · <a href="align-upload.html" onclick="event.stopPropagation()">Replace resume</a>';
+
     labelEl.classList.add('ready');
     subEl.classList.add('ready');
   }
@@ -333,42 +541,41 @@
 
     currentUserId = session.user.id;
 
-    // Gate: no password set means the account setup isn't complete.
-    // Guard against redirect loops by only redirecting once per page load.
-    const { data: pwCheck } = await sb
+    const { data: profile, error } = await sb
       .from('profiles')
-      .select('has_password, role')
+      .select(`
+        has_password,
+        role,
+        full_name,
+        headline,
+        resume_file_path
+      `)
       .eq('id', currentUserId)
       .maybeSingle();
 
-    if (!pwCheck?.has_password) {
-      // Only redirect if we didn't just come from set-password.html
-      // (prevents infinite back-and-forth loop).
+    if (error && error.code !== 'PGRST116') {
+      console.error('Failed to load profile', error);
+    }
+
+    if (!profile?.has_password) {
       const referrer = document.referrer;
-      const cameFromSetPassword = referrer && referrer.includes('set-password');
+      const cameFromSetPassword =
+        referrer && referrer.includes('set-password');
+
       if (!cameFromSetPassword) {
         window.location.href = 'set-password.html';
         return;
       }
-      // If we just came from set-password.html, let them through anyway
-      // so they're not stuck in a loop — they can set it from Account settings.
     }
 
-    // Role gate: employers should never land on the candidate hub.
-    const role = pwCheck?.role || session.user.user_metadata?.role || 'seeker';
+    const role =
+      profile?.role ||
+      session.user.user_metadata?.role ||
+      'seeker';
+
     if (role === 'employer') {
       window.location.href = 'employer-account.html';
       return;
-    }
-
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select('full_name, headline, resume_file_path')
-      .eq('id', currentUserId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Failed to load profile', error);
     }
 
     const nameEl = document.getElementById('profile-name');
