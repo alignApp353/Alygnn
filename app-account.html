@@ -161,31 +161,6 @@ body{
     color:#F5A623;
 }
 
-.stats{
-    display:flex;
-    gap:12px;
-}
-
-.stat{
-    flex:1;
-    border:1px solid var(--border);
-    border-radius:20px;
-    padding:16px;
-    text-align:center;
-}
-
-.stat-number{
-    font-size:28px;
-    font-weight:900;
-    color:var(--brand);
-}
-
-.stat-label{
-    color:var(--text-muted);
-    font-size:13px;
-    margin-top:4px;
-}
-
 .btn{
     width:100%;
     min-height:58px;
@@ -207,12 +182,6 @@ body{
     color:white;
 }
 
-.secondary{
-    background:transparent;
-    color:var(--text);
-    border:1px solid var(--border);
-}
-
 .menu{
     display:grid;
     gap:12px;
@@ -230,30 +199,6 @@ body{
     justify-content:space-between;
     align-items:center;
     cursor:pointer;
-}
-
-.theme-options{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:10px;
-    margin-top:14px;
-}
-
-.theme-btn{
-    background:transparent;
-    color:var(--text);
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:16px;
-    font-size:16px;
-    font-weight:900;
-    cursor:pointer;
-    text-align:left;
-}
-
-.theme-btn.active{
-    border-color:var(--brand);
-    background:rgba(93,127,163,.18);
 }
 
 .logout{
@@ -359,27 +304,6 @@ body{
     </div>
 
     <div class="card">
-        <div class="card-title">Appearance</div>
-        <div class="card-sub">
-            Choose how Alygnn looks on your device.
-        </div>
-
-        <div class="theme-options">
-            <button class="theme-btn" id="theme-system" onclick="setTheme('system')">
-                System Default
-            </button>
-
-            <button class="theme-btn" id="theme-dark" onclick="setTheme('dark')">
-                Dark Mode
-            </button>
-
-            <button class="theme-btn" id="theme-light" onclick="setTheme('light')">
-                Light Mode
-            </button>
-        </div>
-    </div>
-
-    <div class="card">
         <div class="card-title">Account</div>
 
         <div class="menu">
@@ -424,21 +348,6 @@ function applyTheme(theme){
             document.body.classList.add("light");
         }
     }
-
-    document.querySelectorAll(".theme-btn").forEach(btn => {
-        btn.classList.remove("active");
-    });
-
-    const activeBtn = document.getElementById("theme-" + theme);
-
-    if(activeBtn){
-        activeBtn.classList.add("active");
-    }
-}
-
-function setTheme(theme){
-    localStorage.setItem("alygnn-theme", theme);
-    applyTheme(theme);
 }
 
 const savedTheme = localStorage.getItem("alygnn-theme") || "system";
