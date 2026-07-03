@@ -361,7 +361,16 @@
 
   const { data: { session } } = await sb.auth.getSession();
 
-  if (!session) {
+  // A session existing just means SOMEONE is logged in — it doesn't tell us
+  // whether they're an employer or a job seeker. Without this check, a
+  // job-seeker session on this employer-facing page was being treated as
+  // if it were a logged-in employer (showing "My account" / "Dashboard"
+  // and unlocking pricing) even though they'd never created an employer
+  // account here.
+  const role = String(session?.user?.user_metadata?.role || '').toLowerCase();
+  const isEmployerSession = !!session && role === 'employer';
+
+  if (!isEmployerSession) {
     lockedSection.style.display = 'block';
     return;
   }
