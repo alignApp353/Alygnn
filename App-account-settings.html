@@ -35,8 +35,24 @@ requireSession();
 function applyTheme(theme){document.body.classList.remove("light");if(theme==="light")document.body.classList.add("light");if(theme==="system"&&window.matchMedia("(prefers-color-scheme: light)").matches)document.body.classList.add("light");document.querySelectorAll(".theme-btn").forEach(btn=>{btn.classList.remove("active");const t=btn.textContent.toLowerCase();if((theme==="system"&&t.includes("system"))||(theme==="dark"&&t.includes("dark"))||(theme==="light"&&t.includes("light")))btn.classList.add("active");});}
 function setTheme(theme){localStorage.setItem("alygnn-theme",theme);applyTheme(theme);}
 async function changePassword(){const p=document.getElementById("newPassword").value;const c=document.getElementById("confirmPassword").value;const btn=document.getElementById("passwordBtn");if(!p||!c){showMessage("Please fill out both password fields.","error");return;}if(p.length<8){showMessage("Password must be at least 8 characters.","error");return;}if(p!==c){showMessage("Passwords do not match.","error");return;}btn.disabled=true;btn.textContent="Updating...";const {error}=await sb.auth.updateUser({password:p});if(error){showMessage(error.message,"error");btn.disabled=false;btn.textContent="Update Password";return;}document.getElementById("newPassword").value="";document.getElementById("confirmPassword").value="";showMessage("Password updated successfully.","success");btn.disabled=false;btn.textContent="Update Password";}
-async function logoutUser(){await sb.auth.signOut();window.location.replace("app-login.html");}
-applyTheme(localStorage.getItem("alygnn-theme")||"system");
-</script>
-</body>
-</html>
+async function logoutUser(){
+    try{
+        await sb.auth.signOut({ scope: "global" });
+    }catch(e){
+        console.log("Logout error:", e);
+    }
+
+    Object.keys(localStorage).forEach(function(key){
+        if(
+            key.includes("supabase") ||
+            key.includes("sb-") ||
+            key.includes("alygnn")
+        ){
+            localStorage.removeItem(key);
+        }
+    });
+
+    sessionStorage.clear();
+
+    window.location.href = "app-login.html";
+}
