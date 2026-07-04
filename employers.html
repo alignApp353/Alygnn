@@ -39,6 +39,9 @@
   .nav-right { display: flex; align-items: center; gap: 20px; }
   .nav-signin { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-signin:hover { color: var(--text); }
+  /* Reserve space for the longer "My account" swap and center within it,
+     matching index.html's nav so both pages line up the same way. */
+  #nav-auth-link { display: inline-block; min-width: 84px; text-align: center; }
   .nav-cta { background: var(--brand); color: white; border: none; border-radius: 100px; padding: 10px 24px; font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.2s; }
   .nav-cta:hover { opacity: 0.88; }
 
