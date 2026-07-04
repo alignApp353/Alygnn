@@ -101,10 +101,14 @@
         since a resized box still pushes its siblings even while
         invisible).
      2. opacity keeps the text itself from visibly flashing
-        "Sign in" -> "My account" before settling. */
+        "Sign in" -> "My account" before settling.
+     3. text-align: center keeps the text centered within its reserved
+        min-width box, instead of hugging the left edge, so it doesn't
+        look like it's drifted toward "For employers". */
   #nav-auth-link {
     opacity: 0; transition: opacity 0.15s ease;
     display: inline-block; min-width: 84px;
+    text-align: center;
   }
   #nav-cta-btn {
     opacity: 0; transition: opacity 0.15s ease;
