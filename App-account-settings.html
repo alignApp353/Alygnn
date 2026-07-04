@@ -4,55 +4,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn Settings</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--brand:#5D7FA3;--bg:#05080D;--card-bg:rgba(18,24,36,.94);--text:#FFFFFF;--border:rgba(255,255,255,.12);--text-muted:#A7B0BC;--danger:#D79A9A;--success:#6FBF8F;}
-body.light{--bg:#F6F8F7;--card-bg:#FFFFFF;--text:#1A2530;--border:#DDE3E8;--text-muted:#4A5968;}
-*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important;}body{margin:0;background:radial-gradient(circle at top,rgba(93,127,163,.25),transparent 35%),var(--bg);color:var(--text);}.screen{max-width:520px;margin:auto;min-height:100vh;padding:30px 22px 100px;}.back{font-size:16px;color:var(--brand);font-weight:800;cursor:pointer;margin-bottom:20px;}.title{font-size:38px;font-weight:900;}.subtitle{color:var(--text-muted);margin-top:8px;line-height:1.5;}.card{margin-top:22px;background:var(--card-bg);border:1px solid var(--border);border-radius:28px;padding:22px;}.card-title{font-size:22px;font-weight:900;margin-bottom:16px;}.theme-btn,.action-btn{width:100%;padding:18px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:17px;font-weight:800;margin-top:10px;cursor:pointer;}.theme-btn.active,.action-btn.primary{background:var(--brand);color:white;}.input{width:100%;padding:17px;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:16px;margin-top:12px;}.input:focus{outline:none;border-color:var(--brand);}.message{display:none;margin-top:14px;font-size:15px;font-weight:800;line-height:1.4;}.message.error{color:var(--danger);}.message.success{color:var(--success);}.menu{display:grid;gap:12px;}.menu-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;cursor:pointer;}.logout{text-align:center;color:var(--danger);font-size:20px;font-weight:900;margin-top:35px;cursor:pointer;}
+:root{--brand:#5D7FA3;--bg:#05080D;--card-bg:rgba(18,24,36,.94);--text:#FFFFFF;--border:rgba(255,255,255,.12);--text-muted:#A7B0BC;--danger:#D79A9A;--success:#6FBF8F;}body.light{--bg:#F6F8F7;--card-bg:#FFFFFF;--text:#1A2530;--border:#DDE3E8;--text-muted:#4A5968;}*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important;}body{margin:0;min-height:100vh;background:radial-gradient(circle at top,rgba(93,127,163,.25),transparent 35%),var(--bg);color:var(--text)}.screen{max-width:520px;margin:auto;padding:32px 22px 100px}.back{color:var(--brand);font-weight:900;margin-bottom:24px;cursor:pointer}.title{font-size:38px;font-weight:900}.subtitle{color:var(--text-muted);margin-top:8px;line-height:1.5}.card{margin-top:20px;background:var(--card-bg);border:1px solid var(--border);border-radius:28px;padding:22px}.card-title{font-size:22px;font-weight:900;margin-bottom:14px}.option,.theme-btn,.action-btn{width:100%;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:18px;margin-top:12px;color:var(--text);font-size:17px;font-weight:900;display:flex;justify-content:space-between;align-items:center;cursor:pointer}.option span{color:var(--text-muted)}.active,.action-btn.primary{border-color:var(--brand);background:rgba(93,127,163,.18)}.action-btn.primary{background:var(--brand);color:white;justify-content:center}.input{width:100%;padding:17px;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:16px;margin-top:12px}.input:focus{outline:none;border-color:var(--brand)}.message{display:none;margin-top:14px;font-size:15px;font-weight:800;line-height:1.4}.message.error{color:var(--danger)}.message.success{color:var(--success)}.logout{text-align:center;color:var(--danger);font-size:20px;font-weight:900;margin-top:34px;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="screen">
-<div class="back" onclick="window.location.href='app-account.html'">← Back</div>
-<div class="title">Settings</div><div class="subtitle">Manage your Alygnn account and personalize your experience.</div>
-<div id="message" class="message"></div>
-<div class="card"><div class="card-title">Appearance</div><button class="theme-btn" onclick="setTheme('system')">System Default</button><button class="theme-btn" onclick="setTheme('dark')">Dark Mode</button><button class="theme-btn" onclick="setTheme('light')">Light Mode</button></div>
-<div class="card"><div class="card-title">Change Password</div><input id="newPassword" class="input" type="password" placeholder="New password"><input id="confirmPassword" class="input" type="password" placeholder="Confirm password"><button id="passwordBtn" class="action-btn primary" onclick="changePassword()">Update Password</button></div>
-<div class="card"><div class="card-title">Account</div><div class="menu"><div class="menu-item" onclick="alert('Notification settings coming soon')">Notifications <span>›</span></div><div class="menu-item" onclick="alert('Help Center coming soon')">Help & Support <span>›</span></div><div class="menu-item" onclick="alert('Alygnn Version 1.0')">About Alygnn <span>›</span></div></div></div>
-<button class="theme-btn" onclick="debugSupabase()">Test Session</button>
-<div class="logout" onclick="logoutUser()">Log Out</div>
-</div>
+<div class="screen"><div class="back" onclick="goTo('app-account.html')">← Back to Profile</div><div class="title">Settings</div><div class="subtitle">Manage your Alygnn account and personalize your experience.</div><div id="message" class="message"></div><div class="card"><div class="card-title">Appearance</div><button class="theme-btn" data-theme="system" onclick="setTheme('system')">System Default <span>Recommended</span></button><button class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark Mode <span>›</span></button><button class="theme-btn" data-theme="light" onclick="setTheme('light')">Light Mode <span>›</span></button></div><div class="card"><div class="card-title">Change Password</div><input id="newPassword" class="input" type="password" placeholder="New password"><input id="confirmPassword" class="input" type="password" placeholder="Confirm password"><button id="passwordBtn" class="action-btn primary" onclick="changePassword()">Update Password</button></div><div class="card"><div class="card-title">Account</div><div class="option" onclick="alert('Email preferences coming soon')">Email Preferences <span>›</span></div><div class="option" onclick="alert('Privacy settings coming soon')">Privacy <span>›</span></div></div><div class="card"><div class="card-title">Notifications</div><div class="option">Job Alerts <span>On</span></div><div class="option">Application Updates <span>On</span></div></div><div class="card"><div class="card-title">Support</div><div class="option" onclick="alert('Help center coming soon')">Help & Support <span>›</span></div><div class="option" onclick="alert('Alygnn Version 1.0')">About Alygnn <span>›</span></div></div><div class="logout" onclick="logoutUser()">Log Out</div></div>
+<script src="alygnn-core.js"></script>
 <script>
-const SUPABASE_URL="https://auth.alygnn.com";
-const SUPABASE_KEY="sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG";
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-function showMessage(text,type){const m=document.getElementById("message");m.textContent=text;m.className="message "+type;m.style.display="block";}
-async function debugSupabase(){const {data,error}=await sb.auth.getSession();if(error){alert("Supabase error: "+error.message);return;}if(!data.session){alert("No active session found.");return;}alert("Logged in as: "+data.session.user.email);}
-async function requireSession(){const {data}=await sb.auth.getSession();if(!data.session){window.location.replace("app-login.html");}}
-requireSession();
-function applyTheme(theme){document.body.classList.remove("light");if(theme==="light")document.body.classList.add("light");if(theme==="system"&&window.matchMedia("(prefers-color-scheme: light)").matches)document.body.classList.add("light");document.querySelectorAll(".theme-btn").forEach(btn=>{btn.classList.remove("active");const t=btn.textContent.toLowerCase();if((theme==="system"&&t.includes("system"))||(theme==="dark"&&t.includes("dark"))||(theme==="light"&&t.includes("light")))btn.classList.add("active");});}
-function setTheme(theme){localStorage.setItem("alygnn-theme",theme);applyTheme(theme);}
-async function changePassword(){const p=document.getElementById("newPassword").value;const c=document.getElementById("confirmPassword").value;const btn=document.getElementById("passwordBtn");if(!p||!c){showMessage("Please fill out both password fields.","error");return;}if(p.length<8){showMessage("Password must be at least 8 characters.","error");return;}if(p!==c){showMessage("Passwords do not match.","error");return;}btn.disabled=true;btn.textContent="Updating...";const {error}=await sb.auth.updateUser({password:p});if(error){showMessage(error.message,"error");btn.disabled=false;btn.textContent="Update Password";return;}document.getElementById("newPassword").value="";document.getElementById("confirmPassword").value="";showMessage("Password updated successfully.","success");btn.disabled=false;btn.textContent="Update Password";}
-async function logoutUser(){
-    try{
-        await sb.auth.signOut({ scope: "global" });
-    }catch(e){
-        console.log("Logout error:", e);
-    }
-
-    Object.keys(localStorage).forEach(function(key){
-        if(
-            key.includes("supabase") ||
-            key.includes("sb-") ||
-            key.includes("alygnn")
-        ){
-            localStorage.removeItem(key);
-        }
-    });
-
-    sessionStorage.clear();
-
-    window.location.href = "app-login.html";
-}
+initTheme();requireSession();
+async function changePassword(){const newPassword=document.getElementById('newPassword').value;const confirmPassword=document.getElementById('confirmPassword').value;const button=document.getElementById('passwordBtn');if(!newPassword||!confirmPassword){showMessage('message','Please fill out both password fields.','error');return;}if(newPassword.length<8){showMessage('message','Password must be at least 8 characters.','error');return;}if(newPassword!==confirmPassword){showMessage('message','Passwords do not match.','error');return;}button.disabled=true;button.textContent='Updating...';const {error}=await sb.auth.updateUser({password:newPassword});if(error){showMessage('message',error.message,'error');button.disabled=false;button.textContent='Update Password';return;}document.getElementById('newPassword').value='';document.getElementById('confirmPassword').value='';showMessage('message','Password updated successfully.','success');button.disabled=false;button.textContent='Update Password';}
+</script>
+</body>
+</html>
