@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  // The @view-transition CSS rule (for cross-page fades) occasionally gets
+  // interrupted by Chrome itself — e.g. if another navigation starts before
+  // the fade finishes — which throws this specific AbortError as an
+  // unhandled rejection. It's harmless (nothing actually breaks), so we
+  // swallow only this exact error to keep the console clean.
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason && event.reason.name === 'AbortError' &&
+        /transition was skipped/i.test(event.reason.message || '')) {
+      event.preventDefault();
+    }
+  });
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn — Sign in</title>
