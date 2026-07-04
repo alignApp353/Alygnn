@@ -6,6 +6,7 @@
 <title>Alygnn — Find your match</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -140,10 +141,10 @@
     width: 52px; height: 52px; border-radius: 12px;
     background: var(--brand-light);
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; flex-shrink: 0; overflow: hidden;
+    font-size: 18px; font-weight: 500; color: var(--brand); flex-shrink: 0; overflow: hidden;
     border: 1px solid var(--border);
+    font-family: 'DM Serif Display', serif;
   }
-  .company-logo img { width: 100%; height: 100%; object-fit: contain; }
   .card-top-text { flex: 1; min-width: 0; }
   .job-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); letter-spacing: -0.3px; line-height: 1.2; margin-bottom: 3px; }
   .company-name { font-size: 14px; color: var(--text-muted); }
@@ -153,7 +154,7 @@
     font-size: 11px; padding: 4px 10px; border-radius: 100px;
     border: 1px solid var(--border); color: var(--text-muted);
   }
-  .pill.remote { background: var(--mint-light, rgba(111,191,143,0.1)); color: #2e7a52; border-color: rgba(111,191,143,0.3); }
+  .pill.remote { background: rgba(111,191,143,0.1); color: #2e7a52; border-color: rgba(111,191,143,0.3); }
   .pill.salary { background: var(--brand-light); color: var(--brand); border-color: rgba(93,127,163,0.2); }
 
   .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; margin-bottom: 16px; flex: 1; overflow: hidden; }
@@ -163,10 +164,11 @@
   .highlight-item { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.4; }
   .highlight-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--brand); margin-top: 5px; flex-shrink: 0; }
 
+  .card-benefits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .benefit-tag { font-size: 10px; padding: 3px 9px; border-radius: 100px; background: rgba(111,191,143,0.1); color: #2e7a52; }
+
   .card-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto; }
   .posted-time { font-size: 11px; color: var(--text-muted); }
-  .apply-link { font-size: 12px; color: var(--brand); text-decoration: none; font-weight: 500; }
-  .apply-link:hover { text-decoration: underline; }
 
   /* ACTION BUTTONS */
   .action-buttons { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
@@ -288,11 +290,17 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
   let jobs = [];
   let currentIndex = 0;
   let applied = 0;
   let skipped = 0;
   let history = [];
+  let currentUserId = null;
 
   let isDragging = false;
   let startX = 0;
@@ -301,42 +309,72 @@
   let activeCard = null;
   let activePointerId = null;
 
+  // Maps the checkbox values saved on preferences.html (FULLTIME, PARTTIME,
+  // CONTRACTOR, INTERN) to how job_type is actually stored on the jobs table
+  // (Full-time, Part-time, Contract, Internship).
+  const JOB_TYPE_MAP = {
+    FULLTIME: 'Full-time',
+    PARTTIME: 'Part-time',
+    CONTRACTOR: 'Contract',
+    INTERN: 'Internship'
+  };
+
+  function getInitials(name) {
+    if (!name) return '🏢';
+    return name.trim().split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  // Pulls jobs directly from Alygnn's own employer-posted jobs table —
+  // these only ever come from real business owners who created an
+  // employer account and posted through the dashboard, never from an
+  // outside job board or aggregator.
   async function loadJobs() {
     showScreen('loading');
 
-    const prefs = JSON.parse(sessionStorage.getItem('resumeData') || '{}');
+    const { data: { session } } = await sb.auth.getSession();
+    currentUserId = session?.user?.id || null;
+
     const prefRaw = sessionStorage.getItem('preferences');
     const pref = prefRaw ? JSON.parse(prefRaw) : {};
 
-    const query = pref.query || pref.role || prefs.title || 'software engineer';
-    const location = pref.city || pref.location || prefs.location || '';
-    const employment_type = pref.jobType || pref.employment_type || '';
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const { data, error } = await sb
+        .from('jobs')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
-      let res;
-      try {
-        res = await fetch('/api/get-jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, location, employment_type }),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
+      if (error) throw error;
+
+      let results = data || [];
+
+      const queryText = (pref.query || '').trim().toLowerCase();
+      if (queryText) {
+        results = results.filter(job =>
+          (job.title || '').toLowerCase().includes(queryText) ||
+          (job.description || '').toLowerCase().includes(queryText)
+        );
       }
 
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
-      const data = await res.json();
-
-      if (!data.success || !data.jobs || !data.jobs.length) {
-        throw new Error(data.error || 'No jobs found for your search.');
+      if (Array.isArray(pref.jobTypes) && pref.jobTypes.length) {
+        const wantedTypes = pref.jobTypes.map(t => JOB_TYPE_MAP[t] || t);
+        results = results.filter(job => wantedTypes.includes(job.job_type));
       }
 
-      jobs = data.jobs;
+      if (pref.workStyle) {
+        // "Remote" preference is treated as a strict filter since that's
+        // usually a hard requirement; other work styles are left loose so
+        // results don't get overly narrow.
+        if (pref.workStyle === 'Remote') {
+          results = results.filter(job => job.work_style === 'Remote');
+        }
+      }
+
+      if (!results.length) {
+        throw new Error('No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.');
+      }
+
+      jobs = results;
       currentIndex = 0;
       applied = 0;
       skipped = 0;
@@ -346,10 +384,7 @@
       showScreen('swipe');
     } catch (err) {
       console.error('loadJobs error:', err);
-      const msg = err.name === 'AbortError'
-        ? 'The job search took too long to respond. The server may be down or misconfigured — try again in a moment.'
-        : (err.message || 'Failed to load jobs.');
-      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-msg').textContent = err.message || 'Failed to load jobs.';
       showScreen('error');
     }
   }
@@ -361,23 +396,24 @@
     document.getElementById('empty-screen').style.display = name === 'empty' ? 'flex' : 'none';
   }
 
-  function formatSalary(job) {
-    if (!job.salary_min && !job.salary_max) return null;
-    const fmt = n => n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n;
-    if (job.salary_min && job.salary_max) return fmt(job.salary_min) + '–' + fmt(job.salary_max);
-    if (job.salary_max) return 'Up to ' + fmt(job.salary_max);
-    return fmt(job.salary_min) + '+';
-  }
-
   function timeAgo(dateStr) {
     if (!dateStr) return '';
     const diff = Date.now() - new Date(dateStr).getTime();
     const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Today';
+    if (days <= 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return days + ' days ago';
     if (days < 30) return Math.floor(days / 7) + ' weeks ago';
     return Math.floor(days / 30) + ' months ago';
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   function buildCard(job, index) {
@@ -385,24 +421,24 @@
     card.className = 'job-card';
     card.dataset.index = index;
 
-    const salary = formatSalary(job);
-    const logoHTML = job.logo
-      ? `<img src="${job.logo}" alt="${job.company || 'Company'}" onerror="this.parentElement.textContent='🏢'">`
-      : '🏢';
-
     const pillsHTML = [
-      job.remote ? '<span class="pill remote">🌐 Remote</span>' : '',
-      job.location ? `<span class="pill">📍 ${job.location}</span>` : '',
-      job.type ? `<span class="pill">${job.type.replace(/_/g,' ')}</span>` : '',
-      salary ? `<span class="pill salary">${salary}</span>` : '',
+      job.work_style === 'Remote' ? '<span class="pill remote">🌐 Remote</span>' : '',
+      job.location ? `<span class="pill">📍 ${escapeHtml(job.location)}</span>` : '',
+      job.job_type ? `<span class="pill">${escapeHtml(job.job_type)}</span>` : '',
+      job.salary ? `<span class="pill salary">${escapeHtml(job.salary)}</span>` : '',
     ].filter(Boolean).join('');
 
-    const highlights = Array.isArray(job.highlights) ? job.highlights : [];
-    const highlightsHTML = highlights.length
+    const requirements = (job.requirements || '').split('\n').map(r => r.trim()).filter(Boolean).slice(0, 4);
+    const highlightsHTML = requirements.length
       ? `<div class="card-highlights">
           <div class="highlights-label">Requirements</div>
-          ${highlights.map(h => `<div class="highlight-item"><div class="highlight-dot"></div>${h}</div>`).join('')}
+          ${requirements.map(r => `<div class="highlight-item"><div class="highlight-dot"></div>${escapeHtml(r)}</div>`).join('')}
         </div>`
+      : '';
+
+    const benefits = (job.benefits || '').split('\n').map(b => b.trim()).filter(Boolean).slice(0, 5);
+    const benefitsHTML = benefits.length
+      ? `<div class="card-benefits">${benefits.map(b => `<span class="benefit-tag">${escapeHtml(b)}</span>`).join('')}</div>`
       : '';
 
     const description = job.description || 'No description available.';
@@ -411,18 +447,18 @@
       <div class="stamp stamp-apply">APPLY ✓</div>
       <div class="stamp stamp-skip">SKIP ✕</div>
       <div class="card-top">
-        <div class="company-logo">${logoHTML}</div>
+        <div class="company-logo">${getInitials(job.company)}</div>
         <div class="card-top-text">
-          <div class="job-title">${job.title || 'Untitled Role'}</div>
-          <div class="company-name">${job.company || ''}</div>
+          <div class="job-title">${escapeHtml(job.title || 'Untitled Role')}</div>
+          <div class="company-name">${escapeHtml(job.company || '')}</div>
         </div>
       </div>
       <div class="card-pills">${pillsHTML}</div>
-      <div class="card-desc">${description}</div>
+      <div class="card-desc">${escapeHtml(description)}</div>
       ${highlightsHTML}
+      ${benefitsHTML}
       <div class="card-bottom">
-        <div class="posted-time">${timeAgo(job.posted)}</div>
-        ${job.apply_url ? `<a class="apply-link" href="${job.apply_url}" target="_blank" onclick="event.stopPropagation()">View listing →</a>` : ''}
+        <div class="posted-time">${timeAgo(job.created_at)}</div>
       </div>
     `;
 
@@ -549,6 +585,22 @@
     }
   }
 
+  async function recordApplication(job) {
+    if (!currentUserId || !job?.id) return;
+    try {
+      // Bumps the same "applied" counter the employer dashboard already
+      // displays. Not perfectly race-safe under heavy concurrent traffic,
+      // but that's not a concern at this scale.
+      await sb
+        .from('jobs')
+        .update({ applied: (job.applied || 0) + 1 })
+        .eq('id', job.id);
+    } catch (err) {
+      // Non-fatal — the swipe/local UI already recorded the application.
+      console.warn('Could not record application server-side:', err);
+    }
+  }
+
   function animateSwipe(direction) {
     setupTopCard();
     if (!activeCard) return;
@@ -561,6 +613,7 @@
     if (direction === 'right') {
       applied++;
       showToast('✓ Added to applications!');
+      recordApplication(job);
     } else {
       skipped++;
       showToast('Skipped');
