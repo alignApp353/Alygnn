@@ -4,6 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn for Employers — Hire smarter, faster</title>
+<meta name="description" content="Post jobs on Alygnn and reach better-fit candidates faster. AI-powered matching built around fit, not endless resume scrolling.">
+<link rel="canonical" href="https://alygnn.com/employers.html">
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Alygnn">
+<meta property="og:title" content="Alygnn for Employers — Hire smarter, faster">
+<meta property="og:description" content="Post jobs on Alygnn and reach better-fit candidates faster with AI-powered matching.">
+<meta property="og:url" content="https://alygnn.com/employers.html">
+<meta property="og:image" content="https://alygnn.com/og-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Alygnn for Employers — Hire smarter, faster">
+<meta name="twitter:description" content="Post jobs on Alygnn and reach better-fit candidates faster with AI-powered matching.">
+<meta name="twitter:image" content="https://alygnn.com/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Alygnn",
+  "url": "https://alygnn.com",
+  "description": "AI-powered job matching platform that matches candidates to jobs based on salary, benefits, and location criteria.",
+  "sameAs": [
+    "https://www.instagram.com/alygnncareers"
+  ]
+}
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -37,6 +67,15 @@
   .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-links a:hover { color: var(--text); }
   .nav-right { display: flex; align-items: center; gap: 20px; }
+  .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; margin-left: 8px; flex-direction: column; gap: 4px; }
+  .nav-toggle span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; transition: transform 0.2s ease, opacity 0.2s ease; }
+  .nav-toggle.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .nav-toggle.open span:nth-child(2) { opacity: 0; }
+  .nav-toggle.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .mobile-menu { display: none; flex-direction: column; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 5% 16px; }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a { padding: 14px 0; font-size: 15px; color: var(--text-muted); text-decoration: none; border-bottom: 1px solid var(--border); }
+  .mobile-menu a:last-child { border-bottom: none; }
   .nav-signin { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-signin:hover { color: var(--text); }
   /* Reserve space for the longer "My account" swap and center within it,
@@ -144,6 +183,7 @@
   @media (max-width: 900px) {
     .hero { grid-template-columns: 1fr; padding: 60px 6%; }
     .nav-links { display: none; }
+    .nav-toggle { display: flex; }
     .stats-row { grid-template-columns: 1fr; }
     .perks-grid { grid-template-columns: 1fr; }
     .pricing-grid { grid-template-columns: 1fr; }
@@ -165,8 +205,32 @@
     <a class="nav-signin" href="index.html" id="nav-jobseekers-link">For jobseekers</a>
     <a class="nav-signin" href="login.html?role=employer" id="nav-auth-link">Sign in</a>
     <button class="nav-cta" id="nav-cta-btn" onclick="window.location.href='login.html?role=employer'">Post a job</button>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#how">How it works</a>
+  <a href="login.html?role=employer">Pricing</a>
+  <a href="#faq">FAQ</a>
+</div>
+<script>
+  const navToggle = document.getElementById('nav-toggle');
+  const mobileMenu = document.getElementById('mobile-menu');
+  navToggle.addEventListener('click', () => {
+    const isOpen = mobileMenu.classList.toggle('open');
+    navToggle.classList.toggle('open', isOpen);
+    navToggle.setAttribute('aria-expanded', isOpen);
+  });
+  mobileMenu.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      mobileMenu.classList.remove('open');
+      navToggle.classList.remove('open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+</script>
 
 <!-- HERO -->
 <section class="hero">
@@ -342,7 +406,7 @@
 <footer>
   <a class="logo" href="employers.html" style="font-size: 18px;">Alygnn<span>.</span></a>
   <span>© 2026 Alygnn. <a href="index.html">For jobseekers →</a></span>
-  <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span>
+  <span><a href="https://www.instagram.com/alygnncareers" target="_blank" rel="noopener">Instagram</a> · <a href="mailto:admin@alygnn.com">Contact</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
