@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Alygnn</title>
+<meta name="description" content="Get in touch with the Alygnn team.">
+<link rel="canonical" href="https://alygnn.com/contact.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #5D7FA3;
+    --sage: #8CB69B;
+    --bg: #F6F8F7;
+    --card-bg: #FCFCFA;
+    --text: #1A2530;
+    --border: #DDE3E8;
+    --mint: #6FBF8F;
+    --rose: #D79A9A;
+    --text-muted: #4A5968;
+  }
+
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .nav-links { display: flex; gap: 24px; align-items: center; }
+  .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text); }
+
+  .page { max-width: 560px; margin: 0 auto; padding: 56px 6% 100px; }
+
+  .doc-header { margin-bottom: 32px; }
+  .doc-title { font-family: 'DM Serif Display', serif; font-size: 2.2rem; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .doc-sub { font-size: 15px; color: var(--text-muted); line-height: 1.6; }
+
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin: 20px 0 6px; }
+  input, textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    background: var(--card-bg); color: var(--text); resize: vertical;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--brand); }
+  textarea { min-height: 140px; }
+
+  .btn-primary {
+    margin-top: 28px; width: 100%;
+    background: var(--brand); color: white; border: none; border-radius: 100px;
+    padding: 15px 24px; font-size: 15px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .form-status {
+    margin-top: 16px; font-size: 14px; padding: 12px 16px; border-radius: 10px; display: none;
+  }
+  .form-status.success { display: block; background: rgba(111,191,143,0.15); color: #2f7a4f; }
+  .form-status.error { display: block; background: rgba(215,154,154,0.18); color: #a05858; }
+
+  .alt-contact { margin-top: 40px; font-size: 13px; color: var(--text-muted); }
+  .alt-contact a { color: var(--brand); }
+
+  footer {
+    padding: 40px 6%; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; color: var(--text-muted); max-width: 760px; margin: 0 auto;
+  }
+  footer a { color: var(--text-muted); text-decoration: none; }
+  footer a:hover { color: var(--brand); }
+
+  @media (max-width: 640px) {
+    footer { flex-direction: column; gap: 10px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-links">
+    <a href="index.html">← Back to Alygnn</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="doc-header">
+    <h1 class="doc-title">Get in touch</h1>
+    <p class="doc-sub">Questions, feedback, or something not working right? Send us a message and we'll get back to you.</p>
+  </div>
+
+  <form id="contact-form">
+    <label for="name">Full name</label>
+    <input type="text" id="name" name="name" placeholder="Your name" required>
+
+    <label for="email">Email address</label>
+    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+
+    <label for="message">Message</label>
+    <textarea id="message" name="message" placeholder="How can we help?" required></textarea>
+
+    <button type="submit" class="btn-primary" id="submit-btn">Send message</button>
+    <div class="form-status" id="form-status"></div>
+  </form>
+
+  <p class="alt-contact">You can also reach us directly at <a href="mailto:admin@alygnn.com">admin@alygnn.com</a>.</p>
+</div>
+
+<footer>
+  <a href="index.html">Alygnn</a>
+  <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const { createClient } = supabase;
+  const sb = createClient(
+    'https://auth.alygnn.com',
+    'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
+  );
+
+  const form = document.getElementById('contact-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const status = document.getElementById('form-status');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    status.className = 'form-status';
+    status.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+
+    const payload = {
+      name: document.getElementById('name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      message: document.getElementById('message').value.trim()
+    };
+
+    try {
+      const { error } = await sb.functions.invoke('send-contact-message', {
+        body: payload
+      });
+      if (error) throw error;
+
+      status.classList.add('success');
+      status.textContent = "Thanks — your message is on its way. We'll reply by email soon.";
+      form.reset();
+    } catch (err) {
+      status.classList.add('error');
+      status.textContent = "Something went wrong sending your message. Please email us directly at admin@alygnn.com.";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send message';
+    }
+  });
+</script>
+
+</body>
+</html>
