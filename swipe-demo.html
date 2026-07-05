@@ -296,6 +296,7 @@
   let history = [];
 
   let isDragging = false;
+  let isAnimating = false;
   let startX = 0;
   let startY = 0;
   let currentX = 0;
@@ -492,6 +493,7 @@
 
   function dragStart(e) {
     if (e.target.closest('a')) return;
+    if (isAnimating) return;
 
     setupTopCard();
 
@@ -582,8 +584,11 @@
   }
 
   function animateSwipe(direction) {
+    if (isAnimating) return;
+    isAnimating = true;
+
     setupTopCard();
-    if (!activeCard) return;
+    if (!activeCard) { isAnimating = false; return; }
 
     const job = jobs[parseInt(activeCard.dataset.index)];
     activeCard.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
@@ -602,6 +607,7 @@
 
     setTimeout(() => {
       renderCards();
+      isAnimating = false;
     }, 350);
   }
 
@@ -626,6 +632,8 @@
       showToast('Nothing to undo');
       return;
     }
+
+    isAnimating = false;
 
     const last = history.pop();
 
