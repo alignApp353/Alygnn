@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Alygnn — View Resume</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#5D7FA3;--bg:#05080D;--card:rgba(18,24,36,.95);--text:#fff;--muted:#A7B0BC;--border:rgba(255,255,255,.12);--mint:#6FBF8F;--rose:#D79A9A}
+*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{background:radial-gradient(circle at top,rgba(93,127,163,.28),transparent 34%),linear-gradient(180deg,#05080D,#0A0F17)}
+button{font:inherit;cursor:pointer}.app{width:100%;max-width:520px;min-height:100vh;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 20px calc(110px + env(safe-area-inset-bottom))}
+.topbar{display:flex;align-items:center;justify-content:space-between}.back{border:none;background:transparent;color:var(--brand);font-weight:900;padding:8px 0}.logo{font-size:27px;font-weight:900;color:var(--brand)}
+.title{margin-top:28px;font-size:36px;font-weight:900;line-height:1.05}.subtitle{margin-top:10px;color:var(--muted);font-size:15px;line-height:1.55}
+.card{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:26px;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.profile-head{display:flex;align-items:center;gap:15px}.avatar{width:64px;height:64px;border-radius:20px;background:rgba(93,127,163,.18);display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:26px;font-weight:900}
+.name{font-size:21px;font-weight:900}.meta{margin-top:4px;color:var(--muted);font-size:13px}.badge{display:inline-flex;margin-top:10px;padding:7px 11px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid rgba(111,191,143,.35);color:var(--mint);background:rgba(111,191,143,.10)}
+.section-title{font-size:19px;font-weight:900;margin-bottom:10px}.section-copy{color:var(--muted);font-size:14px;line-height:1.65;white-space:pre-wrap}.item{padding:15px 0;border-bottom:1px solid var(--border)}.item:last-child{border-bottom:none}.item-title{font-size:16px;font-weight:900}.item-sub{margin-top:4px;color:var(--muted);font-size:13px}.item-copy{margin-top:9px;color:#D8DEE7;font-size:14px;line-height:1.6;white-space:pre-wrap}
+.skills{display:flex;flex-wrap:wrap;gap:9px}.skill{padding:9px 12px;border-radius:999px;background:rgba(93,127,163,.14);border:1px solid rgba(93,127,163,.34);font-size:13px;font-weight:800}
+.upload-box{text-align:center}.file-icon{width:70px;height:70px;border-radius:22px;background:rgba(93,127,163,.16);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--brand);font-size:24px;font-weight:900}.file-name{font-size:18px;font-weight:900}.file-copy{margin-top:7px;color:var(--muted);font-size:14px}
+.message{display:none;margin-top:16px;padding:13px 15px;border-radius:16px;font-size:14px;font-weight:800}.message.error{display:block;background:rgba(215,154,154,.12);color:var(--rose);border:1px solid rgba(215,154,154,.3)}
+.empty{text-align:center}.empty-title{font-size:20px;font-weight:900}.empty-copy{margin-top:8px;color:var(--muted);font-size:14px;line-height:1.55}.actions{display:grid;gap:12px;margin-top:18px}.btn{width:100%;min-height:56px;border-radius:18px;font-size:16px;font-weight:900}.primary{border:none;background:var(--brand);color:white}.secondary{border:1px solid var(--border);background:transparent;color:var(--text)}
+.loading{text-align:center;color:var(--muted);padding:36px 10px}.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(18,24,36,.98);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:12px 10px calc(18px + env(safe-area-inset-bottom))}
+.nav-item{color:var(--muted);font-size:13px;font-weight:800}.nav-item.active{color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar"><button class="back" onclick="location.href='app-account.html'">← Back</button><div class="logo">Alygnn.</div></div>
+<div class="title">Your Resume</div><div class="subtitle">Review, edit, download, or replace the resume connected to your Alygnn profile.</div>
+<div id="message" class="message"></div><div id="content"><div class="loading">Loading your resume...</div></div>
+</div>
+<div class="bottom-nav"><div class="nav-item" onclick="location.href='app-swipe.html'">Swipe</div><div class="nav-item" onclick="location.href='app-applied.html'">Applied</div><div class="nav-item active" onclick="location.href='app-account.html'">My Profile</div></div>
+<script>
+const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+let resumePath=null;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const initials=n=>{const p=String(n||'A').trim().split(/\s+/);return((p[0]?.[0]||'A')+(p[1]?.[0]||'')).toUpperCase()};
+const dateText=v=>{if(!v)return'Recently updated';const d=new Date(v);return isNaN(d)?'Recently updated':'Updated '+d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
+function showError(t){const e=document.getElementById('message');e.textContent=t;e.className='message error'}
+function normalize(r){return r?{personal:r.personal||{},summary:r.professional_summary||r.summary||'',experience:Array.isArray(r.experience)?r.experience:[],education:Array.isArray(r.education)?r.education:[],skills:Array.isArray(r.skills)?r.skills:[],updated_at:r.updated_at||null}:null}
+function renderBuilt(r){
+ const p=r.personal||{},name=[p.first_name,p.last_name].filter(Boolean).join(' ')||'Alygnn Candidate',contact=[p.email,p.phone,[p.city,p.state].filter(Boolean).join(', ')].filter(Boolean).join(' • ');
+ const exp=r.experience.map(x=>`<div class="item"><div class="item-title">${esc(x.title||'Position')}</div><div class="item-sub">${esc([x.company,x.location].filter(Boolean).join(' • '))}</div><div class="item-sub">${esc([x.start,x.end].filter(Boolean).join(' — '))}</div>${x.description?`<div class="item-copy">${esc(x.description)}</div>`:''}</div>`).join('');
+ const edu=r.education.map(x=>`<div class="item"><div class="item-title">${esc(x.degree||'Education')}</div><div class="item-sub">${esc([x.school,x.location].filter(Boolean).join(' • '))}</div><div class="item-sub">${esc([x.start,x.end].filter(Boolean).join(' — '))}</div></div>`).join('');
+ const skills=r.skills.map(x=>`<span class="skill">${esc(x)}</span>`).join('');
+ document.getElementById('content').innerHTML=`<div class="card"><div class="profile-head"><div class="avatar">${esc(initials(name))}</div><div><div class="name">${esc(name)}</div><div class="meta">${esc(contact||'Contact information not added')}</div><div class="badge">Created with Alygnn</div><div class="meta">${esc(dateText(r.updated_at))}</div></div></div></div>
+ ${r.summary?`<div class="card"><div class="section-title">Professional Summary</div><div class="section-copy">${esc(r.summary)}</div></div>`:''}
+ ${exp?`<div class="card"><div class="section-title">Work Experience</div>${exp}</div>`:''}
+ ${edu?`<div class="card"><div class="section-title">Education</div>${edu}</div>`:''}
+ ${skills?`<div class="card"><div class="section-title">Skills</div><div class="skills">${skills}</div></div>`:''}
+ <div class="actions"><button class="btn primary" onclick="location.href='app-resume-builder.html'">Edit Resume</button><button class="btn secondary" onclick="window.print()">Print or Save as PDF</button><button class="btn secondary" onclick="location.href='app-align-upload.html'">Replace Resume</button></div>`;
+}
+function renderUploaded(path,updated){
+ resumePath=path;const file=path.split('/').pop()||'resume';
+ document.getElementById('content').innerHTML=`<div class="card"><div class="upload-box"><div class="file-icon">PDF</div><div class="file-name">${esc(file)}</div><div class="file-copy">Your uploaded resume is securely stored in Alygnn.</div><div class="badge">Uploaded Resume</div><div class="meta">${esc(dateText(updated))}</div></div></div>
+ <div class="actions"><button class="btn primary" onclick="openResume()">View Resume</button><button class="btn secondary" onclick="downloadResume()">Download Resume</button><button class="btn secondary" onclick="location.href='app-align-upload.html'">Replace Resume</button><button class="btn secondary" onclick="location.href='app-resume-builder.html'">Create Resume with Alygnn</button></div>`;
+}
+function renderEmpty(){document.getElementById('content').innerHTML=`<div class="card empty"><div class="empty-title">No resume found</div><div class="empty-copy">Upload an existing resume or build one inside Alygnn.</div><div class="actions"><button class="btn primary" onclick="location.href='app-align-upload.html'">Add Resume</button><button class="btn secondary" onclick="location.href='app-resume-builder.html'">Build Resume</button></div></div>`}
+async function signed(){const{data,error}=await sb.storage.from('resumes').createSignedUrl(resumePath,120);if(error||!data?.signedUrl)throw error||new Error('Unable to open resume');return data.signedUrl}
+async function openResume(){try{location.href=await signed()}catch(e){showError(e.message)}}
+async function downloadResume(){try{const a=document.createElement('a');a.href=await signed();a.download=resumePath.split('/').pop()||'resume';document.body.appendChild(a);a.click();a.remove()}catch(e){showError(e.message)}}
+(async()=>{
+ const{data,error}=await sb.auth.getSession();if(error||!data.session){location.replace('app-login.html');return}
+ const id=data.session.user.id;
+ const [r,p]=await Promise.all([
+  sb.from('candidate_resumes').select('personal,professional_summary,experience,education,skills,updated_at').eq('user_id',id).maybeSingle(),
+  sb.from('profiles').select('resume_file_path,resume_source,resume_data,updated_at').eq('id',id).maybeSingle()
+ ]);
+ const profile=p.data||{},structured=r.data?normalize(r.data):(profile.resume_data?normalize(profile.resume_data):null);
+ if(profile.resume_source==='upload'&&profile.resume_file_path)return renderUploaded(profile.resume_file_path,profile.updated_at);
+ if(structured)return renderBuilt(structured);
+ if(profile.resume_file_path)return renderUploaded(profile.resume_file_path,profile.updated_at);
+ renderEmpty();
+})();
+</script>
+</body>
+</html>
