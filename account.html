@@ -225,6 +225,21 @@ nav{
   font-size:14px;
 }
 
+.form-input{
+  background:white;
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  padding:12px 16px;
+  font-size:14px;
+  font-family:'DM Sans', Arial, sans-serif;
+  color:var(--text);
+  outline:none;
+  transition:border-color .2s;
+  width:100%;
+}
+.form-input:focus{ border-color:var(--brand); }
+.form-input::placeholder{ color:#9BA8B3; }
+
 .links-row{
   display:flex;
   gap:14px;
@@ -333,14 +348,24 @@ nav{
     <div class="section-header">
       <h2>Applied jobs</h2>
     </div>
-    <div class="empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
+    <!-- Search filters any element with class "job-row-item" inside #applied-jobs-list
+         by its text content. Works today with zero applied jobs; once real applied-job
+         cards are rendered here, give each card class="job-row-item" and search
+         will filter them automatically with no further changes. -->
+    <input type="text" class="form-input" id="applied-search-input" placeholder="Search applied jobs by title or company…" autocomplete="off" oninput="filterJobList('applied')" style="margin-bottom: 12px;">
+    <div id="applied-jobs-list">
+      <div class="empty-state" id="applied-empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
+    </div>
   </div>
 
   <div class="section">
     <div class="section-header">
       <h2>Skipped jobs</h2>
     </div>
-    <div class="empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
+    <input type="text" class="form-input" id="skipped-search-input" placeholder="Search skipped jobs by title or company…" autocomplete="off" oninput="filterJobList('skipped')" style="margin-bottom: 12px;">
+    <div id="skipped-jobs-list">
+      <div class="empty-state" id="skipped-empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
+    </div>
   </div>
 
   <div class="section">
@@ -392,6 +417,32 @@ const resumeSub = document.getElementById('resume-card-sub');
 function showPage(){
   loadingEl.classList.add('hide');
   pageEl.classList.add('ready');
+}
+
+// Filters any element with class "job-row-item" inside the given list
+// (#applied-jobs-list or #skipped-jobs-list) by its text content. Safe to
+// call with zero jobs — future code that renders real applied/skipped job
+// cards just needs to give each card class="job-row-item" and this will
+// work automatically with no further changes.
+function filterJobList(kind){
+  const input = document.getElementById(kind + '-search-input');
+  const list = document.getElementById(kind + '-jobs-list');
+  const emptyState = document.getElementById(kind + '-empty-state');
+  if(!input || !list) return;
+
+  const query = input.value.trim().toLowerCase();
+  const cards = list.querySelectorAll('.job-row-item');
+  let visibleCount = 0;
+
+  cards.forEach(card => {
+    const matches = !query || card.textContent.toLowerCase().includes(query);
+    card.style.display = matches ? '' : 'none';
+    if(matches) visibleCount++;
+  });
+
+  if(emptyState && cards.length > 0){
+    emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+  }
 }
 
 function getInitials(name){
