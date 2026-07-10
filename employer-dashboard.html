@@ -314,6 +314,7 @@
         <div class="section-title">Active listings</div>
         <button class="btn-primary" onclick="showPanel('post', this)">+ Post new job</button>
       </div>
+      <input type="text" class="form-input" id="jobs-search-input" placeholder="Search your posted jobs by title, location, or type…" autocomplete="off" oninput="renderJobs()" style="margin-bottom: 16px;">
       <div id="jobs-list">
         <div class="empty-state">
           <div class="empty-icon">💼</div>
@@ -329,8 +330,13 @@
         <div class="page-title">Candidates</div>
         <div class="page-sub">Job seekers who swiped right on your listings</div>
       </div>
+      <!-- Search is wired to filter any element with class "candidate-card" inside
+           #candidates-grid by its text content. It works today with zero candidates;
+           once real candidate cards are rendered here, search will filter them
+           automatically as long as each card uses class="candidate-card". -->
+      <input type="text" class="form-input" id="candidates-search-input" placeholder="Search candidates by name, role, or skill…" autocomplete="off" oninput="filterCandidates()" style="margin-bottom: 16px;">
       <div id="candidates-grid" class="candidates-grid">
-        <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
           <div class="empty-icon">👥</div>
           <div class="empty-title">No candidates yet</div>
           Once job seekers apply to your listings, they'll appear here.
@@ -995,7 +1001,56 @@
       return;
     }
 
-    const jobRows = jobs.map(job => `
+    const searchInput = document.getElementById('jobs-search-input');
+    const query = (searchInput?.value || '').trim().toLowerCase();
+
+    const filteredJobs = query
+      ? jobs.filter(job => {
+          const haystack = [
+            job.title,
+            job.location,
+            job.job_type,
+            formatWorkStyleLabel(job.work_style)
+          ].filter(Boolean).join(' ').toLowerCase();
+          return haystack.includes(query);
+        })
+      : jobs;
+
+    if (filteredJobs.length === 0) {
+      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`;
+      overviewJobs.innerHTML = jobs.map(job => renderJobRow(job)).join('');
+      return;
+    }
+
+    const jobRows = filteredJobs.map(job => renderJobRow(job)).join('');
+
+    jobsList.innerHTML = jobRows;
+    overviewJobs.innerHTML = jobs.map(job => renderJobRow(job)).join('');
+  }
+
+  // Filters any .candidate-card elements inside #candidates-grid by their
+  // text content. Safe to call even with zero candidates — future code that
+  // renders real candidate cards just needs to give each card the class
+  // "candidate-card" and this will work with no further changes.
+  function filterCandidates() {
+    const query = (document.getElementById('candidates-search-input')?.value || '').trim().toLowerCase();
+    const cards = document.querySelectorAll('#candidates-grid .candidate-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const matches = !query || card.textContent.toLowerCase().includes(query);
+      card.style.display = matches ? '' : 'none';
+      if (matches) visibleCount++;
+    });
+
+    const emptyState = document.getElementById('candidates-empty-state');
+    if (emptyState && cards.length > 0) {
+      emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+  }
+
+  function renderJobRow(job) {
+    return `
       <div class="job-row">
         <div class="job-status active"></div>
         <div class="job-info">
@@ -1011,10 +1066,7 @@
           <button class="btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
         </div>
       </div>
-    `).join('');
-
-    jobsList.innerHTML = jobRows;
-    overviewJobs.innerHTML = jobRows;
+    `;
   }
 
   function formatWorkStyleLabel(workStyle) {
