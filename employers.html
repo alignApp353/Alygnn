@@ -198,7 +198,7 @@
   <a class="logo" href="employers.html">Alygnn<span>.</span><span class="logo-tag">for Employers</span></a>
   <ul class="nav-links">
     <li><a href="#how">How it works</a></li>
-    <li><a href="login.html?role=employer">Pricing</a></li>
+    <li><a href="login.html?role=employer" id="nav-pricing-link">Pricing</a></li>
     <li><a href="#faq">FAQ</a></li>
   </ul>
   <div class="nav-right">
@@ -212,7 +212,7 @@
 </nav>
 <div class="mobile-menu" id="mobile-menu">
   <a href="#how">How it works</a>
-  <a href="login.html?role=employer">Pricing</a>
+  <a href="login.html?role=employer" id="mobile-pricing-link">Pricing</a>
   <a href="#faq">FAQ</a>
 </div>
 <script>
@@ -451,6 +451,14 @@
   // Show pricing
   pricingSection.style.display = 'block';
   lockedSection.style.display  = 'none';
+
+  // Now that the real pricing section is actually visible on this page,
+  // the nav "Pricing" links should scroll to it instead of sending an
+  // already-logged-in employer back to the login page.
+  const navPricingLink = document.getElementById('nav-pricing-link');
+  const mobilePricingLink = document.getElementById('mobile-pricing-link');
+  if (navPricingLink) navPricingLink.href = '#pricing';
+  if (mobilePricingLink) mobilePricingLink.href = '#pricing';
 
   const { data: profile } = await sb
     .from('profiles')
