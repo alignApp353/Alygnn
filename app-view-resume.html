@@ -50,7 +50,7 @@ function renderBuilt(r){
  ${exp?`<div class="card"><div class="section-title">Work Experience</div>${exp}</div>`:''}
  ${edu?`<div class="card"><div class="section-title">Education</div>${edu}</div>`:''}
  ${skills?`<div class="card"><div class="section-title">Skills</div><div class="skills">${skills}</div></div>`:''}
- <div class="actions"><button class="btn primary" onclick="location.href='app-resume-builder.html'">Edit Resume</button><button class="btn secondary" onclick="window.print()">Print or Save as PDF</button><button class="btn secondary" onclick="location.href='app-align-upload.html'">Replace Resume</button></div>`;
+ <div class="actions"><button class="btn primary" onclick="location.href='app-edit-resume.html'">Edit Resume</button><button class="btn secondary" onclick="window.print()">Print or Save as PDF</button><button class="btn secondary" onclick="location.href='app-align-upload.html'">Replace Resume</button></div>`;
 }
 function renderUploaded(path,updated){
  resumePath=path;const file=path.split('/').pop()||'resume';
