@@ -1,246 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Alygnn</title>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
-
-:root{
-    --brand:#5D7FA3;
-    --sage:#8CB69B;
-    --bg:#F6F8F7;
-    --card-bg:#FCFCFA;
-    --text:#1A2530;
-    --border:#DDE3E8;
-    --mint:#6FBF8F;
-    --rose:#D79A9A;
-    --text-muted:#4A5968;
-}
-
-*{
-    box-sizing:border-box;
-}
-
-body{
-    margin:0;
-    font-family:'DM Sans',sans-serif;
-    background:var(--bg);
-    color:var(--text);
-}
-
-.header{
-    background:var(--bg);
-    padding:20px;
-    position:sticky;
-    top:0;
-    z-index:100;
-}
-
-.greeting{
-    font-size:28px;
-    font-weight:800;
-    margin-bottom:15px;
-}
-
-.search{
-    width:100%;
-    padding:18px;
-    border-radius:18px;
-    border:1px solid var(--border);
-    background:var(--card-bg);
-    font-size:16px;
-    font-family:'DM Sans',sans-serif;
-}
-
-.search:focus{
-    outline:none;
-    border-color:var(--brand);
-}
-
-.job-card{
-    background:var(--card-bg);
-    margin:16px;
-    padding:22px;
-    border-radius:24px;
-    border:1px solid var(--border);
-    box-shadow:0 4px 12px rgba(0,0,0,.04);
-}
-
-.match{
-    display:inline-block;
-    background:#E8F5EC;
-    color:#2F855A;
-    padding:8px 14px;
-    border-radius:999px;
-    font-size:14px;
-    font-weight:700;
-    margin-bottom:18px;
-}
-
-.job-title{
-    font-size:28px;
-    font-weight:800;
-    margin-bottom:8px;
-}
-
-.company{
-    color:var(--text-muted);
-    font-size:16px;
-    margin-bottom:18px;
-}
-
-.description{
-    color:var(--text);
-    line-height:1.6;
-    margin-bottom:18px;
-}
-
-.salary{
-    color:var(--brand);
-    font-size:22px;
-    font-weight:800;
-    margin-bottom:20px;
-}
-
-.tags{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-bottom:22px;
-}
-
-.tag{
-    background:#EDF2F7;
-    padding:8px 14px;
-    border-radius:999px;
-    color:var(--text-muted);
-    font-size:14px;
-}
-
-.apply-btn{
-    width:100%;
-    padding:18px;
-    border:none;
-    border-radius:18px;
-    background:var(--brand);
-    color:white;
-    font-size:17px;
-    font-weight:700;
-    font-family:'DM Sans',sans-serif;
-}
-
-.bottom-nav{
-    position:fixed;
-    bottom:0;
-    width:100%;
-    background:var(--card-bg);
-    border-top:1px solid var(--border);
-    display:flex;
-    justify-content:space-around;
-    padding:14px 0;
-}
-
-.nav-item{
-    text-align:center;
-    color:var(--text-muted);
-    font-size:13px;
-}
-
-.active{
-    color:var(--brand);
-    font-weight:700;
-}
+*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}
+html,body{margin:0;min-height:100%;background:#05080D;color:#fff}
+body{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top,rgba(93,127,163,.28),transparent 34%),linear-gradient(180deg,#05080D,#0A0F17)}
+.loader{text-align:center;padding:30px}
+.logo{font-size:38px;font-weight:900;color:#5D7FA3;letter-spacing:-1px}
+.text{margin-top:12px;color:#A7B0BC;font-weight:700}
+.spinner{width:34px;height:34px;margin:22px auto 0;border:3px solid rgba(255,255,255,.12);border-top-color:#5D7FA3;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
-
 <body>
-
-<div class="header">
-
-    <div class="greeting">
-        Welcome back 👋
-    </div>
-
-    <input class="search" placeholder="Search jobs, companies, skills...">
-
+<div class="loader">
+  <div class="logo">Alygnn.</div>
+  <div class="text">Opening your app...</div>
+  <div class="spinner"></div>
 </div>
+<script>
+const sb=supabase.createClient(
+  "https://auth.alygnn.com",
+  "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG",
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
 
-<div class="job-card">
-
-    <div class="match">94% Match</div>
-
-    <div class="job-title">
-        Account Manager
-    </div>
-
-    <div class="company">
-        LP Consulting • Raleigh, NC
-    </div>
-
-    <div class="description">
-        Leadership training provided. Full-time position with advancement opportunities.
-    </div>
-
-    <div class="salary">
-        $55,000 - $75,000
-    </div>
-
-    <div class="tags">
-        <div class="tag">Full-Time</div>
-        <div class="tag">Leadership</div>
-        <div class="tag">Training</div>
-    </div>
-
-    <button class="apply-btn">
-        Quick Apply
-    </button>
-
-</div>
-
-<div class="job-card">
-
-    <div class="match">91% Match</div>
-
-    <div class="job-title">
-        Business Development Associate
-    </div>
-
-    <div class="company">
-        The Midtown Group • Raleigh, NC
-    </div>
-
-    <div class="description">
-        Entry-level role. Full training provided. Fast-track leadership opportunities available.
-    </div>
-
-    <div class="salary">
-        $50,000 - $70,000
-    </div>
-
-    <div class="tags">
-        <div class="tag">Entry Level</div>
-        <div class="tag">Sales</div>
-        <div class="tag">Growth</div>
-    </div>
-
-    <button class="apply-btn">
-        Quick Apply
-    </button>
-
-</div>
-
-<div style="height:110px;"></div>
-
-<div class="bottom-nav">
-    <div class="nav-item active"><br>Home</div>
-    <div class="nav-item"><br>Jobs</div>
-    <div class="nav-item"><br>Saved</div>
-    <div class="nav-item"><br>Applied</div>
-    <div class="nav-item"><br>Profile</div>
-</div>
-
+(async function routeApp(){
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error||!data.session){
+      window.location.replace("app-login.html");
+      return;
+    }
+    window.location.replace("app-swipe.html");
+  }catch(error){
+    console.error(error);
+    window.location.replace("app-login.html");
+  }
+})();
+</script>
 </body>
 </html>
