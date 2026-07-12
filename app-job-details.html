@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Alygnn — Job Details</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#5D7FA3;--sage:#8CB69B;--bg:#05080D;--card:rgba(18,24,36,.96);
+  --text:#FFFFFF;--muted:#A7B0BC;--border:rgba(255,255,255,.12);
+  --mint:#6FBF8F;--rose:#D79A9A;--amber:#E7B86E;
+}
+*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{background:radial-gradient(circle at top,rgba(93,127,163,.28),transparent 35%),linear-gradient(180deg,#05080D,#0A0F17)}
+button{font:inherit;cursor:pointer}
+.app{width:100%;max-width:520px;min-height:100vh;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 20px calc(118px + env(safe-area-inset-bottom))}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.back{border:none;background:transparent;color:var(--brand);font-weight:900;padding:8px 0}
+.logo{font-size:27px;font-weight:900;color:var(--brand);letter-spacing:-1px}
+.hero{margin-top:24px;background:var(--card);border:1px solid var(--border);border-radius:28px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.24)}
+.company-mark{width:64px;height:64px;border-radius:20px;background:rgba(93,127,163,.16);display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:24px;font-weight:900}
+.job-title{margin-top:18px;font-size:30px;font-weight:900;line-height:1.08;letter-spacing:-1px}
+.company{margin-top:8px;color:var(--muted);font-size:15px}
+.badges{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.badge{padding:8px 11px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);font-size:12px;font-weight:900;color:var(--muted)}
+.match{color:var(--mint);background:rgba(111,191,143,.10);border-color:rgba(111,191,143,.26)}
+.salary-card{margin-top:18px;background:linear-gradient(135deg,rgba(93,127,163,.18),rgba(140,182,155,.10));border:1px solid rgba(93,127,163,.28);border-radius:22px;padding:18px}
+.salary-label{color:var(--muted);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1px}
+.salary-value{margin-top:7px;font-size:25px;font-weight:900}
+.card{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:24px;padding:20px}
+.section-title{font-size:19px;font-weight:900;margin-bottom:10px}
+.copy{color:#D8DEE7;font-size:14px;line-height:1.7;white-space:pre-wrap}
+.list{display:grid;gap:10px}
+.list-item{display:flex;align-items:flex-start;gap:10px;color:#D8DEE7;font-size:14px;line-height:1.55}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--brand);margin-top:7px;flex-shrink:0}
+.message{display:none;margin-top:16px;padding:13px 15px;border-radius:16px;font-size:14px;font-weight:800;line-height:1.4}
+.message.error{display:block;background:rgba(215,154,154,.12);color:var(--rose);border:1px solid rgba(215,154,154,.3)}
+.message.success{display:block;background:rgba(111,191,143,.12);color:var(--mint);border:1px solid rgba(111,191,143,.3)}
+.loading{text-align:center;color:var(--muted);padding:60px 12px}
+.footer{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(18,24,36,.98);border-top:1px solid var(--border);padding:12px 18px calc(18px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1.8fr;gap:10px;backdrop-filter:blur(14px)}
+.btn{min-height:56px;border-radius:18px;font-size:16px;font-weight:900}
+.secondary{border:1px solid var(--border);background:transparent;color:var(--text)}
+.primary{border:none;background:var(--brand);color:white}
+.primary:disabled{opacity:.6;cursor:not-allowed}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="back" onclick="history.back()">← Back</button>
+    <div class="logo">Alygnn.</div>
+  </div>
+
+  <div id="message" class="message"></div>
+  <div id="content"><div class="loading">Loading job details...</div></div>
+</div>
+
+<div class="footer">
+  <button class="btn secondary" onclick="window.location.href='app-applied.html'">Applied</button>
+  <button id="applyBtn" class="btn primary" onclick="applyToJob()" disabled>Apply Now</button>
+</div>
+
+<script>
+const SUPABASE_URL='https://auth.alygnn.com';
+const SUPABASE_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+});
+
+let currentSession=null;
+let currentJob=null;
+let alreadyApplied=false;
+
+function esc(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  })[char]);
+}
+function showMessage(text,type='error'){
+  const el=document.getElementById('message');
+  el.textContent=text;
+  el.className='message '+type;
+}
+function initials(value){
+  const clean=String(value||'A').trim();
+  const parts=clean.split(/\s+/).filter(Boolean);
+  return (parts.length>1?parts[0][0]+parts[1][0]:parts[0]?.[0]||'A').toUpperCase();
+}
+function salaryText(job){
+  const min=job.salary_min;
+  const max=job.salary_max;
+  if(min&&max)return '$'+Number(min).toLocaleString()+' – $'+Number(max).toLocaleString();
+  if(min)return 'From $'+Number(min).toLocaleString();
+  if(max)return 'Up to $'+Number(max).toLocaleString();
+  return 'Salary not listed';
+}
+function splitLines(value){
+  if(!value)return[];
+  if(Array.isArray(value))return value.filter(Boolean);
+  return String(value).split(/\n|•/).map(x=>x.trim()).filter(Boolean);
+}
+function renderList(items){
+  if(!items.length)return '<div class="copy">Not provided.</div>';
+  return '<div class="list">'+items.map(item=>`<div class="list-item"><span class="dot"></span><span>${esc(item)}</span></div>`).join('')+'</div>';
+}
+function renderJob(job){
+  const company=job.company_name||job.company||'Employer';
+  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
+  const employment=job.employment_type||job.job_type||'Job';
+  const responsibilities=splitLines(job.responsibilities);
+  const benefits=splitLines(job.benefits);
+
+  document.getElementById('content').innerHTML=`
+    <div class="hero">
+      <div class="company-mark">${esc(initials(company))}</div>
+      <div class="job-title">${esc(job.title||'Job Opportunity')}</div>
+      <div class="company">${esc(company)} • ${esc(location)}</div>
+
+      <div class="badges">
+        <span class="badge">${esc(employment)}</span>
+        ${job.match_score!=null?`<span class="badge match">${esc(job.match_score)}% Match</span>`:''}
+        ${job.status?`<span class="badge">${esc(job.status)}</span>`:''}
+      </div>
+
+      <div class="salary-card">
+        <div class="salary-label">Compensation</div>
+        <div class="salary-value">${esc(salaryText(job))}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">About the Role</div>
+      <div class="copy">${esc(job.description||'No job description has been added yet.')}</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Responsibilities</div>
+      ${renderList(responsibilities)}
+    </div>
+
+    <div class="card">
+      <div class="section-title">Benefits</div>
+      ${renderList(benefits)}
+    </div>
+
+    <div class="card">
+      <div class="section-title">About the Company</div>
+      <div class="copy">${esc(job.company_description||'More company information will be available soon.')}</div>
+    </div>
+  `;
+
+  const button=document.getElementById('applyBtn');
+  if(alreadyApplied){
+    button.disabled=true;
+    button.textContent='Already Applied';
+  }else{
+    button.disabled=false;
+    button.textContent='Apply Now';
+  }
+}
+async function applyToJob(){
+  if(!currentSession||!currentJob){
+    showMessage('This job could not be loaded.');
+    return;
+  }
+  if(alreadyApplied){
+    window.location.href='app-applied.html';
+    return;
+  }
+
+  const button=document.getElementById('applyBtn');
+  button.disabled=true;
+  button.textContent='Applying...';
+
+  try{
+    const {data:resumeRow,error:resumeError}=await sb
+      .from('candidate_resumes')
+      .select('user_id')
+      .eq('user_id',currentSession.user.id)
+      .maybeSingle();
+
+    if(resumeError)console.warn('Resume check failed:',resumeError);
+
+    if(!resumeRow){
+      const {data:profile}=await sb
+        .from('profiles')
+        .select('resume_file_path,resume_data')
+        .eq('id',currentSession.user.id)
+        .maybeSingle();
+
+      if(!profile?.resume_file_path&&!profile?.resume_data){
+        throw new Error('Add a resume before applying to jobs.');
+      }
+    }
+
+    const {error}=await sb.from('applications').insert({
+      candidate_id:currentSession.user.id,
+      job_id:currentJob.id,
+      status:'applied',
+      applied_at:new Date().toISOString(),
+      match_score:currentJob.match_score??null
+    });
+
+    if(error){
+      if(error.code==='23505'){
+        alreadyApplied=true;
+        button.textContent='Already Applied';
+        showMessage('You already applied to this job.','success');
+        return;
+      }
+      throw error;
+    }
+
+    alreadyApplied=true;
+    showMessage('Application submitted successfully.','success');
+    button.textContent='Applied';
+    setTimeout(()=>window.location.href='app-applied.html',700);
+  }catch(error){
+    console.error(error);
+    showMessage(error.message||'Your application could not be submitted.');
+    button.disabled=false;
+    button.textContent='Apply Now';
+  }
+}
+async function initialize(){
+  const params=new URLSearchParams(window.location.search);
+  const jobId=params.get('id');
+
+  if(!jobId){
+    showMessage('No job was selected.');
+    document.getElementById('content').innerHTML='';
+    return;
+  }
+
+  const {data,error}=await sb.auth.getSession();
+  if(error||!data.session){
+    window.location.replace('app-login.html');
+    return;
+  }
+  currentSession=data.session;
+
+  const [jobResult,applicationResult]=await Promise.all([
+    sb.from('jobs').select('*').eq('id',jobId).maybeSingle(),
+    sb.from('applications')
+      .select('id')
+      .eq('candidate_id',currentSession.user.id)
+      .eq('job_id',jobId)
+      .maybeSingle()
+  ]);
+
+  if(jobResult.error||!jobResult.data){
+    console.error(jobResult.error);
+    showMessage(jobResult.error?.message||'This job is no longer available.');
+    document.getElementById('content').innerHTML='';
+    return;
+  }
+
+  if(applicationResult.error){
+    console.error(applicationResult.error);
+  }
+
+  currentJob=jobResult.data;
+  alreadyApplied=Boolean(applicationResult.data);
+  renderJob(currentJob);
+}
+initialize();
+</script>
+</body>
+</html>
