@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alygnn</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}
+html,body{margin:0;min-height:100%;background:#05080D;color:#fff}
+body{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top,rgba(93,127,163,.28),transparent 34%),linear-gradient(180deg,#05080D,#0A0F17)}
+.loader{text-align:center;padding:30px}
+.logo{font-size:38px;font-weight:900;color:#5D7FA3;letter-spacing:-1px}
+.text{margin-top:12px;color:#A7B0BC;font-weight:700}
+.spinner{width:34px;height:34px;margin:22px auto 0;border:3px solid rgba(255,255,255,.12);border-top-color:#5D7FA3;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="loader">
+  <div class="logo">Alygnn.</div>
+  <div class="text">Opening your app...</div>
+  <div class="spinner"></div>
+</div>
+<script>
+const sb=supabase.createClient(
+  "https://auth.alygnn.com",
+  "sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG",
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+
+(async function routeApp(){
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error||!data.session){
+      window.location.replace("app-login.html");
+      return;
+    }
+    window.location.replace("app-swipe.html");
+  }catch(error){
+    console.error(error);
+    window.location.replace("app-login.html");
+  }
+})();
+</script>
+</body>
+</html>
