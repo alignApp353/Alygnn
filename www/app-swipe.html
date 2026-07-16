@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn — Swipe Jobs</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet">
@@ -361,7 +362,7 @@ nav{
   <div class="nav-stats">
     <div class="stat">
       <div class="stat-val" id="stat-applied">0</div>
-      <div class="stat-label">Liked</div>
+      <div class="stat-label">Applied</div>
     </div>
 
     <div class="stat">
@@ -396,81 +397,94 @@ nav{
 <div class="toast" id="toast"></div>
 
 <script>
-let jobs = [
-  {
-    title:"Account Manager",
-    company:"LP Consulting",
-    location:"Raleigh, NC",
-    type:"Full-time",
-    salary:"$55k–$75k",
-    match:"94% Match",
-    description:"Leadership training provided. Full-time position with advancement opportunities and hands-on business development experience.",
-    posted:"Today"
-  },
-  {
-    title:"Business Development Associate",
-    company:"The Midtown Group",
-    location:"Raleigh, NC",
-    type:"Entry level",
-    salary:"$50k–$70k",
-    match:"91% Match",
-    description:"Entry-level role with full training provided. Strong fit for candidates looking for growth, leadership, and client-facing experience.",
-    posted:"1 day ago"
-  },
-  {
-    title:"Sales Development Representative",
-    company:"Alygnn Partner Company",
-    location:"Durham, NC",
-    type:"Full-time",
-    salary:"$48k–$68k",
-    match:"88% Match",
-    description:"Work with local businesses, build client relationships, and grow into leadership responsibilities over time.",
-    posted:"3 days ago"
+const sb=supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+
+let session=null;
+let jobs=[];
+let currentIndex=0;
+let applied=0;
+let skipped=0;
+let history=[];
+let activeCard=null;
+let isDragging=false;
+let startX=0;
+let startY=0;
+let currentX=0;
+let activePointerId=null;
+let toastTimer;
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,c=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  })[c]);
+}
+
+function initials(value){
+  const parts=String(value||'A').trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0]||'A')+(parts[1]?.[0]||'')).toUpperCase();
+}
+
+function salaryText(job){
+  if(job.salary)return job.salary;
+  if(job.salary_min&&job.salary_max){
+    return '$'+Number(job.salary_min).toLocaleString()+'–$'+Number(job.salary_max).toLocaleString();
   }
-];
+  if(job.salary_min)return 'From $'+Number(job.salary_min).toLocaleString();
+  if(job.salary_max)return 'Up to $'+Number(job.salary_max).toLocaleString();
+  return 'Salary not listed';
+}
 
-let currentIndex = 0;
-let applied = 0;
-let skipped = 0;
-let history = [];
-
-let activeCard = null;
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-let currentX = 0;
-let activePointerId = null;
+function postedText(value){
+  if(!value)return 'Recently posted';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return 'Recently posted';
+  const days=Math.floor((Date.now()-date.getTime())/86400000);
+  if(days<=0)return 'Today';
+  if(days===1)return '1 day ago';
+  return days+' days ago';
+}
 
 function buildCard(job,index){
-  const card = document.createElement("div");
-  card.className = "job-card";
-  card.dataset.index = index;
+  const card=document.createElement('div');
+  card.className='job-card';
+  card.dataset.index=index;
 
-  card.innerHTML = `
-    <div class="stamp stamp-apply">LIKE</div>
+  const company=job.company||job.company_name||'Employer';
+  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
+  const type=job.job_type||job.employment_type||'Job';
+  const style=job.work_style||'';
+  const match=job.match_score!=null?job.match_score+'% Match':'New Match';
+
+  card.innerHTML=`
+    <div class="stamp stamp-apply">APPLY</div>
     <div class="stamp stamp-skip">PASS</div>
 
-    <div class="match">${job.match}</div>
+    <div class="match">${escapeHtml(match)}</div>
 
     <div class="card-top">
-      <div class="company-logo">🏢</div>
+      <div class="company-logo">${escapeHtml(initials(company))}</div>
       <div>
-        <div class="job-title">${job.title}</div>
-        <div class="company-name">${job.company}</div>
+        <div class="job-title">${escapeHtml(job.title||'Job Opportunity')}</div>
+        <div class="company-name">${escapeHtml(company)}</div>
       </div>
     </div>
 
     <div class="card-pills">
-      <span class="pill">${job.location}</span>
-      <span class="pill">${job.type}</span>
-      <span class="pill salary">${job.salary}</span>
+      <span class="pill">${escapeHtml(location)}</span>
+      <span class="pill">${escapeHtml(type)}</span>
+      ${style?`<span class="pill">${escapeHtml(style)}</span>`:''}
+      <span class="pill salary">${escapeHtml(salaryText(job))}</span>
     </div>
 
-    <div class="card-desc">${job.description}</div>
+    <div class="card-desc">${escapeHtml(job.description||'Open this job to see the full details and requirements.')}</div>
 
     <div class="card-bottom">
-      <div class="posted-time">${job.posted}</div>
-      <a href="#" class="apply-link">View details</a>
+      <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
+      <a href="app-job-details.html?id=${encodeURIComponent(job.id)}" class="apply-link" onclick="event.stopPropagation()">View details</a>
     </div>
   `;
 
@@ -479,19 +493,23 @@ function buildCard(job,index){
 }
 
 function renderCards(){
-  const stack = document.getElementById("card-stack");
-  stack.innerHTML = "";
+  const stack=document.getElementById('card-stack');
+  stack.innerHTML='';
 
-  const remaining = jobs.slice(currentIndex,currentIndex + 3);
+  const remaining=jobs.slice(currentIndex,currentIndex+3);
 
   if(!remaining.length){
-    document.getElementById("swipe-area").style.display = "none";
-    document.getElementById("empty-screen").style.display = "flex";
+    document.getElementById('swipe-area').style.display='none';
+    document.getElementById('empty-screen').style.display='flex';
+    updateStats();
     return;
   }
 
+  document.getElementById('swipe-area').style.display='flex';
+  document.getElementById('empty-screen').style.display='none';
+
   remaining.forEach((job,i)=>{
-    stack.appendChild(buildCard(job,currentIndex + i));
+    stack.appendChild(buildCard(job,currentIndex+i));
   });
 
   updateStats();
@@ -499,174 +517,217 @@ function renderCards(){
 }
 
 function setupTopCard(){
-  activeCard = document.querySelector(".job-card:first-child");
+  activeCard=document.querySelector('.job-card:first-child');
 }
 
 function setupDrag(card){
-  card.addEventListener("pointerdown",dragStart,{passive:false});
+  card.addEventListener('pointerdown',dragStart,{passive:false});
 }
 
 function dragStart(e){
   setupTopCard();
-
-  if(!activeCard || activeCard !== e.currentTarget) return;
+  if(!activeCard||activeCard!==e.currentTarget)return;
+  if(e.target.closest('.apply-link'))return;
 
   e.preventDefault();
+  isDragging=true;
+  activePointerId=e.pointerId;
+  startX=e.clientX;
+  startY=e.clientY;
+  currentX=0;
 
-  isDragging = true;
-  activePointerId = e.pointerId;
-  startX = e.clientX;
-  startY = e.clientY;
-  currentX = 0;
+  activeCard.classList.add('is-dragging');
+  activeCard.style.transition='none';
 
-  activeCard.classList.add("is-dragging");
-  activeCard.style.transition = "none";
+  try{activeCard.setPointerCapture(e.pointerId)}catch(_){}
 
-  try{
-    activeCard.setPointerCapture(e.pointerId);
-  }catch(err){}
-
-  activeCard.addEventListener("pointermove",dragMove,{passive:false});
-  activeCard.addEventListener("pointerup",dragEnd);
-  activeCard.addEventListener("pointercancel",dragEnd);
+  activeCard.addEventListener('pointermove',dragMove,{passive:false});
+  activeCard.addEventListener('pointerup',dragEnd);
+  activeCard.addEventListener('pointercancel',dragEnd);
 }
 
 function dragMove(e){
-  if(!isDragging || !activeCard) return;
-  if(activePointerId !== null && e.pointerId !== activePointerId) return;
+  if(!isDragging||!activeCard)return;
+  if(activePointerId!==null&&e.pointerId!==activePointerId)return;
 
   e.preventDefault();
 
-  currentX = e.clientX - startX;
-  const currentY = e.clientY - startY;
-  const rotate = currentX * 0.08;
+  currentX=e.clientX-startX;
+  const currentY=e.clientY-startY;
+  const rotate=currentX*.08;
 
-  activeCard.style.transform = `translate(${currentX}px, ${currentY * .25}px) rotate(${rotate}deg)`;
+  activeCard.style.transform=`translate(${currentX}px,${currentY*.25}px) rotate(${rotate}deg)`;
 
-  const applyStamp = activeCard.querySelector(".stamp-apply");
-  const skipStamp = activeCard.querySelector(".stamp-skip");
-  const ratio = Math.min(Math.abs(currentX) / 80,1);
+  const applyStamp=activeCard.querySelector('.stamp-apply');
+  const skipStamp=activeCard.querySelector('.stamp-skip');
+  const ratio=Math.min(Math.abs(currentX)/80,1);
 
-  if(currentX > 20){
-    applyStamp.style.opacity = ratio;
-    skipStamp.style.opacity = 0;
-  }else if(currentX < -20){
-    skipStamp.style.opacity = ratio;
-    applyStamp.style.opacity = 0;
+  if(currentX>20){
+    applyStamp.style.opacity=ratio;
+    skipStamp.style.opacity=0;
+  }else if(currentX<-20){
+    skipStamp.style.opacity=ratio;
+    applyStamp.style.opacity=0;
   }else{
-    applyStamp.style.opacity = 0;
-    skipStamp.style.opacity = 0;
+    applyStamp.style.opacity=0;
+    skipStamp.style.opacity=0;
   }
 }
 
-function dragEnd(e){
-  if(!isDragging || !activeCard) return;
+function dragEnd(){
+  if(!isDragging||!activeCard)return;
 
-  isDragging = false;
+  isDragging=false;
+  activePointerId=null;
 
-  activeCard.removeEventListener("pointermove",dragMove);
-  activeCard.removeEventListener("pointerup",dragEnd);
-  activeCard.removeEventListener("pointercancel",dragEnd);
+  activeCard.removeEventListener('pointermove',dragMove);
+  activeCard.removeEventListener('pointerup',dragEnd);
+  activeCard.removeEventListener('pointercancel',dragEnd);
+  activeCard.classList.remove('is-dragging');
 
-  activeCard.classList.remove("is-dragging");
-
-  activePointerId = null;
-
-  if(currentX > 70){
-    animateSwipe("right");
-  }else if(currentX < -70){
-    animateSwipe("left");
+  if(currentX>70){
+    animateSwipe('right');
+  }else if(currentX<-70){
+    animateSwipe('left');
   }else{
-    activeCard.style.transition = "transform .25s ease";
-    activeCard.style.transform = "";
+    activeCard.style.transition='transform .25s ease';
+    activeCard.style.transform='';
   }
 }
 
-function animateSwipe(direction){
-  setupTopCard();
-  if(!activeCard) return;
+async function createApplication(job){
+  const {data:existing,error:checkError}=await sb
+    .from('applications')
+    .select('id')
+    .eq('candidate_id',session.user.id)
+    .eq('job_id',job.id)
+    .maybeSingle();
 
-  const job = jobs[parseInt(activeCard.dataset.index)];
+  if(checkError)console.warn(checkError);
+  if(existing)return true;
 
-  activeCard.classList.add(direction === "right" ? "swipe-right" : "swipe-left");
-
-  history.push({
-    job,
-    direction,
-    index:currentIndex
+  const {error}=await sb.from('applications').insert({
+    candidate_id:session.user.id,
+    job_id:job.id,
+    status:'applied',
+    applied_at:new Date().toISOString(),
+    match_score:job.match_score??null
   });
 
-  if(direction === "right"){
-    applied++;
-    showToast("Added to liked jobs");
+  if(error)throw error;
+  return false;
+}
+
+async function animateSwipe(direction){
+  setupTopCard();
+  if(!activeCard)return;
+
+  const job=jobs[Number(activeCard.dataset.index)];
+  activeCard.classList.add(direction==='right'?'swipe-right':'swipe-left');
+
+  history.push({job,direction,index:currentIndex});
+
+  if(direction==='right'){
+    try{
+      const alreadyExists=await createApplication(job);
+      applied++;
+      showToast(alreadyExists?'Already applied':'Application submitted');
+    }catch(error){
+      console.error(error);
+      showToast(error.message||'Could not apply');
+    }
   }else{
     skipped++;
-    showToast("Passed");
+    showToast('Passed');
   }
 
   currentIndex++;
 
-  setTimeout(()=>{
-    renderCards();
-  },350);
+  setTimeout(renderCards,350);
 }
 
 function skipCurrent(){
   setupTopCard();
-  if(activeCard){
-    currentX = -150;
-    animateSwipe("left");
-  }
+  if(activeCard)animateSwipe('left');
 }
 
 function applyCurrent(){
   setupTopCard();
-  if(activeCard){
-    currentX = 150;
-    animateSwipe("right");
-  }
+  if(activeCard)animateSwipe('right');
 }
 
 function undo(){
   if(!history.length){
-    showToast("Nothing to undo");
+    showToast('Nothing to undo');
     return;
   }
 
-  const last = history.pop();
+  const last=history.pop();
 
-  if(last.direction === "right"){
-    applied = Math.max(0,applied - 1);
+  if(last.direction==='right'){
+    applied=Math.max(0,applied-1);
   }else{
-    skipped = Math.max(0,skipped - 1);
+    skipped=Math.max(0,skipped-1);
   }
 
-  currentIndex = last.index;
+  currentIndex=last.index;
   renderCards();
-  showToast("Undone");
+  showToast('Undone');
 }
 
 function updateStats(){
-  document.getElementById("stat-applied").textContent = applied;
-  document.getElementById("stat-skipped").textContent = skipped;
-  document.getElementById("stat-remaining").textContent = Math.max(0,jobs.length - currentIndex);
+  document.getElementById('stat-applied').textContent=applied;
+  document.getElementById('stat-skipped').textContent=skipped;
+  document.getElementById('stat-remaining').textContent=Math.max(0,jobs.length-currentIndex);
 }
-
-let toastTimer;
 
 function showToast(message){
-  const toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.classList.add("show");
-
+  const toast=document.getElementById('toast');
+  toast.textContent=message;
+  toast.classList.add('show');
   clearTimeout(toastTimer);
-
-  toastTimer = setTimeout(()=>{
-    toast.classList.remove("show");
-  },1800);
+  toastTimer=setTimeout(()=>toast.classList.remove('show'),1800);
 }
 
-renderCards();
+async function loadJobs(){
+  const {data,error}=await sb
+    .from('jobs')
+    .select('*')
+    .eq('status','active')
+    .order('created_at',{ascending:false});
+
+  if(error){
+    console.error(error);
+    showToast(error.message||'Could not load jobs');
+    jobs=[];
+    renderCards();
+    return;
+  }
+
+  jobs=data||[];
+  currentIndex=0;
+  history=[];
+  renderCards();
+}
+
+(async function initialize(){
+  const {data,error}=await sb.auth.getSession();
+
+  if(error||!data.session){
+    window.location.replace('app-login.html');
+    return;
+  }
+
+  session=data.session;
+
+  const {count}=await sb
+    .from('applications')
+    .select('*',{count:'exact',head:true})
+    .eq('candidate_id',session.user.id);
+
+  applied=count||0;
+  await loadJobs();
+})();
 </script>
 
 </body>
