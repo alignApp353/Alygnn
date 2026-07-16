@@ -199,17 +199,20 @@ body{
 .job-card{
   position:absolute;
   inset:0;
-  background:var(--card-bg);
+  background:
+    radial-gradient(circle at top right,rgba(93,127,163,.08),transparent 28%),
+    var(--card-bg);
   border:1px solid var(--border);
-  border-radius:28px;
-  padding:23px;
-  box-shadow:0 18px 45px rgba(27,43,63,.10);
+  border-radius:30px;
+  padding:24px;
+  box-shadow:0 22px 60px rgba(27,43,63,.12);
   display:flex;
   flex-direction:column;
   cursor:grab;
   user-select:none;
   touch-action:none;
   transform-origin:center bottom;
+  transition:transform .22s ease,box-shadow .22s ease;
 }
 
 .job-card:nth-child(2){
@@ -273,20 +276,26 @@ body{
   align-items:center;
   gap:7px;
   width:max-content;
-  background:#E8F5EC;
+  background:linear-gradient(180deg,#EDF8F1,#E4F3EA);
   color:#257B52;
-  padding:8px 14px;
+  padding:9px 14px;
   border-radius:999px;
+  border:1px solid rgba(111,191,143,.28);
   font-size:13px;
   font-weight:900;
 }
 
 .save-btn{
-  border:none;
-  background:transparent;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:#fff;
   color:var(--text);
-  font-size:22px;
-  padding:6px;
+  font-size:19px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .card-top{
@@ -297,22 +306,26 @@ body{
 }
 
 .company-logo{
-  width:58px;
-  height:58px;
-  border-radius:18px;
-  background:linear-gradient(145deg,#F1F4F7,#E7EDF2);
+  width:68px;
+  height:68px;
+  border-radius:22px;
+  background:linear-gradient(145deg,#F5F8FA,#E5ECF2);
   border:1px solid var(--border);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:21px;
+  font-size:23px;
+  font-weight:900;
+  color:var(--brand-dark);
   flex-shrink:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
 }
 
 .job-title{
   font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:29px;
-  line-height:1.05;
+  font-size:31px;
+  line-height:1.02;
+  letter-spacing:-.4px;
   color:var(--text);
   text-transform:none;
 }
@@ -346,17 +359,17 @@ body{
   display:flex;
   flex-wrap:wrap;
   gap:8px;
-  margin-bottom:17px;
+  margin-bottom:18px;
 }
 
 .pill{
   font-size:12px;
-  padding:7px 11px;
+  padding:8px 12px;
   border-radius:999px;
   border:1px solid var(--border);
   color:var(--text-muted);
-  background:#FBFCFD;
-  font-weight:700;
+  background:rgba(250,252,253,.92);
+  font-weight:800;
 }
 
 .salary{
@@ -367,12 +380,12 @@ body{
 .card-desc{
   font-size:14px;
   color:var(--text-muted);
-  line-height:1.6;
+  line-height:1.68;
   flex:1;
   overflow:hidden;
   display:-webkit-box;
   -webkit-box-orient:vertical;
-  -webkit-line-clamp:7;
+  -webkit-line-clamp:6;
 }
 
 .card-bottom{
@@ -394,6 +407,59 @@ body{
   text-decoration:none;
   font-size:13px;
   font-weight:900;
+}
+
+
+.quick-facts{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+  margin:2px 0 18px;
+}
+
+.fact{
+  border:1px solid var(--border);
+  background:rgba(248,250,252,.9);
+  border-radius:16px;
+  padding:11px 10px;
+}
+
+.fact-label{
+  font-size:9px;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  font-weight:900;
+}
+
+.fact-value{
+  margin-top:5px;
+  font-size:12px;
+  line-height:1.25;
+  color:var(--text);
+  font-weight:900;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.card-actions-mini{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.icon-btn{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
 }
 
 /* ACTIONS */
@@ -718,7 +784,10 @@ function buildCard(job,index){
 
     <div class="card-toolbar">
       <div class="match">★ ${escapeHtml(match)}</div>
-      <button class="save-btn" type="button" aria-label="Save job">♡</button>
+      <div class="card-actions-mini">
+        <button class="icon-btn share-btn" type="button" aria-label="Share job">↗</button>
+        <button class="save-btn" type="button" aria-label="Save job">♡</button>
+      </div>
     </div>
 
     <div class="card-top">
@@ -739,11 +808,26 @@ function buildCard(job,index){
       <span class="pill salary">$ ${escapeHtml(salaryText(job))}</span>
     </div>
 
+    <div class="quick-facts">
+      <div class="fact">
+        <div class="fact-label">Match</div>
+        <div class="fact-value">${escapeHtml(match)}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-label">Work Style</div>
+        <div class="fact-value">${escapeHtml(style||'Flexible')}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-label">Posted</div>
+        <div class="fact-value">${escapeHtml(postedText(job.created_at))}</div>
+      </div>
+    </div>
+
     <div class="card-desc">${escapeHtml(job.description||'Open this job to see the full details and requirements.')}</div>
 
     <div class="card-bottom">
-      <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
-      <a href="app-job-details.html?id=${encodeURIComponent(job.id)}" class="apply-link">View details →</a>
+      <div class="posted-time">Verified Alygnn listing</div>
+      <a href="app-job-details.html?id=${encodeURIComponent(job.id)}" class="apply-link">View full details →</a>
     </div>
   `;
 
@@ -1002,10 +1086,18 @@ document.getElementById('apply-button').addEventListener('click',applyCurrent);
 
 document.addEventListener('click',event=>{
   const saveButton=event.target.closest('.save-btn');
-  if(!saveButton)return;
-  event.stopPropagation();
-  saveButton.textContent=saveButton.textContent==='♡'?'♥':'♡';
-  showToast(saveButton.textContent==='♥'?'Job saved':'Removed from saved');
+  if(saveButton){
+    event.stopPropagation();
+    saveButton.textContent=saveButton.textContent==='♡'?'♥':'♡';
+    showToast(saveButton.textContent==='♥'?'Job saved':'Removed from saved');
+    return;
+  }
+
+  const shareButton=event.target.closest('.share-btn');
+  if(shareButton){
+    event.stopPropagation();
+    showToast('Share option coming next');
+  }
 });
 
 (async function initialize(){
