@@ -535,6 +535,7 @@
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let jobs = [];
+  let jobAppliedCounts = {};
   let candidates = [];
   let candidatesLoaded = false;
   let employerVerified = false;
@@ -1064,7 +1065,34 @@
     }
 
     jobs = data || [];
+    await loadAppliedCounts();
     renderJobs();
+  }
+
+  // The "Applied" number shown per job is computed live from the
+  // applications table (the same source Candidates already reads from)
+  // instead of trusting a stored jobs.applied counter — that counter could
+  // only ever be written by the employer under RLS, so a job seeker's
+  // client had no way to keep it accurate and it just stayed at 0.
+  async function loadAppliedCounts() {
+    jobAppliedCounts = {};
+    if (jobs.length === 0) return;
+
+    const jobIds = jobs.map(j => j.id);
+
+    const { data, error } = await sb
+      .from('applications')
+      .select('job_id')
+      .in('job_id', jobIds);
+
+    if (error) {
+      console.error('Failed to load applied counts:', error);
+      return;
+    }
+
+    (data || []).forEach(row => {
+      jobAppliedCounts[row.job_id] = (jobAppliedCounts[row.job_id] || 0) + 1;
+    });
   }
 
   // ---- Candidates: applications for this employer's jobs, joined with
@@ -1335,8 +1363,8 @@
 
     document.getElementById('stat-active').textContent = jobs.filter(job => job.status !== 'deleted').length;
     document.getElementById('stat-views').textContent = jobs.reduce((sum, job) => sum + (job.views || 0), 0);
-    document.getElementById('stat-swipes').textContent = jobs.reduce((sum, job) => sum + (job.applied || 0), 0);
-    document.getElementById('stat-candidates').textContent = jobs.reduce((sum, job) => sum + (job.applied || 0), 0);
+    document.getElementById('stat-swipes').textContent = Object.values(jobAppliedCounts).reduce((sum, n) => sum + n, 0);
+    document.getElementById('stat-candidates').textContent = Object.values(jobAppliedCounts).reduce((sum, n) => sum + n, 0);
 
     if (jobs.length === 0) {
       jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active listings</div>Post your first job to start receiving candidates.</div>`;
@@ -1401,7 +1429,7 @@
         </div>
         <div class="job-stats">
           <div><div class="js-val">${job.views || 0}</div><div class="js-label">Views</div></div>
-          <div><div class="js-val">${job.applied || 0}</div><div class="js-label">Applied</div></div>
+          <div><div class="js-val">${jobAppliedCounts[job.id] || 0}</div><div class="js-label">Applied</div></div>
         </div>
         <div class="job-actions">
           <button class="btn-view" onclick="editJob('${job.id}')">Edit</button>
