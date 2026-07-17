@@ -366,22 +366,44 @@
     const meta = { full_name: name, role: currentRole };
     if (company) meta.company = company;
     const { data, error } = await sb.auth.signUp({ email, password, options: { data: meta } });
-    btn.disabled = false; btn.textContent = orig;
-    if (error) { showMsg(error.message); return; }
+    if (error) {
+      btn.disabled = false; btn.textContent = orig;
+      showMsg(error.message);
+      return;
+    }
 
     // Save role, name, and company to the profiles table immediately.
     // This ensures account.html can route correctly without relying
     // solely on user_metadata — which is what was causing the
     // "employer lands on candidate hub" bug for previous signups.
-    if (data.user) {
-      await sb.from('profiles').upsert({
+    //
+    // FIX: this write used to be unchecked. If email confirmation is
+    // required, signUp() returns no active session, so this upsert can
+    // fail an RLS check (auth.uid() = id) silently — meaning
+    // has_password never gets set to true even though the user really
+    // did set a password. That left confirmed users stuck being
+    // redirected to set-password.html on every login. We now check
+    // the error and only skip it (rather than blocking signup) when
+    // there's no session yet, since in that case the row will be
+    // written by set-password.html or the post-confirmation flow instead.
+    if (data.user && data.session) {
+      const { error: profileError } = await sb.from('profiles').upsert({
         id: data.user.id,
         has_password: true,
         role: currentRole,
         full_name: name,
         company_name: company || null,
       }, { onConflict: 'id' });
+
+      if (profileError) {
+        console.error('Failed to save profile after signup:', profileError);
+        btn.disabled = false; btn.textContent = orig;
+        showMsg('Account created, but we could not finish setting it up. Please try signing in — if this keeps happening, contact support.');
+        return;
+      }
     }
+
+    btn.disabled = false; btn.textContent = orig;
 
     if (data.session) {
       await savePendingPreferences(data.user, name);
