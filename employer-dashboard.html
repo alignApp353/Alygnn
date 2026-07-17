@@ -100,16 +100,23 @@
   .candidate-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; transition: all 0.2s; }
   .candidate-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
   .candidate-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .candidate-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; border: 1px solid var(--border); }
+  .candidate-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; border: 1px solid var(--border); font-family: 'DM Serif Display', serif; color: var(--brand); }
   .candidate-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
   .candidate-role { font-size: 12px; color: var(--text-muted); }
+  .candidate-headline { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
   .candidate-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   .tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; border: 1px solid var(--border); color: var(--text-muted); }
+  .tag.status-accepted { border-color: var(--mint); color: #2d8a57; background: var(--mint-light); }
+  .tag.status-rejected { border-color: var(--rose); color: #a05858; background: rgba(215,154,154,0.12); }
+  .candidate-resume-link { display: inline-block; font-size: 12px; color: var(--brand); text-decoration: none; margin-bottom: 14px; font-weight: 500; }
+  .candidate-resume-link:hover { text-decoration: underline; }
   .candidate-actions { display: flex; gap: 8px; }
   .btn-accept { flex: 1; background: var(--mint); color: white; border: none; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-accept:hover { opacity: 0.85; }
+  .btn-accept:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
   .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
+  .btn-pass:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ---- Post Job layout: form + live preview ---- */
   .post-job-grid { display: grid; grid-template-columns: minmax(0, 640px) minmax(280px, 380px); gap: 24px; align-items: start; }
@@ -331,9 +338,8 @@
         <div class="page-sub">Job seekers who swiped right on your listings</div>
       </div>
       <!-- Search is wired to filter any element with class "candidate-card" inside
-           #candidates-grid by its text content. It works today with zero candidates;
-           once real candidate cards are rendered here, search will filter them
-           automatically as long as each card uses class="candidate-card". -->
+           #candidates-grid by its text content. Works with real candidate cards
+           rendered by loadCandidates()/renderCandidates() below. -->
       <input type="text" class="form-input" id="candidates-search-input" placeholder="Search candidates by name, role, or skill…" autocomplete="off" oninput="filterCandidates()" style="margin-bottom: 16px;">
       <div id="candidates-grid" class="candidates-grid">
         <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
@@ -502,6 +508,8 @@
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let jobs = [];
+  let candidates = [];
+  let candidatesLoaded = false;
   let employerVerified = false;
   let currentProfile = null;
   let currentUser = null;
@@ -957,6 +965,7 @@
     updateVerificationUI();
 
     if (name === 'post') updatePreview();
+    if (name === 'candidates') loadCandidates();
   }
 
   function escapeHtml(value) {
@@ -966,6 +975,17 @@
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(part => part[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   }
 
   async function loadJobs() {
@@ -985,6 +1005,163 @@
 
     jobs = data || [];
     renderJobs();
+  }
+
+  // ---- Candidates: applications for this employer's jobs, joined with
+  // the applicant's profile. Requires two RLS policies on top of the
+  // default "candidates manage their own applications" policy:
+  //   1. Employers can SELECT applications where job_id belongs to them
+  //   2. Employers can SELECT profiles of candidates who applied to their jobs
+  // Accept/Pass additionally requires an UPDATE policy on applications
+  // scoped the same way as the SELECT policy above.
+  async function loadCandidates() {
+    if (!currentUser) return;
+
+    if (jobs.length === 0) {
+      candidates = [];
+      candidatesLoaded = true;
+      renderCandidates();
+      return;
+    }
+
+    const jobIds = jobs.map(j => j.id);
+
+    const { data: apps, error: appsError } = await sb
+      .from('applications')
+      .select('id, job_id, candidate_id, status, applied_at')
+      .in('job_id', jobIds)
+      .order('applied_at', { ascending: false });
+
+    if (appsError) {
+      console.error('Failed to load applications:', appsError);
+      showToast('Could not load candidates.');
+      return;
+    }
+
+    if (!apps || apps.length === 0) {
+      candidates = [];
+      candidatesLoaded = true;
+      renderCandidates();
+      return;
+    }
+
+    const candidateIds = [...new Set(apps.map(a => a.candidate_id))];
+
+    const { data: profilesData, error: profilesError } = await sb
+      .from('profiles')
+      .select('id, full_name, headline, resume_file_path, resume_data')
+      .in('id', candidateIds);
+
+    if (profilesError) {
+      console.error('Failed to load candidate profiles:', profilesError);
+    }
+
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    const jobMap = {};
+    jobs.forEach(j => { jobMap[j.id] = j; });
+
+    candidates = apps
+      .map(app => ({
+        applicationId: app.id,
+        status: app.status || 'applied',
+        appliedAt: app.applied_at,
+        job: jobMap[app.job_id] || null,
+        profile: profileMap[app.candidate_id] || null
+      }))
+      // Only show applications where we could actually load the candidate's
+      // profile — if this filters everyone out, the "Employers can view
+      // profiles of their applicants" RLS policy on profiles is missing.
+      .filter(c => c.profile);
+
+    candidatesLoaded = true;
+    renderCandidates();
+  }
+
+  function renderCandidates() {
+    const grid = document.getElementById('candidates-grid');
+
+    if (candidates.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No candidates yet</div>
+          Once job seekers apply to your listings, they'll appear here.
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = candidates.map(c => renderCandidateCard(c)).join('');
+    filterCandidates();
+  }
+
+  function renderCandidateCard(c) {
+    const name = c.profile.full_name || 'Candidate';
+    const initials = getInitials(name);
+    const headline = c.profile.headline || '';
+    const jobTitle = c.job ? c.job.title : 'a job';
+    const resumePath = c.profile.resume_file_path;
+    const isDecided = c.status === 'accepted' || c.status === 'rejected';
+
+    let skillTags = '';
+    try {
+      const resumeData = typeof c.profile.resume_data === 'string'
+        ? JSON.parse(c.profile.resume_data)
+        : c.profile.resume_data;
+      if (resumeData?.skills?.length) {
+        skillTags = resumeData.skills
+          .slice(0, 3)
+          .map(s => `<span class="tag">${escapeHtml(s)}</span>`)
+          .join('');
+      }
+    } catch (e) {
+      // resume_data wasn't valid JSON — skip skill tags, not fatal.
+    }
+
+    const statusTag = c.status === 'accepted'
+      ? `<span class="tag status-accepted">Accepted</span>`
+      : c.status === 'rejected'
+        ? `<span class="tag status-rejected">Passed</span>`
+        : `<span class="tag">New applicant</span>`;
+
+    return `
+      <div class="candidate-card" data-application-id="${c.applicationId}">
+        <div class="candidate-top">
+          <div class="candidate-avatar">${escapeHtml(initials)}</div>
+          <div>
+            <div class="candidate-name">${escapeHtml(name)}</div>
+            <div class="candidate-role">Applied to ${escapeHtml(jobTitle)}</div>
+          </div>
+        </div>
+        ${headline ? `<div class="candidate-headline">${escapeHtml(headline)}</div>` : ''}
+        <div class="candidate-tags">
+          ${statusTag}
+          ${skillTags}
+        </div>
+        ${resumePath ? `<a href="${escapeHtml(resumePath)}" target="_blank" rel="noopener" class="candidate-resume-link">View resume →</a>` : ''}
+        <div class="candidate-actions">
+          <button class="btn-accept" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'accepted')">Accept</button>
+          <button class="btn-pass" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'rejected')">Pass</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function updateApplicationStatus(applicationId, status) {
+    const { error } = await sb
+      .from('applications')
+      .update({ status })
+      .eq('id', applicationId);
+
+    if (error) {
+      console.error('Failed to update application status:', error);
+      showToast('Could not update candidate status. You may need the employer UPDATE policy on applications.');
+      return;
+    }
+
+    showToast(status === 'accepted' ? 'Candidate accepted.' : 'Candidate passed.');
+    await loadCandidates();
   }
 
   function renderJobs() {
@@ -1030,9 +1207,8 @@
   }
 
   // Filters any .candidate-card elements inside #candidates-grid by their
-  // text content. Safe to call even with zero candidates — future code that
-  // renders real candidate cards just needs to give each card the class
-  // "candidate-card" and this will work with no further changes.
+  // text content. Works with real candidate cards rendered by
+  // renderCandidates() above.
   function filterCandidates() {
     const query = (document.getElementById('candidates-search-input')?.value || '').trim().toLowerCase();
     const cards = document.querySelectorAll('#candidates-grid .candidate-card');
