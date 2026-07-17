@@ -935,20 +935,67 @@
 
     updateVerificationUI();
     await loadJobs();
-    updatePreview();
-    restorePanelFromHash();
+    loadPanelData(getPanelFromHash());
   }
-
-  checkAuth();
 
   const VALID_PANELS = ['overview', 'jobs', 'candidates', 'post'];
 
-  function restorePanelFromHash() {
+  function getPanelFromHash() {
     const hash = (window.location.hash || '').replace('#', '');
-    if (VALID_PANELS.includes(hash)) {
-      showPanel(hash);
+    return VALID_PANELS.includes(hash) ? hash : 'overview';
+  }
+
+  // Only toggles which panel/nav-item is visually active — no data
+  // fetching, no network calls. Safe to call before checkAuth() resolves
+  // so the correct tab is on screen immediately, instead of always
+  // painting Overview first and swapping a moment later.
+  function applyPanelVisual(name, trigger) {
+    const targetPanel = document.getElementById('panel-' + name);
+    if (!targetPanel) return;
+
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    targetPanel.classList.add('active');
+
+    const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
+      ? trigger
+      : document.querySelector(`.nav-item[onclick*="${name}"]`);
+
+    if (navButton) navButton.classList.add('active');
+
+    // currentProfile isn't loaded yet on the very first sync call before
+    // checkAuth() finishes — skip it here and let checkAuth's later
+    // loadPanelData path (which runs after updateVerificationUI already
+    // ran once) keep the lock UI correct.
+    if (currentProfile !== null) updateVerificationUI();
+
+    if (window.location.hash !== '#' + name) {
+      history.replaceState(null, '', '#' + name);
     }
   }
+
+  // The actual data-fetching side effects for a given panel.
+  function loadPanelData(name) {
+    if (name === 'post') updatePreview();
+    if (name === 'candidates') loadCandidates();
+  }
+
+  function showPanel(name, trigger) {
+    if (name === 'post' && !employerVerified) {
+      showToast('Your business must be approved by Alygnn before posting jobs.');
+    }
+
+    applyPanelVisual(name, trigger);
+    loadPanelData(name);
+  }
+
+  // Switch to the right panel immediately based on the URL hash, before
+  // checkAuth()'s network calls even start — this is what prevents the
+  // "flashes Overview, then jumps to Candidates" flicker on refresh.
+  applyPanelVisual(getPanelFromHash());
+
+  checkAuth();
 
   function updateVerificationUI() {
     const lockBox = document.getElementById('verification-lock');
@@ -978,34 +1025,6 @@
     if (postBtn) {
       postBtn.classList.add('locked');
       postBtn.disabled = true;
-    }
-  }
-
-  function showPanel(name, trigger) {
-    if (name === 'post' && !employerVerified) {
-      showToast('Your business must be approved by Alygnn before posting jobs.');
-    }
-
-    const targetPanel = document.getElementById('panel-' + name);
-    if (!targetPanel) return;
-
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-    targetPanel.classList.add('active');
-
-    const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
-      ? trigger
-      : document.querySelector(`.nav-item[onclick*="${name}"]`);
-
-    if (navButton) navButton.classList.add('active');
-    updateVerificationUI();
-
-    if (name === 'post') updatePreview();
-    if (name === 'candidates') loadCandidates();
-
-    if (window.location.hash !== '#' + name) {
-      history.replaceState(null, '', '#' + name);
     }
   }
 
