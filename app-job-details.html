@@ -36,6 +36,11 @@
 
 html{scroll-behavior:smooth}
 
+/* Android WebView safeguard: hidden elements must not occupy space */
+[hidden]{
+  display:none!important;
+}
+
 body{
   min-height:100vh;
   background:
@@ -899,9 +904,20 @@ function renderJob(){
       company+' uses Alygnn to connect with candidates whose skills, preferences, and goals align with this opportunity.'
     );
 
-  document.getElementById('loading-state').hidden=true;
-  document.getElementById('job-content').hidden=false;
-  document.getElementById('apply-bar').hidden=false;
+  const loadingState=document.getElementById('loading-state');
+  const jobContent=document.getElementById('job-content');
+  const applyBar=document.getElementById('apply-bar');
+
+  loadingState.hidden=true;
+  loadingState.style.display='none';
+
+  jobContent.hidden=false;
+  jobContent.style.display='block';
+
+  applyBar.hidden=false;
+  applyBar.style.display='block';
+
+  window.scrollTo({top:0,left:0,behavior:'instant'});
 }
 
 async function applyToJob(){
@@ -1015,10 +1031,23 @@ document.getElementById('apply-btn').addEventListener('click',applyToJob);
     renderJob();
   }catch(error){
     console.error(error);
-    document.getElementById('loading-state').hidden=true;
-    document.getElementById('error-state').hidden=false;
+    const loadingState=document.getElementById('loading-state');
+    const errorState=document.getElementById('error-state');
+    const applyBar=document.getElementById('apply-bar');
+
+    loadingState.hidden=true;
+    loadingState.style.display='none';
+
+    errorState.hidden=false;
+    errorState.style.display='flex';
+
+    applyBar.hidden=true;
+    applyBar.style.display='none';
+
     document.getElementById('error-copy').textContent=
       error.message||'This listing may no longer be available.';
+
+    window.scrollTo({top:0,left:0,behavior:'instant'});
   }
 })();
 </script>
