@@ -936,9 +936,19 @@
     updateVerificationUI();
     await loadJobs();
     updatePreview();
+    restorePanelFromHash();
   }
 
   checkAuth();
+
+  const VALID_PANELS = ['overview', 'jobs', 'candidates', 'post'];
+
+  function restorePanelFromHash() {
+    const hash = (window.location.hash || '').replace('#', '');
+    if (VALID_PANELS.includes(hash)) {
+      showPanel(hash);
+    }
+  }
 
   function updateVerificationUI() {
     const lockBox = document.getElementById('verification-lock');
@@ -993,6 +1003,10 @@
 
     if (name === 'post') updatePreview();
     if (name === 'candidates') loadCandidates();
+
+    if (window.location.hash !== '#' + name) {
+      history.replaceState(null, '', '#' + name);
+    }
   }
 
   function escapeHtml(value) {
