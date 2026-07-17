@@ -545,13 +545,40 @@ async function initAccountPage(){
     console.error('Failed to load profile:', error);
   }
 
-  if(!profile?.has_password){
+  // FIX: previously this only checked profiles.has_password, which could be
+  // missing entirely if the signup-time upsert silently failed (e.g. RLS
+  // blocked the write because no session existed yet during email
+  // confirmation). That meant confirmed email/password users got bounced to
+  // set-password.html forever, even though they'd already set a password.
+  //
+  // Supabase already knows how someone authenticated via user.identities —
+  // if they have an 'email' identity, they set a password at signup, full
+  // stop. Only fall through to the has_password / set-password.html check
+  // for users who ONLY have OAuth identities (Google/Apple), since those
+  // are the ones who genuinely might not have a password yet.
+  const identities = session.user.identities || [];
+  const hasEmailIdentity = identities.some(i => i.provider === 'email');
+
+  if(!hasEmailIdentity && !profile?.has_password){
     const cameFromSetPassword =
       document.referrer && document.referrer.includes('set-password');
 
     if(!cameFromSetPassword){
       window.location.href = 'set-password.html';
       return;
+    }
+  }
+
+  // Backfill: if we get here and profiles.has_password isn't set yet
+  // (e.g. this is an email/password user whose signup-time upsert failed,
+  // or an OAuth user who just came from set-password.html), write it now
+  // so future loads don't need to re-derive this from identities.
+  if(!profile?.has_password){
+    const { error: backfillError } = await sb
+      .from('profiles')
+      .upsert({ id: currentUserId, has_password: true }, { onConflict: 'id' });
+    if(backfillError){
+      console.error('Failed to backfill has_password:', backfillError);
     }
   }
 
