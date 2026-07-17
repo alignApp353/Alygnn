@@ -302,6 +302,9 @@
   let skipped = 0;
   let history = [];
   let currentUserId = null;
+  // Tracks which job ids have already had their view counted this session,
+  // so re-rendering the same top card (e.g. after undo) doesn't double-count.
+  const viewedJobIds = new Set();
 
   let isDragging = false;
   let startX = 0;
@@ -484,6 +487,24 @@
 
     updateStats();
     setupTopCard();
+    trackViewForTopCard();
+  }
+
+  // Counts a "view" the first time a job actually reaches the top of the
+  // stack (i.e. the person can see it), not just because it exists in the
+  // fetched results. Uses a security-definer RPC since a job seeker isn't
+  // allowed to write to the jobs table directly under RLS — only the
+  // owning employer can, so a plain .update() here would be silently
+  // blocked the same way the old "applied" counter was.
+  function trackViewForTopCard() {
+    const topJob = jobs[currentIndex];
+    if (!topJob?.id || viewedJobIds.has(topJob.id)) return;
+
+    viewedJobIds.add(topJob.id);
+
+    sb.rpc('increment_job_views', { p_job_id: topJob.id }).then(({ error }) => {
+      if (error) console.warn('Could not record job view:', error);
+    });
   }
 
   function setupTopCard() {
@@ -586,18 +607,32 @@
     }
   }
 
+  // Inserts the actual application row candidates already have RLS rights
+  // to write ("Candidates manage their applications" — auth.uid() =
+  // candidate_id). This is what makes the application show up on the
+  // employer's Candidates page. The previous version of this function only
+  // tried to bump jobs.applied directly, which is blocked by RLS for
+  // anyone who isn't the job's employer, and so silently failed every time.
   async function recordApplication(job) {
     if (!currentUserId || !job?.id) return;
     try {
-      // Bumps the same "applied" counter the employer dashboard already
-      // displays. Not perfectly race-safe under heavy concurrent traffic,
-      // but that's not a concern at this scale.
-      await sb
-        .from('jobs')
-        .update({ applied: (job.applied || 0) + 1 })
-        .eq('id', job.id);
+      const { error } = await sb
+        .from('applications')
+        .insert({
+          candidate_id: currentUserId,
+          job_id: job.id,
+          status: 'applied'
+        });
+
+      if (error) {
+        // Duplicate application (already applied to this job) isn't a
+        // real failure from the person's perspective — everything else is
+        // worth surfacing in the console for debugging.
+        if (error.code !== '23505') {
+          console.warn('Could not record application:', error);
+        }
+      }
     } catch (err) {
-      // Non-fatal — the swipe/local UI already recorded the application.
       console.warn('Could not record application server-side:', err);
     }
   }
