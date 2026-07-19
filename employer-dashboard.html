@@ -255,8 +255,9 @@
   .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; }
   .modal-list { list-style: disc; padding-left: 18px; font-size: 14px; color: var(--text); line-height: 1.7; }
   .modal-contact { font-size: 13px; color: var(--text-muted); }
-  .modal-resume-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: white; text-decoration: none; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; margin-top: 4px; }
+  .modal-resume-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: white; border: none; text-decoration: none; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 4px; }
   .modal-resume-btn:hover { opacity: 0.88; }
+  .modal-resume-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .modal-actions { display: flex; gap: 8px; margin-top: 24px; }
   .modal-empty { font-size: 13px; color: var(--text-muted); font-style: italic; }
 
@@ -1331,7 +1332,7 @@
       ${educationHtml}
 
       ${resumePath
-        ? `<div class="modal-section-title">Resume</div><a href="${escapeHtml(resumePath)}" target="_blank" rel="noopener" class="modal-resume-btn">📄 View resume</a>`
+        ? `<div class="modal-section-title">Resume</div><button type="button" class="modal-resume-btn" onclick="openResume('${escapeHtml(resumePath)}', this)">📄 View resume</button>`
         : `<div class="modal-section-title">Resume</div><div class="modal-empty">This candidate hasn't uploaded a resume.</div>`}
 
       <div class="modal-actions">
@@ -1339,6 +1340,36 @@
         <button class="btn-pass" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'rejected'); closeCandidateModal();">Pass</button>
       </div>
     `;
+  }
+
+  // Resumes live in a private bucket — a plain link won't carry the
+  // browser's auth with it, so we request a short-lived signed URL at
+  // click time instead. This also relies on the "Employers can view
+  // resumes of their applicants" storage RLS policy actually existing.
+  async function openResume(path, btn) {
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Opening…';
+
+    try {
+      const { data, error } = await sb.storage
+        .from('resumes')
+        .createSignedUrl(path, 60);
+
+      if (error || !data?.signedUrl) {
+        console.error('Failed to create signed resume URL:', error);
+        showToast('Could not open this resume. It may not exist, or you may not have access to it.');
+        return;
+      }
+
+      window.open(data.signedUrl, '_blank', 'noopener');
+    } catch (err) {
+      console.error('openResume error:', err);
+      showToast('Could not open this resume.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
   }
 
   async function updateApplicationStatus(applicationId, status) {
