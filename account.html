@@ -856,12 +856,16 @@ function initProfileDetails(rawResumeData){
 
   experienceRows = (Array.isArray(resumeDataState.experience) ? resumeDataState.experience : [])
     .map(entry => {
-      if(typeof entry === 'string') return { title: entry, company: '', startYear: '', endYear: '' };
-      if(entry.startYear || entry.endYear){
-        return { title: entry.title || '', company: entry.company || '', startYear: entry.startYear || '', endYear: entry.endYear || '' };
-      }
-      const parsed = parseDatesToYears(entry.dates || '');
-      return { title: entry.title || '', company: entry.company || '', startYear: parsed.startYear, endYear: parsed.endYear };
+      if(typeof entry === 'string') return { title: entry, company: '', startYear: '', endYear: '', customTitle: !JOB_TITLE_OPTIONS.includes(entry) };
+      const base = (entry.startYear || entry.endYear)
+        ? { startYear: entry.startYear || '', endYear: entry.endYear || '' }
+        : parseDatesToYears(entry.dates || '');
+      const title = entry.title || '';
+      return {
+        title, company: entry.company || '',
+        startYear: base.startYear, endYear: base.endYear,
+        customTitle: !!title && !JOB_TITLE_OPTIONS.includes(title)
+      };
     });
 
   educationRows = (Array.isArray(resumeDataState.education) ? resumeDataState.education : [])
@@ -940,7 +944,7 @@ function renderSkillChips(){
 }
 
 function addExperienceRow(){
-  experienceRows.push({ title: '', company: '', startYear: '', endYear: '' });
+  experienceRows.push({ title: '', company: '', startYear: '', endYear: '', customTitle: false });
   renderExperienceRows();
 }
 
@@ -954,21 +958,40 @@ function updateExperienceField(index, field, value){
   experienceRows[index][field] = value;
 }
 
+function onTitleSelectChange(index, value){
+  if(!experienceRows[index]) return;
+  if(value === '__other__'){
+    experienceRows[index].customTitle = true;
+    experienceRows[index].title = '';
+  } else {
+    experienceRows[index].customTitle = false;
+    experienceRows[index].title = value;
+  }
+  renderExperienceRows();
+}
+
 function renderExperienceRows(){
   const list = document.getElementById('pd-experience-list');
   const emptyNote = document.getElementById('pd-experience-empty');
 
   emptyNote.style.display = experienceRows.length === 0 ? 'block' : 'none';
 
-  list.innerHTML = experienceRows.map((row, i) => `
-    <div class="entry-row">
-      <input type="text" class="form-input" placeholder="Job title" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">
-      <input type="text" class="form-input" placeholder="Company" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
-      <select class="form-input" onchange="updateExperienceField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
-      <select class="form-input" onchange="updateExperienceField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
-      <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
-    </div>
-  `).join('');
+  list.innerHTML = experienceRows.map((row, i) => {
+    const titleIsCustom = row.customTitle || (row.title && !JOB_TITLE_OPTIONS.includes(row.title));
+
+    return `
+      <div class="entry-row-wrap">
+        <div class="entry-row">
+          <select class="form-input" onchange="onTitleSelectChange(${i}, this.value)">${buildPickerOptions(JOB_TITLE_OPTIONS, row.title, titleIsCustom, 'Job title')}</select>
+          <input type="text" class="form-input" placeholder="Company" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
+          <select class="form-input" onchange="updateExperienceField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
+          <select class="form-input" onchange="updateExperienceField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
+          <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
+        </div>
+        ${titleIsCustom ? `<input type="text" class="form-input" placeholder="Enter your job title" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 function addEducationRow(){
@@ -1128,7 +1151,97 @@ function isValidShortField(value, minLen){
 const CURRENT_YEAR = new Date().getFullYear();
 const EARLIEST_YEAR = CURRENT_YEAR - 60;
 
-const DEGREE_OPTIONS = [
+// A representative list of common job titles across industries — like the
+// degree/school lists, not exhaustive (job titles are effectively
+// unlimited), so "Other" covers anything not listed here.
+const JOB_TITLE_OPTIONS = [
+  'Cashier',
+  'Sales Associate',
+  'Retail Associate',
+  'Customer Service Representative',
+  'Server',
+  'Bartender',
+  'Barista',
+  'Host / Hostess',
+  'Line Cook',
+  'Prep Cook',
+  'Kitchen Manager',
+  'Restaurant Manager',
+  'Shift Supervisor',
+  'Store Manager',
+  'Assistant Manager',
+  'Warehouse Associate',
+  'Delivery Driver',
+  'Forklift Operator',
+  'Receptionist',
+  'Administrative Assistant',
+  'Office Manager',
+  'Executive Assistant',
+  'Data Entry Clerk',
+  'Bookkeeper',
+  'Accountant',
+  'Accounts Payable Clerk',
+  'Payroll Specialist',
+  'Financial Analyst',
+  'HR Coordinator',
+  'HR Generalist',
+  'Recruiter',
+  'Sales Representative',
+  'Account Executive',
+  'Account Manager',
+  'Business Development Representative',
+  'Marketing Coordinator',
+  'Marketing Manager',
+  'Social Media Manager',
+  'Content Writer',
+  'Graphic Designer',
+  'Web Developer',
+  'Software Engineer',
+  'IT Support Specialist',
+  'Systems Administrator',
+  'Data Analyst',
+  'Project Manager',
+  'Product Manager',
+  'Operations Manager',
+  'General Manager',
+  'Teacher',
+  'Teaching Assistant',
+  'Tutor',
+  'Childcare Provider',
+  'Nanny',
+  'Camp Counselor',
+  'Registered Nurse',
+  'Certified Nursing Assistant',
+  'Medical Assistant',
+  'Pharmacy Technician',
+  'Dental Assistant',
+  'Physical Therapist Assistant',
+  'Personal Trainer',
+  'Fitness Instructor',
+  'Security Guard',
+  'Custodian',
+  'Maintenance Technician',
+  'Electrician',
+  'Plumber',
+  'HVAC Technician',
+  'Construction Laborer',
+  'Landscaper',
+  'Auto Mechanic',
+  'Truck Driver',
+  'Real Estate Agent',
+  'Property Manager',
+  'Paralegal',
+  'Legal Assistant',
+  'Photographer',
+  'Event Coordinator',
+  'Hair Stylist',
+  'Esthetician',
+  'Veterinary Assistant',
+  'Research Assistant',
+  'Intern'
+];
+
+
   'High School Diploma',
   'GED',
   "Associate's Degree",
@@ -1311,7 +1424,7 @@ async function validateExperienceRow(row, index){
     return `Experience #${index + 1}: end year can't be before the start year.`;
   }
 
-  const titleCheck = await checkRealisticText('job title', row.title);
+  const titleCheck = row.customTitle ? await checkRealisticText('job title', row.title) : { valid: true };
   if(!titleCheck.valid){
     return `Experience #${index + 1}: "${row.title}" doesn't look like a real job title.`;
   }
