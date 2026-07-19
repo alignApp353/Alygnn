@@ -304,6 +304,13 @@ textarea.form-input{
 }
 .skill-chip button:hover{ background:rgba(255,255,255,.4); }
 
+.entry-row-wrap{
+  margin-bottom:10px;
+}
+.entry-row-wrap .entry-row{
+  margin-bottom:6px;
+}
+
 .entry-row{
   display:grid;
   grid-template-columns:1.4fr 1.4fr .8fr .8fr auto;
@@ -859,12 +866,18 @@ function initProfileDetails(rawResumeData){
 
   educationRows = (Array.isArray(resumeDataState.education) ? resumeDataState.education : [])
     .map(entry => {
-      if(typeof entry === 'string') return { degree: entry, school: '', startYear: '', endYear: '' };
-      if(entry.startYear || entry.endYear){
-        return { degree: entry.degree || '', school: entry.school || '', startYear: entry.startYear || '', endYear: entry.endYear || '' };
-      }
-      const parsed = parseDatesToYears(entry.dates || '');
-      return { degree: entry.degree || '', school: entry.school || '', startYear: parsed.startYear, endYear: parsed.endYear };
+      if(typeof entry === 'string') return { degree: entry, school: '', startYear: '', endYear: '', customDegree: !DEGREE_OPTIONS.includes(entry), customSchool: true };
+      const base = (entry.startYear || entry.endYear)
+        ? { startYear: entry.startYear || '', endYear: entry.endYear || '' }
+        : parseDatesToYears(entry.dates || '');
+      const degree = entry.degree || '';
+      const school = entry.school || '';
+      return {
+        degree, school,
+        startYear: base.startYear, endYear: base.endYear,
+        customDegree: !!degree && !DEGREE_OPTIONS.includes(degree),
+        customSchool: !!school && !UNIVERSITY_OPTIONS.includes(school)
+      };
     });
 
   renderExperienceRows();
@@ -875,13 +888,13 @@ function initProfileDetails(rawResumeData){
     if(e.key === 'Enter' || e.key === ','){
       e.preventDefault();
       const value = skillsInput.value.trim().replace(/,$/, '');
-      if(value) addSkill(value);
       skillsInput.value = '';
+      if(value) addSkill(value);
     }
   });
 }
 
-function addSkill(value){
+async function addSkill(value){
   const clean = value.trim();
   if(!clean) return;
   if(!isValidShortField(clean, 2)){
@@ -890,6 +903,13 @@ function addSkill(value){
   }
   const exists = resumeDataState.skills.some(s => s.toLowerCase() === clean.toLowerCase());
   if(exists) return;
+
+  const check = await checkRealisticText('skill', clean);
+  if(!check.valid){
+    showToast(`"${clean}" doesn't look like a real skill.`);
+    return;
+  }
+
   resumeDataState.skills.push(clean);
   renderSkillChips();
 }
@@ -952,7 +972,7 @@ function renderExperienceRows(){
 }
 
 function addEducationRow(){
-  educationRows.push({ degree: '', school: '', startYear: '', endYear: '' });
+  educationRows.push({ degree: '', school: '', startYear: '', endYear: '', customDegree: false, customSchool: false });
   renderEducationRows();
 }
 
@@ -966,21 +986,63 @@ function updateEducationField(index, field, value){
   educationRows[index][field] = value;
 }
 
+function onDegreeSelectChange(index, value){
+  if(!educationRows[index]) return;
+  if(value === '__other__'){
+    educationRows[index].customDegree = true;
+    educationRows[index].degree = '';
+  } else {
+    educationRows[index].customDegree = false;
+    educationRows[index].degree = value;
+  }
+  renderEducationRows();
+}
+
+function onSchoolSelectChange(index, value){
+  if(!educationRows[index]) return;
+  if(value === '__other__'){
+    educationRows[index].customSchool = true;
+    educationRows[index].school = '';
+  } else {
+    educationRows[index].customSchool = false;
+    educationRows[index].school = value;
+  }
+  renderEducationRows();
+}
+
+function buildPickerOptions(options, selectedValue, isCustom, placeholder){
+  let html = `<option value="">${placeholder}</option>`;
+  options.forEach(opt => {
+    html += `<option value="${escapeHtml(opt)}" ${!isCustom && selectedValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`;
+  });
+  html += `<option value="__other__" ${isCustom ? 'selected' : ''}>Other (type your own)</option>`;
+  return html;
+}
+
 function renderEducationRows(){
   const list = document.getElementById('pd-education-list');
   const emptyNote = document.getElementById('pd-education-empty');
 
   emptyNote.style.display = educationRows.length === 0 ? 'block' : 'none';
 
-  list.innerHTML = educationRows.map((row, i) => `
-    <div class="entry-row">
-      <input type="text" class="form-input" placeholder="Degree" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)">
-      <input type="text" class="form-input" placeholder="School" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">
-      <select class="form-input" onchange="updateEducationField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
-      <select class="form-input" onchange="updateEducationField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
-      <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
-    </div>
-  `).join('');
+  list.innerHTML = educationRows.map((row, i) => {
+    const degreeIsCustom = row.customDegree || (row.degree && !DEGREE_OPTIONS.includes(row.degree));
+    const schoolIsCustom = row.customSchool || (row.school && !UNIVERSITY_OPTIONS.includes(row.school));
+
+    return `
+      <div class="entry-row-wrap">
+        <div class="entry-row">
+          <select class="form-input" onchange="onDegreeSelectChange(${i}, this.value)">${buildPickerOptions(DEGREE_OPTIONS, row.degree, degreeIsCustom, 'Degree')}</select>
+          <select class="form-input" onchange="onSchoolSelectChange(${i}, this.value)">${buildPickerOptions(UNIVERSITY_OPTIONS, row.school, schoolIsCustom, 'School')}</select>
+          <select class="form-input" onchange="updateEducationField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
+          <select class="form-input" onchange="updateEducationField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
+          <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
+        </div>
+        ${degreeIsCustom ? `<input type="text" class="form-input" placeholder="Enter your degree or program" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)" style="margin-bottom:8px;">` : ''}
+        ${schoolIsCustom ? `<input type="text" class="form-input" placeholder="Enter your school name" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 function normalizeText(value){
@@ -990,7 +1052,8 @@ function normalizeText(value){
 const PROFANITY_BLOCKLIST = [
   'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
   'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard',
-  'blowjob', 'handjob', 'porn', 'kill yourself'
+  'blowjob', 'handjob', 'porn', 'kill yourself', 'sex', 'anal', 'penis',
+  'vagina', 'rape', 'nazi', 'hitler'
 ];
 
 function containsProfanity(value){
@@ -1008,6 +1071,29 @@ function hasRepeatedJunk(value){
   if(/^[a-z]{1,2}(\s+[a-z]{1,2}){0,4}$/.test(clean)) return true;
   if(/^[^a-zA-Z0-9]+$/.test(clean)) return true;
   return false;
+}
+
+// Catches keyboard-mash "words" that pass every other check (right length,
+// real letters, no profanity) but aren't actual words — e.g. "eclkmv" or
+// "sv". Real English words almost always mix vowels and consonants; a run
+// of 4+ consonants in a row, or a word of 3+ letters with zero vowels, is
+// a strong signal of gibberish rather than a genuine (if unusual) name.
+const KNOWN_ABBREVIATIONS = new Set([
+  'llc', 'inc', 'co', 'ltd', 'corp', 'llp', 'plc', 'gmbh',
+  'st', 'dr', 'mr', 'ms', 'mrs', 'jr', 'sr',
+  'phd', 'mba', 'jd', 'md', 'ba', 'bs', 'ma', 'ms', 'aa', 'as',
+  'rn', 'cpa', 'cfa', 'pmp', 'cpr', 'ged', 'gpa', 'usa', 'uk'
+]);
+
+function looksLikeGibberish(value){
+  const words = normalizeText(value).toLowerCase().match(/[a-z']+/g) || [];
+  return words.some(word => {
+    if(word.length < 2) return false;
+    if(KNOWN_ABBREVIATIONS.has(word)) return false;
+    if(!/[aeiou]/.test(word)) return true;
+    if(/[^aeiou]{5,}/.test(word)) return true;
+    return false;
+  });
 }
 
 function containsBlockedJunk(value){
@@ -1033,6 +1119,7 @@ function isValidShortField(value, minLen){
   if(containsProfanity(clean)) return false;
   if(containsBlockedJunk(clean)) return false;
   if(hasRepeatedJunk(clean)) return false;
+  if(looksLikeGibberish(clean)) return false;
   if(countRealWords(clean) < 1) return false;
   return /^[A-Za-z0-9&.,'’()\-\/ ]+$/.test(clean);
 }
@@ -1040,6 +1127,117 @@ function isValidShortField(value, minLen){
 // ---- Year dropdowns for experience/education dates ----
 const CURRENT_YEAR = new Date().getFullYear();
 const EARLIEST_YEAR = CURRENT_YEAR - 60;
+
+const DEGREE_OPTIONS = [
+  'High School Diploma',
+  'GED',
+  "Associate's Degree",
+  "Bachelor's Degree",
+  "Master's Degree",
+  'MBA',
+  'PhD / Doctorate',
+  'J.D. (Law)',
+  'M.D. (Medicine)',
+  'Professional Certification',
+  'Trade / Vocational Certificate'
+];
+
+// A representative list of well-known institutions, not an exhaustive
+// worldwide directory (there are tens of thousands) — "Other" covers
+// anything not listed here.
+const UNIVERSITY_OPTIONS = [
+  'East Carolina University',
+  'University of North Carolina at Chapel Hill',
+  'North Carolina State University',
+  'Duke University',
+  'Wake Forest University',
+  'UNC Charlotte',
+  'UNC Greensboro',
+  'UNC Wilmington',
+  'Appalachian State University',
+  'Western Carolina University',
+  'North Carolina Central University',
+  'North Carolina A&T State University',
+  'Elon University',
+  'Davidson College',
+  'High Point University',
+  'University of South Carolina',
+  'Clemson University',
+  'University of Virginia',
+  'Virginia Tech',
+  'Georgia Institute of Technology',
+  'University of Georgia',
+  'Florida State University',
+  'University of Florida',
+  'University of Miami',
+  'University of Tennessee',
+  'Vanderbilt University',
+  'University of Alabama',
+  'Auburn University',
+  'Louisiana State University',
+  'University of Texas at Austin',
+  'Texas A&M University',
+  'Rice University',
+  'University of Oklahoma',
+  'University of Arkansas',
+  'University of Mississippi',
+  'Ohio State University',
+  'University of Michigan',
+  'Michigan State University',
+  'Penn State University',
+  'University of Pittsburgh',
+  'Temple University',
+  'Rutgers University',
+  'Princeton University',
+  'Columbia University',
+  'Cornell University',
+  'New York University',
+  'Syracuse University',
+  'Boston University',
+  'Boston College',
+  'Harvard University',
+  'MIT',
+  'Yale University',
+  'Brown University',
+  'University of Connecticut',
+  'Georgetown University',
+  'George Washington University',
+  'University of Maryland',
+  'Johns Hopkins University',
+  'University of Delaware',
+  'Indiana University',
+  'Purdue University',
+  'University of Illinois',
+  'Northwestern University',
+  'University of Chicago',
+  'University of Wisconsin–Madison',
+  'University of Minnesota',
+  'University of Iowa',
+  'University of Missouri',
+  'Washington University in St. Louis',
+  'University of Kansas',
+  'University of Nebraska',
+  'University of Colorado Boulder',
+  'Colorado State University',
+  'University of Arizona',
+  'Arizona State University',
+  'University of Utah',
+  'Brigham Young University',
+  'University of Nevada, Las Vegas',
+  'University of California, Los Angeles',
+  'University of California, Berkeley',
+  'University of California, San Diego',
+  'University of California, Irvine',
+  'University of Southern California',
+  'Stanford University',
+  'San Diego State University',
+  'University of Washington',
+  'Washington State University',
+  'University of Oregon',
+  'Oregon State University',
+  'Community College (2-year)',
+  'Online / Distance Learning Program'
+];
 
 function buildYearOptions(selectedValue, includePresent){
   let html = `<option value="" ${selectedValue ? '' : 'selected'}>${includePresent ? 'End year' : 'Start year'}</option>`;
@@ -1072,7 +1270,28 @@ function formatDatesLabel(startYear, endYear){
   return startYear || endYear || '';
 }
 
-function validateExperienceRow(row, index){
+// Regex can catch empty fields, junk keyboard-mashing, and profanity — but
+// it can't tell "eclkmv" or "sex" isn't a real job title/company/degree,
+// since that requires actually understanding the text. This reuses the
+// same AI-backed check the requirements/benefits picker already relies on
+// for exactly that reason. If the check itself fails (network hiccup,
+// function down), we don't block saving on an infrastructure problem —
+// the regex pass already filtered the obvious junk.
+async function checkRealisticText(type, text){
+  try{
+    const { data, error } = await sb.functions.invoke('validate-chip-entry', {
+      body: { type, text }
+    });
+    if(error || !data || typeof data.valid !== 'boolean'){
+      return { valid: true };
+    }
+    return data;
+  } catch(e){
+    return { valid: true };
+  }
+}
+
+async function validateExperienceRow(row, index){
   const hasAnything = row.title || row.company || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
@@ -1091,10 +1310,20 @@ function validateExperienceRow(row, index){
   if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
     return `Experience #${index + 1}: end year can't be before the start year.`;
   }
+
+  const titleCheck = await checkRealisticText('job title', row.title);
+  if(!titleCheck.valid){
+    return `Experience #${index + 1}: "${row.title}" doesn't look like a real job title.`;
+  }
+  const companyCheck = await checkRealisticText('company name', row.company);
+  if(!companyCheck.valid){
+    return `Experience #${index + 1}: "${row.company}" doesn't look like a real company name.`;
+  }
+
   return null;
 }
 
-function validateEducationRow(row, index){
+async function validateEducationRow(row, index){
   const hasAnything = row.degree || row.school || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
@@ -1113,6 +1342,18 @@ function validateEducationRow(row, index){
   if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
     return `Education #${index + 1}: end year can't be before the start year.`;
   }
+
+  // Values picked from the dropdown lists are already trusted — only
+  // AI-check entries typed in through "Other".
+  if(row.customDegree){
+    const check = await checkRealisticText('degree or program', row.degree);
+    if(!check.valid) return `Education #${index + 1}: "${row.degree}" doesn't look like a real degree.`;
+  }
+  if(row.customSchool){
+    const check = await checkRealisticText('school name', row.school);
+    if(!check.valid) return `Education #${index + 1}: "${row.school}" doesn't look like a real school name.`;
+  }
+
   return null;
 }
 
@@ -1120,21 +1361,33 @@ function validateEducationRow(row, index){
 async function saveProfileDetails(){
   if(!currentUserId) return;
 
-  for(let i = 0; i < experienceRows.length; i++){
-    const err = validateExperienceRow(experienceRows[i], i);
-    if(err){ showToast(err); return; }
-  }
-  for(let i = 0; i < educationRows.length; i++){
-    const err = validateEducationRow(educationRows[i], i);
-    if(err){ showToast(err); return; }
-  }
-
   const btn = document.getElementById('pd-save-btn');
   const statusEl = document.getElementById('profile-details-status');
   const orig = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Saving…';
+  btn.textContent = 'Checking…';
   statusEl.textContent = '';
+
+  for(let i = 0; i < experienceRows.length; i++){
+    const err = await validateExperienceRow(experienceRows[i], i);
+    if(err){
+      showToast(err);
+      btn.disabled = false;
+      btn.textContent = orig;
+      return;
+    }
+  }
+  for(let i = 0; i < educationRows.length; i++){
+    const err = await validateEducationRow(educationRows[i], i);
+    if(err){
+      showToast(err);
+      btn.disabled = false;
+      btn.textContent = orig;
+      return;
+    }
+  }
+
+  btn.textContent = 'Saving…';
 
   const finalResumeData = {
     ...resumeDataState,
