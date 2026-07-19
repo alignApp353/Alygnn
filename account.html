@@ -306,10 +306,14 @@ textarea.form-input{
 
 .entry-row{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr auto;
+  grid-template-columns:1.4fr 1.4fr .8fr .8fr auto;
   gap:10px;
   margin-bottom:10px;
   align-items:center;
+}
+
+select.form-input{
+  cursor:pointer;
 }
 
 .btn-remove-entry{
@@ -844,14 +848,24 @@ function initProfileDetails(rawResumeData){
   renderSkillChips();
 
   experienceRows = (Array.isArray(resumeDataState.experience) ? resumeDataState.experience : [])
-    .map(entry => typeof entry === 'string'
-      ? { title: entry, company: '', dates: '' }
-      : { title: entry.title || '', company: entry.company || '', dates: entry.dates || '' });
+    .map(entry => {
+      if(typeof entry === 'string') return { title: entry, company: '', startYear: '', endYear: '' };
+      if(entry.startYear || entry.endYear){
+        return { title: entry.title || '', company: entry.company || '', startYear: entry.startYear || '', endYear: entry.endYear || '' };
+      }
+      const parsed = parseDatesToYears(entry.dates || '');
+      return { title: entry.title || '', company: entry.company || '', startYear: parsed.startYear, endYear: parsed.endYear };
+    });
 
   educationRows = (Array.isArray(resumeDataState.education) ? resumeDataState.education : [])
-    .map(entry => typeof entry === 'string'
-      ? { degree: entry, school: '', dates: '' }
-      : { degree: entry.degree || '', school: entry.school || '', dates: entry.dates || '' });
+    .map(entry => {
+      if(typeof entry === 'string') return { degree: entry, school: '', startYear: '', endYear: '' };
+      if(entry.startYear || entry.endYear){
+        return { degree: entry.degree || '', school: entry.school || '', startYear: entry.startYear || '', endYear: entry.endYear || '' };
+      }
+      const parsed = parseDatesToYears(entry.dates || '');
+      return { degree: entry.degree || '', school: entry.school || '', startYear: parsed.startYear, endYear: parsed.endYear };
+    });
 
   renderExperienceRows();
   renderEducationRows();
@@ -906,7 +920,7 @@ function renderSkillChips(){
 }
 
 function addExperienceRow(){
-  experienceRows.push({ title: '', company: '', dates: '' });
+  experienceRows.push({ title: '', company: '', startYear: '', endYear: '' });
   renderExperienceRows();
 }
 
@@ -930,14 +944,15 @@ function renderExperienceRows(){
     <div class="entry-row">
       <input type="text" class="form-input" placeholder="Job title" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">
       <input type="text" class="form-input" placeholder="Company" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
-      <input type="text" class="form-input" placeholder="Dates (e.g. 2022–2024)" value="${escapeHtml(row.dates)}" oninput="updateExperienceField(${i}, 'dates', this.value)">
+      <select class="form-input" onchange="updateExperienceField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
+      <select class="form-input" onchange="updateExperienceField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
       <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
     </div>
   `).join('');
 }
 
 function addEducationRow(){
-  educationRows.push({ degree: '', school: '', dates: '' });
+  educationRows.push({ degree: '', school: '', startYear: '', endYear: '' });
   renderEducationRows();
 }
 
@@ -961,7 +976,8 @@ function renderEducationRows(){
     <div class="entry-row">
       <input type="text" class="form-input" placeholder="Degree" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)">
       <input type="text" class="form-input" placeholder="School" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">
-      <input type="text" class="form-input" placeholder="Dates (e.g. 2018–2022)" value="${escapeHtml(row.dates)}" oninput="updateEducationField(${i}, 'dates', this.value)">
+      <select class="form-input" onchange="updateEducationField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
+      <select class="form-input" onchange="updateEducationField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
       <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
     </div>
   `).join('');
@@ -969,6 +985,20 @@ function renderEducationRows(){
 
 function normalizeText(value){
   return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+const PROFANITY_BLOCKLIST = [
+  'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
+  'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard',
+  'blowjob', 'handjob', 'porn', 'kill yourself'
+];
+
+function containsProfanity(value){
+  const text = normalizeText(value).toLowerCase();
+  return PROFANITY_BLOCKLIST.some(word => {
+    if(word.includes(' ')) return text.includes(word);
+    return new RegExp('\\b' + word + '\\b', 'i').test(text);
+  });
 }
 
 function hasRepeatedJunk(value){
@@ -995,32 +1025,55 @@ function countRealWords(value){
 }
 
 // Job title / company / degree / school fields: needs to look like a real
-// word or short phrase, not keyboard mashing or a placeholder.
+// word or short phrase — not keyboard mashing, a placeholder, or
+// profanity.
 function isValidShortField(value, minLen){
   const clean = normalizeText(value);
   if(clean.length < (minLen || 2) || clean.length > 80) return false;
+  if(containsProfanity(clean)) return false;
   if(containsBlockedJunk(clean)) return false;
   if(hasRepeatedJunk(clean)) return false;
   if(countRealWords(clean) < 1) return false;
   return /^[A-Za-z0-9&.,'’()\-\/ ]+$/.test(clean);
 }
 
-// Dates field is looser (people write "2020–Present", "Jun 2019 - 2021",
-// "Summer 2022"), but it still needs to actually contain a year or a word
-// like "Present"/"Current" rather than arbitrary junk.
-function isValidDatesField(value){
-  const clean = normalizeText(value);
-  if(!clean) return true; // dates are optional
-  if(clean.length > 40) return false;
-  if(containsBlockedJunk(clean)) return false;
-  if(hasRepeatedJunk(clean)) return false;
-  const hasYear = /(19|20)\d{2}/.test(clean);
-  const hasPresentWord = /present|current|ongoing/i.test(clean);
-  return hasYear || hasPresentWord;
+// ---- Year dropdowns for experience/education dates ----
+const CURRENT_YEAR = new Date().getFullYear();
+const EARLIEST_YEAR = CURRENT_YEAR - 60;
+
+function buildYearOptions(selectedValue, includePresent){
+  let html = `<option value="" ${selectedValue ? '' : 'selected'}>${includePresent ? 'End year' : 'Start year'}</option>`;
+  if(includePresent){
+    html += `<option value="Present" ${selectedValue === 'Present' ? 'selected' : ''}>Present</option>`;
+  }
+  for(let y = CURRENT_YEAR; y >= EARLIEST_YEAR; y--){
+    html += `<option value="${y}" ${String(selectedValue) === String(y) ? 'selected' : ''}>${y}</option>`;
+  }
+  return html;
+}
+
+// Old rows (saved before the dropdown UI existed) stored a free-text
+// "dates" string like "2001–2024" or "2020 - Present". Best-effort parse
+// it into startYear/endYear so those rows still populate correctly
+// instead of showing blank dropdowns.
+function parseDatesToYears(datesStr){
+  const clean = normalizeText(datesStr);
+  const years = clean.match(/(19|20)\d{2}/g) || [];
+  const isPresent = /present|current|ongoing/i.test(clean);
+  return {
+    startYear: years[0] || '',
+    endYear: isPresent ? 'Present' : (years[1] || '')
+  };
+}
+
+function formatDatesLabel(startYear, endYear){
+  if(!startYear && !endYear) return '';
+  if(startYear && endYear) return `${startYear} – ${endYear}`;
+  return startYear || endYear || '';
 }
 
 function validateExperienceRow(row, index){
-  const hasAnything = row.title || row.company || row.dates;
+  const hasAnything = row.title || row.company || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
   if(!row.title || !isValidShortField(row.title, 2)){
@@ -1029,14 +1082,20 @@ function validateExperienceRow(row, index){
   if(!row.company || !isValidShortField(row.company, 2)){
     return `Experience #${index + 1}: enter a real company name.`;
   }
-  if(!isValidDatesField(row.dates)){
-    return `Experience #${index + 1}: dates should include a year, like "2021–2023" or "2022–Present".`;
+  if(!row.startYear){
+    return `Experience #${index + 1}: pick a start year.`;
+  }
+  if(!row.endYear){
+    return `Experience #${index + 1}: pick an end year, or "Present" if it's ongoing.`;
+  }
+  if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
+    return `Experience #${index + 1}: end year can't be before the start year.`;
   }
   return null;
 }
 
 function validateEducationRow(row, index){
-  const hasAnything = row.degree || row.school || row.dates;
+  const hasAnything = row.degree || row.school || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
   if(!row.degree || !isValidShortField(row.degree, 2)){
@@ -1045,11 +1104,18 @@ function validateEducationRow(row, index){
   if(!row.school || !isValidShortField(row.school, 2)){
     return `Education #${index + 1}: enter a real school name.`;
   }
-  if(!isValidDatesField(row.dates)){
-    return `Education #${index + 1}: dates should include a year, like "2018–2022".`;
+  if(!row.startYear){
+    return `Education #${index + 1}: pick a start year.`;
+  }
+  if(!row.endYear){
+    return `Education #${index + 1}: pick an end year, or "Present" if it's ongoing.`;
+  }
+  if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
+    return `Education #${index + 1}: end year can't be before the start year.`;
   }
   return null;
 }
+
 
 async function saveProfileDetails(){
   if(!currentUserId) return;
@@ -1074,8 +1140,12 @@ async function saveProfileDetails(){
     ...resumeDataState,
     summary: document.getElementById('pd-summary').value.trim(),
     skills: resumeDataState.skills,
-    experience: experienceRows.filter(r => r.title || r.company || r.dates),
-    education: educationRows.filter(r => r.degree || r.school || r.dates)
+    experience: experienceRows
+      .filter(r => r.title || r.company || r.startYear || r.endYear)
+      .map(r => ({ ...r, dates: formatDatesLabel(r.startYear, r.endYear) })),
+    education: educationRows
+      .filter(r => r.degree || r.school || r.startYear || r.endYear)
+      .map(r => ({ ...r, dates: formatDatesLabel(r.startYear, r.endYear) }))
   };
 
   const { error } = await sb
