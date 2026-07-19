@@ -246,6 +246,123 @@ nav{
   flex-wrap:wrap;
 }
 
+.detail-card{
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:24px;
+}
+
+.detail-field{
+  margin-bottom:20px;
+}
+.detail-field:last-child{ margin-bottom:0; }
+
+.detail-label{
+  font-size:12px;
+  font-weight:500;
+  color:var(--text-muted);
+  display:block;
+  margin-bottom:8px;
+}
+
+textarea.form-input{
+  resize:vertical;
+  min-height:70px;
+}
+
+.skills-chip-wrap{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.skill-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  color:white;
+  background:var(--brand);
+  border-radius:100px;
+  padding:6px 8px 6px 14px;
+}
+.skill-chip button{
+  background:rgba(255,255,255,.25);
+  border:none;
+  color:white;
+  border-radius:50%;
+  width:18px;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  font-size:11px;
+  line-height:1;
+}
+.skill-chip button:hover{ background:rgba(255,255,255,.4); }
+
+.entry-row{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr auto;
+  gap:10px;
+  margin-bottom:10px;
+  align-items:center;
+}
+
+.btn-remove-entry{
+  background:rgba(215,154,154,.15);
+  color:#a05858;
+  border:none;
+  border-radius:8px;
+  padding:10px 12px;
+  cursor:pointer;
+  font-size:13px;
+  font-family:'DM Sans', Arial, sans-serif;
+}
+.btn-remove-entry:hover{ opacity:.8; }
+
+.btn-add-entry{
+  background:rgba(93,127,163,.08);
+  color:var(--brand);
+  border:1px solid rgba(93,127,163,.25);
+  border-radius:100px;
+  padding:8px 16px;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  font-family:'DM Sans', Arial, sans-serif;
+}
+.btn-add-entry:hover{ opacity:.85; }
+
+.btn-save-profile{
+  background:var(--brand);
+  color:white;
+  border:none;
+  border-radius:12px;
+  padding:12px 24px;
+  font-size:14px;
+  font-weight:500;
+  font-family:'DM Sans', Arial, sans-serif;
+  cursor:pointer;
+  margin-top:4px;
+}
+.btn-save-profile:hover{ opacity:.88; }
+.btn-save-profile:disabled{ opacity:.6; cursor:not-allowed; }
+
+.detail-empty-note{
+  font-size:12px;
+  color:var(--text-muted);
+  font-style:italic;
+  margin-bottom:10px;
+}
+
+@media(max-width:640px){
+  .entry-row{ grid-template-columns:1fr; }
+}
+
 .link-card{
   flex:1;
   min-width:200px;
@@ -341,6 +458,43 @@ nav{
     <div class="profile-info">
       <h1 id="profile-name" contenteditable="true" data-placeholder="Your name"></h1>
       <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline"></p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Profile details</h2>
+      <span style="font-size:12px;color:var(--text-muted);" id="profile-details-status"></span>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">This is what employers see when they view your application — fill it in if your resume didn't capture everything.</p>
+
+    <div class="detail-card">
+      <div class="detail-field">
+        <label class="detail-label">Summary</label>
+        <textarea class="form-input" id="pd-summary" placeholder="A couple sentences about your background and what you're looking for..."></textarea>
+      </div>
+
+      <div class="detail-field">
+        <label class="detail-label">Skills</label>
+        <div class="skills-chip-wrap" id="pd-skills-wrap"></div>
+        <input type="text" class="form-input" id="pd-skills-input" placeholder="Type a skill and press Enter" autocomplete="off">
+      </div>
+
+      <div class="detail-field">
+        <label class="detail-label">Experience</label>
+        <div class="detail-empty-note" id="pd-experience-empty" style="display:none;">No work experience added yet.</div>
+        <div id="pd-experience-list"></div>
+        <button type="button" class="btn-add-entry" onclick="addExperienceRow()">+ Add experience</button>
+      </div>
+
+      <div class="detail-field">
+        <label class="detail-label">Education</label>
+        <div class="detail-empty-note" id="pd-education-empty" style="display:none;">No education added yet.</div>
+        <div id="pd-education-list"></div>
+        <button type="button" class="btn-add-entry" onclick="addEducationRow()">+ Add education</button>
+      </div>
+
+      <button type="button" class="btn-save-profile" id="pd-save-btn" onclick="saveProfileDetails()">Save profile details</button>
     </div>
   </div>
 
@@ -523,6 +677,202 @@ function renderResumeCardFast(resumeFilePath){
   resumeCard.removeAttribute('target');
 }
 
+function escapeHtml(value){
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+// ---- Profile details (skills / experience / education) ----
+// This is stored in profiles.resume_data as JSON, using the same field
+// names (skills, experience, education, summary, email, phone) the
+// employer dashboard's candidate modal already reads — so filling this in
+// here shows up there with no changes needed on that side. Any other keys
+// already present in resume_data (e.g. from AI resume parsing) are kept
+// and merged back in on save rather than overwritten.
+let resumeDataState = {};
+let experienceRows = [];
+let educationRows = [];
+
+function initProfileDetails(rawResumeData){
+  let parsed = {};
+  try{
+    parsed = typeof rawResumeData === 'string'
+      ? JSON.parse(rawResumeData)
+      : (rawResumeData || {});
+  } catch(e){
+    parsed = {};
+  }
+
+  resumeDataState = parsed || {};
+
+  document.getElementById('pd-summary').value = resumeDataState.summary || '';
+
+  const skills = Array.isArray(resumeDataState.skills) ? resumeDataState.skills : [];
+  resumeDataState.skills = skills.slice();
+  renderSkillChips();
+
+  experienceRows = (Array.isArray(resumeDataState.experience) ? resumeDataState.experience : [])
+    .map(entry => typeof entry === 'string'
+      ? { title: entry, company: '', dates: '' }
+      : { title: entry.title || '', company: entry.company || '', dates: entry.dates || '' });
+
+  educationRows = (Array.isArray(resumeDataState.education) ? resumeDataState.education : [])
+    .map(entry => typeof entry === 'string'
+      ? { degree: entry, school: '', dates: '' }
+      : { degree: entry.degree || '', school: entry.school || '', dates: entry.dates || '' });
+
+  renderExperienceRows();
+  renderEducationRows();
+
+  const skillsInput = document.getElementById('pd-skills-input');
+  skillsInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ','){
+      e.preventDefault();
+      const value = skillsInput.value.trim().replace(/,$/, '');
+      if(value) addSkill(value);
+      skillsInput.value = '';
+    }
+  });
+}
+
+function addSkill(value){
+  const clean = value.trim();
+  if(!clean) return;
+  const exists = resumeDataState.skills.some(s => s.toLowerCase() === clean.toLowerCase());
+  if(exists) return;
+  resumeDataState.skills.push(clean);
+  renderSkillChips();
+}
+
+function removeSkill(value){
+  resumeDataState.skills = resumeDataState.skills.filter(s => s !== value);
+  renderSkillChips();
+}
+
+function renderSkillChips(){
+  const wrap = document.getElementById('pd-skills-wrap');
+  wrap.innerHTML = '';
+
+  resumeDataState.skills.forEach(skill => {
+    const chip = document.createElement('span');
+    chip.className = 'skill-chip';
+    chip.appendChild(document.createTextNode(skill));
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '✕';
+    removeBtn.setAttribute('aria-label', 'Remove ' + skill);
+    removeBtn.addEventListener('click', () => removeSkill(skill));
+
+    chip.appendChild(removeBtn);
+    wrap.appendChild(chip);
+  });
+}
+
+function addExperienceRow(){
+  experienceRows.push({ title: '', company: '', dates: '' });
+  renderExperienceRows();
+}
+
+function removeExperienceRow(index){
+  experienceRows.splice(index, 1);
+  renderExperienceRows();
+}
+
+function updateExperienceField(index, field, value){
+  if(!experienceRows[index]) return;
+  experienceRows[index][field] = value;
+}
+
+function renderExperienceRows(){
+  const list = document.getElementById('pd-experience-list');
+  const emptyNote = document.getElementById('pd-experience-empty');
+
+  emptyNote.style.display = experienceRows.length === 0 ? 'block' : 'none';
+
+  list.innerHTML = experienceRows.map((row, i) => `
+    <div class="entry-row">
+      <input type="text" class="form-input" placeholder="Job title" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">
+      <input type="text" class="form-input" placeholder="Company" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
+      <input type="text" class="form-input" placeholder="Dates (e.g. 2022–2024)" value="${escapeHtml(row.dates)}" oninput="updateExperienceField(${i}, 'dates', this.value)">
+      <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
+    </div>
+  `).join('');
+}
+
+function addEducationRow(){
+  educationRows.push({ degree: '', school: '', dates: '' });
+  renderEducationRows();
+}
+
+function removeEducationRow(index){
+  educationRows.splice(index, 1);
+  renderEducationRows();
+}
+
+function updateEducationField(index, field, value){
+  if(!educationRows[index]) return;
+  educationRows[index][field] = value;
+}
+
+function renderEducationRows(){
+  const list = document.getElementById('pd-education-list');
+  const emptyNote = document.getElementById('pd-education-empty');
+
+  emptyNote.style.display = educationRows.length === 0 ? 'block' : 'none';
+
+  list.innerHTML = educationRows.map((row, i) => `
+    <div class="entry-row">
+      <input type="text" class="form-input" placeholder="Degree" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)">
+      <input type="text" class="form-input" placeholder="School" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">
+      <input type="text" class="form-input" placeholder="Dates (e.g. 2018–2022)" value="${escapeHtml(row.dates)}" oninput="updateEducationField(${i}, 'dates', this.value)">
+      <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function saveProfileDetails(){
+  if(!currentUserId) return;
+
+  const btn = document.getElementById('pd-save-btn');
+  const statusEl = document.getElementById('profile-details-status');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  statusEl.textContent = '';
+
+  const finalResumeData = {
+    ...resumeDataState,
+    summary: document.getElementById('pd-summary').value.trim(),
+    skills: resumeDataState.skills,
+    experience: experienceRows.filter(r => r.title || r.company || r.dates),
+    education: educationRows.filter(r => r.degree || r.school || r.dates)
+  };
+
+  const { error } = await sb
+    .from('profiles')
+    .upsert({ id: currentUserId, resume_data: finalResumeData }, { onConflict: 'id' });
+
+  btn.disabled = false;
+  btn.textContent = orig;
+
+  if(error){
+    console.error('Failed to save profile details:', error);
+    statusEl.textContent = 'Could not save — try again.';
+    statusEl.style.color = '#a05858';
+    return;
+  }
+
+  resumeDataState = finalResumeData;
+  statusEl.textContent = 'Saved ✓';
+  statusEl.style.color = '#2d8a57';
+  setTimeout(() => { statusEl.textContent = ''; }, 2500);
+}
+
 async function initAccountPage(){
   const {
     data: { session }
@@ -537,7 +887,7 @@ async function initAccountPage(){
 
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('has_password, role, full_name, headline, resume_file_path')
+    .select('has_password, role, full_name, headline, resume_file_path, resume_data')
     .eq('id', currentUserId)
     .maybeSingle();
 
@@ -611,6 +961,7 @@ async function initAccountPage(){
   }
 
   renderResumeCardFast(profile?.resume_file_path);
+  initProfileDetails(profile?.resume_data);
 
   showPage();
 }
