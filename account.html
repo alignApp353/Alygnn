@@ -363,6 +363,56 @@ textarea.form-input{
   .entry-row{ grid-template-columns:1fr; }
 }
 
+.job-row-item{
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px 20px;
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.job-row-title{ font-size:14px; font-weight:500; color:var(--text); margin-bottom:3px; }
+.job-row-meta{ font-size:12px; color:var(--text-muted); }
+.job-row-status{
+  font-size:11px;
+  font-weight:500;
+  padding:4px 12px;
+  border-radius:100px;
+  border:1px solid var(--border);
+  color:var(--text-muted);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.job-row-status.status-accepted{ border-color:var(--sage); color:#2d8a57; background:rgba(140,182,155,.12); }
+.job-row-status.status-rejected{ border-color:#D79A9A; color:#a05858; background:rgba(215,154,154,.12); }
+
+.field-error{
+  font-size:11px;
+  color:#a05858;
+  margin-top:-4px;
+  margin-bottom:8px;
+}
+
+.toast{
+  position:fixed;
+  bottom:32px;
+  left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--text);
+  color:white;
+  padding:10px 20px;
+  border-radius:100px;
+  font-size:13px;
+  font-weight:500;
+  transition:transform .3s ease;
+  z-index:200;
+  white-space:nowrap;
+}
+.toast.show{ transform:translateX(-50%) translateY(0); }
+
 .link-card{
   flex:1;
   min-width:200px;
@@ -550,6 +600,8 @@ textarea.form-input{
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 const SUPABASE_URL = 'https://auth.alygnn.com';
 const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
@@ -597,6 +649,82 @@ function filterJobList(kind){
   if(emptyState && cards.length > 0){
     emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
   }
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// Loads this candidate's own applications (RLS already lets a candidate
+// read their own rows) and joins in the job's title/company/location so
+// the "Applied jobs" list actually shows something, instead of the
+// static empty state it always displayed before.
+async function loadAppliedJobs(){
+  if(!currentUserId) return;
+
+  const listEl = document.getElementById('applied-jobs-list');
+  const emptyState = document.getElementById('applied-empty-state');
+
+  const { data: apps, error: appsError } = await sb
+    .from('applications')
+    .select('id, job_id, status, applied_at')
+    .eq('candidate_id', currentUserId)
+    .order('applied_at', { ascending: false });
+
+  if(appsError){
+    console.error('Failed to load applied jobs:', appsError);
+    return;
+  }
+
+  if(!apps || apps.length === 0){
+    return; // static empty state in the HTML already covers this
+  }
+
+  const jobIds = [...new Set(apps.map(a => a.job_id))];
+
+  const { data: jobsData, error: jobsError } = await sb
+    .from('jobs')
+    .select('id, title, company, location, job_type')
+    .in('id', jobIds);
+
+  if(jobsError){
+    console.error('Failed to load job details for applied jobs:', jobsError);
+  }
+
+  const jobMap = {};
+  (jobsData || []).forEach(j => { jobMap[j.id] = j; });
+
+  const rows = apps
+    .map(app => ({ app, job: jobMap[app.job_id] }))
+    .filter(r => r.job);
+
+  if(rows.length === 0) return;
+
+  listEl.innerHTML = rows.map(({ app, job }) => {
+    const statusClass = app.status === 'accepted' ? 'status-accepted'
+      : app.status === 'rejected' ? 'status-rejected' : '';
+    const statusLabel = app.status === 'accepted' ? 'Accepted'
+      : app.status === 'rejected' ? 'Not selected' : 'Applied';
+
+    const metaParts = [job.company, job.job_type, job.location].filter(Boolean).join(' · ');
+
+    return `
+      <div class="job-row-item">
+        <div>
+          <div class="job-row-title">${escapeHtml(job.title || 'Untitled role')}</div>
+          <div class="job-row-meta">${escapeHtml(metaParts)}</div>
+        </div>
+        <span class="job-row-status ${statusClass}">${statusLabel}</span>
+      </div>
+    `;
+  }).join('');
+
+  if(emptyState) emptyState.style.display = 'none';
 }
 
 function getInitials(name){
@@ -742,6 +870,10 @@ function initProfileDetails(rawResumeData){
 function addSkill(value){
   const clean = value.trim();
   if(!clean) return;
+  if(!isValidShortField(clean, 2)){
+    showToast('Enter a real skill, like "Excel" or "Customer service".');
+    return;
+  }
   const exists = resumeDataState.skills.some(s => s.toLowerCase() === clean.toLowerCase());
   if(exists) return;
   resumeDataState.skills.push(clean);
@@ -835,8 +967,101 @@ function renderEducationRows(){
   `).join('');
 }
 
+function normalizeText(value){
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function hasRepeatedJunk(value){
+  const clean = normalizeText(value).toLowerCase();
+  if(!clean) return true;
+  if(/^(.)\1{3,}$/.test(clean.replace(/\s/g, ''))) return true;
+  if(/^[a-z]{1,2}(\s+[a-z]{1,2}){0,4}$/.test(clean)) return true;
+  if(/^[^a-zA-Z0-9]+$/.test(clean)) return true;
+  return false;
+}
+
+function containsBlockedJunk(value){
+  const text = normalizeText(value).toLowerCase();
+  const blocked = [
+    'test', 'asdf', 'qwerty', 'fake', 'random', 'dummy', 'sample',
+    'lorem ipsum', 'abc', '123', 'sklcnsa', 'slkcnsa', 'aaa', 'zzz', 'none', 'n/a'
+  ];
+  return blocked.some(word => text === word || text.includes(word));
+}
+
+function countRealWords(value){
+  const words = normalizeText(value).match(/[A-Za-z][A-Za-z'-]{1,}/g) || [];
+  return words.length;
+}
+
+// Job title / company / degree / school fields: needs to look like a real
+// word or short phrase, not keyboard mashing or a placeholder.
+function isValidShortField(value, minLen){
+  const clean = normalizeText(value);
+  if(clean.length < (minLen || 2) || clean.length > 80) return false;
+  if(containsBlockedJunk(clean)) return false;
+  if(hasRepeatedJunk(clean)) return false;
+  if(countRealWords(clean) < 1) return false;
+  return /^[A-Za-z0-9&.,'’()\-\/ ]+$/.test(clean);
+}
+
+// Dates field is looser (people write "2020–Present", "Jun 2019 - 2021",
+// "Summer 2022"), but it still needs to actually contain a year or a word
+// like "Present"/"Current" rather than arbitrary junk.
+function isValidDatesField(value){
+  const clean = normalizeText(value);
+  if(!clean) return true; // dates are optional
+  if(clean.length > 40) return false;
+  if(containsBlockedJunk(clean)) return false;
+  if(hasRepeatedJunk(clean)) return false;
+  const hasYear = /(19|20)\d{2}/.test(clean);
+  const hasPresentWord = /present|current|ongoing/i.test(clean);
+  return hasYear || hasPresentWord;
+}
+
+function validateExperienceRow(row, index){
+  const hasAnything = row.title || row.company || row.dates;
+  if(!hasAnything) return null;
+
+  if(!row.title || !isValidShortField(row.title, 2)){
+    return `Experience #${index + 1}: enter a real job title, like "Sales Associate".`;
+  }
+  if(!row.company || !isValidShortField(row.company, 2)){
+    return `Experience #${index + 1}: enter a real company name.`;
+  }
+  if(!isValidDatesField(row.dates)){
+    return `Experience #${index + 1}: dates should include a year, like "2021–2023" or "2022–Present".`;
+  }
+  return null;
+}
+
+function validateEducationRow(row, index){
+  const hasAnything = row.degree || row.school || row.dates;
+  if(!hasAnything) return null;
+
+  if(!row.degree || !isValidShortField(row.degree, 2)){
+    return `Education #${index + 1}: enter a real degree or program, like "B.A. Economics".`;
+  }
+  if(!row.school || !isValidShortField(row.school, 2)){
+    return `Education #${index + 1}: enter a real school name.`;
+  }
+  if(!isValidDatesField(row.dates)){
+    return `Education #${index + 1}: dates should include a year, like "2018–2022".`;
+  }
+  return null;
+}
+
 async function saveProfileDetails(){
   if(!currentUserId) return;
+
+  for(let i = 0; i < experienceRows.length; i++){
+    const err = validateExperienceRow(experienceRows[i], i);
+    if(err){ showToast(err); return; }
+  }
+  for(let i = 0; i < educationRows.length; i++){
+    const err = validateEducationRow(educationRows[i], i);
+    if(err){ showToast(err); return; }
+  }
 
   const btn = document.getElementById('pd-save-btn');
   const statusEl = document.getElementById('profile-details-status');
@@ -962,6 +1187,7 @@ async function initAccountPage(){
 
   renderResumeCardFast(profile?.resume_file_path);
   initProfileDetails(profile?.resume_data);
+  await loadAppliedJobs();
 
   showPage();
 }
