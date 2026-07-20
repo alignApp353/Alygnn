@@ -1089,7 +1089,10 @@ const KNOWN_ABBREVIATIONS = new Set([
 function looksLikeGibberish(value){
   const words = normalizeText(value).toLowerCase().match(/[a-z']+/g) || [];
   return words.some(word => {
-    if(word.length < 2) return false;
+    // Short words (2-3 letters) are almost always legitimate abbreviations
+    // (state codes like FL, NC, initials, HR, PR) — only flag the
+    // no-vowel-at-all rule for longer words to avoid false positives here.
+    if(word.length < 4) return false;
     if(KNOWN_ABBREVIATIONS.has(word)) return false;
     if(!/[aeiou]/.test(word)) return true;
     if(/[^aeiou]{5,}/.test(word)) return true;
