@@ -526,13 +526,13 @@ select.form-input{
     <div class="detail-card">
       <div class="detail-field">
         <label class="detail-label">Summary</label>
-        <textarea class="form-input" id="pd-summary" placeholder="A couple sentences about your background and what you're looking for..."></textarea>
+        <textarea class="form-input" id="pd-summary" spellcheck="true" placeholder="A couple sentences about your background and what you're looking for..."></textarea>
       </div>
 
       <div class="detail-field">
         <label class="detail-label">Skills</label>
         <div class="skills-chip-wrap" id="pd-skills-wrap"></div>
-        <input type="text" class="form-input" id="pd-skills-input" placeholder="Type a skill and press Enter" autocomplete="off">
+        <input type="text" class="form-input" id="pd-skills-input" spellcheck="true" placeholder="Type a skill and press Enter" autocomplete="off">
       </div>
 
       <div class="detail-field">
@@ -961,12 +961,12 @@ function renderExperienceRows(){
       <div class="entry-row-wrap">
         <div class="entry-row">
           <select class="form-input" onchange="onTitleSelectChange(${i}, this.value)">${buildPickerOptions(JOB_TITLE_OPTIONS, row.title, titleIsCustom, 'Job title')}</select>
-          <input type="text" class="form-input" placeholder="Company" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
+          <input type="text" class="form-input" placeholder="Company" spellcheck="true" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
           <select class="form-input" onchange="updateExperienceField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
           <select class="form-input" onchange="updateExperienceField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
           <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
         </div>
-        ${titleIsCustom ? `<input type="text" class="form-input" placeholder="Enter your job title" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">` : ''}
+        ${titleIsCustom ? `<input type="text" class="form-input" placeholder="Enter your job title" spellcheck="true" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">` : ''}
       </div>
     `;
   }).join('');
@@ -1039,8 +1039,8 @@ function renderEducationRows(){
           <select class="form-input" onchange="updateEducationField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
           <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
         </div>
-        ${degreeIsCustom ? `<input type="text" class="form-input" placeholder="Enter your degree or program" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)" style="margin-bottom:8px;">` : ''}
-        ${schoolIsCustom ? `<input type="text" class="form-input" placeholder="Enter your school name" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">` : ''}
+        ${degreeIsCustom ? `<input type="text" class="form-input" placeholder="Enter your degree or program" spellcheck="true" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)" style="margin-bottom:8px;">` : ''}
+        ${schoolIsCustom ? `<input type="text" class="form-input" placeholder="Enter your school name" spellcheck="true" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">` : ''}
       </div>
     `;
   }).join('');
