@@ -169,11 +169,6 @@ nav{
   word-break:break-word;
 }
 
-.headline-empty{
-  color:#9BA8B3;
-  font-style:italic;
-}
-
 [contenteditable="true"]{
   outline:none;
   border-radius:6px;
@@ -518,7 +513,6 @@ select.form-input{
 
     <div class="profile-info">
       <h1 id="profile-name" contenteditable="true" data-placeholder="Your name"></h1>
-      <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline"></p>
     </div>
   </div>
 
@@ -625,7 +619,6 @@ let currentUserId = null;
 const pageEl = document.getElementById('page');
 const loadingEl = document.getElementById('loading');
 const nameEl = document.getElementById('profile-name');
-const headlineEl = document.getElementById('profile-headline');
 const initialsEl = document.getElementById('avatar-initials');
 const resumeCard = document.getElementById('resume-card');
 const resumeLabel = document.getElementById('resume-card-label');
@@ -767,18 +760,9 @@ function limitLength(el, max){
 }
 
 limitLength(nameEl, 60);
-limitLength(headlineEl, 200);
-
-headlineEl.addEventListener('focus', () => {
-  headlineEl.classList.remove('headline-empty');
-});
 
 nameEl.addEventListener('blur', () => {
   saveProfileField('full_name', nameEl.textContent.trim());
-});
-
-headlineEl.addEventListener('blur', () => {
-  saveProfileField('headline', headlineEl.textContent.trim());
 });
 
 async function saveProfileField(column, value){
@@ -1548,7 +1532,7 @@ async function initAccountPage(){
 
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('has_password, role, full_name, headline, resume_file_path, resume_data')
+    .select('has_password, role, full_name, resume_file_path, resume_data')
     .eq('id', currentUserId)
     .maybeSingle();
 
@@ -1612,14 +1596,6 @@ async function initAccountPage(){
 
   nameEl.textContent = fullName;
   initialsEl.textContent = getInitials(fullName);
-
-  if(profile?.headline){
-    headlineEl.textContent = profile.headline;
-    headlineEl.classList.remove('headline-empty');
-  } else {
-    headlineEl.textContent = '';
-    headlineEl.classList.add('headline-empty');
-  }
 
   renderResumeCardFast(profile?.resume_file_path);
   initProfileDetails(profile?.resume_data);
