@@ -882,7 +882,7 @@ function initProfileDetails(rawResumeData){
   });
 }
 
-async function addSkill(value){
+function addSkill(value){
   const clean = value.trim();
   if(!clean) return;
   if(!isValidShortField(clean, 2)){
@@ -891,12 +891,6 @@ async function addSkill(value){
   }
   const exists = resumeDataState.skills.some(s => s.toLowerCase() === clean.toLowerCase());
   if(exists) return;
-
-  const check = await checkRealisticText('skill', clean);
-  if(!check.valid){
-    showToast(`"${clean}" doesn't look like a real skill.`);
-    return;
-  }
 
   resumeDataState.skills.push(clean);
   renderSkillChips();
@@ -1367,28 +1361,7 @@ function formatDatesLabel(startYear, endYear){
   return startYear || endYear || '';
 }
 
-// Regex can catch empty fields, junk keyboard-mashing, and profanity — but
-// it can't tell "eclkmv" or "sex" isn't a real job title/company/degree,
-// since that requires actually understanding the text. This reuses the
-// same AI-backed check the requirements/benefits picker already relies on
-// for exactly that reason. If the check itself fails (network hiccup,
-// function down), we don't block saving on an infrastructure problem —
-// the regex pass already filtered the obvious junk.
-async function checkRealisticText(type, text){
-  try{
-    const { data, error } = await sb.functions.invoke('validate-chip-entry', {
-      body: { type, text }
-    });
-    if(error || !data || typeof data.valid !== 'boolean'){
-      return { valid: true };
-    }
-    return data;
-  } catch(e){
-    return { valid: true };
-  }
-}
-
-async function validateExperienceRow(row, index){
+function validateExperienceRow(row, index){
   const hasAnything = row.title || row.company || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
@@ -1408,19 +1381,10 @@ async function validateExperienceRow(row, index){
     return `Experience #${index + 1}: end year can't be before the start year.`;
   }
 
-  const titleCheck = row.customTitle ? await checkRealisticText('job title', row.title) : { valid: true };
-  if(!titleCheck.valid){
-    return `Experience #${index + 1}: "${row.title}" doesn't look like a real job title.`;
-  }
-  const companyCheck = await checkRealisticText('company name', row.company);
-  if(!companyCheck.valid){
-    return `Experience #${index + 1}: "${row.company}" doesn't look like a real company name.`;
-  }
-
   return null;
 }
 
-async function validateEducationRow(row, index){
+function validateEducationRow(row, index){
   const hasAnything = row.degree || row.school || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
@@ -1438,17 +1402,6 @@ async function validateEducationRow(row, index){
   }
   if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
     return `Education #${index + 1}: end year can't be before the start year.`;
-  }
-
-  // Values picked from the dropdown lists are already trusted — only
-  // AI-check entries typed in through "Other".
-  if(row.customDegree){
-    const check = await checkRealisticText('degree or program', row.degree);
-    if(!check.valid) return `Education #${index + 1}: "${row.degree}" doesn't look like a real degree.`;
-  }
-  if(row.customSchool){
-    const check = await checkRealisticText('school name', row.school);
-    if(!check.valid) return `Education #${index + 1}: "${row.school}" doesn't look like a real school name.`;
   }
 
   return null;
