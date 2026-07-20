@@ -1138,7 +1138,7 @@
 
     const { data: profilesData, error: profilesError } = await sb
       .from('profiles')
-      .select('id, full_name, headline, resume_file_path, resume_data')
+      .select('id, full_name, resume_file_path, resume_data')
       .in('id', candidateIds);
 
     if (profilesError) {
@@ -1188,23 +1188,28 @@
   function renderCandidateCard(c) {
     const name = c.profile.full_name || 'Candidate';
     const initials = getInitials(name);
-    const headline = c.profile.headline || '';
     const jobTitle = c.job ? c.job.title : 'a job';
     const isDecided = c.status === 'accepted' || c.status === 'rejected';
 
-    let skillTags = '';
+    let resumeData = null;
     try {
-      const resumeData = typeof c.profile.resume_data === 'string'
+      resumeData = typeof c.profile.resume_data === 'string'
         ? JSON.parse(c.profile.resume_data)
         : c.profile.resume_data;
-      if (resumeData?.skills?.length) {
-        skillTags = resumeData.skills
-          .slice(0, 3)
-          .map(s => `<span class="tag">${escapeHtml(s)}</span>`)
-          .join('');
-      }
     } catch (e) {
-      // resume_data wasn't valid JSON — skip skill tags, not fatal.
+      // resume_data wasn't valid JSON — treat as empty, not fatal.
+    }
+
+    const summarySnippet = resumeData?.summary
+      ? (resumeData.summary.length > 110 ? resumeData.summary.slice(0, 110).trim() + '…' : resumeData.summary)
+      : '';
+
+    let skillTags = '';
+    if (resumeData?.skills?.length) {
+      skillTags = resumeData.skills
+        .slice(0, 3)
+        .map(s => `<span class="tag">${escapeHtml(s)}</span>`)
+        .join('');
     }
 
     const statusTag = c.status === 'accepted'
@@ -1222,7 +1227,7 @@
             <div class="candidate-role">Applied to ${escapeHtml(jobTitle)}</div>
           </div>
         </div>
-        ${headline ? `<div class="candidate-headline">${escapeHtml(headline)}</div>` : ''}
+        ${summarySnippet ? `<div class="candidate-headline">${escapeHtml(summarySnippet)}</div>` : ''}
         <div class="candidate-tags">
           ${statusTag}
           ${skillTags}
@@ -1259,7 +1264,6 @@
     const profile = c.profile;
     const name = profile.full_name || 'Candidate';
     const initials = getInitials(name);
-    const headline = profile.headline || '';
     const jobTitle = c.job ? c.job.title : 'a job';
     const resumePath = profile.resume_file_path;
     const isDecided = c.status === 'accepted' || c.status === 'rejected';
@@ -1317,7 +1321,6 @@
         </div>
       </div>
 
-      ${headline ? `<div class="modal-text">${escapeHtml(headline)}</div>` : ''}
       ${contactLine ? `<div class="modal-contact" style="margin-top:6px;">${contactLine}</div>` : ''}
 
       ${summary ? `<div class="modal-section-title">Summary</div><div class="modal-text">${escapeHtml(summary)}</div>` : ''}
