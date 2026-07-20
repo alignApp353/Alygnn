@@ -656,12 +656,47 @@ function filterJobList(kind){
 }
 
 let toastTimer;
-function showToast(msg){
+function showToast(msg, actionFn){
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
+  t.style.cursor = actionFn ? 'pointer' : 'default';
+  t.onclick = actionFn ? () => { actionFn(); t.classList.remove('show'); } : null;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  toastTimer = setTimeout(() => t.classList.remove('show'), actionFn ? 6000 : 2600);
+}
+
+// Advisory only — never blocks saving. Reuses the same AI-backed check
+// the requirements/benefits picker uses, but purely to offer a "did you
+// mean X?" suggestion the person can tap to accept. Because it can't
+// block anything, a case it judges wrong (like it once did with "fl
+// consulting") just means no suggestion shows up — not a locked-out save.
+async function checkRealisticText(type, text){
+  try{
+    const { data, error } = await sb.functions.invoke('validate-chip-entry', {
+      body: { type, text }
+    });
+    if(error || !data) return null;
+    return data;
+  } catch(e){
+    return null;
+  }
+}
+
+async function checkFieldSpelling(inputEl, type){
+  const value = inputEl.value.trim();
+  if(!value || value.length < 3) return;
+
+  const result = await checkRealisticText(type, value);
+  if(!result || !result.corrected) return;
+
+  const corrected = normalizeText(result.corrected);
+  if(!corrected || corrected.toLowerCase() === value.toLowerCase()) return;
+
+  showToast(`Did you mean "${corrected}"? Tap to fix.`, () => {
+    inputEl.value = corrected;
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 // Loads this candidate's own applications (RLS already lets a candidate
@@ -961,12 +996,12 @@ function renderExperienceRows(){
       <div class="entry-row-wrap">
         <div class="entry-row">
           <select class="form-input" onchange="onTitleSelectChange(${i}, this.value)">${buildPickerOptions(JOB_TITLE_OPTIONS, row.title, titleIsCustom, 'Job title')}</select>
-          <input type="text" class="form-input" placeholder="Company" spellcheck="true" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)">
+          <input type="text" class="form-input" placeholder="Company" spellcheck="true" value="${escapeHtml(row.company)}" oninput="updateExperienceField(${i}, 'company', this.value)" onblur="checkFieldSpelling(this, 'company name')">
           <select class="form-input" onchange="updateExperienceField(${i}, 'startYear', this.value)">${buildYearOptions(row.startYear, false)}</select>
           <select class="form-input" onchange="updateExperienceField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
           <button type="button" class="btn-remove-entry" onclick="removeExperienceRow(${i})">Remove</button>
         </div>
-        ${titleIsCustom ? `<input type="text" class="form-input" placeholder="Enter your job title" spellcheck="true" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)">` : ''}
+        ${titleIsCustom ? `<input type="text" class="form-input" placeholder="Enter your job title" spellcheck="true" value="${escapeHtml(row.title)}" oninput="updateExperienceField(${i}, 'title', this.value)" onblur="checkFieldSpelling(this, 'job title')">` : ''}
       </div>
     `;
   }).join('');
@@ -1039,8 +1074,8 @@ function renderEducationRows(){
           <select class="form-input" onchange="updateEducationField(${i}, 'endYear', this.value)">${buildYearOptions(row.endYear, true)}</select>
           <button type="button" class="btn-remove-entry" onclick="removeEducationRow(${i})">Remove</button>
         </div>
-        ${degreeIsCustom ? `<input type="text" class="form-input" placeholder="Enter your degree or program" spellcheck="true" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)" style="margin-bottom:8px;">` : ''}
-        ${schoolIsCustom ? `<input type="text" class="form-input" placeholder="Enter your school name" spellcheck="true" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)">` : ''}
+        ${degreeIsCustom ? `<input type="text" class="form-input" placeholder="Enter your degree or program" spellcheck="true" value="${escapeHtml(row.degree)}" oninput="updateEducationField(${i}, 'degree', this.value)" onblur="checkFieldSpelling(this, 'degree or program')" style="margin-bottom:8px;">` : ''}
+        ${schoolIsCustom ? `<input type="text" class="form-input" placeholder="Enter your school name" spellcheck="true" value="${escapeHtml(row.school)}" oninput="updateEducationField(${i}, 'school', this.value)" onblur="checkFieldSpelling(this, 'school name')">` : ''}
       </div>
     `;
   }).join('');
