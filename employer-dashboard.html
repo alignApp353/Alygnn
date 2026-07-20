@@ -96,6 +96,15 @@
   .btn-view { font-size: 12px; color: var(--brand); background: var(--brand-light); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
   .btn-view:hover { opacity: 0.8; }
 
+  .candidate-status-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .status-tab-btn {
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted); background: white; border: 1px solid var(--border);
+    border-radius: 100px; padding: 8px 16px; cursor: pointer; transition: all 0.2s;
+  }
+  .status-tab-btn:hover { border-color: var(--brand); color: var(--text); }
+  .status-tab-btn.active { background: var(--brand); color: white; border-color: var(--brand); }
+
   .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
   .candidate-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; transition: all 0.2s; }
   .candidate-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
@@ -361,6 +370,7 @@
         <div class="page-title">Candidates</div>
         <div class="page-sub">Job seekers who swiped right on your listings</div>
       </div>
+      <div class="candidate-status-tabs" id="candidate-status-tabs"></div>
       <!-- Search is wired to filter any element with class "candidate-card" inside
            #candidates-grid by its text content. Works with real candidate cards
            rendered by loadCandidates()/renderCandidates() below. -->
@@ -1168,8 +1178,50 @@
     renderCandidates();
   }
 
+  // 'applied' is the default view — accepting or passing a candidate
+  // moves them out of it automatically, since their status is no longer
+  // 'applied', which is the whole point: the New queue only ever shows
+  // candidates still waiting on a decision.
+  let candidateStatusFilter = 'applied';
+
+  function setCandidateStatusFilter(status) {
+    candidateStatusFilter = status;
+    renderCandidates();
+  }
+
+  function renderStatusTabs() {
+    const tabsEl = document.getElementById('candidate-status-tabs');
+    if (!tabsEl) return;
+
+    if (candidates.length === 0) {
+      tabsEl.innerHTML = '';
+      return;
+    }
+
+    const counts = { applied: 0, accepted: 0, rejected: 0 };
+    candidates.forEach(c => {
+      const s = c.status || 'applied';
+      if (counts[s] !== undefined) counts[s]++;
+    });
+
+    const tabs = [
+      { key: 'applied', label: 'New', count: counts.applied },
+      { key: 'accepted', label: 'Accepted', count: counts.accepted },
+      { key: 'rejected', label: 'Passed', count: counts.rejected },
+      { key: 'all', label: 'All', count: candidates.length }
+    ];
+
+    tabsEl.innerHTML = tabs.map(tab => `
+      <button type="button" class="status-tab-btn ${candidateStatusFilter === tab.key ? 'active' : ''}" onclick="setCandidateStatusFilter('${tab.key}')">
+        ${escapeHtml(tab.label)} (${tab.count})
+      </button>
+    `).join('');
+  }
+
   function renderCandidates() {
     const grid = document.getElementById('candidates-grid');
+
+    renderStatusTabs();
 
     if (candidates.length === 0) {
       grid.innerHTML = `
@@ -1181,7 +1233,22 @@
       return;
     }
 
-    grid.innerHTML = candidates.map(c => renderCandidateCard(c)).join('');
+    const visible = candidateStatusFilter === 'all'
+      ? candidates
+      : candidates.filter(c => (c.status || 'applied') === candidateStatusFilter);
+
+    if (visible.length === 0) {
+      const emptyLabel = candidateStatusFilter === 'accepted' ? 'accepted'
+        : candidateStatusFilter === 'rejected' ? 'passed' : 'new';
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No ${emptyLabel} candidates</div>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = visible.map(c => renderCandidateCard(c)).join('');
     filterCandidates();
   }
 
