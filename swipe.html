@@ -352,6 +352,23 @@
 
       let results = data || [];
 
+      // Never show a job again once the person has applied to it — without
+      // this, the same job kept reappearing indefinitely, and nothing
+      // stopped duplicate applications from piling up for it.
+      if (currentUserId) {
+        const { data: existingApps, error: appsError } = await sb
+          .from('applications')
+          .select('job_id')
+          .eq('candidate_id', currentUserId);
+
+        if (appsError) {
+          console.warn('Could not load existing applications:', appsError);
+        } else {
+          const appliedJobIds = new Set((existingApps || []).map(a => a.job_id));
+          results = results.filter(job => !appliedJobIds.has(job.id));
+        }
+      }
+
       const queryText = (pref.query || '').trim().toLowerCase();
       if (queryText) {
         results = results.filter(job =>
