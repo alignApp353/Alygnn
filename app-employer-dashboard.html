@@ -2,72 +2,2180 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F6F8F7">
-<title>Employer Dashboard | Alygnn</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Employer Dashboard | Alygnn App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',Arial,sans-serif!important}
-:root{--brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;--card:#fff;--text:#172333;--muted:#59697A;--border:#DDE3E8;--green:#2A9D5B;--green-bg:#EAF7EF;--blue-bg:#EBF2FA;--purple-bg:#F1EDFB;--amber:#D99016;--amber-bg:#FFF4DE}
-[hidden]{display:none!important}html,body{width:100%;min-height:100%}body{background:var(--bg);color:var(--text);padding-bottom:calc(78px + env(safe-area-inset-bottom))}button,a,input{font:inherit}button{cursor:pointer}
-.header{position:sticky;top:0;z-index:50;min-height:78px;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:grid;grid-template-columns:48px 1fr 48px;align-items:center;background:rgba(246,248,247,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(18px)}
-.icon-btn{width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--text);display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 4px 14px rgba(23,35,51,.06)}
-.logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:29px;color:var(--brand)}.logo span{color:var(--sage)}
-.notification{position:relative}.notification-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#E64141;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
-.page{max-width:560px;margin:0 auto;padding:21px 16px 30px}.welcome h1{font-size:25px;line-height:1.15;letter-spacing:-.3px}.welcome p{margin-top:6px;color:var(--muted);font-size:14px}
-.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:20px}.metric{min-height:156px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:21px;display:flex;flex-direction:column;justify-content:space-between}
-.metric-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900}.metric-icon.jobs{background:var(--blue-bg);color:#2E68B7}.metric-icon.people{background:var(--green-bg);color:var(--green)}.metric-icon.calendar{background:var(--purple-bg);color:#6548C7}.metric-icon.hired{background:var(--amber-bg);color:var(--amber)}
-.metric-label{font-size:13px;font-weight:700}.metric-value{margin-top:4px;font-size:30px;font-weight:900;letter-spacing:-.7px}.metric-note{margin-top:4px;font-size:11px;color:var(--muted)}.metric-note.positive{color:var(--green)}
-.section{margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:22px;overflow:hidden}.section-head{padding:17px 16px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border)}.section-title{font-size:16px;font-weight:900}.section-link{border:none;background:transparent;color:var(--brand-dark);font-size:12px;font-weight:900}
-.candidate-row{width:100%;padding:14px 15px;border:none;border-bottom:1px solid var(--border);background:#fff;display:grid;grid-template-columns:49px 1fr auto;gap:12px;align-items:center;text-align:left}.candidate-row:last-child{border-bottom:none}.avatar{width:49px;height:49px;border-radius:50%;background:linear-gradient(145deg,#EEF3F7,#DDE6ED);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px}.candidate-name{font-size:14px;font-weight:900}.candidate-job{margin-top:3px;color:var(--muted);font-size:11px}.candidate-meta{margin-top:6px;display:flex;flex-wrap:wrap;gap:7px}.match,.status{border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900}.match,.status.new{color:var(--green);background:var(--green-bg)}.status.interview{background:var(--blue-bg);color:#2E68B7}.status.reviewed{background:#EEF1F4;color:#5A6672}.chevron{color:#8A98A8;font-size:23px}
-.activity-row{padding:14px 15px;display:grid;grid-template-columns:42px 1fr auto;gap:11px;align-items:center;border-bottom:1px solid var(--border)}.activity-row:last-child{border-bottom:none}.activity-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px}.activity-icon.application{background:var(--green-bg);color:var(--green)}.activity-icon.interview{background:var(--purple-bg);color:#6548C7}.activity-icon.job{background:var(--amber-bg);color:var(--amber)}.activity-title{font-size:12px;font-weight:800;line-height:1.35}.activity-sub{margin-top:3px;color:var(--muted);font-size:11px}.activity-time{color:var(--muted);font-size:10px;white-space:nowrap}
-.post-btn{width:100%;min-height:55px;margin-top:16px;border:none;border-radius:17px;background:var(--brand-dark);color:#fff;font-size:15px;font-weight:900;box-shadow:0 8px 21px rgba(52,95,145,.18)}
-.empty{padding:28px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.55}.loading-overlay{position:fixed;inset:0;z-index:100;background:rgba(246,248,247,.96);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}.spinner{width:42px;height:42px;border:4px solid #E5EAEE;border-top-color:var(--brand);border-radius:50%;animation:spin .75s linear infinite}.loading-copy{color:var(--muted);font-size:13px;font-weight:700}@keyframes spin{to{transform:rotate(360deg)}}
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;min-height:72px;padding:9px 7px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(18px)}.nav-item{border:none;background:transparent;color:#6C7988;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;font-weight:800}.nav-icon{font-size:20px}.nav-item.active{color:var(--brand-dark)}
-.menu-sheet{position:fixed;inset:0;z-index:90;background:rgba(23,35,51,.28);display:flex;align-items:flex-end}.menu-panel{width:100%;background:#fff;border-radius:25px 25px 0 0;padding:12px 18px calc(24px + env(safe-area-inset-bottom))}.menu-grip{width:45px;height:5px;margin:0 auto 18px;border-radius:999px;background:#DCE2E7}.menu-title{font-size:20px;font-weight:900;margin-bottom:10px}.menu-link{width:100%;min-height:52px;border:none;border-bottom:1px solid var(--border);background:#fff;color:var(--text);display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800}
-@media(max-width:370px){.page{padding-left:12px;padding-right:12px}.metric{min-height:146px;padding:14px}}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #5D7FA3; --sage: #8CB69B; --bg: #F0F3F2;
+    --card-bg: #FCFCFA; --text: #1A2530; --border: #DDE3E8;
+    --mint: #6FBF8F; --rose: #D79A9A; --text-muted: #4A5968;
+    --brand-light: rgba(93,127,163,0.08);
+    --mint-light: rgba(111,191,143,0.1);
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  nav {
+    background: rgba(246,248,247,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%; display: flex; align-items: center;
+    justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .nav-user { font-size: 13px; color: var(--text-muted); }
+  .btn-logout { font-size: 13px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .btn-logout:hover { border-color: var(--rose); color: var(--rose); }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 64px); }
+
+  .sidebar {
+    background: var(--card-bg); border-right: 1px solid var(--border);
+    padding: 32px 20px; position: sticky; top: 64px;
+    height: calc(100vh - 64px); overflow-y: auto;
+  }
+  .sidebar-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 10px; padding: 0 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    cursor: pointer; transition: all 0.2s;
+    font-size: 14px; color: var(--text-muted); margin-bottom: 2px;
+    border: none; background: none; width: 100%; text-align: left;
+    font-family: 'DM Sans', sans-serif; text-decoration: none;
+  }
+  .nav-item:hover { background: var(--brand-light); color: var(--text); }
+  .nav-item.active { background: var(--brand-light); color: var(--brand); font-weight: 500; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  .main { padding: 40px 5%; }
+
+  .panel { display: none; animation: fadeUp 0.4s ease both; }
+  .panel.active { display: block; }
+
+  .page-header { margin-bottom: 32px; }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 32px; color: var(--text); letter-spacing: -0.5px; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: var(--text-muted); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; }
+  .stat-val { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--text); letter-spacing: -1px; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 16px; font-weight: 500; color: var(--text); }
+  .btn-primary {
+    background: var(--brand); color: white; border: none;
+    border-radius: 100px; padding: 10px 22px; font-size: 13px;
+    font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  .job-row {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px;
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 10px; transition: box-shadow 0.2s;
+  }
+  .job-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .job-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .job-status.active { background: var(--mint); }
+  .job-status.paused { background: var(--rose); }
+  .job-info { flex: 1; }
+  .job-title-text { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .job-meta { font-size: 12px; color: var(--text-muted); }
+  .job-stats { display: flex; gap: 20px; text-align: center; }
+  .js-val { font-size: 16px; font-weight: 500; color: var(--text); }
+  .js-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .btn-view { font-size: 12px; color: var(--brand); background: var(--brand-light); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-view:hover { opacity: 0.8; }
+
+  .candidate-status-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .status-tab-btn {
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    color: var(--text-muted); background: white; border: 1px solid var(--border);
+    border-radius: 100px; padding: 8px 16px; cursor: pointer; transition: all 0.2s;
+  }
+  .status-tab-btn:hover { border-color: var(--brand); color: var(--text); }
+  .status-tab-btn.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+  .candidates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .candidate-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px; transition: all 0.2s; }
+  .candidate-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+  .candidate-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .candidate-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; border: 1px solid var(--border); font-family: 'DM Serif Display', serif; color: var(--brand); }
+  .candidate-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .candidate-role { font-size: 12px; color: var(--text-muted); }
+  .candidate-headline { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
+  .candidate-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; border: 1px solid var(--border); color: var(--text-muted); }
+  .tag.status-accepted { border-color: var(--mint); color: #2d8a57; background: var(--mint-light); }
+  .tag.status-rejected { border-color: var(--rose); color: #a05858; background: rgba(215,154,154,0.12); }
+  .candidate-resume-link { display: inline-block; font-size: 12px; color: var(--brand); text-decoration: none; margin-bottom: 14px; font-weight: 500; }
+  .candidate-resume-link:hover { text-decoration: underline; }
+  .candidate-actions { display: flex; gap: 8px; }
+  .btn-accept { flex: 1; background: var(--mint); color: white; border: none; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .btn-accept:hover { opacity: 0.85; }
+  .btn-accept:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-pass { flex: 1; background: white; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; padding: 9px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .btn-pass:hover { border-color: var(--rose); color: var(--rose); }
+  .btn-pass:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---- Post Job layout: form + live preview ---- */
+  .post-job-grid { display: grid; grid-template-columns: minmax(0, 640px) minmax(280px, 380px); gap: 24px; align-items: start; }
+
+  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 36px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+  .form-label-row { display: flex; align-items: center; justify-content: space-between; }
+  .form-input { background: white; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; }
+  .form-input:focus { border-color: var(--brand); }
+  .form-input::placeholder { color: #aab4bc; }
+  textarea.form-input { resize: vertical; min-height: 120px; }
+  select.form-input { cursor: pointer; }
+  .btn-post { background: var(--brand); color: white; border: none; border-radius: 12px; padding: 14px 32px; font-size: 15px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+  .btn-post:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-post.locked, .btn-primary.locked { opacity: .45; cursor: not-allowed; transform: none; }
+  .verification-lock {
+    background: rgba(231,184,109,0.12);
+    border: 1px solid rgba(231,184,109,0.4);
+    color: #7a5a1a;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .job-actions { display:flex; gap:8px; align-items:center; }
+  .btn-danger { font-size: 12px; color: #a05858; background: rgba(215,154,154,0.15); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+  .btn-danger:hover { opacity: .8; }
+
+  .btn-ai {
+    font-size: 12px; font-weight: 500; color: var(--brand);
+    background: var(--brand-light); border: 1px solid rgba(93,127,163,0.25);
+    border-radius: 100px; padding: 6px 14px; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-ai:hover { opacity: 0.85; }
+  .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ai .spinner {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid rgba(93,127,163,0.3); border-top-color: var(--brand);
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  .btn-ai.loading .spinner { display: inline-block; }
+  .btn-ai.loading .ai-label { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Indeed-style pay builder ---- */
+  .pay-builder { display: flex; flex-direction: column; gap: 10px; }
+  .pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pay-amounts { display: grid; gap: 10px; }
+  .pay-amounts.range { grid-template-columns: 1fr 1fr; }
+  .pay-amounts.single { grid-template-columns: 1fr; }
+  .pay-prefix-input { position: relative; }
+  .pay-prefix-input span {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); font-size: 14px; pointer-events: none;
+  }
+  .pay-prefix-input input { padding-left: 26px; }
+  .pay-preview-line { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ---- Search-to-add pickers (requirements + benefits) ---- */
+  .chip-selected-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .chip-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: white;
+    background: var(--brand); border-radius: 100px; padding: 7px 8px 7px 14px;
+  }
+  .chip-tag button {
+    background: rgba(255,255,255,0.25); border: none; color: white;
+    border-radius: 50%; width: 18px; height: 18px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 11px; line-height: 1; transition: background 0.15s;
+  }
+  .chip-tag button:hover { background: rgba(255,255,255,0.4); }
+  .chip-search-wrap { position: relative; }
+  .chip-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: white; border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-height: 220px; overflow-y: auto;
+    z-index: 20; display: none;
+  }
+  .chip-results.show { display: block; }
+  .chip-result-row {
+    padding: 10px 16px; font-size: 13px; cursor: pointer; transition: background 0.15s;
+  }
+  .chip-result-row:hover { background: var(--brand-light); }
+  .chip-results-empty { padding: 10px 16px; font-size: 12px; color: var(--text-muted); }
+  .chip-count-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* ---- Live preview panel ---- */
+  .preview-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px; position: sticky; top: 88px;
+  }
+  .preview-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin-bottom: 16px; }
+  .preview-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); line-height: 1.25; margin-bottom: 6px; word-break: break-word; }
+  .preview-title.placeholder { color: #aab4bc; }
+  .preview-company { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .preview-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6; }
+  .preview-salary { display: inline-block; font-size: 13px; font-weight: 500; color: var(--mint); background: var(--mint-light); border-radius: 100px; padding: 4px 12px; margin-bottom: 16px; }
+  .preview-section-title { font-size: 12px; font-weight: 500; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; }
+  .preview-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .preview-desc.placeholder { color: #aab4bc; font-style: italic; }
+  .preview-reqs { list-style: disc; padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+  .preview-reqs .placeholder { list-style: none; margin-left: -18px; color: #aab4bc; font-style: italic; }
+  .preview-benefit-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preview-benefit-tag { font-size: 11px; padding: 3px 10px; border-radius: 100px; background: var(--mint-light); color: var(--text); }
+  .preview-divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+  .empty-state { background: var(--card-bg); border: 1px dashed var(--border); border-radius: 14px; padding: 40px 28px; text-align: center; color: var(--text-muted); font-size: 14px; }
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-state .empty-title { font-weight: 500; color: var(--text); margin-bottom: 6px; font-size: 15px; }
+
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: white; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; transition: transform 0.3s ease; z-index: 200; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .candidate-view-link { display: inline-block; font-size: 12px; color: var(--brand); background: none; border: none; padding: 0; margin-bottom: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+  .candidate-view-link:hover { opacity: 0.8; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,37,48,0.45); z-index: 300; align-items: center; justify-content: center; padding: 24px; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: var(--card-bg); border-radius: 20px; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 32px; position: relative; }
+  .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 18px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-top { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; padding-right: 30px; }
+  .modal-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; border: 1px solid var(--border); font-family: 'DM Serif Display', serif; color: var(--brand); }
+  .modal-name { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); margin-bottom: 2px; }
+  .modal-role { font-size: 13px; color: var(--text-muted); }
+  .modal-section-title { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; margin: 20px 0 8px; }
+  .modal-section-title:first-of-type { margin-top: 4px; }
+  .modal-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+  .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .modal-list { list-style: disc; padding-left: 18px; font-size: 14px; color: var(--text); line-height: 1.7; }
+  .modal-contact { font-size: 13px; color: var(--text-muted); }
+  .modal-resume-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--brand); color: white; border: none; text-decoration: none; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 4px; }
+  .modal-resume-btn:hover { opacity: 0.88; }
+  .modal-resume-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 24px; }
+  .modal-empty { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 1150px) {
+    .post-job-grid { grid-template-columns: 1fr; }
+    .preview-card { position: static; }
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .pay-row { grid-template-columns: 1fr; }
+    .pay-amounts.range { grid-template-columns: 1fr; }
+  }
+
+
+  /* ===== Alygnn mobile app shell ===== */
+  *, *::before, *::after { font-family:'DM Sans',Arial,sans-serif !important; }
+  html { background:var(--bg); }
+  body { padding-bottom:calc(84px + env(safe-area-inset-bottom)); -webkit-tap-highlight-color:transparent; }
+  button, a, input, select, textarea { touch-action:manipulation; }
+  nav, .sidebar { display:none !important; }
+  .layout { display:block; min-height:100vh; }
+  .main { width:100%; max-width:560px; margin:0 auto; padding:calc(88px + env(safe-area-inset-top)) 16px 28px; }
+  .app-topbar {
+    position:fixed; z-index:180; top:0; left:0; right:0;
+    height:calc(68px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 18px 0;
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(246,248,247,.94); backdrop-filter:blur(18px);
+    border-bottom:1px solid var(--border);
+  }
+  .app-logo { font-family:'DM Serif Display',Georgia,serif !important; font-size:25px; color:var(--brand); letter-spacing:-.5px; }
+  .app-logo span { color:var(--sage); }
+  .app-profile-btn { width:42px; height:42px; border-radius:50%; border:1px solid var(--border); background:var(--card-bg); color:var(--brand); font-weight:800; display:grid; place-items:center; text-decoration:none; }
+  .app-bottom-nav {
+    position:fixed; z-index:190; left:0; right:0; bottom:0;
+    min-height:calc(70px + env(safe-area-inset-bottom)); padding:7px 10px env(safe-area-inset-bottom);
+    display:grid; grid-template-columns:repeat(4,1fr); gap:4px;
+    background:rgba(252,252,250,.96); backdrop-filter:blur(18px); border-top:1px solid var(--border);
+  }
+  .app-tab { min-height:55px; border:0; border-radius:14px; background:transparent; color:var(--text-muted); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:10px; font-weight:800; }
+  .app-tab svg { width:21px; height:21px; }
+  .app-tab.active { color:var(--brand); background:var(--brand-light); }
+  .page-header { margin-bottom:22px; }
+  .page-title { font-size:29px; line-height:1.08; }
+  .page-sub { font-size:13px; line-height:1.45; margin-top:6px; }
+  .stats-row { grid-template-columns:1fr 1fr !important; gap:10px; margin-bottom:24px; }
+  .stat-card { border-radius:16px; padding:17px; min-width:0; }
+  .stat-val { font-size:31px; }
+  .section-header { align-items:center; gap:12px; }
+  .btn-primary, .btn-post { min-height:46px; border-radius:14px; padding:11px 17px; }
+  .job-row { padding:16px; border-radius:16px; align-items:flex-start; flex-wrap:wrap; gap:12px; }
+  .job-info { min-width:calc(100% - 24px); }
+  .job-stats { width:100%; justify-content:space-around; padding-top:10px; border-top:1px solid var(--border); }
+  .job-actions { width:100%; }
+  .job-actions button { flex:1; min-height:42px; }
+  .candidates-grid { grid-template-columns:1fr !important; gap:12px; }
+  .candidate-card { padding:18px; border-radius:17px; }
+  .candidate-actions button { min-height:44px; }
+  .post-job-grid { grid-template-columns:1fr !important; gap:16px; }
+  .form-card { padding:19px 16px; border-radius:18px; }
+  .form-grid { grid-template-columns:1fr !important; gap:0; }
+  .form-input { min-height:50px; border-radius:14px; font-size:16px; }
+  textarea.form-input { min-height:130px; }
+  .pay-row, .pay-amounts.range { grid-template-columns:1fr !important; }
+  .preview-card { position:static; padding:20px; border-radius:18px; }
+  .modal-overlay { align-items:flex-end; padding:0; }
+  .modal-box { width:100%; max-width:none; max-height:90vh; border-radius:24px 24px 0 0; padding:26px 20px calc(28px + env(safe-area-inset-bottom)); }
+  .modal-actions { position:sticky; bottom:0; background:var(--card-bg); padding-top:12px; }
+  .toast { bottom:calc(88px + env(safe-area-inset-bottom)); max-width:calc(100vw - 32px); white-space:normal; text-align:center; }
+  .candidate-status-tabs { flex-wrap:nowrap; overflow-x:auto; padding-bottom:3px; scrollbar-width:none; }
+  .candidate-status-tabs::-webkit-scrollbar { display:none; }
+  .status-tab-btn { flex:0 0 auto; min-height:42px; }
+  .empty-state { padding:30px 18px; }
+  @media (max-width:380px) {
+    .main { padding-left:12px; padding-right:12px; }
+    .stats-row { grid-template-columns:1fr !important; }
+  }
+
 </style>
 </head>
 <body>
-<div class="loading-overlay" id="loading-overlay"><div class="spinner"></div><div class="loading-copy">Loading employer dashboard…</div></div>
-<header class="header"><button class="icon-btn" id="menu-btn" type="button">☰</button><div class="logo">Alygnn<span>.</span></div><button class="icon-btn notification" id="notifications-btn" type="button">♧<span class="notification-badge" id="notification-count">0</span></button></header>
-<main class="page">
-<section class="welcome"><h1 id="greeting">Good morning</h1><p>Here’s what’s happening with your jobs.</p></section>
-<section class="metrics">
-<article class="metric"><div class="metric-icon jobs">▣</div><div><div class="metric-label">Active Jobs</div><div class="metric-value" id="active-jobs">0</div><div class="metric-note" id="paused-jobs">0 paused</div></div></article>
-<article class="metric"><div class="metric-icon people">♙</div><div><div class="metric-label">New Applicants</div><div class="metric-value" id="new-applicants">0</div><div class="metric-note positive" id="applicant-note">No new activity yet</div></div></article>
-<article class="metric"><div class="metric-icon calendar">□</div><div><div class="metric-label">Interviews Today</div><div class="metric-value" id="interviews-today">0</div><div class="metric-note" id="interview-note">Nothing scheduled</div></div></article>
-<article class="metric"><div class="metric-icon hired">✓</div><div><div class="metric-label">Hired This Month</div><div class="metric-value" id="hired-month">0</div><div class="metric-note positive" id="hired-note">Track hires here</div></div></article>
-</section>
-<section class="section"><div class="section-head"><h2 class="section-title">Top Matches</h2><button class="section-link" id="view-candidates-btn" type="button">View all</button></div><div id="candidate-list"></div></section>
-<section class="section"><div class="section-head"><h2 class="section-title">Recent Activity</h2></div><div id="activity-list"></div></section>
-<button class="post-btn" id="post-job-btn" type="button">＋ Post a Job</button>
-</main>
-<nav class="bottom-nav"><button class="nav-item active"><span class="nav-icon">▦</span><span>Dashboard</span></button><button class="nav-item" id="jobs-nav"><span class="nav-icon">▣</span><span>Jobs</span></button><button class="nav-item" id="candidates-nav"><span class="nav-icon">♙</span><span>Candidates</span></button><button class="nav-item" id="messages-nav"><span class="nav-icon">▢</span><span>Messages</span></button><button class="nav-item" id="more-nav"><span class="nav-icon">•••</span><span>More</span></button></nav>
-<div class="menu-sheet" id="menu-sheet" hidden><div class="menu-panel"><div class="menu-grip"></div><div class="menu-title">Employer Menu</div><button class="menu-link" data-page="app-employer-dashboard.html">Dashboard <span>›</span></button><button class="menu-link" data-page="app-employer-jobs.html">Jobs <span>›</span></button><button class="menu-link" data-page="app-employer-candidates.html">Candidates <span>›</span></button><button class="menu-link" data-page="app-employer-interviews.html">Interviews <span>›</span></button><button class="menu-link" data-page="app-employer-analytics.html">Analytics <span>›</span></button><button class="menu-link" data-page="app-employer-account.html">Company & Settings <span>›</span></button></div></div>
+
+<div class="app-topbar">
+  <div class="app-logo">Alygnn<span>.</span></div>
+  <a class="app-profile-btn" href="app-employer-account.html" aria-label="Employer account">E</a>
+</div>
+
+
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-user-name"></span>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Employer</div>
+    <button class="nav-item active" onclick="showPanel('overview', this)">
+      <span class="nav-icon">📊</span> Overview
+    </button>
+    <button class="nav-item" onclick="showPanel('jobs', this)">
+      <span class="nav-icon">💼</span> My Jobs
+    </button>
+    <button class="nav-item" onclick="showPanel('candidates', this)">
+      <span class="nav-icon">👥</span> Candidates
+    </button>
+    <button class="nav-item" onclick="showPanel('post', this)">
+      <span class="nav-icon">➕</span> Post a Job
+    </button>
+    <hr class="nav-divider">
+    <a href="app-employer-account.html" class="nav-item">
+      <span class="nav-icon">←</span> My account
+    </a>
+  </aside>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Here's how your listings are performing</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-val" id="stat-active">0</div><div class="stat-label">Active jobs</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-views">0</div><div class="stat-label">Total views</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-swipes">0</div><div class="stat-label">Right swipes</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-candidates">0</div><div class="stat-label">New candidates</div></div>
+      </div>
+      <div class="section-header">
+        <div class="section-title">Recent activity</div>
+      </div>
+      <div id="overview-jobs">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">No jobs posted yet</div>
+          Post your first job to start seeing activity here.
+        </div>
+      </div>
+    </div>
+
+    <!-- MY JOBS -->
+    <div class="panel" id="panel-jobs">
+      <div class="page-header">
+        <div class="page-title">My Jobs</div>
+        <div class="page-sub">Manage your job listings</div>
+      </div>
+      <div class="section-header">
+        <div class="section-title">Active listings</div>
+        <button class="btn-primary" onclick="showPanel('post', this)">+ Post new job</button>
+      </div>
+      <input type="text" class="form-input" id="jobs-search-input" placeholder="Search your posted jobs by title, location, or type…" autocomplete="off" oninput="renderJobs()" style="margin-bottom: 16px;">
+      <div id="jobs-list">
+        <div class="empty-state">
+          <div class="empty-icon">💼</div>
+          <div class="empty-title">No active listings</div>
+          Post your first job to start receiving candidates.
+        </div>
+      </div>
+    </div>
+
+    <!-- CANDIDATES -->
+    <div class="panel" id="panel-candidates">
+      <div class="page-header">
+        <div class="page-title">Candidates</div>
+        <div class="page-sub">Job seekers who swiped right on your listings</div>
+      </div>
+      <div class="candidate-status-tabs" id="candidate-status-tabs"></div>
+      <!-- Search is wired to filter any element with class "candidate-card" inside
+           #candidates-grid by its text content. Works with real candidate cards
+           rendered by loadCandidates()/renderCandidates() below. -->
+      <input type="text" class="form-input" id="candidates-search-input" placeholder="Search candidates by name, role, or skill…" autocomplete="off" oninput="filterCandidates()" style="margin-bottom: 16px;">
+      <div id="candidates-grid" class="candidates-grid">
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No candidates yet</div>
+          Once job seekers apply to your listings, they'll appear here.
+        </div>
+      </div>
+    </div>
+
+    <!-- POST JOB -->
+    <div class="panel" id="panel-post">
+      <div class="page-header">
+        <div class="page-title" id="post-form-title">Post a Job</div>
+        <div class="page-sub">Fill in the details and start finding candidates</div>
+      </div>
+      <div class="verification-lock" id="verification-lock" style="display:none;">
+        Your business must be approved by Alygnn before you can post jobs.
+      </div>
+
+      <div class="post-job-grid">
+        <div class="form-card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Job title</label>
+              <input type="text" class="form-input" id="f-title" placeholder="e.g. Senior Designer" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company name</label>
+              <input type="text" class="form-input" id="f-company" placeholder="Your company" oninput="updatePreview()" readonly style="background: var(--bg); color: var(--text-muted); cursor: not-allowed;">
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Matches your verified company profile. <a href="app-employer-account.html" style="color: var(--brand);">Edit in account settings</a>.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-input" id="f-location" placeholder="Start typing a city, like Raleigh, NC" autocomplete="off" oninput="updatePreview()">
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Select a real location from Google suggestions.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job type</label>
+              <select class="form-input" id="f-type" onchange="updatePreview()">
+                <option>Full-time</option>
+                <option>Part-time</option>
+                <option>Contract</option>
+                <option>Internship</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job location type</label>
+              <select class="form-input" id="f-style" onchange="updatePreview()">
+                <option value="Remote">Remote</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="On-site">In person</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <!-- spacer to keep grid aligned; pay builder spans full width below -->
+            </div>
+
+            <div class="form-group full">
+              <label class="form-label">Pay</label>
+              <div class="pay-builder">
+                <div class="pay-row">
+                  <select class="form-input" id="f-pay-type" onchange="onPayTypeChange()">
+                    <option value="range">Range</option>
+                    <option value="exact">Exact amount</option>
+                    <option value="starting">Starting amount</option>
+                    <option value="maximum">Maximum amount</option>
+                  </select>
+                  <select class="form-input" id="f-pay-period" onchange="updatePreview()">
+                    <option value="year">Per year</option>
+                    <option value="hour">Per hour</option>
+                    <option value="month">Per month</option>
+                    <option value="week">Per week</option>
+                  </select>
+                </div>
+                <div class="pay-amounts range" id="pay-amounts-wrap">
+                  <div class="pay-prefix-input">
+                    <span>$</span>
+                    <input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="Minimum" oninput="updatePreview()">
+                  </div>
+                  <div class="pay-prefix-input">
+                    <span>$</span>
+                    <input type="number" min="0" step="1" class="form-input" id="f-pay-max" placeholder="Maximum" oninput="updatePreview()">
+                  </div>
+                </div>
+                <div class="pay-preview-line" id="pay-preview-line">Enter an amount to see a preview.</div>
+              </div>
+              <!-- Hidden field kept for backward compatibility with existing validation / Supabase column -->
+              <input type="hidden" id="f-salary">
+            </div>
+
+            <div class="form-group full">
+              <div class="form-label-row">
+                <label class="form-label">Job description</label>
+                <button type="button" class="btn-ai" id="ai-generate-btn" onclick="generateDescription()">
+                  <span class="spinner"></span>
+                  <span class="ai-label">✨ Generate with AI</span>
+                </button>
+              </div>
+              <textarea class="form-input" id="f-desc" placeholder="Describe the role, responsibilities, and what you're looking for..." oninput="updatePreview()"></textarea>
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Fill in job title and company first, then generate a draft you can edit.</small>
+            </div>
+
+            <!-- REQUIREMENTS: search to add from a fixed list -->
+            <div class="form-group full">
+              <label class="form-label">Requirements</label>
+              <div class="chip-selected-wrap" id="req-selected-wrap"></div>
+              <div class="chip-search-wrap">
+                <input type="text" class="form-input" id="req-search-input" placeholder="Search requirements, e.g. Forklift, Spanish, CPR" autocomplete="off"
+                  oninput="filterResults('req')" onfocus="filterResults('req')" onblur="setTimeout(() => hideResults('req'), 150)">
+                <div class="chip-results" id="req-results"></div>
+              </div>
+              <div class="chip-count-note" id="req-count-note">Select at least 3.</div>
+              <input type="hidden" id="f-reqs">
+            </div>
+
+            <!-- BENEFITS: search to add from a fixed list -->
+            <div class="form-group full">
+              <label class="form-label">Benefits <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+              <div class="chip-selected-wrap" id="benefit-selected-wrap"></div>
+              <div class="chip-search-wrap">
+                <input type="text" class="form-input" id="benefit-search-input" placeholder="Search benefits, e.g. Gym, 401k, PTO" autocomplete="off"
+                  oninput="filterResults('benefit')" onfocus="filterResults('benefit')" onblur="setTimeout(() => hideResults('benefit'), 150)">
+                <div class="chip-results" id="benefit-results"></div>
+              </div>
+              <input type="hidden" id="f-benefits">
+            </div>
+          </div>
+          <button class="btn-post" id="post-job-btn" onclick="postJob()">Post job →</button>
+          <button class="btn-view" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none; margin-left:8px;">Cancel edit</button>
+        </div>
+
+        <!-- LIVE PREVIEW -->
+        <div class="preview-card">
+          <div class="preview-label">Live preview</div>
+          <div class="preview-title placeholder" id="pv-title">Job title will appear here</div>
+          <div class="preview-company" id="pv-company"></div>
+          <div class="preview-meta" id="pv-meta"></div>
+          <div id="pv-salary-wrap"></div>
+
+          <hr class="preview-divider">
+
+          <div class="preview-section-title">Description</div>
+          <div class="preview-desc placeholder" id="pv-desc">Your job description will show up here as you type.</div>
+
+          <div class="preview-section-title">Requirements</div>
+          <ul class="preview-reqs" id="pv-reqs">
+            <li class="placeholder">Select requirements above to see them listed here.</li>
+          </ul>
+
+          <div class="preview-section-title" id="pv-benefits-title" style="display:none;">Benefits</div>
+          <div class="preview-benefit-tags" id="pv-benefits"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="candidate-modal-overlay" onclick="if (event.target === this) closeCandidateModal()">
+  <div class="modal-box" id="candidate-modal-box"></div>
+</div>
+
 <script>
-const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let session=null,employerJobs=[],applications=[];
-const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
-const initials=n=>{const p=String(n||'Candidate').trim().split(/\s+/);return ((p[0]?.[0]||'C')+(p[1]?.[0]||'')).toUpperCase()};
-function timeAgo(v){if(!v)return'Recently';const d=new Date(v);if(isNaN(d))return'Recently';const m=Math.floor((Date.now()-d)/60000);if(m<60)return Math.max(1,m)+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
-function isToday(v){if(!v)return false;const d=new Date(v),n=new Date();return d.toDateString()===n.toDateString()}
-function isThisMonth(v){if(!v)return false;const d=new Date(v),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}
-function fullName(p){return p?.full_name||p?.name||[p?.first_name,p?.last_name].filter(Boolean).join(' ')||'Candidate'}
-function statusClass(s){s=String(s||'new').toLowerCase();if(s.includes('interview'))return'interview';if(s.includes('review'))return'reviewed';return'new'}
-function jobTitleFor(a){return employerJobs.find(j=>String(j.id)===String(a.job_id))?.title||a.job_title||'Position'}
-async function queryEmployerJobs(id){for(const col of['employer_id','created_by','user_id','owner_id']){const {data,error}=await sb.from('jobs').select('*').eq(col,id).order('created_at',{ascending:false});if(!error)return data||[]}return[]}
-async function queryApplications(ids){if(!ids.length)return[];const {data,error}=await sb.from('applications').select('*').in('job_id',ids).order('created_at',{ascending:false});return error?[]:data||[]}
-async function queryProfiles(ids){if(!ids.length)return new Map();const {data,error}=await sb.from('profiles').select('*').in('id',ids);return error?new Map():new Map((data||[]).map(p=>[String(p.id),p]))}
-function renderMetrics(){const active=employerJobs.filter(j=>!['paused','closed','draft','inactive'].includes(String(j.status||'active').toLowerCase())).length;const paused=employerJobs.filter(j=>String(j.status||'').toLowerCase()==='paused').length;const fresh=applications.filter(a=>['new','applied','pending'].includes(String(a.status||'new').toLowerCase())).length;const interviews=applications.filter(a=>String(a.status||'').toLowerCase().includes('interview')&&isToday(a.interview_at||a.interview_date||a.updated_at)).length;const hired=applications.filter(a=>String(a.status||'').toLowerCase().includes('hire')&&isThisMonth(a.hired_at||a.updated_at)).length;activeJobs.textContent=active;pausedJobs.textContent=paused+' paused';newApplicants.textContent=fresh;applicantNote.textContent=fresh?fresh+' waiting for review':'No new activity yet';interviewsToday.textContent=interviews;interviewNote.textContent=interviews?interviews+' scheduled today':'Nothing scheduled';hiredMonth.textContent=hired;hiredNote.textContent=hired?hired+' hire'+(hired===1?'':'s')+' this month':'Track hires here';notificationCount.textContent=fresh}
-function renderCandidates(map){if(!applications.length){candidateList.innerHTML='<div class="empty">Your strongest candidates will appear here after people apply to your jobs.</div>';return}candidateList.innerHTML=[...applications].sort((a,b)=>Number(b.match_score||0)-Number(a.match_score||0)).slice(0,5).map(a=>{const id=String(a.candidate_id||a.user_id||a.profile_id||''),p=map.get(id)||{},name=fullName(p),score=Math.round(Number(a.match_score||0)),s=String(a.status||'new').toLowerCase();return `<button class="candidate-row" data-candidate="${e(id)}" data-application="${e(a.id)}"><div class="avatar">${e(initials(name))}</div><div><div class="candidate-name">${e(name)}</div><div class="candidate-job">${e(jobTitleFor(a))}</div><div class="candidate-meta"><span class="match">${score?score+'% Match':'Match pending'}</span><span class="status ${statusClass(s)}">${e(s.charAt(0).toUpperCase()+s.slice(1))}</span></div></div><div class="chevron">›</div></button>`}).join('')}
-function renderActivity(map){if(!applications.length&&!employerJobs.length){activityList.innerHTML='<div class="empty">Applications, interviews, and job updates will appear here.</div>';return}const arr=[];applications.slice(0,5).forEach(a=>{const id=String(a.candidate_id||a.user_id||a.profile_id||''),name=fullName(map.get(id)||{}),s=String(a.status||'').toLowerCase();arr.push({type:s.includes('interview')?'interview':'application',icon:s.includes('interview')?'□':'♙',title:s.includes('interview')?'Interview update for '+name:name+' applied',sub:jobTitleFor(a),time:timeAgo(a.updated_at||a.created_at||a.applied_at)})});employerJobs.slice(0,2).forEach(j=>arr.push({type:'job',icon:'▣',title:'Job listing '+(String(j.status||'active').toLowerCase()==='active'?'is active':'was updated'),sub:j.title||'Position',time:timeAgo(j.updated_at||j.created_at)}));activityList.innerHTML=arr.slice(0,6).map(x=>`<div class="activity-row"><div class="activity-icon ${e(x.type)}">${e(x.icon)}</div><div><div class="activity-title">${e(x.title)}</div><div class="activity-sub">${e(x.sub)}</div></div><div class="activity-time">${e(x.time)}</div></div>`).join('')}
-const go=p=>location.href=p;
-menuBtn.onclick=()=>menuSheet.hidden=false;moreNav.onclick=()=>menuSheet.hidden=false;menuSheet.onclick=x=>{if(x.target===menuSheet)menuSheet.hidden=true};document.querySelectorAll('.menu-link').forEach(b=>b.onclick=()=>go(b.dataset.page));postJobBtn.onclick=()=>go('app-post-job.html');jobsNav.onclick=()=>go('app-employer-jobs.html');candidatesNav.onclick=()=>go('app-employer-candidates.html');messagesNav.onclick=()=>go('app-employer-messages.html');viewCandidatesBtn.onclick=()=>go('app-employer-candidates.html');notificationsBtn.onclick=()=>go('app-employer-candidates.html?filter=new');candidateList.onclick=x=>{const r=x.target.closest('.candidate-row');if(!r)return;const q=new URLSearchParams();if(r.dataset.candidate)q.set('candidate',r.dataset.candidate);if(r.dataset.application)q.set('application',r.dataset.application);go('app-employer-candidate.html?'+q)};
-(async()=>{try{const {data,error}=await sb.auth.getSession();if(error||!data.session){location.replace('app-login.html');return}session=data.session;const dn=session.user.user_metadata?.full_name||session.user.user_metadata?.name||session.user.email?.split('@')[0]||'there';greeting.textContent='Good morning, '+String(dn).trim().split(/\s+/)[0]+' 👋';employerJobs=await queryEmployerJobs(session.user.id);applications=await queryApplications(employerJobs.map(j=>j.id).filter(Boolean));const ids=[...new Set(applications.map(a=>a.candidate_id||a.user_id||a.profile_id).filter(Boolean).map(String))];const map=await queryProfiles(ids);renderMetrics();renderCandidates(map);renderActivity(map)}catch(err){console.error(err);renderMetrics();renderCandidates(new Map());renderActivity(new Map())}finally{loadingOverlay.hidden=true;loadingOverlay.style.display='none'}})();
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let jobs = [];
+  let jobAppliedCounts = {};
+  let candidates = [];
+  let candidatesLoaded = false;
+  let employerVerified = false;
+  let currentProfile = null;
+  let currentUser = null;
+  let editingJobId = null;
+  let selectedGooglePlace = null;
+  let locationAutocomplete = null;
+
+  // ---- Search-to-add picker state ----
+  const REQUIREMENT_PRESETS = [
+    'High school diploma or equivalent',
+    "Bachelor's degree",
+    'Associate degree',
+    '1+ years of experience',
+    '2+ years of experience',
+    '3+ years of experience',
+    '5+ years of experience',
+    "Valid driver's license",
+    'Reliable transportation',
+    'Own vehicle',
+    'Weekend availability',
+    'Evening availability',
+    'Overnight availability',
+    'Bilingual (English/Spanish)',
+    'Fluent in Spanish',
+    'Fluent in French',
+    'Fluent in Mandarin',
+    'Fluent in Turkish',
+    'Strong communication skills',
+    'Customer service experience',
+    'Cash handling experience',
+    'Sales experience',
+    'Leadership experience',
+    'Project management experience',
+    'Data entry experience',
+    'Time management skills',
+    'Proficiency in Microsoft Office',
+    'Proficiency in Excel',
+    'Proficiency in Photoshop',
+    'Proficiency in Adobe Creative Suite',
+    'Social media management experience',
+    'Typing 40+ WPM',
+    'CPR certified',
+    'First aid certified',
+    'Food handler certification',
+    'Forklift certified',
+    'Able to lift 30+ lbs',
+    'Able to lift 50+ lbs',
+    'Able to stand for long periods',
+    'Background check required',
+    'Drug test required'
+  ];
+
+  const BENEFIT_PRESETS = [
+    'Health insurance',
+    'Dental insurance',
+    'Vision insurance',
+    'Life insurance',
+    'Disability insurance',
+    'Pet insurance',
+    'Paid time off',
+    'Parental leave',
+    'Sick leave',
+    '401(k)',
+    '401(k) matching',
+    '403(b)',
+    'Flexible schedule',
+    'Flexible spending account',
+    'Health savings account',
+    'Tuition reimbursement',
+    'Retirement plan',
+    'Employee discount',
+    'Referral program',
+    'Professional development assistance',
+    'Employee assistance program',
+    'Gym membership',
+    'Wellness program',
+    'Commuter benefits',
+    'Free parking',
+    'Free snacks',
+    'Company car',
+    'Signing bonus',
+    'Relocation assistance',
+    'Childcare assistance',
+    'Remote work stipend'
+  ];
+
+  const chipState = {
+    req: { selected: new Set(), custom: [] },
+    benefit: { selected: new Set(), custom: [] }
+  };
+
+  const MAX_RESULTS_SHOWN = 8;
+
+  function presetsFor(type) {
+    return type === 'req' ? REQUIREMENT_PRESETS : BENEFIT_PRESETS;
+  }
+
+  function labelsFor(type) {
+    const state = chipState[type];
+    return [...presetsFor(type), ...state.custom];
+  }
+
+  function renderSelectedChips(type) {
+    const wrapId = type === 'req' ? 'req-selected-wrap' : 'benefit-selected-wrap';
+    const wrap = document.getElementById(wrapId);
+    const state = chipState[type];
+    const ordered = labelsFor(type).filter(v => state.selected.has(v));
+
+    wrap.innerHTML = '';
+
+    ordered.forEach(value => {
+      const tag = document.createElement('span');
+      tag.className = 'chip-tag';
+      tag.appendChild(document.createTextNode(value));
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '✕';
+      removeBtn.setAttribute('aria-label', 'Remove ' + value);
+      removeBtn.addEventListener('click', () => removeSelected(type, value));
+
+      tag.appendChild(removeBtn);
+      wrap.appendChild(tag);
+    });
+
+    if (type === 'req') {
+      const note = document.getElementById('req-count-note');
+      const count = state.selected.size;
+      note.textContent = count >= 3
+        ? `${count} selected`
+        : `Select at least 3 (${count} selected).`;
+    }
+  }
+
+  const PROFANITY_BLOCKLIST = [
+    'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt', 'bastard',
+    'slut', 'whore', 'cock', 'nigger', 'nigga', 'faggot', 'retard',
+    'blowjob', 'handjob', 'porn', 'kill yourself'
+  ];
+
+  function containsProfanity(value) {
+    const text = normalizeText(value).toLowerCase();
+    return PROFANITY_BLOCKLIST.some(word => {
+      if (word.includes(' ')) return text.includes(word);
+      return new RegExp('\\b' + word + '\\b', 'i').test(text);
+    });
+  }
+
+  function isValidNewEntry(value) {
+    const clean = normalizeText(value);
+    if (clean.length < 3 || clean.length > 60) return false;
+    if (containsProfanity(clean)) return false;
+    if (containsBlockedJunk(clean)) return false;
+    if (hasRepeatedJunk(clean)) return false;
+    return true;
+  }
+
+  function filterResults(type) {
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
+    const input = document.getElementById(inputId);
+    const resultsBox = document.getElementById(resultsId);
+    const state = chipState[type];
+    const rawQuery = input.value.trim();
+    const query = rawQuery.toLowerCase();
+
+    const available = presetsFor(type).filter(v => !state.selected.has(v));
+    const matches = (query === ''
+      ? available
+      : available.filter(v => v.toLowerCase().includes(query))
+    ).slice(0, MAX_RESULTS_SHOWN);
+
+    resultsBox.innerHTML = '';
+
+    matches.forEach(value => {
+      const row = document.createElement('div');
+      row.className = 'chip-result-row';
+      row.textContent = value;
+      // mousedown fires before the input's blur handler, so the click
+      // registers before the dropdown gets hidden.
+      row.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectResult(type, value);
+      });
+      resultsBox.appendChild(row);
+    });
+
+    if (query === '' && matches.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'chip-results-empty';
+      empty.textContent = 'Start typing to search the list.';
+      resultsBox.appendChild(empty);
+    } else if (query !== '') {
+      // Not on the preset list (or not a full match) — offer to add exactly
+      // what was typed, as long as it's not junk/profanity. Anything typed
+      // here still gets checked by Claude before it's actually added.
+      const alreadyExists = [...presetsFor(type), ...state.custom]
+        .some(v => v.toLowerCase() === query);
+
+      if (!alreadyExists) {
+        if (isValidNewEntry(rawQuery)) {
+          const addRow = document.createElement('div');
+          addRow.className = 'chip-result-row';
+          addRow.innerHTML = `<strong>+ Add</strong> "${escapeHtml(rawQuery)}"`;
+          addRow.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            addNewEntry(type, rawQuery);
+          });
+          resultsBox.appendChild(addRow);
+        } else if (matches.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'chip-results-empty';
+          empty.textContent = 'No matches, and that doesn\'t look like a valid entry.';
+          resultsBox.appendChild(empty);
+        }
+      } else if (matches.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'chip-results-empty';
+        empty.textContent = 'Already added.';
+        resultsBox.appendChild(empty);
+      }
+    }
+
+    resultsBox.classList.add('show');
+  }
+
+  // Custom entries are checked by Claude (via the validate-chip-entry Edge
+  // Function) before they're actually added — the local isValidNewEntry
+  // check above is just a fast pre-filter to avoid an API call for obvious
+  // profanity/junk. Claude catches typos and meaningless words that regex
+  // can't (e.g. "optt", "extra") and can auto-correct small typos.
+  async function addNewEntry(type, rawValue) {
+    const clean = normalizeText(rawValue);
+
+    if (!isValidNewEntry(clean)) {
+      showToast(type === 'req'
+        ? 'Enter a real requirement, like "TIG Welding" or "OSHA 10 certification".'
+        : 'Enter a real benefit, like "Company vehicle" or "On-site childcare".');
+      return;
+    }
+
+    const state = chipState[type];
+    const existsLocally = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === clean.toLowerCase());
+    if (existsLocally) {
+      showToast('That one is already in the list.');
+      return;
+    }
+
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
+    const input = document.getElementById(inputId);
+    const resultsBox = document.getElementById(resultsId);
+
+    resultsBox.innerHTML = `<div class="chip-results-empty">Checking "${escapeHtml(clean)}"...</div>`;
+    resultsBox.classList.add('show');
+
+    try {
+      const { data, error } = await sb.functions.invoke('validate-chip-entry', {
+        body: { type: type === 'req' ? 'requirement' : 'benefit', text: clean }
+      });
+
+      if (error || !data) {
+        console.error('Validate chip entry failed:', error);
+        showToast('Could not check that entry. Try again in a moment.');
+        filterResults(type);
+        return;
+      }
+
+      if (!data.valid) {
+        showToast(type === 'req'
+          ? 'That doesn\'t look like a real requirement — check the spelling or try being more specific.'
+          : 'That doesn\'t look like a real benefit — check the spelling or try being more specific.');
+        filterResults(type);
+        return;
+      }
+
+      const finalValue = normalizeText(data.corrected || clean);
+      const existsNow = [...presetsFor(type), ...state.custom].some(v => v.toLowerCase() === finalValue.toLowerCase());
+      if (existsNow) {
+        showToast('That one is already in the list.');
+        filterResults(type);
+        return;
+      }
+
+      state.custom.push(finalValue);
+      state.selected.add(finalValue);
+
+      input.value = '';
+      input.focus();
+
+      renderSelectedChips(type);
+      filterResults(type);
+      syncChipHiddenField(type);
+      updatePreview();
+    } catch (err) {
+      console.error('Validate chip entry error:', err);
+      showToast('Could not check that entry. Try again in a moment.');
+      filterResults(type);
+    }
+  }
+
+  function hideResults(type) {
+    const resultsId = type === 'req' ? 'req-results' : 'benefit-results';
+    document.getElementById(resultsId).classList.remove('show');
+  }
+
+  function selectResult(type, value) {
+    const state = chipState[type];
+    state.selected.add(value);
+
+    const inputId = type === 'req' ? 'req-search-input' : 'benefit-search-input';
+    const input = document.getElementById(inputId);
+    input.value = '';
+    input.focus();
+
+    renderSelectedChips(type);
+    filterResults(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
+  function removeSelected(type, value) {
+    const state = chipState[type];
+    state.selected.delete(value);
+    // Legacy custom entries saved before the search picker existed —
+    // once removed they can't be re-added since there's no free text anymore.
+    state.custom = state.custom.filter(v => v !== value);
+
+    renderSelectedChips(type);
+    syncChipHiddenField(type);
+    updatePreview();
+  }
+
+  function syncChipHiddenField(type) {
+    const fieldId = type === 'req' ? 'f-reqs' : 'f-benefits';
+    const state = chipState[type];
+    const ordered = labelsFor(type).filter(v => state.selected.has(v));
+    document.getElementById(fieldId).value = ordered.join('\n');
+  }
+
+  function resetChips(type, presetValues) {
+    chipState[type].selected = new Set(presetValues || []);
+    chipState[type].custom = (presetValues || []).filter(v => !presetsFor(type).includes(v));
+    renderSelectedChips(type);
+    syncChipHiddenField(type);
+  }
+
+  async function checkAuth() {
+    const { data, error } = await sb.auth.getUser();
+    const authedUser = data && data.user;
+
+    if (error || !authedUser) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    currentUser = authedUser;
+
+    const role = String(authedUser.user_metadata?.role || '').toLowerCase();
+    if (role === 'seeker' || role === 'job_seeker') {
+      window.location.href = 'account.html';
+      return;
+    }
+
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('company_name, full_name, employer_verified, verification_status')
+      .eq('id', authedUser.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('Failed to load employer profile:', profileError);
+    }
+
+    currentProfile = profile || {};
+    employerVerified =
+      profile?.employer_verified === true &&
+      profile?.verification_status === 'approved';
+
+    const displayName =
+      profile?.company_name ||
+      profile?.full_name ||
+      authedUser.user_metadata?.full_name ||
+      authedUser.user_metadata?.name ||
+      authedUser.email || '';
+
+    document.getElementById('nav-user-name').textContent = displayName;
+
+    const companyInput = document.getElementById('f-company');
+    if (companyInput && profile?.company_name) {
+      companyInput.value = profile.company_name;
+    }
+
+    renderSelectedChips('req');
+    renderSelectedChips('benefit');
+
+    updateVerificationUI();
+    await loadJobs();
+    loadPanelData(getPanelFromHash());
+  }
+
+  const VALID_PANELS = ['overview', 'jobs', 'candidates', 'post'];
+
+  function getPanelFromHash() {
+    const hash = (window.location.hash || '').replace('#', '');
+    return VALID_PANELS.includes(hash) ? hash : 'overview';
+  }
+
+  // Only toggles which panel/nav-item is visually active — no data
+  // fetching, no network calls. Safe to call before checkAuth() resolves
+  // so the correct tab is on screen immediately, instead of always
+  // painting Overview first and swapping a moment later.
+  function applyPanelVisual(name, trigger) {
+    const targetPanel = document.getElementById('panel-' + name);
+    if (!targetPanel) return;
+
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    targetPanel.classList.add('active');
+
+    const navButton = trigger && trigger.classList && trigger.classList.contains('nav-item')
+      ? trigger
+      : document.querySelector(`.nav-item[onclick*="${name}"]`);
+
+    if (navButton) navButton.classList.add('active');
+
+    // currentProfile isn't loaded yet on the very first sync call before
+    // checkAuth() finishes — skip it here and let checkAuth's later
+    // loadPanelData path (which runs after updateVerificationUI already
+    // ran once) keep the lock UI correct.
+    if (currentProfile !== null) updateVerificationUI();
+
+    if (window.location.hash !== '#' + name) {
+      history.replaceState(null, '', '#' + name);
+    }
+  }
+
+  // The actual data-fetching side effects for a given panel.
+  function loadPanelData(name) {
+    if (name === 'post') updatePreview();
+    if (name === 'candidates') loadCandidates();
+  }
+
+  function showPanel(name, trigger) {
+    if (name === 'post' && !employerVerified) {
+      showToast('Your business must be approved by Alygnn before posting jobs.');
+    }
+
+    applyPanelVisual(name, trigger);
+    loadPanelData(name);
+  }
+
+  // Switch to the right panel immediately based on the URL hash, before
+  // checkAuth()'s network calls even start — this is what prevents the
+  // "flashes Overview, then jumps to Candidates" flicker on refresh.
+  applyPanelVisual(getPanelFromHash());
+
+  checkAuth();
+
+  function updateVerificationUI() {
+    const lockBox = document.getElementById('verification-lock');
+    const postBtn = document.getElementById('post-job-btn');
+
+    if (employerVerified) {
+      if (lockBox) lockBox.style.display = 'none';
+      if (postBtn) {
+        postBtn.classList.remove('locked');
+        postBtn.disabled = false;
+      }
+      return;
+    }
+
+    const status = currentProfile?.verification_status || 'not_submitted';
+
+    if (lockBox) {
+      lockBox.style.display = 'block';
+      lockBox.innerHTML = `
+        <strong>Business verification required</strong><br>
+        Current status: <strong>${escapeHtml(status)}</strong>. Your business must be approved by Alygnn before you can post jobs.
+        <br><br>
+        <a href="app-employer-account.html" style="color:#5D7FA3; font-weight:500;">Go to employer account →</a>
+      `;
+    }
+
+    if (postBtn) {
+      postBtn.classList.add('locked');
+      postBtn.disabled = true;
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(part => part[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  }
+
+  async function loadJobs() {
+    if (!currentUser) return;
+
+    const { data, error } = await sb
+      .from('jobs')
+      .select('*')
+      .eq('employer_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to load jobs:', error);
+      showToast('Could not load jobs from Supabase.');
+      return;
+    }
+
+    jobs = data || [];
+    await loadAppliedCounts();
+    renderJobs();
+  }
+
+  // The "Applied" number shown per job is computed live from the
+  // applications table (the same source Candidates already reads from)
+  // instead of trusting a stored jobs.applied counter — that counter could
+  // only ever be written by the employer under RLS, so a job seeker's
+  // client had no way to keep it accurate and it just stayed at 0.
+  async function loadAppliedCounts() {
+    jobAppliedCounts = {};
+    if (jobs.length === 0) return;
+
+    const jobIds = jobs.map(j => j.id);
+
+    const { data, error } = await sb
+      .from('applications')
+      .select('job_id')
+      .in('job_id', jobIds);
+
+    if (error) {
+      console.error('Failed to load applied counts:', error);
+      return;
+    }
+
+    (data || []).forEach(row => {
+      jobAppliedCounts[row.job_id] = (jobAppliedCounts[row.job_id] || 0) + 1;
+    });
+  }
+
+  // ---- Candidates: applications for this employer's jobs, joined with
+  // the applicant's profile. Requires two RLS policies on top of the
+  // default "candidates manage their own applications" policy:
+  //   1. Employers can SELECT applications where job_id belongs to them
+  //   2. Employers can SELECT profiles of candidates who applied to their jobs
+  // Accept/Pass additionally requires an UPDATE policy on applications
+  // scoped the same way as the SELECT policy above.
+  async function loadCandidates() {
+    if (!currentUser) return;
+
+    if (jobs.length === 0) {
+      candidates = [];
+      candidatesLoaded = true;
+      renderCandidates();
+      return;
+    }
+
+    const jobIds = jobs.map(j => j.id);
+
+    const { data: apps, error: appsError } = await sb
+      .from('applications')
+      .select('id, job_id, candidate_id, status, applied_at')
+      .in('job_id', jobIds)
+      .order('applied_at', { ascending: false });
+
+    if (appsError) {
+      console.error('Failed to load applications:', appsError);
+      showToast('Could not load candidates.');
+      return;
+    }
+
+    if (!apps || apps.length === 0) {
+      candidates = [];
+      candidatesLoaded = true;
+      renderCandidates();
+      return;
+    }
+
+    const candidateIds = [...new Set(apps.map(a => a.candidate_id))];
+
+    const { data: profilesData, error: profilesError } = await sb
+      .from('profiles')
+      .select('id, full_name, resume_file_path, resume_data')
+      .in('id', candidateIds);
+
+    if (profilesError) {
+      console.error('Failed to load candidate profiles:', profilesError);
+    }
+
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    const jobMap = {};
+    jobs.forEach(j => { jobMap[j.id] = j; });
+
+    candidates = apps
+      .map(app => ({
+        applicationId: app.id,
+        status: app.status || 'applied',
+        appliedAt: app.applied_at,
+        job: jobMap[app.job_id] || null,
+        profile: profileMap[app.candidate_id] || null
+      }))
+      // Only show applications where we could actually load the candidate's
+      // profile — if this filters everyone out, the "Employers can view
+      // profiles of their applicants" RLS policy on profiles is missing.
+      .filter(c => c.profile);
+
+    candidatesLoaded = true;
+    renderCandidates();
+  }
+
+  // 'applied' is the default view — accepting or passing a candidate
+  // moves them out of it automatically, since their status is no longer
+  // 'applied', which is the whole point: the New queue only ever shows
+  // candidates still waiting on a decision.
+  let candidateStatusFilter = 'applied';
+
+  function setCandidateStatusFilter(status) {
+    candidateStatusFilter = status;
+    renderCandidates();
+  }
+
+  function renderStatusTabs() {
+    const tabsEl = document.getElementById('candidate-status-tabs');
+    if (!tabsEl) return;
+
+    if (candidates.length === 0) {
+      tabsEl.innerHTML = '';
+      return;
+    }
+
+    const counts = { applied: 0, accepted: 0, rejected: 0 };
+    candidates.forEach(c => {
+      const s = c.status || 'applied';
+      if (counts[s] !== undefined) counts[s]++;
+    });
+
+    const tabs = [
+      { key: 'applied', label: 'New', count: counts.applied },
+      { key: 'accepted', label: 'Accepted', count: counts.accepted },
+      { key: 'rejected', label: 'Passed', count: counts.rejected },
+      { key: 'all', label: 'All', count: candidates.length }
+    ];
+
+    tabsEl.innerHTML = tabs.map(tab => `
+      <button type="button" class="status-tab-btn ${candidateStatusFilter === tab.key ? 'active' : ''}" onclick="setCandidateStatusFilter('${tab.key}')">
+        ${escapeHtml(tab.label)} (${tab.count})
+      </button>
+    `).join('');
+  }
+
+  function renderCandidates() {
+    const grid = document.getElementById('candidates-grid');
+
+    renderStatusTabs();
+
+    if (candidates.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No candidates yet</div>
+          Once job seekers apply to your listings, they'll appear here.
+        </div>`;
+      return;
+    }
+
+    const visible = candidateStatusFilter === 'all'
+      ? candidates
+      : candidates.filter(c => (c.status || 'applied') === candidateStatusFilter);
+
+    if (visible.length === 0) {
+      const emptyLabel = candidateStatusFilter === 'accepted' ? 'accepted'
+        : candidateStatusFilter === 'rejected' ? 'passed' : 'new';
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
+          <div class="empty-icon">👥</div>
+          <div class="empty-title">No ${emptyLabel} candidates</div>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = visible.map(c => renderCandidateCard(c)).join('');
+    filterCandidates();
+  }
+
+  function renderCandidateCard(c) {
+    const name = c.profile.full_name || 'Candidate';
+    const initials = getInitials(name);
+    const jobTitle = c.job ? c.job.title : 'a job';
+    const isDecided = c.status === 'accepted' || c.status === 'rejected';
+
+    let resumeData = null;
+    try {
+      resumeData = typeof c.profile.resume_data === 'string'
+        ? JSON.parse(c.profile.resume_data)
+        : c.profile.resume_data;
+    } catch (e) {
+      // resume_data wasn't valid JSON — treat as empty, not fatal.
+    }
+
+    const summarySnippet = resumeData?.summary
+      ? (resumeData.summary.length > 110 ? resumeData.summary.slice(0, 110).trim() + '…' : resumeData.summary)
+      : '';
+
+    let skillTags = '';
+    if (resumeData?.skills?.length) {
+      skillTags = resumeData.skills
+        .slice(0, 3)
+        .map(s => `<span class="tag">${escapeHtml(s)}</span>`)
+        .join('');
+    }
+
+    const statusTag = c.status === 'accepted'
+      ? `<span class="tag status-accepted">Accepted</span>`
+      : c.status === 'rejected'
+        ? `<span class="tag status-rejected">Passed</span>`
+        : `<span class="tag">New applicant</span>`;
+
+    return `
+      <div class="candidate-card" data-application-id="${c.applicationId}">
+        <div class="candidate-top">
+          <div class="candidate-avatar">${escapeHtml(initials)}</div>
+          <div>
+            <div class="candidate-name">${escapeHtml(name)}</div>
+            <div class="candidate-role">Applied to ${escapeHtml(jobTitle)}</div>
+          </div>
+        </div>
+        ${summarySnippet ? `<div class="candidate-headline">${escapeHtml(summarySnippet)}</div>` : ''}
+        <div class="candidate-tags">
+          ${statusTag}
+          ${skillTags}
+        </div>
+        <div>
+          <button type="button" class="candidate-view-link" onclick="openCandidateModal('${c.applicationId}')">View full profile →</button>
+        </div>
+        <div class="candidate-actions">
+          <button class="btn-accept" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'accepted')">Accept</button>
+          <button class="btn-pass" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'rejected')">Pass</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- Candidate full-profile modal ----
+  function openCandidateModal(applicationId) {
+    const c = candidates.find(cand => cand.applicationId === applicationId);
+    if (!c) return;
+
+    document.getElementById('candidate-modal-box').innerHTML = renderCandidateModal(c);
+    document.getElementById('candidate-modal-overlay').classList.add('show');
+  }
+
+  function closeCandidateModal() {
+    document.getElementById('candidate-modal-overlay').classList.remove('show');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeCandidateModal();
+  });
+
+  function renderCandidateModal(c) {
+    const profile = c.profile;
+    const name = profile.full_name || 'Candidate';
+    const initials = getInitials(name);
+    const jobTitle = c.job ? c.job.title : 'a job';
+    const resumePath = profile.resume_file_path;
+    const isDecided = c.status === 'accepted' || c.status === 'rejected';
+
+    let resumeData = null;
+    try {
+      resumeData = typeof profile.resume_data === 'string'
+        ? JSON.parse(profile.resume_data)
+        : (profile.resume_data || null);
+    } catch (e) {
+      resumeData = null;
+    }
+
+    // resume_data shape varies by candidate since it comes from AI-parsed
+    // resumes — we render defensively and just skip sections that aren't
+    // present rather than assuming a fixed schema.
+    const skills = Array.isArray(resumeData?.skills) ? resumeData.skills : [];
+    const experience = Array.isArray(resumeData?.experience) ? resumeData.experience : [];
+    const education = Array.isArray(resumeData?.education) ? resumeData.education : [];
+    const summary = typeof resumeData?.summary === 'string' ? resumeData.summary : '';
+    const email = resumeData?.email || '';
+    const phone = resumeData?.phone || '';
+
+    const skillsHtml = skills.length
+      ? `<div class="modal-tags">${skills.map(s => `<span class="tag">${escapeHtml(s)}</span>`).join('')}</div>`
+      : `<div class="modal-empty">No skills listed.</div>`;
+
+    const experienceHtml = experience.length
+      ? `<ul class="modal-list">${experience.map(exp => {
+          const label = typeof exp === 'string'
+            ? exp
+            : [exp.title, exp.company, exp.dates].filter(Boolean).join(' — ');
+          return `<li>${escapeHtml(label)}</li>`;
+        }).join('')}</ul>`
+      : `<div class="modal-empty">No work experience listed.</div>`;
+
+    const educationHtml = education.length
+      ? `<ul class="modal-list">${education.map(ed => {
+          const label = typeof ed === 'string'
+            ? ed
+            : [ed.degree, ed.school, ed.dates].filter(Boolean).join(' — ');
+          return `<li>${escapeHtml(label)}</li>`;
+        }).join('')}</ul>`
+      : `<div class="modal-empty">No education listed.</div>`;
+
+    const contactLine = [email, phone].filter(Boolean).map(escapeHtml).join(' · ');
+
+    return `
+      <button type="button" class="modal-close" onclick="closeCandidateModal()" aria-label="Close">✕</button>
+      <div class="modal-top">
+        <div class="modal-avatar">${escapeHtml(initials)}</div>
+        <div>
+          <div class="modal-name">${escapeHtml(name)}</div>
+          <div class="modal-role">Applied to ${escapeHtml(jobTitle)}</div>
+        </div>
+      </div>
+
+      ${contactLine ? `<div class="modal-contact" style="margin-top:6px;">${contactLine}</div>` : ''}
+
+      ${summary ? `<div class="modal-section-title">Summary</div><div class="modal-text">${escapeHtml(summary)}</div>` : ''}
+
+      <div class="modal-section-title">Skills</div>
+      ${skillsHtml}
+
+      <div class="modal-section-title">Experience</div>
+      ${experienceHtml}
+
+      <div class="modal-section-title">Education</div>
+      ${educationHtml}
+
+      ${resumePath
+        ? `<div class="modal-section-title">Resume</div><button type="button" class="modal-resume-btn" onclick="openResume('${escapeHtml(resumePath)}', this)">📄 View resume</button>`
+        : `<div class="modal-section-title">Resume</div><div class="modal-empty">This candidate hasn't uploaded a resume.</div>`}
+
+      <div class="modal-actions">
+        <button class="btn-accept" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'accepted'); closeCandidateModal();">Accept</button>
+        <button class="btn-pass" ${isDecided ? 'disabled' : ''} onclick="updateApplicationStatus('${c.applicationId}', 'rejected'); closeCandidateModal();">Pass</button>
+      </div>
+    `;
+  }
+
+  // Resumes live in a private bucket — a plain link won't carry the
+  // browser's auth with it, so we request a short-lived signed URL at
+  // click time instead. This also relies on the "Employers can view
+  // resumes of their applicants" storage RLS policy actually existing.
+  async function openResume(path, btn) {
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Opening…';
+
+    try {
+      const { data, error } = await sb.storage
+        .from('resumes')
+        .createSignedUrl(path, 60);
+
+      if (error || !data?.signedUrl) {
+        console.error('Failed to create signed resume URL:', error);
+        showToast('Could not open this resume. It may not exist, or you may not have access to it.');
+        return;
+      }
+
+      window.open(data.signedUrl, '_blank', 'noopener');
+    } catch (err) {
+      console.error('openResume error:', err);
+      showToast('Could not open this resume.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
+
+  async function updateApplicationStatus(applicationId, status) {
+    const { error } = await sb
+      .from('applications')
+      .update({ status })
+      .eq('id', applicationId);
+
+    if (error) {
+      console.error('Failed to update application status:', error);
+      showToast('Could not update candidate status. You may need the employer UPDATE policy on applications.');
+      return;
+    }
+
+    showToast(status === 'accepted' ? 'Candidate accepted.' : 'Candidate passed.');
+    await loadCandidates();
+  }
+
+  function renderJobs() {
+    const jobsList = document.getElementById('jobs-list');
+    const overviewJobs = document.getElementById('overview-jobs');
+
+    document.getElementById('stat-active').textContent = jobs.filter(job => job.status !== 'deleted').length;
+    document.getElementById('stat-views').textContent = jobs.reduce((sum, job) => sum + (job.views || 0), 0);
+    document.getElementById('stat-swipes').textContent = Object.values(jobAppliedCounts).reduce((sum, n) => sum + n, 0);
+    document.getElementById('stat-candidates').textContent = Object.values(jobAppliedCounts).reduce((sum, n) => sum + n, 0);
+
+    if (jobs.length === 0) {
+      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active listings</div>Post your first job to start receiving candidates.</div>`;
+      overviewJobs.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No jobs posted yet</div>Post your first job to start seeing activity here.</div>`;
+      return;
+    }
+
+    const searchInput = document.getElementById('jobs-search-input');
+    const query = (searchInput?.value || '').trim().toLowerCase();
+
+    const filteredJobs = query
+      ? jobs.filter(job => {
+          const haystack = [
+            job.title,
+            job.location,
+            job.job_type,
+            formatWorkStyleLabel(job.work_style)
+          ].filter(Boolean).join(' ').toLowerCase();
+          return haystack.includes(query);
+        })
+      : jobs;
+
+    if (filteredJobs.length === 0) {
+      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`;
+      overviewJobs.innerHTML = jobs.map(job => renderJobRow(job)).join('');
+      return;
+    }
+
+    const jobRows = filteredJobs.map(job => renderJobRow(job)).join('');
+
+    jobsList.innerHTML = jobRows;
+    overviewJobs.innerHTML = jobs.map(job => renderJobRow(job)).join('');
+  }
+
+  // Filters any .candidate-card elements inside #candidates-grid by their
+  // text content. Works with real candidate cards rendered by
+  // renderCandidates() above.
+  function filterCandidates() {
+    const query = (document.getElementById('candidates-search-input')?.value || '').trim().toLowerCase();
+    const cards = document.querySelectorAll('#candidates-grid .candidate-card');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+      const matches = !query || card.textContent.toLowerCase().includes(query);
+      card.style.display = matches ? '' : 'none';
+      if (matches) visibleCount++;
+    });
+
+    const emptyState = document.getElementById('candidates-empty-state');
+    if (emptyState && cards.length > 0) {
+      emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+  }
+
+  function renderJobRow(job) {
+    return `
+      <div class="job-row">
+        <div class="job-status active"></div>
+        <div class="job-info">
+          <div class="job-title-text">${escapeHtml(job.title)}</div>
+          <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(formatWorkStyleLabel(job.work_style))}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
+        </div>
+        <div class="job-stats">
+          <div><div class="js-val">${job.views || 0}</div><div class="js-label">Views</div></div>
+          <div><div class="js-val">${jobAppliedCounts[job.id] || 0}</div><div class="js-label">Applied</div></div>
+        </div>
+        <div class="job-actions">
+          <button class="btn-view" onclick="editJob('${job.id}')">Edit</button>
+          <button class="btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function formatWorkStyleLabel(workStyle) {
+    if (workStyle === 'On-site') return 'In person';
+    return workStyle || '';
+  }
+
+  // ---- Indeed-style pay builder ----
+  function onPayTypeChange() {
+    const payType = document.getElementById('f-pay-type').value;
+    const wrap = document.getElementById('pay-amounts-wrap');
+
+    if (payType === 'range') {
+      wrap.className = 'pay-amounts range';
+      wrap.innerHTML = `
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="Minimum" oninput="updatePreview()"></div>
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-max" placeholder="Maximum" oninput="updatePreview()"></div>
+      `;
+    } else {
+      const placeholder = payType === 'starting' ? 'Starting amount' : payType === 'maximum' ? 'Maximum amount' : 'Amount';
+      wrap.className = 'pay-amounts single';
+      wrap.innerHTML = `
+        <div class="pay-prefix-input"><span>$</span><input type="number" min="0" step="1" class="form-input" id="f-pay-min" placeholder="${placeholder}" oninput="updatePreview()"></div>
+      `;
+    }
+
+    updatePreview();
+  }
+
+  function buildSalaryString() {
+    const payType = document.getElementById('f-pay-type').value;
+    const period = document.getElementById('f-pay-period').value;
+    const periodLabel = { year: 'year', hour: 'hour', month: 'month', week: 'week' }[period] || 'year';
+
+    const minEl = document.getElementById('f-pay-min');
+    const maxEl = document.getElementById('f-pay-max');
+    const min = minEl ? minEl.value.trim() : '';
+    const max = maxEl ? maxEl.value.trim() : '';
+
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+
+    if (payType === 'range') {
+      if (!min || !max) return '';
+      return `$${fmt(min)} - $${fmt(max)} per ${periodLabel}`;
+    }
+    if (payType === 'starting') {
+      if (!min) return '';
+      return `From $${fmt(min)} per ${periodLabel}`;
+    }
+    if (payType === 'maximum') {
+      if (!min) return '';
+      return `Up to $${fmt(min)} per ${periodLabel}`;
+    }
+    // exact
+    if (!min) return '';
+    return `$${fmt(min)} per ${periodLabel}`;
+  }
+
+  function parseSalaryIntoBuilder(salaryText) {
+    const note = document.getElementById('pay-preview-line');
+    if (!salaryText) return;
+
+    const periodMatch = /per\s+(year|hour|month|week)/i.exec(salaryText);
+    const period = periodMatch ? periodMatch[1].toLowerCase() : 'year';
+    document.getElementById('f-pay-period').value = period;
+
+    const rangeMatch = /\$([\d,]+)\s*-\s*\$([\d,]+)/.exec(salaryText);
+    const fromMatch = /From\s+\$([\d,]+)/i.exec(salaryText);
+    const upToMatch = /Up to\s+\$([\d,]+)/i.exec(salaryText);
+    const exactMatch = /^\$([\d,]+)/.exec(salaryText);
+
+    if (rangeMatch) {
+      document.getElementById('f-pay-type').value = 'range';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = rangeMatch[1].replace(/,/g, '');
+      document.getElementById('f-pay-max').value = rangeMatch[2].replace(/,/g, '');
+    } else if (fromMatch) {
+      document.getElementById('f-pay-type').value = 'starting';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = fromMatch[1].replace(/,/g, '');
+    } else if (upToMatch) {
+      document.getElementById('f-pay-type').value = 'maximum';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = upToMatch[1].replace(/,/g, '');
+    } else if (exactMatch) {
+      document.getElementById('f-pay-type').value = 'exact';
+      onPayTypeChange();
+      document.getElementById('f-pay-min').value = exactMatch[1].replace(/,/g, '');
+    } else if (note) {
+      note.textContent = `Currently saved: "${salaryText}". Enter a new amount above to replace it.`;
+    }
+  }
+
+  // ---- Live preview ----
+  function updatePreview() {
+    const title = document.getElementById('f-title').value.trim();
+    const company = document.getElementById('f-company').value.trim();
+    const location = document.getElementById('f-location').value.trim();
+    const jobType = document.getElementById('f-type').value;
+    const workStyle = document.getElementById('f-style').value;
+    const description = document.getElementById('f-desc').value.trim();
+    const reqsRaw = document.getElementById('f-reqs').value;
+    const benefitsRaw = document.getElementById('f-benefits').value;
+
+    const salaryString = buildSalaryString();
+    document.getElementById('f-salary').value = salaryString;
+
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine && !payLine.textContent.startsWith('Currently saved')) {
+      payLine.textContent = salaryString ? salaryString : 'Enter an amount to see a preview.';
+    }
+
+    const titleEl = document.getElementById('pv-title');
+    if (title) {
+      titleEl.textContent = title;
+      titleEl.classList.remove('placeholder');
+    } else {
+      titleEl.textContent = 'Job title will appear here';
+      titleEl.classList.add('placeholder');
+    }
+
+    document.getElementById('pv-company').textContent = company;
+
+    const metaParts = [jobType, formatWorkStyleLabel(workStyle), location].filter(Boolean);
+    document.getElementById('pv-meta').textContent = metaParts.join(' · ');
+
+    const salaryWrap = document.getElementById('pv-salary-wrap');
+    salaryWrap.innerHTML = salaryString
+      ? `<div class="preview-salary">${escapeHtml(salaryString)}</div>`
+      : '';
+
+    const descEl = document.getElementById('pv-desc');
+    if (description) {
+      descEl.textContent = description;
+      descEl.classList.remove('placeholder');
+    } else {
+      descEl.textContent = 'Your job description will show up here as you type.';
+      descEl.classList.add('placeholder');
+    }
+
+    const reqLines = reqsRaw.split('\n').map(r => r.trim()).filter(Boolean);
+    const reqsEl = document.getElementById('pv-reqs');
+    if (reqLines.length === 0) {
+      reqsEl.innerHTML = '<li class="placeholder">Select requirements above to see them listed here.</li>';
+    } else {
+      reqsEl.innerHTML = reqLines.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+    }
+
+    const benefitLines = benefitsRaw.split('\n').map(b => b.trim()).filter(Boolean);
+    const benefitsTitleEl = document.getElementById('pv-benefits-title');
+    const benefitsEl = document.getElementById('pv-benefits');
+    if (benefitLines.length === 0) {
+      benefitsTitleEl.style.display = 'none';
+      benefitsEl.innerHTML = '';
+    } else {
+      benefitsTitleEl.style.display = 'block';
+      benefitsEl.innerHTML = benefitLines.map(b => `<span class="preview-benefit-tag">${escapeHtml(b)}</span>`).join('');
+    }
+  }
+
+  function collectJobForm() {
+    return {
+      title: document.getElementById('f-title').value.trim(),
+      company: document.getElementById('f-company').value.trim(),
+      location: document.getElementById('f-location').value.trim(),
+      job_type: document.getElementById('f-type').value,
+      work_style: document.getElementById('f-style').value,
+      salary: buildSalaryString(),
+      description: document.getElementById('f-desc').value.trim(),
+      requirements: document.getElementById('f-reqs').value.trim(),
+      benefits: document.getElementById('f-benefits').value.trim()
+    };
+  }
+
+  function fillJobForm(job) {
+    document.getElementById('f-title').value = job.title || '';
+    document.getElementById('f-company').value = job.company || currentProfile?.company_name || '';
+    document.getElementById('f-location').value = job.location || '';
+    selectedGooglePlace = job.location ? { formatted_address: job.location } : null;
+    document.getElementById('f-type').value = job.job_type || 'Full-time';
+    document.getElementById('f-style').value = job.work_style || 'Remote';
+
+    document.getElementById('f-pay-type').value = 'range';
+    onPayTypeChange();
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine) payLine.textContent = 'Enter an amount to see a preview.';
+    parseSalaryIntoBuilder(job.salary || '');
+
+    document.getElementById('f-desc').value = job.description || '';
+
+    const reqValues = (job.requirements || '').split('\n').map(r => r.trim()).filter(Boolean);
+    resetChips('req', reqValues);
+
+    const benefitValues = (job.benefits || '').split('\n').map(b => b.trim()).filter(Boolean);
+    resetChips('benefit', benefitValues);
+
+    updatePreview();
+  }
+
+  function clearJobForm() {
+    ['f-title','f-location','f-desc'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+
+    document.getElementById('f-company').value = currentProfile?.company_name || '';
+    document.getElementById('f-type').value = 'Full-time';
+    document.getElementById('f-style').value = 'Remote';
+    document.getElementById('f-pay-type').value = 'range';
+    document.getElementById('f-pay-period').value = 'year';
+    onPayTypeChange();
+    const payLine = document.getElementById('pay-preview-line');
+    if (payLine) payLine.textContent = 'Enter an amount to see a preview.';
+    selectedGooglePlace = null;
+
+    resetChips('req', []);
+    resetChips('benefit', []);
+
+    updatePreview();
+  }
+
+
+  function normalizeText(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function countRealWords(value) {
+    const words = normalizeText(value).match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+    return words.length;
+  }
+
+  function hasRepeatedJunk(value) {
+    const clean = normalizeText(value).toLowerCase();
+    if (!clean) return true;
+    if (/^(.)\1{3,}$/.test(clean.replace(/\s/g, ''))) return true;
+    if (/^[a-z]{1,3}(\s+[a-z]{1,3}){0,4}$/.test(clean)) return true;
+    if (/^[^a-zA-Z0-9]+$/.test(clean)) return true;
+    return false;
+  }
+
+  function containsBlockedJunk(value) {
+    const text = normalizeText(value).toLowerCase();
+    const blocked = [
+      'test', 'asdf', 'qwerty', 'fake', 'random', 'dummy', 'sample',
+      'lorem ipsum', 'abc', '123', 'sklcnsa', 'slkcnsa', 'aaa', 'zzz'
+    ];
+    return blocked.some(word => text.includes(word));
+  }
+
+  function isValidJobTitle(title) {
+    const clean = normalizeText(title);
+    if (clean.length < 6 || clean.length > 80) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (countRealWords(clean) < 2) return false;
+    return /^[A-Za-z0-9&.,'’()\-/ ]+$/.test(clean);
+  }
+
+  function isValidCompanyName(company) {
+    const clean = normalizeText(company);
+    if (clean.length < 3 || clean.length > 80) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    return /^[A-Za-z0-9&.,'’()\-/ ]+$/.test(clean);
+  }
+
+  function isValidLocation(location, workStyle) {
+    const clean = normalizeText(location);
+
+    if (clean.length < 4 || clean.length > 120) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+
+    if (workStyle === 'Remote') {
+      return /remote|united states|usa|u\.s\.|[A-Za-z]{3,}/i.test(clean);
+    }
+
+    if (window.google && google.maps && google.maps.places) {
+      return !!selectedGooglePlace && clean === normalizeText(selectedGooglePlace.formatted_address || selectedGooglePlace.name || clean);
+    }
+
+    return /^[A-Za-z .'-]{3,},\s*[A-Za-z]{2,}(,\s*[A-Za-z .'-]+)?$/.test(clean);
+  }
+
+  function isValidSalary(salary) {
+    const clean = normalizeText(salary).toLowerCase();
+    if (clean.length < 4 || clean.length > 60) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (!/\d/.test(clean)) return false;
+    return /(\$|k\b|hour|hr|year|yr|salary|annually|per)/i.test(clean);
+  }
+
+  function isValidDescription(description) {
+    const clean = normalizeText(description);
+    if (clean.length < 180) return false;
+    if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
+    if (countRealWords(clean) < 35) return false;
+
+    const roleSignals = ['responsibilities', 'role', 'team', 'customer', 'training', 'schedule', 'experience', 'skills', 'work', 'position'];
+    const foundSignals = roleSignals.filter(word => clean.toLowerCase().includes(word)).length;
+    return foundSignals >= 2;
+  }
+
+  function validateJob(job) {
+    if (!isValidJobTitle(job.title)) {
+      return 'Enter a real job title, like "Customer Service Representative" or "Sales Account Manager".';
+    }
+
+    if (!isValidCompanyName(job.company)) {
+      return 'Enter a real company name.';
+    }
+
+    if (!isValidLocation(job.location, job.work_style)) {
+      return job.work_style === 'Remote'
+        ? 'Enter a valid location, like "Remote - United States".'
+        : 'Enter a real location, like "Raleigh, NC".';
+    }
+
+    if (!isValidSalary(job.salary)) {
+      return 'Enter a pay amount above so candidates know what this role pays.';
+    }
+
+    if (!isValidDescription(job.description)) {
+      return 'Job description must be at least 180 characters and explain the real role, responsibilities, and work.';
+    }
+
+    const requirements = job.requirements
+      .split('\n')
+      .map(r => normalizeText(r))
+      .filter(Boolean);
+
+    if (requirements.length < 3) {
+      return 'Select at least 3 requirements.';
+    }
+
+    return '';
+  }
+
+  // ---- AI job description generation ----
+  async function generateDescription() {
+    const btn = document.getElementById('ai-generate-btn');
+    const title = document.getElementById('f-title').value.trim();
+    const company = document.getElementById('f-company').value.trim();
+
+    if (!isValidJobTitle(title)) {
+      showToast('Enter a real job title first, like "Sales Manager".');
+      return;
+    }
+    if (!isValidCompanyName(company)) {
+      showToast('Enter your company name first.');
+      return;
+    }
+
+    const payload = {
+      title,
+      company,
+      location: document.getElementById('f-location').value.trim(),
+      job_type: document.getElementById('f-type').value,
+      work_style: document.getElementById('f-style').value,
+      salary: buildSalaryString()
+    };
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+      const { data, error } = await sb.functions.invoke('generate-job-description', {
+        body: payload
+      });
+
+      if (error || !data?.description) {
+        console.error('Generate description failed:', error);
+        showToast('Could not generate a description. Try again in a moment.');
+        return;
+      }
+
+      document.getElementById('f-desc').value = data.description;
+      updatePreview();
+      showToast('✨ Draft generated — feel free to edit it.');
+    } catch (err) {
+      console.error('Generate description error:', err);
+      showToast('Could not generate a description. Try again in a moment.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+
+  function initLocationAutocomplete() {
+    const input = document.getElementById('f-location');
+    if (!input || !(window.google && google.maps && google.maps.places)) return;
+
+    locationAutocomplete = new google.maps.places.Autocomplete(input, {
+      types: ['(cities)'],
+      componentRestrictions: { country: 'us' },
+      fields: ['formatted_address', 'name', 'place_id', 'address_components']
+    });
+
+    input.addEventListener('input', () => {
+      selectedGooglePlace = null;
+    });
+
+    locationAutocomplete.addListener('place_changed', () => {
+      const place = locationAutocomplete.getPlace();
+
+      if (!place || !place.place_id) {
+        selectedGooglePlace = null;
+        showToast('Please select a location from the Google suggestions.');
+        return;
+      }
+
+      selectedGooglePlace = {
+        formatted_address: place.formatted_address || place.name || input.value,
+        place_id: place.place_id
+      };
+
+      input.value = selectedGooglePlace.formatted_address;
+      updatePreview();
+    });
+  }
+
+  window.initAlygnnPlaces = function () {
+    initLocationAutocomplete();
+  };
+
+  async function postJob() {
+    if (!employerVerified) {
+      showToast('Your business must be approved by Alygnn before posting jobs.');
+      updateVerificationUI();
+      return;
+    }
+
+    const job = collectJobForm();
+
+    const validationError = validateJob(job);
+    if (validationError) {
+      showToast(validationError);
+      return;
+    }
+
+    if (editingJobId) {
+      const { error } = await sb
+        .from('jobs')
+        .update({
+          ...job,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingJobId)
+        .eq('employer_id', currentUser.id);
+
+      if (error) {
+        console.error('Failed to update job:', error);
+        showToast('Could not update job.');
+        return;
+      }
+
+      showToast('Job updated successfully!');
+      cancelEdit(false);
+    } else {
+      const { error } = await sb
+        .from('jobs')
+        .insert({
+          employer_id: currentUser.id,
+          ...job,
+          status: 'active'
+        });
+
+      if (error) {
+        console.error('Failed to post job:', error);
+        showToast('Could not post job. Check Supabase jobs table.');
+        return;
+      }
+
+      showToast('🎉 Job posted successfully!');
+      clearJobForm();
+    }
+
+    await loadJobs();
+    setTimeout(() => showPanel('jobs'), 500);
+  }
+
+  function editJob(jobId) {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+
+    editingJobId = jobId;
+    fillJobForm(job);
+
+    document.getElementById('post-form-title').textContent = 'Edit Job';
+    document.getElementById('post-job-btn').textContent = 'Save changes →';
+    document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+    showPanel('post');
+  }
+
+  function cancelEdit(clearForm = true) {
+    editingJobId = null;
+
+    document.getElementById('post-form-title').textContent = 'Post a Job';
+    document.getElementById('post-job-btn').textContent = 'Post job →';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
+
+    if (clearForm) clearJobForm();
+    updateVerificationUI();
+  }
+
+  async function deleteJob(jobId) {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+
+    if (!confirm(`Delete "${job.title}"?`)) return;
+
+    const { error } = await sb
+      .from('jobs')
+      .delete()
+      .eq('id', jobId)
+      .eq('employer_id', currentUser.id);
+
+    if (error) {
+      console.error('Failed to delete job:', error);
+      showToast('Could not delete job.');
+      return;
+    }
+
+    if (editingJobId === jobId) cancelEdit();
+    await loadJobs();
+    showToast('Job deleted.');
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+    window.location.href = 'index.html';
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
 </script>
+
+
+<!-- Google Places Autocomplete -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0&libraries=places&callback=initAlygnnPlaces"></script>
+
+<nav class="app-bottom-nav" aria-label="Employer app navigation">
+  <button class="app-tab active" data-panel="overview" onclick="appShowPanel('overview',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4v9Zm10 7h6V11h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span>Overview</span>
+  </button>
+  <button class="app-tab" data-panel="jobs" onclick="appShowPanel('jobs',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12h18"/></svg><span>Jobs</span>
+  </button>
+  <button class="app-tab" data-panel="candidates" onclick="appShowPanel('candidates',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.5-3.7 2.4-5.6 5.5-5.6s5 1.9 5.5 5.6M14.5 15.2c2.9-.5 5.1 1.1 5.8 4.8"/></svg><span>Candidates</span>
+  </button>
+  <button class="app-tab" data-panel="post" onclick="appShowPanel('post',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Post</span>
+  </button>
+</nav>
+<script>
+function appShowPanel(panel, button){
+  const desktopButton=document.querySelector(`.sidebar [onclick*="'${panel}'"]`);
+  if(typeof showPanel==='function') showPanel(panel, desktopButton || button);
+  document.querySelectorAll('.app-tab').forEach(tab=>tab.classList.toggle('active',tab===button));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+
 </body>
 </html>
