@@ -550,6 +550,8 @@
     padding: 42px 42px 48px;
     box-shadow: 0 8px 24px rgba(26, 37, 48, 0.08);
     color: #1b2732;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .resume-header {
@@ -563,6 +565,7 @@
     font-size: 31px;
     line-height: 1.05;
     letter-spacing: -0.5px;
+    overflow-wrap: anywhere;
     word-break: break-word;
   }
 
@@ -578,6 +581,7 @@
     font-size: 10.5px;
     line-height: 1.6;
     margin-top: 11px;
+    overflow-wrap: anywhere;
     word-break: break-word;
   }
 
@@ -601,6 +605,8 @@
     font-size: 11px;
     line-height: 1.65;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .resume-entry {
@@ -618,15 +624,24 @@
     gap: 16px;
   }
 
+  .entry-top > div:first-child {
+    min-width: 0;
+    flex: 1;
+  }
+
   .entry-name {
     font-size: 12px;
     font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .entry-sub {
     color: #53616d;
     font-size: 10.5px;
     margin-top: 2px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .entry-date {
@@ -642,6 +657,8 @@
     line-height: 1.55;
     margin-top: 7px;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .resume-skills {
