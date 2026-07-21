@@ -656,10 +656,6 @@
   }
 
   function goToDashboard() {
-    if (!currentProfile?.employer_verified) {
-      alert('Your business must be approved before you can post jobs. Use a business email that matches your website domain for automatic approval.');
-      return;
-    }
     window.location.href = 'app-employer-dashboard.html';
   }
 
