@@ -266,6 +266,50 @@
     line-height: 1.45;
   }
 
+  .field-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .char-counter {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .char-counter.warning {
+    color: #a46c2f;
+  }
+
+  .char-counter.limit {
+    color: #a45f5f;
+    font-weight: 600;
+  }
+
+  .field-error {
+    display: none;
+    color: #a45f5f;
+    background: var(--danger-light);
+    border: 1px solid rgba(215, 154, 154, 0.35);
+    border-radius: 9px;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .field-error.show {
+    display: block;
+  }
+
+  input.invalid,
+  textarea.invalid {
+    border-color: #c97b7b;
+    box-shadow: 0 0 0 3px rgba(215, 154, 154, 0.12);
+  }
+
   .checkbox-row {
     display: flex;
     align-items: center;
@@ -854,8 +898,12 @@
         <div class="section-body">
           <div class="field">
             <label for="summary">Tell employers what you bring to the table</label>
-            <textarea id="summary" maxlength="700" placeholder="Results-driven professional with experience in customer service, relationship building, and team collaboration..."></textarea>
-            <div class="helper">Aim for 2–4 sentences focused on your experience, strengths, and goals.</div>
+            <textarea id="summary" minlength="80" maxlength="500" placeholder="Results-driven professional with experience in customer service, relationship building, and team collaboration..."></textarea>
+            <div class="field-meta">
+              <div class="helper">Use 80–500 characters. Focus on experience, strengths, and goals.</div>
+              <div class="char-counter" id="summaryCounter">0 / 500</div>
+            </div>
+            <div class="field-error" id="summaryError"></div>
           </div>
         </div>
       </section>
@@ -894,7 +942,8 @@
               <input id="skillInput" type="text" placeholder="Customer service">
               <button type="button" class="skill-add-btn" id="addSkillBtn">Add</button>
             </div>
-            <div class="helper">Press Enter or click Add. Include 6–12 relevant skills.</div>
+            <div class="helper">Use 2–30 characters. Letters, spaces, numbers, +, #, -, / and & are allowed.</div>
+            <div class="field-error" id="skillError"></div>
           </div>
 
           <div class="skills-list" id="skillsList"></div>
@@ -998,6 +1047,94 @@
       .replaceAll("'", '&#039;');
   }
 
+
+  const BLOCKED_WORDS = [
+    'fuck', 'fucking', 'shit', 'bitch', 'asshole', 'dick', 'pussy',
+    'cunt', 'nigger', 'nigga', 'faggot', 'whore', 'slut', 'sex'
+  ];
+
+  const KEYBOARD_MASH_PATTERNS = [
+    'asdf', 'asdfgh', 'qwerty', 'qwertyui', 'zxcv', 'hjkl', 'poiuy',
+    'lkjhg', 'abcabc', 'testtest'
+  ];
+
+  function normalizeText(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function containsBlockedWord(value) {
+    const normalized = normalizeText(value).toLowerCase();
+    return BLOCKED_WORDS.some(word => {
+      const pattern = new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i');
+      return pattern.test(normalized);
+    });
+  }
+
+  function looksLikeSpam(value) {
+    const text = normalizeText(value).toLowerCase();
+    if (!text) return false;
+
+    // 6 or more of the same character, such as "kkkkkk".
+    if (/(.)\1{5,}/i.test(text)) return true;
+
+    // Repeated short chunks such as "abcabcabc".
+    if (/^(.{2,6})\1{2,}$/i.test(text.replace(/\s/g, ''))) return true;
+
+    // Common keyboard mashing.
+    if (KEYBOARD_MASH_PATTERNS.some(pattern => text.includes(pattern))) return true;
+
+    // Mostly punctuation or symbols.
+    const lettersAndNumbers = (text.match(/[a-z0-9]/gi) || []).length;
+    if (text.length >= 4 && lettersAndNumbers / text.length < 0.5) return true;
+
+    return false;
+  }
+
+  function validateSkillValue(rawValue) {
+    const value = normalizeText(rawValue);
+
+    if (value.length < 2) return 'Skills must be at least 2 characters.';
+    if (value.length > 30) return 'Skills cannot be longer than 30 characters.';
+    if (!/[a-z]/i.test(value)) return 'Skills must contain letters.';
+    if (!/^[a-z0-9+#/&().,' -]+$/i.test(value)) {
+      return 'Use only letters, numbers, spaces, +, #, -, /, &, periods, commas, apostrophes, or parentheses.';
+    }
+    if (/^\d+$/.test(value)) return 'A skill cannot be numbers only.';
+    if (containsBlockedWord(value)) return 'Please enter a professional skill.';
+    if (looksLikeSpam(value)) return 'That does not look like a valid professional skill.';
+
+    return '';
+  }
+
+  function validateProfessionalText(value, options = {}) {
+    const text = normalizeText(value);
+    const min = options.min || 0;
+    const max = options.max || Infinity;
+    const required = options.required || false;
+
+    if (!text && !required) return '';
+    if (!text && required) return 'This field is required.';
+    if (text.length < min) return `Please enter at least ${min} characters.`;
+    if (text.length > max) return `Please keep this under ${max} characters.`;
+    if (containsBlockedWord(text)) return 'Please keep this section professional.';
+    if (looksLikeSpam(text)) return 'This text appears to contain repeated or invalid content.';
+
+    return '';
+  }
+
+  function updateCounter(textarea, counter, max) {
+    const length = textarea.value.length;
+    counter.textContent = `${length} / ${max}`;
+    counter.classList.toggle('warning', length >= Math.floor(max * 0.85) && length < max);
+    counter.classList.toggle('limit', length >= max);
+  }
+
+  function showFieldError(input, errorElement, message) {
+    input.classList.toggle('invalid', Boolean(message));
+    errorElement.textContent = message;
+    errorElement.classList.toggle('show', Boolean(message));
+  }
+
   function createExperienceItem(data = {}) {
     state.experienceCount += 1;
     const id = state.experienceCount;
@@ -1042,7 +1179,12 @@
 
         <div class="field full">
           <label>Responsibilities and achievements</label>
-          <textarea class="exp-description" placeholder="Describe what you accomplished, using numbers when possible.">${escapeHtml(data.description)}</textarea>
+          <textarea class="exp-description" minlength="40" maxlength="800" placeholder="Describe what you accomplished, using numbers when possible.">${escapeHtml(data.description)}</textarea>
+          <div class="field-meta">
+            <div class="helper">Use 40–800 characters.</div>
+            <div class="char-counter exp-counter">0 / 800</div>
+          </div>
+          <div class="field-error exp-error"></div>
         </div>
       </div>
     `;
@@ -1050,6 +1192,26 @@
     item.querySelectorAll('input, textarea').forEach(element => {
       element.addEventListener('input', handleChange);
     });
+
+    const description = item.querySelector('.exp-description');
+    const descriptionCounter = item.querySelector('.exp-counter');
+    const descriptionError = item.querySelector('.exp-error');
+
+    function validateExperienceDescription() {
+      updateCounter(description, descriptionCounter, 800);
+      const hasStartedJob = item.querySelector('.exp-title').value.trim() || item.querySelector('.exp-company').value.trim();
+      const message = validateProfessionalText(description.value, {
+        min: hasStartedJob && description.value.trim() ? 40 : 0,
+        max: 800
+      });
+      showFieldError(description, descriptionError, message);
+      return !message;
+    }
+
+    description.addEventListener('input', validateExperienceDescription);
+    item.querySelector('.exp-title').addEventListener('input', validateExperienceDescription);
+    item.querySelector('.exp-company').addEventListener('input', validateExperienceDescription);
+    validateExperienceDescription();
 
     const currentBox = item.querySelector('.exp-current');
     const endInput = item.querySelector('.exp-end');
@@ -1104,7 +1266,12 @@
 
         <div class="field full">
           <label>Details <span class="optional">optional</span></label>
-          <textarea class="edu-description" placeholder="Honors, relevant coursework, certifications, or activities.">${escapeHtml(data.description)}</textarea>
+          <textarea class="edu-description" maxlength="300" placeholder="Honors, relevant coursework, certifications, or activities.">${escapeHtml(data.description)}</textarea>
+          <div class="field-meta">
+            <div class="helper">Maximum 300 characters.</div>
+            <div class="char-counter edu-counter">0 / 300</div>
+          </div>
+          <div class="field-error edu-error"></div>
         </div>
       </div>
     `;
@@ -1112,6 +1279,20 @@
     item.querySelectorAll('input, textarea').forEach(element => {
       element.addEventListener('input', handleChange);
     });
+
+    const description = item.querySelector('.edu-description');
+    const descriptionCounter = item.querySelector('.edu-counter');
+    const descriptionError = item.querySelector('.edu-error');
+
+    function validateEducationDescription() {
+      updateCounter(description, descriptionCounter, 300);
+      const message = validateProfessionalText(description.value, { max: 300 });
+      showFieldError(description, descriptionError, message);
+      return !message;
+    }
+
+    description.addEventListener('input', validateEducationDescription);
+    validateEducationDescription();
 
     item.querySelector('.remove-btn').addEventListener('click', () => {
       item.remove();
@@ -1278,14 +1459,27 @@
 
   function addSkill() {
     const input = document.getElementById('skillInput');
-    const value = input.value.trim();
+    const errorElement = document.getElementById('skillError');
+    const value = normalizeText(input.value);
+    const validationError = validateSkillValue(value);
 
-    if (!value) return;
+    showFieldError(input, errorElement, validationError);
+    if (validationError) return;
 
     const alreadyExists = state.skills.some(skill => skill.toLowerCase() === value.toLowerCase());
-    if (!alreadyExists) state.skills.push(value);
+    if (alreadyExists) {
+      showFieldError(input, errorElement, 'That skill has already been added.');
+      return;
+    }
 
+    if (state.skills.length >= 12) {
+      showFieldError(input, errorElement, 'You can add up to 12 skills.');
+      return;
+    }
+
+    state.skills.push(value);
     input.value = '';
+    showFieldError(input, errorElement, '');
     renderSkills();
     autoSave();
   }
@@ -1374,6 +1568,49 @@
       return false;
     }
 
+    if (!validateSummary()) {
+      alert('Please fix your professional summary before continuing.');
+      summaryInput.focus();
+      return false;
+    }
+
+    const invalidExperience = [...document.querySelectorAll('.experience-item')].find(item => {
+      const description = item.querySelector('.exp-description');
+      const hasStartedJob = item.querySelector('.exp-title').value.trim() || item.querySelector('.exp-company').value.trim();
+      const message = validateProfessionalText(description.value, {
+        min: hasStartedJob && description.value.trim() ? 40 : 0,
+        max: 800
+      });
+      showFieldError(description, item.querySelector('.exp-error'), message);
+      return Boolean(message);
+    });
+
+    if (invalidExperience) {
+      alert('Please fix the highlighted work-experience description.');
+      invalidExperience.querySelector('.exp-description').focus();
+      return false;
+    }
+
+    const invalidEducation = [...document.querySelectorAll('.education-item')].find(item => {
+      const description = item.querySelector('.edu-description');
+      const message = validateProfessionalText(description.value, { max: 300 });
+      showFieldError(description, item.querySelector('.edu-error'), message);
+      return Boolean(message);
+    });
+
+    if (invalidEducation) {
+      alert('Please fix the highlighted education details.');
+      invalidEducation.querySelector('.edu-description').focus();
+      return false;
+    }
+
+    const invalidSavedSkill = state.skills.find(skill => validateSkillValue(skill));
+    if (invalidSavedSkill) {
+      alert(`Please remove or correct this skill: ${invalidSavedSkill}`);
+      document.getElementById('skillInput').focus();
+      return false;
+    }
+
     return true;
   }
 
@@ -1456,6 +1693,22 @@
     document.getElementById(field).addEventListener('input', handleChange);
   });
 
+  const summaryInput = document.getElementById('summary');
+  const summaryCounter = document.getElementById('summaryCounter');
+  const summaryError = document.getElementById('summaryError');
+
+  function validateSummary() {
+    updateCounter(summaryInput, summaryCounter, 500);
+    const message = validateProfessionalText(summaryInput.value, {
+      min: summaryInput.value.trim() ? 80 : 0,
+      max: 500
+    });
+    showFieldError(summaryInput, summaryError, message);
+    return !message;
+  }
+
+  summaryInput.addEventListener('input', validateSummary);
+
   document.getElementById('addExperienceBtn').addEventListener('click', () => {
     createExperienceItem();
     autoSave();
@@ -1467,6 +1720,16 @@
   });
 
   document.getElementById('addSkillBtn').addEventListener('click', addSkill);
+
+  document.getElementById('skillInput').addEventListener('input', event => {
+    const input = event.currentTarget;
+    const errorElement = document.getElementById('skillError');
+    if (!input.value.trim()) {
+      showFieldError(input, errorElement, '');
+      return;
+    }
+    showFieldError(input, errorElement, validateSkillValue(input.value));
+  });
 
   document.getElementById('skillInput').addEventListener('keydown', event => {
     if (event.key === 'Enter') {
@@ -1489,6 +1752,7 @@
   document.getElementById('continueBtn').addEventListener('click', saveAndContinue);
 
   loadDraft();
+  validateSummary();
   updatePreview();
 </script>
 </body>
