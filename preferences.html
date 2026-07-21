@@ -168,7 +168,7 @@
   .salary-chip.active { background: var(--brand); color: white; border-color: var(--brand); }
 
   .location-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group { display: flex; flex-direction: column; gap: 6px; position: relative; }
   .input-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
   .input-field {
     background: var(--card-bg); border: 1px solid var(--border);
@@ -180,6 +180,20 @@
   .input-field:focus { border-color: var(--brand); }
   .input-field::placeholder { color: var(--text-muted); }
   select.input-field { cursor: pointer; }
+
+  /* City search-suggestions dropdown — same pattern as the Industry
+     picker further down the page, since a rigid <select> doesn't scale
+     to thousands of cities the way it does for country/state. */
+  .city-suggestions {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 200px; overflow-y: auto;
+    display: none; z-index: 10;
+  }
+  .city-suggestion-item {
+    padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .city-suggestion-item:hover { background: var(--brand-light); }
 
   .role-input-wrap { margin-bottom: 24px; }
   .role-input-wrap .input-field {
@@ -450,7 +464,12 @@
       <div class="location-grid">
         <div class="input-group">
           <label class="input-label">City</label>
-          <input type="text" class="input-field" placeholder="e.g. New York" id="city-input" oninput="checkSection('sc-location')">
+          <input type="text" class="input-field" placeholder="e.g. New York" id="city-input"
+            autocomplete="off"
+            oninput="checkSection('sc-location'); renderCitySuggestions();"
+            onfocus="renderCitySuggestions();"
+            onblur="setTimeout(hideCitySuggestions, 150)">
+          <div class="city-suggestions" id="city-suggestions"></div>
         </div>
         <div class="input-group">
           <label class="input-label">State</label>
@@ -473,19 +492,6 @@
             <option>Texas</option><option>Utah</option><option>Vermont</option>
             <option>Virginia</option><option>Washington</option><option>West Virginia</option>
             <option>Wisconsin</option><option>Wyoming</option>
-          </select>
-        </div>
-        <div class="input-group">
-          <label class="input-label">Country</label>
-          <select class="input-field" onchange="checkSection('sc-location')">
-            <option>United States</option>
-            <option>Canada</option>
-            <option>United Kingdom</option>
-            <option>Australia</option>
-            <option>Germany</option>
-            <option>France</option>
-            <option>Netherlands</option>
-            <option>Other</option>
           </select>
         </div>
       </div>
@@ -706,6 +712,37 @@
     'Arts & Culture','Museums','Libraries','Research',
   ];
 
+  // A representative list of major U.S. cities for the search-suggestion
+  // dropdown — not exhaustive (there are tens of thousands of U.S. towns
+  // and cities), so typing anything not listed here still works fine as
+  // free text; this just makes common ones easy to pick.
+  const KNOWN_CITIES = [
+    'New York, NY','Los Angeles, CA','Chicago, IL','Houston, TX','Phoenix, AZ',
+    'Philadelphia, PA','San Antonio, TX','San Diego, CA','Dallas, TX','Austin, TX',
+    'Jacksonville, FL','Fort Worth, TX','San Jose, CA','Columbus, OH','Charlotte, NC',
+    'Raleigh, NC','Durham, NC','Greensboro, NC','Winston-Salem, NC','Wilmington, NC',
+    'Fayetteville, NC','Cary, NC','High Point, NC','Asheville, NC','Concord, NC',
+    'San Francisco, CA','Indianapolis, IN','Seattle, WA','Denver, CO','Washington, DC',
+    'Boston, MA','Nashville, TN','Detroit, MI','Portland, OR','Memphis, TN',
+    'Oklahoma City, OK','Las Vegas, NV','Louisville, KY','Baltimore, MD','Milwaukee, WI',
+    'Albuquerque, NM','Tucson, AZ','Fresno, CA','Sacramento, CA','Kansas City, MO',
+    'Mesa, AZ','Atlanta, GA','Omaha, NE','Colorado Springs, CO','Raleigh, NC',
+    'Miami, FL','Tampa, FL','Orlando, FL','Virginia Beach, VA','Long Beach, CA',
+    'Oakland, CA','Minneapolis, MN','Tulsa, OK','Arlington, TX','New Orleans, LA',
+    'Wichita, KS','Cleveland, OH','Bakersfield, CA','Aurora, CO','Anaheim, CA',
+    'Honolulu, HI','Santa Ana, CA','Riverside, CA','Corpus Christi, TX','Lexington, KY',
+    'Stockton, CA','Henderson, NV','St. Paul, MN','St. Louis, MO','Cincinnati, OH',
+    'Pittsburgh, PA','Greenville, SC','Columbia, SC','Charleston, SC','Richmond, VA',
+    'Norfolk, VA','Chesapeake, VA','Newport News, VA','Baton Rouge, LA','Shreveport, LA',
+    'Boise, ID','Spokane, WA','Tacoma, WA','Bellevue, WA','Salt Lake City, UT',
+    'Provo, UT','Albany, NY','Buffalo, NY','Rochester, NY','Syracuse, NY',
+    'Hartford, CT','Providence, RI','Jersey City, NJ','Newark, NJ','Trenton, NJ',
+    'Chattanooga, TN','Knoxville, TN','Jackson, MS','Little Rock, AR','Des Moines, IA',
+    'Madison, WI','Green Bay, WI','Fort Lauderdale, FL','St. Petersburg, FL',
+    'Tallahassee, FL','Savannah, GA','Augusta, GA','Athens, GA','Myrtle Beach, SC',
+    'Remote','Remote - United States'
+  ];
+
   function fmtSalary(val) {
     if (val >= 300000) return '$300k+';
     if (val >= 1000) return '$' + (val / 1000).toFixed(0) + ',000';
@@ -750,6 +787,48 @@
     event.target.classList.add('active');
     markDone('sc-salary');
     updateProgress();
+  }
+
+  // ---- City search suggestions (same pattern as Industry, below) ----
+  function normalize(str) {
+    return str.trim().toLowerCase();
+  }
+
+  function renderCitySuggestions() {
+    const input = document.getElementById('city-input');
+    const box = document.getElementById('city-suggestions');
+    const value = normalize(input.value);
+
+    if (!value) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    const matches = KNOWN_CITIES.filter(city => normalize(city).includes(value)).slice(0, 8);
+
+    if (matches.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+
+    box.innerHTML = matches.map(name =>
+      `<div class="city-suggestion-item" onclick="selectCitySuggestion('${name.replace(/'/g, "\\'")}')">${name}</div>`
+    ).join('');
+    box.style.display = 'block';
+  }
+
+  function hideCitySuggestions() {
+    const box = document.getElementById('city-suggestions');
+    if (box) box.style.display = 'none';
+  }
+
+  function selectCitySuggestion(name) {
+    const input = document.getElementById('city-input');
+    input.value = name;
+    hideCitySuggestions();
+    checkSection('sc-location');
   }
 
   // Restores a previously saved preferences object into the form.
@@ -857,10 +936,6 @@
     btn.onclick = function () { toggleIndustry(btn); };
     document.getElementById('industry-wrap').appendChild(btn);
     return btn;
-  }
-
-  function normalize(str) {
-    return str.trim().toLowerCase();
   }
 
   // Finds an exact (case-insensitive) match in the known industries
