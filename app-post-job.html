@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F6F8F7">
+<title>Post a Job | Alygnn</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',Arial,sans-serif!important}
+:root{
+  --brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;
+  --card:#fff;--text:#172333;--muted:#59697A;--border:#DDE3E8;
+  --danger:#B64040;--danger-bg:#FCEDED;--success:#18794E;--success-bg:#E8F6EE;
+}
+[hidden]{display:none!important}
+html,body{width:100%;min-height:100%}
+body{min-height:100vh;background:var(--bg);color:var(--text);padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.header{
+  position:sticky;top:0;z-index:30;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display:grid;grid-template-columns:46px 1fr 46px;align-items:center;
+  background:rgba(246,248,247,.96);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border)
+}
+.back{
+  width:42px;height:42px;border:1px solid var(--border);border-radius:50%;
+  background:#fff;color:var(--text);font-size:20px
+}
+.logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:27px;color:var(--brand)}
+.logo span{color:var(--sage)}
+.page{max-width:560px;margin:0 auto;padding:22px 16px 24px}
+.progress-wrap{margin-bottom:22px}
+.progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.step-label{font-size:12px;font-weight:900;color:var(--brand-dark)}
+.step-name{font-size:12px;color:var(--muted)}
+.progress{height:7px;background:#E6EBEF;border-radius:999px;overflow:hidden}
+.progress-bar{height:100%;width:20%;background:var(--brand-dark);border-radius:999px;transition:width .25s ease}
+.hero{margin-bottom:20px}
+.hero h1{font-size:28px;line-height:1.15;font-weight:900;letter-spacing:-.4px}
+.hero p{margin-top:7px;color:var(--muted);font-size:14px;line-height:1.5}
+.card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:20px 17px}
+.step{display:none}
+.step.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.field{margin-top:17px}.field:first-child{margin-top:0}
+label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
+.input,.select,.textarea{
+  width:100%;border:1px solid var(--border);border-radius:16px;background:#fff;color:var(--text);
+  outline:none;font-size:15px
+}
+.input,.select{min-height:55px;padding:0 14px}
+.textarea{min-height:150px;padding:14px;resize:vertical;line-height:1.55}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--brand-dark);box-shadow:0 0 0 4px rgba(52,95,145,.1)}
+.help{margin-top:7px;color:var(--muted);font-size:11px;line-height:1.45}
+.company-box{padding:14px;border:1px solid var(--border);border-radius:16px;background:#F8FAFA}
+.company-name{font-size:15px;font-weight:900}
+.company-note{margin-top:4px;color:var(--muted);font-size:11px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{
+  min-height:72px;border:1px solid var(--border);border-radius:16px;background:#fff;
+  color:var(--text);font-size:13px;font-weight:800;padding:12px;text-align:left
+}
+.choice.active{border-color:var(--brand-dark);background:#EDF3F9;color:var(--brand-dark)}
+.pay-prefix{position:relative}
+.pay-prefix span{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.pay-prefix input{padding-left:29px}
+.preview{display:grid;gap:13px}
+.preview-row{padding-bottom:13px;border-bottom:1px solid var(--border)}
+.preview-row:last-child{border-bottom:0;padding-bottom:0}
+.preview-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:900}
+.preview-value{margin-top:5px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.message{display:none;margin-top:15px;padding:12px 14px;border-radius:14px;font-size:12px;font-weight:800;line-height:1.45}
+.message.error{display:block;background:var(--danger-bg);color:var(--danger)}
+.message.success{display:block;background:var(--success-bg);color:var(--success)}
+.footer{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(255,255,255,.97);backdrop-filter:blur(18px);border-top:1px solid var(--border)
+}
+.footer-inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1.7fr;gap:10px}
+.secondary,.primary{min-height:54px;border-radius:16px;font-size:14px;font-weight:900}
+.secondary{border:1px solid var(--border);background:#fff;color:var(--text)}
+.primary{border:none;background:var(--brand-dark);color:#fff}
+.primary:disabled,.secondary:disabled{opacity:.55}
+.lock{margin-bottom:16px;padding:14px;border:1px solid #F0D39C;border-radius:16px;background:#FFF8E8;color:#765615;font-size:12px;line-height:1.5;font-weight:700}
+.loading{position:fixed;inset:0;z-index:100;background:rgba(246,248,247,.96);display:grid;place-items:center}
+.loading-box{text-align:center}
+.spinner{width:42px;height:42px;margin:0 auto 13px;border:4px solid #E2E7EA;border-top-color:var(--brand-dark);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:360px){.grid2,.choice-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div style="font-size:13px;font-weight:800;color:var(--muted)">Preparing your job post…</div>
+  </div>
+</div>
+
+<header class="header">
+  <button class="back" id="back-btn" type="button">←</button>
+  <div class="logo">Alygnn<span>.</span></div>
+  <div></div>
+</header>
+
+<main class="page">
+  <div class="progress-wrap">
+    <div class="progress-top">
+      <span class="step-label" id="step-label">Step 1 of 5</span>
+      <span class="step-name" id="step-name">Role</span>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+  </div>
+
+  <div class="hero">
+    <h1 id="heading">What role are you hiring for?</h1>
+    <p id="subheading">Start with the basic details candidates will see first.</p>
+  </div>
+
+  <div class="lock" id="verification-lock" hidden>
+    Complete and verify your company profile before publishing a job.
+  </div>
+
+  <section class="card">
+    <div class="step active" data-step="1">
+      <div class="field">
+        <label>Company</label>
+        <div class="company-box">
+          <div class="company-name" id="company-name">Loading company…</div>
+          <div class="company-note">Pulled from your employer profile</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="title">Job title</label>
+        <input class="input" id="title" type="text" maxlength="90" placeholder="e.g. Sales Account Manager">
+      </div>
+
+      <div class="field">
+        <label for="location">Location</label>
+        <input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC">
+      </div>
+    </div>
+
+    <div class="step" data-step="2">
+      <div class="field">
+        <label>Job type</label>
+        <div class="choice-grid" id="job-type-options">
+          <button class="choice active" type="button" data-value="Full-time">Full-time</button>
+          <button class="choice" type="button" data-value="Part-time">Part-time</button>
+          <button class="choice" type="button" data-value="Contract">Contract</button>
+          <button class="choice" type="button" data-value="Internship">Internship</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Work style</label>
+        <div class="choice-grid" id="work-style-options">
+          <button class="choice active" type="button" data-value="On-site">In person</button>
+          <button class="choice" type="button" data-value="Hybrid">Hybrid</button>
+          <button class="choice" type="button" data-value="Remote">Remote</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="3">
+      <div class="field">
+        <label for="pay-period">Pay period</label>
+        <select class="select" id="pay-period">
+          <option value="hour">Per hour</option>
+          <option value="year">Per year</option>
+          <option value="week">Per week</option>
+          <option value="month">Per month</option>
+        </select>
+      </div>
+
+      <div class="grid2 field">
+        <div>
+          <label for="pay-min">Minimum pay</label>
+          <div class="pay-prefix"><span>$</span><input class="input" id="pay-min" type="number" min="0" step="1" placeholder="20"></div>
+        </div>
+        <div>
+          <label for="pay-max">Maximum pay</label>
+          <div class="pay-prefix"><span>$</span><input class="input" id="pay-max" type="number" min="0" step="1" placeholder="28"></div>
+        </div>
+      </div>
+      <div class="help">Enter a real pay range. The maximum must be equal to or higher than the minimum.</div>
+    </div>
+
+    <div class="step" data-step="4">
+      <div class="field">
+        <label for="description">Job description</label>
+        <textarea class="textarea" id="description" maxlength="5000" placeholder="Explain the role, responsibilities, schedule, team, and what a successful candidate will do."></textarea>
+        <div class="help"><span id="description-count">0</span>/5000 characters · minimum 180</div>
+      </div>
+
+      <div class="field">
+        <label for="requirements">Requirements</label>
+        <textarea class="textarea" id="requirements" maxlength="2500" placeholder="List each requirement on a new line."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="benefits">Benefits</label>
+        <textarea class="textarea" id="benefits" maxlength="2500" placeholder="List each benefit on a new line."></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step="5">
+      <div class="preview">
+        <div class="preview-row"><div class="preview-label">Job title</div><div class="preview-value" id="pv-title"></div></div>
+        <div class="preview-row"><div class="preview-label">Company</div><div class="preview-value" id="pv-company"></div></div>
+        <div class="preview-row"><div class="preview-label">Location and schedule</div><div class="preview-value" id="pv-meta"></div></div>
+        <div class="preview-row"><div class="preview-label">Pay</div><div class="preview-value" id="pv-pay"></div></div>
+        <div class="preview-row"><div class="preview-label">Description</div><div class="preview-value" id="pv-description"></div></div>
+        <div class="preview-row"><div class="preview-label">Requirements</div><div class="preview-value" id="pv-requirements"></div></div>
+        <div class="preview-row"><div class="preview-label">Benefits</div><div class="preview-value" id="pv-benefits"></div></div>
+      </div>
+    </div>
+
+    <div id="message" class="message" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <button class="secondary" id="previous-btn" type="button">Cancel</button>
+    <button class="primary" id="next-btn" type="button">Continue</button>
+  </div>
+</footer>
+
+<script>
+const sb = supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+
+const stepCopy = [
+  null,
+  ['Role','What role are you hiring for?','Start with the basic details candidates will see first.'],
+  ['Schedule','How will this job work?','Choose the employment type and where the work takes place.'],
+  ['Pay','What does this role pay?','Clear pay information helps candidates make better decisions.'],
+  ['Details','Describe the opportunity','Give candidates enough information to understand the actual role.'],
+  ['Review','Review your job post','Check everything before publishing it to Alygnn.']
+];
+
+let currentStep = 1;
+let session = null;
+let profile = null;
+let jobType = 'Full-time';
+let workStyle = 'On-site';
+let employerVerified = false;
+
+const el = id => document.getElementById(id);
+
+function showMessage(text,type='error'){
+  const box = el('message');
+  box.textContent = text;
+  box.className = 'message ' + type;
+}
+
+function clearMessage(){
+  el('message').className = 'message';
+  el('message').textContent = '';
+}
+
+function hideLoading(){
+  el('loading').hidden = true;
+}
+
+function choose(containerId, callback){
+  el(containerId).addEventListener('click', event => {
+    const button = event.target.closest('.choice');
+    if(!button) return;
+    el(containerId).querySelectorAll('.choice').forEach(item => item.classList.remove('active'));
+    button.classList.add('active');
+    callback(button.dataset.value);
+  });
+}
+
+choose('job-type-options', value => jobType = value);
+choose('work-style-options', value => workStyle = value);
+
+function buildSalary(){
+  const min = Number(el('pay-min').value);
+  const max = Number(el('pay-max').value);
+  const periodLabels = {hour:'hour',year:'year',week:'week',month:'month'};
+
+  if(!min || !max) return '';
+  return `$${min.toLocaleString()} - $${max.toLocaleString()} per ${periodLabels[el('pay-period').value]}`;
+}
+
+function getJob(){
+  return {
+    title: el('title').value.trim(),
+    company: profile?.company_name || session?.user?.user_metadata?.company_name || '',
+    location: el('location').value.trim(),
+    job_type: jobType,
+    work_style: workStyle,
+    salary: buildSalary(),
+    description: el('description').value.trim(),
+    requirements: el('requirements').value.trim(),
+    benefits: el('benefits').value.trim()
+  };
+}
+
+function validateStep(step){
+  const job = getJob();
+
+  if(step === 1){
+    if(job.title.length < 3 || !/[a-z]/i.test(job.title)){
+      return 'Enter a real job title.';
+    }
+    if(job.location.length < 3){
+      return 'Enter a valid job location.';
+    }
+  }
+
+  if(step === 3){
+    const min = Number(el('pay-min').value);
+    const max = Number(el('pay-max').value);
+    if(!min || !max || min <= 0 || max <= 0){
+      return 'Enter both the minimum and maximum pay.';
+    }
+    if(max < min){
+      return 'Maximum pay cannot be lower than minimum pay.';
+    }
+  }
+
+  if(step === 4){
+    if(job.description.length < 180){
+      return 'The job description must be at least 180 characters.';
+    }
+    if(job.requirements.length < 10){
+      return 'Add at least one clear job requirement.';
+    }
+    if(job.benefits.length < 5){
+      return 'Add at least one benefit, or write “None listed.”';
+    }
+  }
+
+  return '';
+}
+
+function updatePreview(){
+  const job = getJob();
+  el('pv-title').textContent = job.title || 'Untitled position';
+  el('pv-company').textContent = job.company || 'Company';
+  el('pv-meta').textContent = [job.location,job.job_type,job.work_style].filter(Boolean).join(' · ');
+  el('pv-pay').textContent = job.salary || 'Pay not entered';
+  el('pv-description').textContent = job.description || 'No description entered';
+  el('pv-requirements').textContent = job.requirements || 'No requirements entered';
+  el('pv-benefits').textContent = job.benefits || 'No benefits entered';
+}
+
+function showStep(step){
+  currentStep = step;
+  document.querySelectorAll('.step').forEach(section => {
+    section.classList.toggle('active', Number(section.dataset.step) === step);
+  });
+
+  const copy = stepCopy[step];
+  el('step-label').textContent = `Step ${step} of 5`;
+  el('step-name').textContent = copy[0];
+  el('heading').textContent = copy[1];
+  el('subheading').textContent = copy[2];
+  el('progress-bar').style.width = `${step * 20}%`;
+  el('previous-btn').textContent = step === 1 ? 'Cancel' : 'Back';
+  el('next-btn').textContent = step === 5 ? 'Publish Job' : 'Continue';
+
+  if(step === 5) updatePreview();
+  clearMessage();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function publishJob(){
+  if(!employerVerified){
+    showMessage('Your business profile must be approved before you can publish a job.');
+    el('verification-lock').hidden = false;
+    return;
+  }
+
+  const job = getJob();
+  const button = el('next-btn');
+  button.disabled = true;
+  button.textContent = 'Publishing…';
+
+  const { error } = await sb.from('jobs').insert({
+    employer_id: session.user.id,
+    ...job,
+    status:'active',
+    created_at:new Date().toISOString()
+  });
+
+  if(error){
+    console.error('Job posting failed:',error);
+    showMessage('The job could not be published. Check your jobs table and Supabase policies.');
+    button.disabled = false;
+    button.textContent = 'Publish Job';
+    return;
+  }
+
+  showMessage('Your job is live. Opening your dashboard…','success');
+  setTimeout(() => location.replace('app-employer-dashboard.html'),900);
+}
+
+el('next-btn').addEventListener('click', async () => {
+  clearMessage();
+
+  if(currentStep < 5){
+    const error = validateStep(currentStep);
+    if(error){
+      showMessage(error);
+      return;
+    }
+    showStep(currentStep + 1);
+    return;
+  }
+
+  await publishJob();
+});
+
+el('previous-btn').addEventListener('click', () => {
+  if(currentStep === 1){
+    location.href = 'app-employer-dashboard.html';
+  }else{
+    showStep(currentStep - 1);
+  }
+});
+
+el('back-btn').addEventListener('click', () => {
+  if(currentStep === 1) location.href = 'app-employer-dashboard.html';
+  else showStep(currentStep - 1);
+});
+
+el('description').addEventListener('input', () => {
+  el('description-count').textContent = el('description').value.length;
+});
+
+(async function init(){
+  try{
+    const {data,error} = await sb.auth.getSession();
+
+    if(error || !data.session){
+      location.replace('app-employer-login.html');
+      return;
+    }
+
+    session = data.session;
+
+    const {data:profileData,error:profileError} = await sb
+      .from('profiles')
+      .select('*')
+      .eq('id',session.user.id)
+      .maybeSingle();
+
+    if(profileError) console.error('Profile load failed:',profileError);
+
+    profile = profileData || {};
+    const company = profile.company_name || session.user.user_metadata?.company_name || 'Your company';
+    el('company-name').textContent = company;
+
+    employerVerified =
+      profile.employer_verified === true ||
+      String(profile.verification_status || '').toLowerCase() === 'approved';
+
+    el('verification-lock').hidden = employerVerified;
+    showStep(1);
+  }catch(error){
+    console.error(error);
+    showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
+  }finally{
+    hideLoading();
+  }
+})();
+</script>
+</body>
+</html>
