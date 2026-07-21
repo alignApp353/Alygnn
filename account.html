@@ -1399,47 +1399,109 @@ function formatDatesLabel(startYear, endYear){
   return startYear || endYear || '';
 }
 
-function validateExperienceRow(row, index){
+// Reuses the validate-chip-entry Edge Function (now fixed to accept these
+// field types — see the 400 errors this used to throw before that fix).
+// Only checks free-text entries the person actually typed themselves
+// (company is always free-text; title/degree/school only when "Other" was
+// picked) — values chosen straight from the trusted dropdown lists skip
+// this entirely. Returns null if fine, or { message, fix } if the save
+// should be blocked — fix() applies the AI's suggested correction and
+// re-renders when the person taps the toast.
+async function checkFreeTextField(fieldLabel, typeForApi, value, applyFix){
+  if(!value) return null;
+
+  const result = await checkRealisticText(typeForApi, value);
+  if(!result) return null; // infra hiccup — don't block on that
+
+  const corrected = normalizeText(result.corrected || '');
+  const changed = corrected && corrected.toLowerCase() !== value.toLowerCase();
+
+  if(changed){
+    return {
+      message: `${fieldLabel}: did you mean "${corrected}"? Tap to fix.`,
+      fix: () => applyFix(corrected)
+    };
+  }
+  if(!result.valid){
+    return { message: `${fieldLabel}: "${value}" doesn't look like a real ${typeForApi}.` };
+  }
+  return null;
+}
+
+async function validateExperienceRow(row, index){
   const hasAnything = row.title || row.company || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
+  const label = `Experience #${index + 1}`;
+
   if(!row.title || !isValidShortField(row.title, 2)){
-    return `Experience #${index + 1}: enter a real job title, like "Sales Associate".`;
+    return { message: `${label}: enter a real job title, like "Sales Associate".` };
   }
   if(!row.company || !isValidShortField(row.company, 2)){
-    return `Experience #${index + 1}: enter a real company name.`;
+    return { message: `${label}: enter a real company name.` };
   }
   if(!row.startYear){
-    return `Experience #${index + 1}: pick a start year.`;
+    return { message: `${label}: pick a start year.` };
   }
   if(!row.endYear){
-    return `Experience #${index + 1}: pick an end year, or "Present" if it's ongoing.`;
+    return { message: `${label}: pick an end year, or "Present" if it's ongoing.` };
   }
   if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
-    return `Experience #${index + 1}: end year can't be before the start year.`;
+    return { message: `${label}: end year can't be before the start year.` };
   }
+
+  if(row.customTitle){
+    const check = await checkFreeTextField(label, 'job title', row.title, (fixed) => {
+      row.title = fixed;
+      renderExperienceRows();
+    });
+    if(check) return check;
+  }
+
+  const companyCheck = await checkFreeTextField(label, 'company name', row.company, (fixed) => {
+    row.company = fixed;
+    renderExperienceRows();
+  });
+  if(companyCheck) return companyCheck;
 
   return null;
 }
 
-function validateEducationRow(row, index){
+async function validateEducationRow(row, index){
   const hasAnything = row.degree || row.school || row.startYear || row.endYear;
   if(!hasAnything) return null;
 
+  const label = `Education #${index + 1}`;
+
   if(!row.degree || !isValidShortField(row.degree, 2)){
-    return `Education #${index + 1}: enter a real degree or program, like "B.A. Economics".`;
+    return { message: `${label}: enter a real degree or program, like "B.A. Economics".` };
   }
   if(!row.school || !isValidShortField(row.school, 2)){
-    return `Education #${index + 1}: enter a real school name.`;
+    return { message: `${label}: enter a real school name.` };
   }
   if(!row.startYear){
-    return `Education #${index + 1}: pick a start year.`;
+    return { message: `${label}: pick a start year.` };
   }
   if(!row.endYear){
-    return `Education #${index + 1}: pick an end year, or "Present" if it's ongoing.`;
+    return { message: `${label}: pick an end year, or "Present" if it's ongoing.` };
   }
   if(row.endYear !== 'Present' && Number(row.endYear) < Number(row.startYear)){
-    return `Education #${index + 1}: end year can't be before the start year.`;
+    return { message: `${label}: end year can't be before the start year.` };
+  }
+
+  if(row.customDegree){
+    const check = await checkFreeTextField(label, 'degree or program', row.degree, (fixed) => {
+      row.degree = fixed;
+      renderEducationRows();
+    });
+    if(check) return check;
+  }
+  if(row.customSchool){
+    const check = await checkFreeTextField(label, 'school name', row.school, (fixed) => {
+      row.school = fixed;
+      renderEducationRows();
+    });
+    if(check) return check;
   }
 
   return null;
@@ -1457,18 +1519,18 @@ async function saveProfileDetails(){
   statusEl.textContent = '';
 
   for(let i = 0; i < experienceRows.length; i++){
-    const err = await validateExperienceRow(experienceRows[i], i);
-    if(err){
-      showToast(err);
+    const result = await validateExperienceRow(experienceRows[i], i);
+    if(result){
+      showToast(result.message, result.fix);
       btn.disabled = false;
       btn.textContent = orig;
       return;
     }
   }
   for(let i = 0; i < educationRows.length; i++){
-    const err = await validateEducationRow(educationRows[i], i);
-    if(err){
-      showToast(err);
+    const result = await validateEducationRow(educationRows[i], i);
+    if(result){
+      showToast(result.message, result.fix);
       btn.disabled = false;
       btn.textContent = orig;
       return;
