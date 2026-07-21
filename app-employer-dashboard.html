@@ -49,25 +49,452 @@
 <nav class="bottom-nav" aria-label="Employer navigation"><button class="nav-item active" type="button"><span class="nav-icon">▦</span><span>Dashboard</span></button><button class="nav-item" id="company-nav" type="button"><span class="nav-icon">◯</span><span>Company</span></button><button class="nav-item" id="settings-nav" type="button"><span class="nav-icon">⚙</span><span>Settings</span></button></nav>
 <div class="menu-sheet" id="menu-sheet" hidden><div class="menu-panel"><div class="menu-grip"></div><div class="menu-title">Employer Menu</div><button class="menu-link" data-page="app-employer-dashboard.html">Dashboard <span>›</span></button><button class="menu-link" data-page="app-employer-account.html">Company profile <span>›</span></button><button class="menu-link" data-page="app-account-settings.html">Account settings <span>›</span></button><button class="menu-link" id="sign-out-btn" type="button">Sign out <span>›</span></button></div></div>
 <script>
-const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let session=null,employerJobs=[],applications=[];
-const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
-const initials=n=>{const p=String(n||'Candidate').trim().split(/\s+/);return ((p[0]?.[0]||'C')+(p[1]?.[0]||'')).toUpperCase()};
-function timeAgo(v){if(!v)return'Recently';const d=new Date(v);if(isNaN(d))return'Recently';const m=Math.floor((Date.now()-d)/60000);if(m<60)return Math.max(1,m)+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
-function isToday(v){if(!v)return false;const d=new Date(v),n=new Date();return d.toDateString()===n.toDateString()}
-function isThisMonth(v){if(!v)return false;const d=new Date(v),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}
-function fullName(p){return p?.full_name||p?.name||[p?.first_name,p?.last_name].filter(Boolean).join(' ')||'Candidate'}
-function statusClass(s){s=String(s||'new').toLowerCase();if(s.includes('interview'))return'interview';if(s.includes('review'))return'reviewed';return'new'}
-function jobTitleFor(a){return employerJobs.find(j=>String(j.id)===String(a.job_id))?.title||a.job_title||'Position'}
-async function queryEmployerJobs(id){for(const col of['employer_id','created_by','user_id','owner_id']){const {data,error}=await sb.from('jobs').select('*').eq(col,id).order('created_at',{ascending:false});if(!error)return data||[]}return[]}
-async function queryApplications(ids){if(!ids.length)return[];const {data,error}=await sb.from('applications').select('*').in('job_id',ids).order('created_at',{ascending:false});return error?[]:data||[]}
-async function queryProfiles(ids){if(!ids.length)return new Map();const {data,error}=await sb.from('profiles').select('*').in('id',ids);return error?new Map():new Map((data||[]).map(p=>[String(p.id),p]))}
-function renderMetrics(){const active=employerJobs.filter(j=>!['paused','closed','draft','inactive'].includes(String(j.status||'active').toLowerCase())).length;const paused=employerJobs.filter(j=>String(j.status||'').toLowerCase()==='paused').length;const fresh=applications.filter(a=>['new','applied','pending'].includes(String(a.status||'new').toLowerCase())).length;const interviews=applications.filter(a=>String(a.status||'').toLowerCase().includes('interview')&&isToday(a.interview_at||a.interview_date||a.updated_at)).length;const hired=applications.filter(a=>String(a.status||'').toLowerCase().includes('hire')&&isThisMonth(a.hired_at||a.updated_at)).length;activeJobs.textContent=active;pausedJobs.textContent=paused+' paused';newApplicants.textContent=fresh;applicantNote.textContent=fresh?fresh+' waiting for review':'No new activity yet';interviewsToday.textContent=interviews;interviewNote.textContent=interviews?interviews+' scheduled today':'Nothing scheduled';hiredMonth.textContent=hired;hiredNote.textContent=hired?hired+' hire'+(hired===1?'':'s')+' this month':'Track hires here';notificationCount.textContent=fresh}
-function renderCandidates(map){if(!applications.length){candidateList.innerHTML='<div class="empty">Your strongest candidates will appear here after people apply to your jobs.</div>';return}candidateList.innerHTML=[...applications].sort((a,b)=>Number(b.match_score||0)-Number(a.match_score||0)).slice(0,5).map(a=>{const id=String(a.candidate_id||a.user_id||a.profile_id||''),p=map.get(id)||{},name=fullName(p),score=Math.round(Number(a.match_score||0)),s=String(a.status||'new').toLowerCase();return `<button class="candidate-row" data-candidate="${e(id)}" data-application="${e(a.id)}"><div class="avatar">${e(initials(name))}</div><div><div class="candidate-name">${e(name)}</div><div class="candidate-job">${e(jobTitleFor(a))}</div><div class="candidate-meta"><span class="match">${score?score+'% Match':'Match pending'}</span><span class="status ${statusClass(s)}">${e(s.charAt(0).toUpperCase()+s.slice(1))}</span></div></div><div class="chevron">›</div></button>`}).join('')}
-function renderActivity(map){if(!applications.length&&!employerJobs.length){activityList.innerHTML='<div class="empty">Applications, interviews, and job updates will appear here.</div>';return}const arr=[];applications.slice(0,5).forEach(a=>{const id=String(a.candidate_id||a.user_id||a.profile_id||''),name=fullName(map.get(id)||{}),s=String(a.status||'').toLowerCase();arr.push({type:s.includes('interview')?'interview':'application',icon:s.includes('interview')?'□':'♙',title:s.includes('interview')?'Interview update for '+name:name+' applied',sub:jobTitleFor(a),time:timeAgo(a.updated_at||a.created_at||a.applied_at)})});employerJobs.slice(0,2).forEach(j=>arr.push({type:'job',icon:'▣',title:'Job listing '+(String(j.status||'active').toLowerCase()==='active'?'is active':'was updated'),sub:j.title||'Position',time:timeAgo(j.updated_at||j.created_at)}));activityList.innerHTML=arr.slice(0,6).map(x=>`<div class="activity-row"><div class="activity-icon ${e(x.type)}">${e(x.icon)}</div><div><div class="activity-title">${e(x.title)}</div><div class="activity-sub">${e(x.sub)}</div></div><div class="activity-time">${e(x.time)}</div></div>`).join('')}
-const go=p=>location.href=p;
-menuBtn.onclick=()=>menuSheet.hidden=false;menuSheet.onclick=x=>{if(x.target===menuSheet)menuSheet.hidden=true};document.querySelectorAll('.menu-link[data-page]').forEach(b=>b.onclick=()=>go(b.dataset.page));companyNav.onclick=()=>go('app-employer-account.html');settingsNav.onclick=()=>go('app-account-settings.html');postJobBtn.onclick=()=>go('employer-dashboard.html');viewCandidatesBtn.onclick=()=>go('employer-dashboard.html');notificationsBtn.onclick=()=>go('employer-dashboard.html');candidateList.onclick=x=>{const r=x.target.closest('.candidate-row');if(!r)return;go('employer-dashboard.html')};signOutBtn.onclick=async()=>{await sb.auth.signOut();location.replace('app-employer-login.html?logout=1')};
-(async()=>{try{const {data,error}=await sb.auth.getSession();if(error||!data.session){location.replace('app-employer-login.html');return}session=data.session;const dn=session.user.user_metadata?.full_name||session.user.user_metadata?.name||session.user.email?.split('@')[0]||'there';greeting.textContent='Good morning, '+String(dn).trim().split(/\s+/)[0]+' 👋';employerJobs=await queryEmployerJobs(session.user.id);applications=await queryApplications(employerJobs.map(j=>j.id).filter(Boolean));const ids=[...new Set(applications.map(a=>a.candidate_id||a.user_id||a.profile_id).filter(Boolean).map(String))];const map=await queryProfiles(ids);renderMetrics();renderCandidates(map);renderActivity(map)}catch(err){console.error(err);renderMetrics();renderCandidates(new Map());renderActivity(new Map())}finally{loadingOverlay.hidden=true;loadingOverlay.style.display='none'}})();
+const sb = supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:true
+    }
+  }
+);
+
+const els = {
+  loadingOverlay: document.getElementById('loading-overlay'),
+  loadingCopy: document.querySelector('.loading-copy'),
+  menuBtn: document.getElementById('menu-btn'),
+  menuSheet: document.getElementById('menu-sheet'),
+  notificationsBtn: document.getElementById('notifications-btn'),
+  notificationCount: document.getElementById('notification-count'),
+  greeting: document.getElementById('greeting'),
+  activeJobs: document.getElementById('active-jobs'),
+  pausedJobs: document.getElementById('paused-jobs'),
+  newApplicants: document.getElementById('new-applicants'),
+  applicantNote: document.getElementById('applicant-note'),
+  interviewsToday: document.getElementById('interviews-today'),
+  interviewNote: document.getElementById('interview-note'),
+  hiredMonth: document.getElementById('hired-month'),
+  hiredNote: document.getElementById('hired-note'),
+  candidateList: document.getElementById('candidate-list'),
+  activityList: document.getElementById('activity-list'),
+  companyNav: document.getElementById('company-nav'),
+  settingsNav: document.getElementById('settings-nav'),
+  postJobBtn: document.getElementById('post-job-btn'),
+  viewCandidatesBtn: document.getElementById('view-candidates-btn'),
+  signOutBtn: document.getElementById('sign-out-btn')
+};
+
+let session = null;
+let employerJobs = [];
+let applications = [];
+
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&':'&amp;',
+  '<':'&lt;',
+  '>':'&gt;',
+  '"':'&quot;',
+  "'":'&#039;'
+})[char]);
+
+const initials = name => {
+  const parts = String(name || 'Candidate').trim().split(/\s+/);
+  return ((parts[0]?.[0] || 'C') + (parts[1]?.[0] || '')).toUpperCase();
+};
+
+function hideLoading(){
+  if(!els.loadingOverlay) return;
+  els.loadingOverlay.hidden = true;
+  els.loadingOverlay.style.display = 'none';
+}
+
+function withTimeout(promise, milliseconds = 7000){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out')), milliseconds)
+    )
+  ]);
+}
+
+function timeAgo(value){
+  if(!value) return 'Recently';
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return 'Recently';
+
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if(minutes < 60) return Math.max(1, minutes) + 'm ago';
+
+  const hours = Math.floor(minutes / 60);
+  if(hours < 24) return hours + 'h ago';
+
+  return Math.floor(hours / 24) + 'd ago';
+}
+
+function isToday(value){
+  if(!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) &&
+    date.toDateString() === new Date().toDateString();
+}
+
+function isThisMonth(value){
+  if(!value) return false;
+  const date = new Date(value);
+  const now = new Date();
+
+  return !Number.isNaN(date.getTime()) &&
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth();
+}
+
+function fullName(profile){
+  return profile?.full_name ||
+    profile?.name ||
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+    'Candidate';
+}
+
+function statusClass(status){
+  const value = String(status || 'new').toLowerCase();
+  if(value.includes('interview')) return 'interview';
+  if(value.includes('review')) return 'reviewed';
+  return 'new';
+}
+
+function jobTitleFor(application){
+  return employerJobs.find(job =>
+    String(job.id) === String(application.job_id)
+  )?.title || application.job_title || 'Position';
+}
+
+async function queryEmployerJobs(userId){
+  for(const column of ['employer_id','created_by','user_id','owner_id']){
+    try{
+      const result = await withTimeout(
+        sb.from('jobs')
+          .select('*')
+          .eq(column, userId)
+          .order('created_at', { ascending:false }),
+        6000
+      );
+
+      if(!result.error) return result.data || [];
+    }catch(error){
+      console.warn(`Jobs query timed out for ${column}`, error);
+    }
+  }
+
+  return [];
+}
+
+async function queryApplications(jobIds){
+  if(!jobIds.length) return [];
+
+  try{
+    const { data, error } = await withTimeout(
+      sb.from('applications')
+        .select('*')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending:false }),
+      6000
+    );
+
+    return error ? [] : data || [];
+  }catch(error){
+    console.warn('Applications query timed out', error);
+    return [];
+  }
+}
+
+async function queryProfiles(profileIds){
+  if(!profileIds.length) return new Map();
+
+  try{
+    const { data, error } = await withTimeout(
+      sb.from('profiles').select('*').in('id', profileIds),
+      6000
+    );
+
+    if(error) return new Map();
+    return new Map((data || []).map(profile => [String(profile.id), profile]));
+  }catch(error){
+    console.warn('Profiles query timed out', error);
+    return new Map();
+  }
+}
+
+function renderMetrics(){
+  const active = employerJobs.filter(job =>
+    !['paused','closed','draft','inactive'].includes(
+      String(job.status || 'active').toLowerCase()
+    )
+  ).length;
+
+  const paused = employerJobs.filter(job =>
+    String(job.status || '').toLowerCase() === 'paused'
+  ).length;
+
+  const fresh = applications.filter(application =>
+    ['new','applied','pending'].includes(
+      String(application.status || 'new').toLowerCase()
+    )
+  ).length;
+
+  const interviews = applications.filter(application =>
+    String(application.status || '').toLowerCase().includes('interview') &&
+    isToday(
+      application.interview_at ||
+      application.interview_date ||
+      application.updated_at
+    )
+  ).length;
+
+  const hired = applications.filter(application =>
+    String(application.status || '').toLowerCase().includes('hire') &&
+    isThisMonth(application.hired_at || application.updated_at)
+  ).length;
+
+  els.activeJobs.textContent = active;
+  els.pausedJobs.textContent = paused + ' paused';
+  els.newApplicants.textContent = fresh;
+  els.applicantNote.textContent = fresh
+    ? fresh + ' waiting for review'
+    : 'No new activity yet';
+  els.interviewsToday.textContent = interviews;
+  els.interviewNote.textContent = interviews
+    ? interviews + ' scheduled today'
+    : 'Nothing scheduled';
+  els.hiredMonth.textContent = hired;
+  els.hiredNote.textContent = hired
+    ? hired + ' hire' + (hired === 1 ? '' : 's') + ' this month'
+    : 'Track hires here';
+  els.notificationCount.textContent = fresh;
+}
+
+function renderCandidates(profileMap){
+  if(!applications.length){
+    els.candidateList.innerHTML =
+      '<div class="empty">Your strongest candidates will appear here after people apply to your jobs.</div>';
+    return;
+  }
+
+  els.candidateList.innerHTML = [...applications]
+    .sort((a,b) => Number(b.match_score || 0) - Number(a.match_score || 0))
+    .slice(0,5)
+    .map(application => {
+      const profileId = String(
+        application.candidate_id ||
+        application.user_id ||
+        application.profile_id ||
+        ''
+      );
+
+      const profile = profileMap.get(profileId) || {};
+      const name = fullName(profile);
+      const score = Math.round(Number(application.match_score || 0));
+      const status = String(application.status || 'new').toLowerCase();
+
+      return `
+        <button class="candidate-row" type="button">
+          <div class="avatar">${escapeHtml(initials(name))}</div>
+          <div>
+            <div class="candidate-name">${escapeHtml(name)}</div>
+            <div class="candidate-job">${escapeHtml(jobTitleFor(application))}</div>
+            <div class="candidate-meta">
+              <span class="match">${score ? score + '% Match' : 'Match pending'}</span>
+              <span class="status ${statusClass(status)}">
+                ${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}
+              </span>
+            </div>
+          </div>
+          <div class="chevron">›</div>
+        </button>
+      `;
+    })
+    .join('');
+}
+
+function renderActivity(profileMap){
+  if(!applications.length && !employerJobs.length){
+    els.activityList.innerHTML =
+      '<div class="empty">Applications, interviews, and job updates will appear here.</div>';
+    return;
+  }
+
+  const activity = [];
+
+  applications.slice(0,5).forEach(application => {
+    const profileId = String(
+      application.candidate_id ||
+      application.user_id ||
+      application.profile_id ||
+      ''
+    );
+
+    const name = fullName(profileMap.get(profileId) || {});
+    const status = String(application.status || '').toLowerCase();
+
+    activity.push({
+      type: status.includes('interview') ? 'interview' : 'application',
+      icon: status.includes('interview') ? '□' : '♙',
+      title: status.includes('interview')
+        ? 'Interview update for ' + name
+        : name + ' applied',
+      sub: jobTitleFor(application),
+      time: timeAgo(
+        application.updated_at ||
+        application.created_at ||
+        application.applied_at
+      )
+    });
+  });
+
+  employerJobs.slice(0,2).forEach(job => {
+    activity.push({
+      type:'job',
+      icon:'▣',
+      title:'Job listing ' +
+        (String(job.status || 'active').toLowerCase() === 'active'
+          ? 'is active'
+          : 'was updated'),
+      sub:job.title || 'Position',
+      time:timeAgo(job.updated_at || job.created_at)
+    });
+  });
+
+  els.activityList.innerHTML = activity.slice(0,6).map(item => `
+    <div class="activity-row">
+      <div class="activity-icon ${escapeHtml(item.type)}">${escapeHtml(item.icon)}</div>
+      <div>
+        <div class="activity-title">${escapeHtml(item.title)}</div>
+        <div class="activity-sub">${escapeHtml(item.sub)}</div>
+      </div>
+      <div class="activity-time">${escapeHtml(item.time)}</div>
+    </div>
+  `).join('');
+}
+
+const go = page => {
+  window.location.href = page;
+};
+
+els.menuBtn.addEventListener('click', () => {
+  els.menuSheet.hidden = false;
+});
+
+els.menuSheet.addEventListener('click', event => {
+  if(event.target === els.menuSheet){
+    els.menuSheet.hidden = true;
+  }
+});
+
+document.querySelectorAll('.menu-link[data-page]').forEach(button => {
+  button.addEventListener('click', () => go(button.dataset.page));
+});
+
+els.companyNav.addEventListener('click', () =>
+  go('app-employer-account.html')
+);
+
+els.settingsNav.addEventListener('click', () =>
+  go('app-account-settings.html')
+);
+
+els.postJobBtn.addEventListener('click', () =>
+  go('employer-dashboard.html')
+);
+
+els.viewCandidatesBtn.addEventListener('click', () =>
+  go('employer-dashboard.html')
+);
+
+els.notificationsBtn.addEventListener('click', () =>
+  go('employer-dashboard.html')
+);
+
+els.candidateList.addEventListener('click', event => {
+  if(event.target.closest('.candidate-row')){
+    go('employer-dashboard.html');
+  }
+});
+
+els.signOutBtn.addEventListener('click', async () => {
+  try{
+    await sb.auth.signOut();
+  }finally{
+    window.location.replace('app-employer-login.html?logout=1');
+  }
+});
+
+async function initializeDashboard(){
+  // Never allow the loading screen to remain forever.
+  const fallbackTimer = setTimeout(hideLoading, 2500);
+
+  try{
+    const { data, error } = await withTimeout(sb.auth.getSession(), 5000);
+
+    if(error || !data?.session){
+      clearTimeout(fallbackTimer);
+      window.location.replace('app-employer-login.html');
+      return;
+    }
+
+    session = data.session;
+
+    const displayName =
+      session.user.user_metadata?.full_name ||
+      session.user.user_metadata?.name ||
+      session.user.email?.split('@')[0] ||
+      'there';
+
+    els.greeting.textContent =
+      'Good morning, ' +
+      String(displayName).trim().split(/\s+/)[0] +
+      ' 👋';
+
+    // Show the dashboard immediately. Data loads afterward.
+    renderMetrics();
+    renderCandidates(new Map());
+    renderActivity(new Map());
+    hideLoading();
+    clearTimeout(fallbackTimer);
+
+    employerJobs = await queryEmployerJobs(session.user.id);
+    applications = await queryApplications(
+      employerJobs.map(job => job.id).filter(Boolean)
+    );
+
+    const profileIds = [...new Set(
+      applications
+        .map(application =>
+          application.candidate_id ||
+          application.user_id ||
+          application.profile_id
+        )
+        .filter(Boolean)
+        .map(String)
+    )];
+
+    const profileMap = await queryProfiles(profileIds);
+
+    renderMetrics();
+    renderCandidates(profileMap);
+    renderActivity(profileMap);
+
+  }catch(error){
+    console.error('Dashboard initialization failed:', error);
+
+    renderMetrics();
+    renderCandidates(new Map());
+    renderActivity(new Map());
+    hideLoading();
+    clearTimeout(fallbackTimer);
+  }
+}
+
+initializeDashboard();
 </script>
 </body>
 </html>
