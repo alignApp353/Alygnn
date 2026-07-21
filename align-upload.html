@@ -143,6 +143,25 @@
     margin-top: 20px; font-size: 12px; color: var(--text-muted);
   }
 
+  /* "No resume yet" link — lives OUTSIDE .drop-zone so it doesn't
+     sit under the absolutely-positioned file input and trigger
+     the file picker instead of navigating. */
+  .no-resume-link {
+    display: block;
+    text-align: center;
+    margin-top: 24px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .no-resume-link a {
+    color: var(--brand);
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .no-resume-link a:hover { color: var(--sage); }
+
   .uploading-state { display: none; }
   .upload-progress {
     background: var(--card-bg);
@@ -419,6 +438,10 @@
       <div class="drop-sub">Drop your file anywhere in this box<br>or click to browse your computer</div>
       <div class="drop-btn">Choose file</div>
       <div class="drop-formats">PDF, DOC, or DOCX · Max 10MB</div>
+    </div>
+
+    <div class="no-resume-link">
+      Don't have a resume yet? <a onclick="window.location.href='resume-builder.html'">Let's create one →</a>
     </div>
 
     <div class="tips">
