@@ -164,18 +164,13 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 <div class="suggest-list" id="title-suggestions"></div>
 </div>
       </div>
-
-      <div class="suggestion-section">
-        <div class="suggestion-title">Popular job titles</div>
-        <div class="chips" id="popular-title-chips"></div>
-      </div>
-
-      <div class="field">
+<div class="field">
         <label for="location">Location</label>
         <div class="suggest-wrap">
 <input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC" autocomplete="off">
 <div class="suggest-list" id="location-suggestions"></div>
 </div>
+<div class="help">Start typing a U.S. city, then select it from the suggestions.</div>
       </div>
     </div>
 
@@ -316,12 +311,16 @@ const JOB_TITLES=[
 'Territory Sales Representative','Warehouse Associate'
 ];
 
-const LOCATIONS=[
-'Raleigh, NC','Durham, NC','Cary, NC','Chapel Hill, NC','Morrisville, NC',
-'Wake Forest, NC','Garner, NC','Charlotte, NC','Greensboro, NC','Wilmington, NC',
-'Remote - United States','Hybrid - Raleigh, NC','New York, NY','Atlanta, GA',
-'Washington, DC','Miami, FL','Dallas, TX','Houston, TX','Chicago, IL','Los Angeles, CA'
+const GOOGLE_MAPS_API_KEY='AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
+
+const FALLBACK_LOCATIONS=[
+'Raleigh, NC','Durham, NC','Cary, NC','Charlotte, NC','Atlanta, GA',
+'New York, NY','Washington, DC','Miami, FL','Dallas, TX','Houston, TX',
+'Chicago, IL','Los Angeles, CA','San Francisco, CA','Seattle, WA','Boston, MA'
 ];
+
+let locationAutocomplete=null;
+let selectedGooglePlace=null;
 
 const BASE_SKILLS=['Communication skills','Customer service','Time management','Problem solving','Teamwork','Attention to detail','Microsoft Office','Organization','Reliable transportation','High school diploma or equivalent'];
 
@@ -356,12 +355,23 @@ function roleCategory(title){
  return'';
 }
 
-function renderSuggestionList(input,box,values,onSelect){
+function renderSuggestionList(input,box,values,onSelect,minChars=2){
  const q=input.value.trim().toLowerCase();
- const matches=values.filter(v=>!q||v.toLowerCase().includes(q)).slice(0,8);
+
+ if(q.length<minChars){
+   box.innerHTML='';
+   box.classList.remove('show');
+   return;
+ }
+
+ const matches=values.filter(v=>v.toLowerCase().includes(q)).slice(0,8);
  box.innerHTML=matches.map(v=>`<button type="button" class="suggest-item" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
  box.classList.toggle('show',matches.length>0&&document.activeElement===input);
- box.querySelectorAll('.suggest-item').forEach(btn=>btn.addEventListener('mousedown',e=>{e.preventDefault();onSelect(btn.dataset.value);box.classList.remove('show')}));
+ box.querySelectorAll('.suggest-item').forEach(btn=>btn.addEventListener('mousedown',e=>{
+   e.preventDefault();
+   onSelect(btn.dataset.value);
+   box.classList.remove('show');
+ }));
 }
 
 function addLine(id,value){
@@ -405,25 +415,123 @@ function refreshRoleSuggestions(){
  renderChips('skill-chips',[...BASE_SKILLS,...(ROLE_SKILLS[category]||[])],v=>addLine('requirements',v));
 }
 
+function loadGooglePlaces(){
+ return new Promise((resolve,reject)=>{
+   if(window.google?.maps?.places){
+     resolve();
+     return;
+   }
+
+   if(!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('PASTE_YOUR')){
+     reject(new Error('Google Maps API key is missing.'));
+     return;
+   }
+
+   const existing=document.getElementById('google-places-script');
+   if(existing){
+     existing.addEventListener('load',resolve,{once:true});
+     existing.addEventListener('error',reject,{once:true});
+     return;
+   }
+
+   const script=document.createElement('script');
+   script.id='google-places-script';
+   script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places`;
+   script.async=true;
+   script.defer=true;
+   script.onload=resolve;
+   script.onerror=()=>reject(new Error('Google Places failed to load.'));
+   document.head.appendChild(script);
+ });
+}
+
+async function setupLocationAutocomplete(){
+ const input=el('location');
+ const fallbackBox=el('location-suggestions');
+
+ input.addEventListener('input',()=>{
+   selectedGooglePlace=null;
+
+   if(input.value.trim().length<2){
+     fallbackBox.classList.remove('show');
+   }
+ });
+
+ try{
+   await loadGooglePlaces();
+
+   locationAutocomplete=new google.maps.places.Autocomplete(input,{
+     types:['(cities)'],
+     componentRestrictions:{country:'us'},
+     fields:['formatted_address','name','place_id','address_components']
+   });
+
+   locationAutocomplete.addListener('place_changed',()=>{
+     const place=locationAutocomplete.getPlace();
+
+     if(!place?.place_id){
+       selectedGooglePlace=null;
+       return;
+     }
+
+     selectedGooglePlace={
+       place_id:place.place_id,
+       formatted_address:place.formatted_address||place.name||input.value
+     };
+
+     input.value=selectedGooglePlace.formatted_address;
+     fallbackBox.classList.remove('show');
+   });
+
+ }catch(error){
+   console.warn('Google Places unavailable. Using fallback suggestions.',error);
+
+   const showFallback=()=>renderSuggestionList(
+     input,
+     fallbackBox,
+     FALLBACK_LOCATIONS,
+     value=>{
+       input.value=value;
+       selectedGooglePlace={formatted_address:value};
+     },
+     2
+   );
+
+   input.addEventListener('input',showFallback);
+   input.addEventListener('blur',()=>setTimeout(()=>fallbackBox.classList.remove('show'),150));
+ }
+}
+
 function setupSuggestions(){
- const titleInput=el('title'),titleBox=el('title-suggestions');
- const locationInput=el('location'),locationBox=el('location-suggestions');
+ const titleInput=el('title');
+ const titleBox=el('title-suggestions');
 
- const showTitles=()=>renderSuggestionList(titleInput,titleBox,JOB_TITLES,v=>{titleInput.value=v;refreshRoleSuggestions()});
- const showLocations=()=>renderSuggestionList(locationInput,locationBox,LOCATIONS,v=>{locationInput.value=v});
+ const showTitles=()=>renderSuggestionList(
+   titleInput,
+   titleBox,
+   JOB_TITLES,
+   value=>{
+     titleInput.value=value;
+     refreshRoleSuggestions();
+   },
+   2
+ );
 
- titleInput.addEventListener('input',()=>{showTitles();refreshRoleSuggestions()});
- titleInput.addEventListener('focus',showTitles);
+ titleInput.addEventListener('input',()=>{
+   showTitles();
+   refreshRoleSuggestions();
+ });
+
+ titleInput.addEventListener('focus',()=>{
+   if(titleInput.value.trim().length>=2) showTitles();
+ });
+
  titleInput.addEventListener('blur',()=>setTimeout(()=>titleBox.classList.remove('show'),150));
 
- locationInput.addEventListener('input',showLocations);
- locationInput.addEventListener('focus',showLocations);
- locationInput.addEventListener('blur',()=>setTimeout(()=>locationBox.classList.remove('show'),150));
-
- renderChips('popular-title-chips',JOB_TITLES.slice(0,10),v=>{titleInput.value=v;refreshRoleSuggestions()},false);
  renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence,false);
  renderChips('benefit-chips',BENEFITS,v=>addLine('benefits',v));
  refreshRoleSuggestions();
+ setupLocationAutocomplete();
 }
 
 const el = id => document.getElementById(id);
@@ -488,6 +596,10 @@ function validateStep(step){
     }
     if(job.location.length < 3){
       return 'Enter a valid job location.';
+    }
+
+    if(locationAutocomplete && !selectedGooglePlace){
+      return 'Select a U.S. city from the location suggestions.';
     }
   }
 
