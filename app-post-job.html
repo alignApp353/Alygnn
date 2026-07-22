@@ -109,6 +109,7 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 .chip{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800}
 .chip.selected{background:#EDF3F9;border-color:var(--brand-dark);color:var(--brand-dark)}
 .quick-note{margin-top:8px;color:var(--muted);font-size:11px;line-height:1.45}
+.company-ai-link{width:100%;margin-top:10px;min-height:44px;border:1px solid rgba(52,95,145,.25);border-radius:14px;background:#EDF3F9;color:var(--brand-dark);font-size:12px;font-weight:900}
 
 </style>
 </head>
@@ -153,6 +154,7 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
           <div class="company-name" id="company-name">Loading company…</div>
           <div class="company-note">Pulled from your employer profile</div>
         </div>
+        <button type="button" class="company-ai-link" id="company-ai-link">✨ Complete Company AI Profile</button>
       </div>
 
       <div class="field">
@@ -383,10 +385,19 @@ function addDescriptionSentence(value){
  if(!current.includes(sentence)){t.value=current?current+'\n\n'+sentence:sentence;t.dispatchEvent(new Event('input'))}
 }
 
-function renderChips(id,values,handler){
+function renderChips(id,values,handler,sticky=true){
  const c=el(id);
  c.innerHTML=values.map(v=>`<button type="button" class="chip" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
- c.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{handler(btn.dataset.value);btn.classList.add('selected')}));
+ c.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{
+   handler(btn.dataset.value);
+   if(sticky){
+     btn.classList.toggle('selected');
+   }else{
+     c.querySelectorAll('.chip').forEach(item=>item.classList.remove('selected'));
+     btn.classList.add('selected');
+     setTimeout(()=>btn.classList.remove('selected'),180);
+   }
+ }));
 }
 
 function refreshRoleSuggestions(){
@@ -409,8 +420,8 @@ function setupSuggestions(){
  locationInput.addEventListener('focus',showLocations);
  locationInput.addEventListener('blur',()=>setTimeout(()=>locationBox.classList.remove('show'),150));
 
- renderChips('popular-title-chips',JOB_TITLES.slice(0,10),v=>{titleInput.value=v;refreshRoleSuggestions()});
- renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence);
+ renderChips('popular-title-chips',JOB_TITLES.slice(0,10),v=>{titleInput.value=v;refreshRoleSuggestions()},false);
+ renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence,false);
  renderChips('benefit-chips',BENEFITS,v=>addLine('benefits',v));
  refreshRoleSuggestions();
 }
@@ -596,6 +607,8 @@ el('back-btn').addEventListener('click', () => {
   if(currentStep === 1) location.href = 'app-employer-dashboard.html';
   else showStep(currentStep - 1);
 });
+
+el('company-ai-link').addEventListener('click',()=>{location.href='app-employer-ai-profile.html';});
 
 el('description').addEventListener('input', () => {
   el('description-count').textContent = el('description').value.length;
