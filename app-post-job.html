@@ -97,6 +97,19 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 .spinner{width:42px;height:42px;margin:0 auto 13px;border:4px solid #E2E7EA;border-top-color:var(--brand-dark);border-radius:50%;animation:spin .75s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:360px){.grid2,.choice-grid{grid-template-columns:1fr}}
+
+.suggest-wrap{position:relative}
+.suggest-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:25;max-height:230px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 32px rgba(23,35,51,.12);display:none}
+.suggest-list.show{display:block}
+.suggest-item{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:13px 14px;text-align:left;font-size:13px;font-weight:700;color:var(--text)}
+.suggest-item:last-child{border-bottom:0}
+.suggestion-section{margin-top:18px}
+.suggestion-title{font-size:12px;font-weight:900;color:var(--text);margin-bottom:9px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--border);background:#fff;color:var(--text);border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800}
+.chip.selected{background:#EDF3F9;border-color:var(--brand-dark);color:var(--brand-dark)}
+.quick-note{margin-top:8px;color:var(--muted);font-size:11px;line-height:1.45}
+
 </style>
 </head>
 <body>
@@ -144,12 +157,23 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 
       <div class="field">
         <label for="title">Job title</label>
-        <input class="input" id="title" type="text" maxlength="90" placeholder="e.g. Sales Account Manager">
+        <div class="suggest-wrap">
+<input class="input" id="title" type="text" maxlength="90" placeholder="e.g. Sales Account Manager" autocomplete="off">
+<div class="suggest-list" id="title-suggestions"></div>
+</div>
+      </div>
+
+      <div class="suggestion-section">
+        <div class="suggestion-title">Popular job titles</div>
+        <div class="chips" id="popular-title-chips"></div>
       </div>
 
       <div class="field">
         <label for="location">Location</label>
-        <input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC">
+        <div class="suggest-wrap">
+<input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC" autocomplete="off">
+<div class="suggest-list" id="location-suggestions"></div>
+</div>
       </div>
     </div>
 
@@ -205,14 +229,30 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
         <div class="help"><span id="description-count">0</span>/5000 characters · minimum 180</div>
       </div>
 
+      <div class="suggestion-section">
+        <div class="suggestion-title">Description prompts</div>
+        <div class="chips" id="description-prompts"></div>
+        <div class="quick-note">Tap a prompt to add a professional sentence.</div>
+      </div>
+
       <div class="field">
-        <label for="requirements">Requirements</label>
+        <label for="requirements">Requirements and skills</label>
         <textarea class="textarea" id="requirements" maxlength="2500" placeholder="List each requirement on a new line."></textarea>
+      </div>
+
+      <div class="suggestion-section">
+        <div class="suggestion-title">Suggested skills</div>
+        <div class="chips" id="skill-chips"></div>
       </div>
 
       <div class="field">
         <label for="benefits">Benefits</label>
         <textarea class="textarea" id="benefits" maxlength="2500" placeholder="List each benefit on a new line."></textarea>
+      </div>
+
+      <div class="suggestion-section">
+        <div class="suggestion-title">Common benefits</div>
+        <div class="chips" id="benefit-chips"></div>
       </div>
     </div>
 
@@ -261,6 +301,119 @@ let profile = null;
 let jobType = 'Full-time';
 let workStyle = 'On-site';
 let employerVerified = false;
+
+const JOB_TITLES=[
+'Account Executive','Account Manager','Administrative Assistant','Assistant Manager',
+'Business Development Representative','Call Center Representative','Client Representative',
+'Customer Service Representative','Customer Success Manager','Data Analyst',
+'Entry Level Account Manager','Field Sales Representative','Human Resources Coordinator',
+'Inside Sales Representative','Junior Account Manager','Marketing Coordinator',
+'Operations Manager','Project Coordinator','Recruiter','Retail Sales Associate',
+'Sales Account Manager','Sales Associate','Sales Development Representative',
+'Sales Manager','Social Media Coordinator','Store Manager','Team Lead',
+'Territory Sales Representative','Warehouse Associate'
+];
+
+const LOCATIONS=[
+'Raleigh, NC','Durham, NC','Cary, NC','Chapel Hill, NC','Morrisville, NC',
+'Wake Forest, NC','Garner, NC','Charlotte, NC','Greensboro, NC','Wilmington, NC',
+'Remote - United States','Hybrid - Raleigh, NC','New York, NY','Atlanta, GA',
+'Washington, DC','Miami, FL','Dallas, TX','Houston, TX','Chicago, IL','Los Angeles, CA'
+];
+
+const BASE_SKILLS=['Communication skills','Customer service','Time management','Problem solving','Teamwork','Attention to detail','Microsoft Office','Organization','Reliable transportation','High school diploma or equivalent'];
+
+const ROLE_SKILLS={
+sales:['Sales experience','Lead generation','Cold calling','CRM experience','Negotiation','Relationship building','Goal-oriented mindset','Presentation skills'],
+customer:['Customer support experience','Conflict resolution','Phone etiquette','Data entry','Active listening','Multitasking'],
+manager:['Leadership experience','Team coaching','Performance management','Scheduling','Hiring and training','KPI management'],
+admin:['Calendar management','Email management','Document preparation','Data entry','Office administration','Scheduling'],
+analyst:['Excel','Data analysis','Reporting','SQL','Dashboard creation','Critical thinking','Research skills'],
+marketing:['Content creation','Social media management','Campaign reporting','Copywriting','Canva','Digital marketing']
+};
+
+const BENEFITS=['Health insurance','Dental insurance','Vision insurance','Paid time off','401(k)','Flexible schedule','Employee discount','Professional development','Paid training','Referral bonus','Performance bonus','Mileage reimbursement','Work from home','Career advancement opportunities'];
+
+const DESCRIPTION_PROMPTS=[
+'Describe the typical day-to-day responsibilities.',
+'Explain who this role reports to and works with.',
+'Describe the training and onboarding process.',
+'Explain the schedule and expected working hours.',
+'Describe how success will be measured in this role.',
+'Explain opportunities for growth and advancement.'
+];
+
+function roleCategory(title){
+ const v=String(title||'').toLowerCase();
+ if(/sales|account|business development|territory|representative/.test(v))return'sales';
+ if(/customer|support|call center|client/.test(v))return'customer';
+ if(/manager|lead|supervisor|director/.test(v))return'manager';
+ if(/admin|coordinator|assistant|office/.test(v))return'admin';
+ if(/analyst|data|research/.test(v))return'analyst';
+ if(/marketing|social media|content/.test(v))return'marketing';
+ return'';
+}
+
+function renderSuggestionList(input,box,values,onSelect){
+ const q=input.value.trim().toLowerCase();
+ const matches=values.filter(v=>!q||v.toLowerCase().includes(q)).slice(0,8);
+ box.innerHTML=matches.map(v=>`<button type="button" class="suggest-item" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
+ box.classList.toggle('show',matches.length>0&&document.activeElement===input);
+ box.querySelectorAll('.suggest-item').forEach(btn=>btn.addEventListener('mousedown',e=>{e.preventDefault();onSelect(btn.dataset.value);box.classList.remove('show')}));
+}
+
+function addLine(id,value){
+ const t=el(id);
+ const lines=t.value.split('\n').map(x=>x.trim()).filter(Boolean);
+ if(!lines.some(x=>x.toLowerCase()===value.toLowerCase())){lines.push(value);t.value=lines.join('\n');t.dispatchEvent(new Event('input'))}
+}
+
+function addDescriptionSentence(value){
+ const map={
+ 'Describe the typical day-to-day responsibilities.':'In this role, you will manage daily responsibilities, support team goals, and complete assigned tasks accurately and on time.',
+ 'Explain who this role reports to and works with.':'You will report to the hiring manager and collaborate closely with team members across the organization.',
+ 'Describe the training and onboarding process.':'New hires will receive structured onboarding, hands-on training, and ongoing coaching to build confidence in the role.',
+ 'Explain the schedule and expected working hours.':'The schedule and expected working hours will be discussed during the interview and may vary based on business needs.',
+ 'Describe how success will be measured in this role.':'Success will be measured through reliability, quality of work, communication, and achievement of role-specific goals.',
+ 'Explain opportunities for growth and advancement.':'High-performing team members will have opportunities to take on additional responsibility and advance within the company.'
+ };
+ const sentence=map[value]||value;
+ const t=el('description');
+ const current=t.value.trim();
+ if(!current.includes(sentence)){t.value=current?current+'\n\n'+sentence:sentence;t.dispatchEvent(new Event('input'))}
+}
+
+function renderChips(id,values,handler){
+ const c=el(id);
+ c.innerHTML=values.map(v=>`<button type="button" class="chip" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
+ c.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{handler(btn.dataset.value);btn.classList.add('selected')}));
+}
+
+function refreshRoleSuggestions(){
+ const category=roleCategory(el('title').value);
+ renderChips('skill-chips',[...BASE_SKILLS,...(ROLE_SKILLS[category]||[])],v=>addLine('requirements',v));
+}
+
+function setupSuggestions(){
+ const titleInput=el('title'),titleBox=el('title-suggestions');
+ const locationInput=el('location'),locationBox=el('location-suggestions');
+
+ const showTitles=()=>renderSuggestionList(titleInput,titleBox,JOB_TITLES,v=>{titleInput.value=v;refreshRoleSuggestions()});
+ const showLocations=()=>renderSuggestionList(locationInput,locationBox,LOCATIONS,v=>{locationInput.value=v});
+
+ titleInput.addEventListener('input',()=>{showTitles();refreshRoleSuggestions()});
+ titleInput.addEventListener('focus',showTitles);
+ titleInput.addEventListener('blur',()=>setTimeout(()=>titleBox.classList.remove('show'),150));
+
+ locationInput.addEventListener('input',showLocations);
+ locationInput.addEventListener('focus',showLocations);
+ locationInput.addEventListener('blur',()=>setTimeout(()=>locationBox.classList.remove('show'),150));
+
+ renderChips('popular-title-chips',JOB_TITLES.slice(0,10),v=>{titleInput.value=v;refreshRoleSuggestions()});
+ renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence);
+ renderChips('benefit-chips',BENEFITS,v=>addLine('benefits',v));
+ refreshRoleSuggestions();
+}
 
 const el = id => document.getElementById(id);
 
@@ -476,6 +629,7 @@ el('description').addEventListener('input', () => {
       String(profile.verification_status || '').toLowerCase() === 'approved';
 
     el('verification-lock').hidden = employerVerified;
+    setupSuggestions();
     showStep(1);
   }catch(error){
     console.error(error);
