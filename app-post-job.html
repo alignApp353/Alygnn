@@ -226,6 +226,10 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
     </div>
 
     <div class="step" data-step="4">
+      <button class="company-ai-link" id="use-role-data-btn" type="button">
+        ✨ Build from verified occupation data
+      </button>
+
       <div class="field">
         <label for="description">Job description</label>
         <textarea class="textarea" id="description" maxlength="5000" placeholder="Explain the role, responsibilities, schedule, team, and what a successful candidate will do."></textarea>
@@ -310,6 +314,7 @@ let titleSearchTimer=null;
 let locationSearchTimer=null;
 let selectedOnetCode='';
 let selectedLocation=null;
+let currentOccupationProfile=null;
 
 async function searchJobTitleCatalog(query){
   const clean=String(query||'').trim();
@@ -418,6 +423,87 @@ function debounceCatalogSearch(timerName,callback,delay=250){
   window[timerName]=setTimeout(callback,delay);
 }
 
+
+function refreshRoleSuggestions(){
+  const occupationSkills=occupationSkillNames();
+
+  if(occupationSkills.length){
+    renderChips('skill-chips',occupationSkills,value=>addLine('requirements',value));
+    return;
+  }
+
+  const category=roleCategory(el('title').value);
+  renderChips(
+    'skill-chips',
+    [...BASE_SKILLS,...(ROLE_SKILLS[category]||[])],
+    value=>addLine('requirements',value)
+  );
+}
+
+async function loadOccupationProfile(onetCode){
+  currentOccupationProfile=null;
+
+  if(!onetCode){
+    refreshRoleSuggestions();
+    return;
+  }
+
+  const {data,error}=await sb.rpc('get_occupation_ai_profile',{
+    occupation_code:onetCode
+  });
+
+  if(error){
+    console.error('Occupation profile load failed:',error);
+    refreshRoleSuggestions();
+    return;
+  }
+
+  currentOccupationProfile=Array.isArray(data)?data[0]:data;
+  refreshRoleSuggestions();
+}
+
+function occupationSkillNames(){
+  const profileSkills=Array.isArray(currentOccupationProfile?.skills)
+    ? currentOccupationProfile.skills.map(item=>item.name).filter(Boolean)
+    : [];
+
+  const softwareSkills=Array.isArray(currentOccupationProfile?.software)
+    ? currentOccupationProfile.software
+        .filter(item=>item.in_demand||item.hot)
+        .map(item=>item.name)
+        .filter(Boolean)
+    : [];
+
+  return [...new Set([...profileSkills,...softwareSkills])].slice(0,24);
+}
+
+function applyOccupationProfileToForm(){
+  if(!currentOccupationProfile)return;
+
+  const taskLines=(currentOccupationProfile.tasks||[])
+    .map(item=>item.task)
+    .filter(Boolean)
+    .slice(0,8);
+
+  const skillLines=occupationSkillNames().slice(0,12);
+
+  if(!el('description').value.trim()){
+    const intro=currentOccupationProfile.description||
+      `We are hiring a ${el('title').value.trim()} to support our team.`;
+
+    const responsibilities=taskLines.length
+      ? '\n\nKey responsibilities:\n'+taskLines.map(task=>`• ${task}`).join('\n')
+      : '';
+
+    el('description').value=intro+responsibilities;
+    el('description').dispatchEvent(new Event('input'));
+  }
+
+  if(!el('requirements').value.trim()&&skillLines.length){
+    el('requirements').value=skillLines.join('\n');
+  }
+}
+
 function setupSuggestions(){
   const titleInput=el('title');
   const titleBox=el('title-suggestions');
@@ -443,7 +529,7 @@ function setupSuggestions(){
     renderCatalogResults(titleBox,rows,row=>{
       titleInput.value=row.job_title;
       selectedOnetCode=row.onet_soc_code||'';
-      refreshRoleSuggestions();
+      loadOccupationProfile(selectedOnetCode);
     });
   }
 
@@ -691,6 +777,20 @@ el('back-btn').addEventListener('click', () => {
 });
 
 el('company-ai-link').addEventListener('click',()=>{location.href='app-employer-ai-profile.html';});
+
+
+el('use-role-data-btn').addEventListener('click',()=>{
+  if(!currentOccupationProfile){
+    showMessage('Choose a suggested job title first so Alygnn can load verified occupation data.');
+    return;
+  }
+
+  applyOccupationProfileToForm();
+  showMessage(
+    'Role-specific responsibilities and skills were added. Review and edit them before publishing.',
+    'success'
+  );
+});
 
 el('description').addEventListener('input', () => {
   el('description-count').textContent = el('description').value.length;
