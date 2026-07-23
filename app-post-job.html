@@ -111,6 +111,12 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 .quick-note{margin-top:8px;color:var(--muted);font-size:11px;line-height:1.45}
 .company-ai-link{width:100%;margin-top:10px;min-height:44px;border:1px solid rgba(52,95,145,.25);border-radius:14px;background:#EDF3F9;color:var(--brand-dark);font-size:12px;font-weight:900}
 
+
+.suggest-empty{padding:14px;color:var(--muted);font-size:12px;line-height:1.45}
+.catalog-result{display:flex;flex-direction:column;gap:3px}
+.suggest-main{font-size:13px;font-weight:900;color:var(--text)}
+.suggest-sub{font-size:10px;font-weight:600;color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -299,29 +305,45 @@ let jobType = 'Full-time';
 let workStyle = 'On-site';
 let employerVerified = false;
 
-const JOB_TITLES=[
-'Account Executive','Account Manager','Administrative Assistant','Assistant Manager',
-'Business Development Representative','Call Center Representative','Client Representative',
-'Customer Service Representative','Customer Success Manager','Data Analyst',
-'Entry Level Account Manager','Field Sales Representative','Human Resources Coordinator',
-'Inside Sales Representative','Junior Account Manager','Marketing Coordinator',
-'Operations Manager','Project Coordinator','Recruiter','Retail Sales Associate',
-'Sales Account Manager','Sales Associate','Sales Development Representative',
-'Sales Manager','Social Media Coordinator','Store Manager','Team Lead',
-'Territory Sales Representative','Warehouse Associate'
-];
 
-const GOOGLE_MAPS_API_KEY='AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
+let titleSearchTimer=null;
+let locationSearchTimer=null;
+let selectedOnetCode='';
+let selectedLocation=null;
 
-const FALLBACK_LOCATIONS=[
-'Raleigh, NC','Durham, NC','Cary, NC','Charlotte, NC','Atlanta, GA',
-'New York, NY','Washington, DC','Miami, FL','Dallas, TX','Houston, TX',
-'Chicago, IL','Los Angeles, CA','San Francisco, CA','Seattle, WA','Boston, MA'
-];
+async function searchJobTitleCatalog(query){
+  const clean=String(query||'').trim();
+  if(clean.length<2)return[];
 
-let locationAutocomplete=null;
-let selectedGooglePlace=null;
+  const {data,error}=await sb.rpc('search_job_titles',{
+    search_query:clean,
+    result_limit:12
+  });
 
+  if(error){
+    console.error('Job title search failed:',error);
+    return[];
+  }
+
+  return data||[];
+}
+
+async function searchLocationCatalog(query){
+  const clean=String(query||'').trim();
+  if(clean.length<2)return[];
+
+  const {data,error}=await sb.rpc('search_us_locations',{
+    search_query:clean,
+    result_limit:12
+  });
+
+  if(error){
+    console.error('Location search failed:',error);
+    return[];
+  }
+
+  return data||[];
+}
 const BASE_SKILLS=['Communication skills','Customer service','Time management','Problem solving','Teamwork','Attention to detail','Microsoft Office','Organization','Reliable transportation','High school diploma or equivalent'];
 
 const ROLE_SKILLS={
@@ -355,186 +377,138 @@ function roleCategory(title){
  return'';
 }
 
-function renderSuggestionList(input,box,values,onSelect,minChars=2){
- const q=input.value.trim().toLowerCase();
 
- if(q.length<minChars){
-   box.innerHTML='';
-   box.classList.remove('show');
-   return;
- }
-
- const matches=values.filter(v=>v.toLowerCase().includes(q)).slice(0,8);
- box.innerHTML=matches.map(v=>`<button type="button" class="suggest-item" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
- box.classList.toggle('show',matches.length>0&&document.activeElement===input);
- box.querySelectorAll('.suggest-item').forEach(btn=>btn.addEventListener('mousedown',e=>{
-   e.preventDefault();
-   onSelect(btn.dataset.value);
-   box.classList.remove('show');
- }));
+function closeSuggestionBox(box){
+  box.innerHTML='';
+  box.classList.remove('show');
 }
 
-function addLine(id,value){
- const t=el(id);
- const lines=t.value.split('\n').map(x=>x.trim()).filter(Boolean);
- if(!lines.some(x=>x.toLowerCase()===value.toLowerCase())){lines.push(value);t.value=lines.join('\n');t.dispatchEvent(new Event('input'))}
+function renderCatalogResults(box,rows,onSelect,emptyText='No matches. You can keep your custom entry.'){
+  if(!rows.length){
+    box.innerHTML=`<div class="suggest-empty">${emptyText}</div>`;
+    box.classList.add('show');
+    return;
+  }
+
+  box.innerHTML=rows.map((row,index)=>{
+    const title=row.job_title||row.display_name||'';
+    const sub=row.occupation_title||row.location_type||'';
+    return `
+      <button type="button" class="suggest-item catalog-result" data-index="${index}">
+        <span class="suggest-main">${escapeHtml(title)}</span>
+        ${sub?`<span class="suggest-sub">${escapeHtml(sub)}</span>`:''}
+      </button>
+    `;
+  }).join('');
+
+  box.classList.add('show');
+
+  box.querySelectorAll('.catalog-result').forEach(button=>{
+    button.addEventListener('mousedown',event=>{
+      event.preventDefault();
+      const row=rows[Number(button.dataset.index)];
+      onSelect(row);
+      closeSuggestionBox(box);
+    });
+  });
 }
 
-function addDescriptionSentence(value){
- const map={
- 'Describe the typical day-to-day responsibilities.':'In this role, you will manage daily responsibilities, support team goals, and complete assigned tasks accurately and on time.',
- 'Explain who this role reports to and works with.':'You will report to the hiring manager and collaborate closely with team members across the organization.',
- 'Describe the training and onboarding process.':'New hires will receive structured onboarding, hands-on training, and ongoing coaching to build confidence in the role.',
- 'Explain the schedule and expected working hours.':'The schedule and expected working hours will be discussed during the interview and may vary based on business needs.',
- 'Describe how success will be measured in this role.':'Success will be measured through reliability, quality of work, communication, and achievement of role-specific goals.',
- 'Explain opportunities for growth and advancement.':'High-performing team members will have opportunities to take on additional responsibility and advance within the company.'
- };
- const sentence=map[value]||value;
- const t=el('description');
- const current=t.value.trim();
- if(!current.includes(sentence)){t.value=current?current+'\n\n'+sentence:sentence;t.dispatchEvent(new Event('input'))}
-}
-
-function renderChips(id,values,handler,sticky=true){
- const c=el(id);
- c.innerHTML=values.map(v=>`<button type="button" class="chip" data-value="${v.replace(/"/g,'&quot;')}">${v}</button>`).join('');
- c.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{
-   handler(btn.dataset.value);
-   if(sticky){
-     btn.classList.toggle('selected');
-   }else{
-     c.querySelectorAll('.chip').forEach(item=>item.classList.remove('selected'));
-     btn.classList.add('selected');
-     setTimeout(()=>btn.classList.remove('selected'),180);
-   }
- }));
-}
-
-function refreshRoleSuggestions(){
- const category=roleCategory(el('title').value);
- renderChips('skill-chips',[...BASE_SKILLS,...(ROLE_SKILLS[category]||[])],v=>addLine('requirements',v));
-}
-
-function loadGooglePlaces(){
- return new Promise((resolve,reject)=>{
-   if(window.google?.maps?.places){
-     resolve();
-     return;
-   }
-
-   if(!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.includes('PASTE_YOUR')){
-     reject(new Error('Google Maps API key is missing.'));
-     return;
-   }
-
-   const existing=document.getElementById('google-places-script');
-   if(existing){
-     existing.addEventListener('load',resolve,{once:true});
-     existing.addEventListener('error',reject,{once:true});
-     return;
-   }
-
-   const script=document.createElement('script');
-   script.id='google-places-script';
-   script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places`;
-   script.async=true;
-   script.defer=true;
-   script.onload=resolve;
-   script.onerror=()=>reject(new Error('Google Places failed to load.'));
-   document.head.appendChild(script);
- });
-}
-
-async function setupLocationAutocomplete(){
- const input=el('location');
- const fallbackBox=el('location-suggestions');
-
- input.addEventListener('input',()=>{
-   selectedGooglePlace=null;
-
-   if(input.value.trim().length<2){
-     fallbackBox.classList.remove('show');
-   }
- });
-
- try{
-   await loadGooglePlaces();
-
-   locationAutocomplete=new google.maps.places.Autocomplete(input,{
-     types:['(cities)'],
-     componentRestrictions:{country:'us'},
-     fields:['formatted_address','name','place_id','address_components']
-   });
-
-   locationAutocomplete.addListener('place_changed',()=>{
-     const place=locationAutocomplete.getPlace();
-
-     if(!place?.place_id){
-       selectedGooglePlace=null;
-       return;
-     }
-
-     selectedGooglePlace={
-       place_id:place.place_id,
-       formatted_address:place.formatted_address||place.name||input.value
-     };
-
-     input.value=selectedGooglePlace.formatted_address;
-     fallbackBox.classList.remove('show');
-   });
-
- }catch(error){
-   console.warn('Google Places unavailable. Using fallback suggestions.',error);
-
-   const showFallback=()=>renderSuggestionList(
-     input,
-     fallbackBox,
-     FALLBACK_LOCATIONS,
-     value=>{
-       input.value=value;
-       selectedGooglePlace={formatted_address:value};
-     },
-     2
-   );
-
-   input.addEventListener('input',showFallback);
-   input.addEventListener('blur',()=>setTimeout(()=>fallbackBox.classList.remove('show'),150));
- }
+function debounceCatalogSearch(timerName,callback,delay=250){
+  clearTimeout(window[timerName]);
+  window[timerName]=setTimeout(callback,delay);
 }
 
 function setupSuggestions(){
- const titleInput=el('title');
- const titleBox=el('title-suggestions');
+  const titleInput=el('title');
+  const titleBox=el('title-suggestions');
+  const locationInput=el('location');
+  const locationBox=el('location-suggestions');
 
- const showTitles=()=>renderSuggestionList(
-   titleInput,
-   titleBox,
-   JOB_TITLES,
-   value=>{
-     titleInput.value=value;
-     refreshRoleSuggestions();
-   },
-   2
- );
+  async function runTitleSearch(){
+    const query=titleInput.value.trim();
+    selectedOnetCode='';
 
- titleInput.addEventListener('input',()=>{
-   showTitles();
-   refreshRoleSuggestions();
- });
+    if(query.length<2){
+      closeSuggestionBox(titleBox);
+      return;
+    }
 
- titleInput.addEventListener('focus',()=>{
-   if(titleInput.value.trim().length>=2) showTitles();
- });
+    titleBox.innerHTML='<div class="suggest-empty">Searching job titles…</div>';
+    titleBox.classList.add('show');
 
- titleInput.addEventListener('blur',()=>setTimeout(()=>titleBox.classList.remove('show'),150));
+    const rows=await searchJobTitleCatalog(query);
 
- renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence,false);
- renderChips('benefit-chips',BENEFITS,v=>addLine('benefits',v));
- refreshRoleSuggestions();
- setupLocationAutocomplete();
+    if(titleInput.value.trim()!==query)return;
+
+    renderCatalogResults(titleBox,rows,row=>{
+      titleInput.value=row.job_title;
+      selectedOnetCode=row.onet_soc_code||'';
+      refreshRoleSuggestions();
+    });
+  }
+
+  async function runLocationSearch(){
+    const query=locationInput.value.trim();
+    selectedLocation=null;
+
+    if(query.length<2){
+      closeSuggestionBox(locationBox);
+      return;
+    }
+
+    locationBox.innerHTML='<div class="suggest-empty">Searching U.S. locations…</div>';
+    locationBox.classList.add('show');
+
+    const rows=await searchLocationCatalog(query);
+
+    if(locationInput.value.trim()!==query)return;
+
+    renderCatalogResults(locationBox,rows,row=>{
+      locationInput.value=row.display_name;
+      selectedLocation=row;
+    });
+  }
+
+  titleInput.addEventListener('input',()=>{
+    clearTimeout(titleSearchTimer);
+    titleSearchTimer=setTimeout(runTitleSearch,250);
+    refreshRoleSuggestions();
+  });
+
+  titleInput.addEventListener('focus',()=>{
+    if(titleInput.value.trim().length>=2)runTitleSearch();
+  });
+
+  titleInput.addEventListener('blur',()=>{
+    setTimeout(()=>closeSuggestionBox(titleBox),160);
+  });
+
+  locationInput.addEventListener('input',()=>{
+    clearTimeout(locationSearchTimer);
+    locationSearchTimer=setTimeout(runLocationSearch,250);
+  });
+
+  locationInput.addEventListener('focus',()=>{
+    if(locationInput.value.trim().length>=2)runLocationSearch();
+  });
+
+  locationInput.addEventListener('blur',()=>{
+    setTimeout(()=>closeSuggestionBox(locationBox),160);
+  });
+
+  renderChips('description-prompts',DESCRIPTION_PROMPTS,addDescriptionSentence,false);
+  renderChips('benefit-chips',BENEFITS,value=>addLine('benefits',value));
+  refreshRoleSuggestions();
 }
 
+
 const el = id => document.getElementById(id);
+function escapeHtml(value){
+  return String(value||'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+  })[char]);
+}
+
 
 function showMessage(text,type='error'){
   const box = el('message');
@@ -596,10 +570,6 @@ function validateStep(step){
     }
     if(job.location.length < 3){
       return 'Enter a valid job location.';
-    }
-
-    if(locationAutocomplete && !selectedGooglePlace){
-      return 'Select a U.S. city from the location suggestions.';
     }
   }
 
