@@ -99,9 +99,9 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 @media(max-width:360px){.grid2,.choice-grid{grid-template-columns:1fr}}
 
 .suggest-wrap{position:relative}
-.suggest-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:25;max-height:230px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 32px rgba(23,35,51,.12);display:none}
+.suggest-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:25;max-height:230px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 32px rgba(23,35,51,.12);display:none}
 .suggest-list.show{display:block}
-.suggest-item{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:13px 14px;text-align:left;font-size:13px;font-weight:700;color:var(--text)}
+.suggest-item{width:100%;border:0;border-bottom:1px solid var(--border);background:#fff;padding:13px 14px;text-align:left;font-size:13px;font-weight:700;color:var(--text);touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .suggest-item:last-child{border-bottom:0}
 .suggestion-section{margin-top:18px}
 .suggestion-title{font-size:12px;font-weight:900;color:var(--text);margin-bottom:9px}
@@ -327,6 +327,7 @@ async function searchJobTitleCatalog(query){
 
   if(error){
     console.error('Job title search failed:',error);
+    showMessage(`Job-title search is unavailable: ${error.message||'database error'}`);
     return[];
   }
 
@@ -344,6 +345,7 @@ async function searchLocationCatalog(query){
 
   if(error){
     console.error('Location search failed:',error);
+    showMessage(`Location search is unavailable: ${error.message||'database error'}`);
     return[];
   }
 
@@ -409,11 +411,40 @@ function renderCatalogResults(box,rows,onSelect,emptyText='No matches. You can k
   box.classList.add('show');
 
   box.querySelectorAll('.catalog-result').forEach(button=>{
-    button.addEventListener('mousedown',event=>{
+    let startX=0;
+    let startY=0;
+    let moved=false;
+
+    button.addEventListener('pointerdown',event=>{
+      startX=event.clientX;
+      startY=event.clientY;
+      moved=false;
+    });
+
+    button.addEventListener('pointermove',event=>{
+      if(
+        Math.abs(event.clientX-startX)>8 ||
+        Math.abs(event.clientY-startY)>8
+      ){
+        moved=true;
+      }
+    });
+
+    button.addEventListener('pointerup',event=>{
+      if(moved)return;
+
       event.preventDefault();
+      event.stopPropagation();
+
       const row=rows[Number(button.dataset.index)];
+      if(!row)return;
+
       onSelect(row);
       closeSuggestionBox(box);
+    });
+
+    button.addEventListener('pointercancel',()=>{
+      moved=true;
     });
   });
 }
@@ -504,6 +535,65 @@ function applyOccupationProfileToForm(){
   }
 }
 
+
+function renderChips(containerId,values,onSelect,toggleSelection=true){
+  const container=el(containerId);
+  if(!container)return;
+
+  const uniqueValues=[...new Set((values||[]).filter(Boolean))];
+
+  container.innerHTML=uniqueValues.map((value,index)=>`
+    <button class="chip" type="button" data-chip-index="${index}">
+      ${escapeHtml(value)}
+    </button>
+  `).join('');
+
+  container.querySelectorAll('.chip').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const value=uniqueValues[Number(button.dataset.chipIndex)];
+
+      if(toggleSelection){
+        button.classList.toggle('selected');
+      }else{
+        button.classList.add('selected');
+        setTimeout(()=>button.classList.remove('selected'),220);
+      }
+
+      onSelect(value,button);
+    });
+  });
+}
+
+function addLine(fieldId,value){
+  const field=el(fieldId);
+  if(!field||!value)return;
+
+  const existing=field.value
+    .split('\n')
+    .map(line=>line.trim())
+    .filter(Boolean);
+
+  if(existing.some(line=>line.toLowerCase()===String(value).toLowerCase()))return;
+
+  existing.push(value);
+  field.value=existing.join('\n');
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+function addDescriptionSentence(prompt){
+  const field=el('description');
+  if(!field||!prompt)return;
+
+  const current=field.value.trim();
+  const sentence=String(prompt).trim();
+
+  if(current.toLowerCase().includes(sentence.toLowerCase()))return;
+
+  field.value=current ? `${current}\n\n${sentence}` : sentence;
+  field.dispatchEvent(new Event('input',{bubbles:true}));
+  field.focus();
+}
+
 function setupSuggestions(){
   const titleInput=el('title');
   const titleBox=el('title-suggestions');
@@ -511,6 +601,7 @@ function setupSuggestions(){
   const locationBox=el('location-suggestions');
 
   async function runTitleSearch(){
+    clearMessage();
     const query=titleInput.value.trim();
     selectedOnetCode='';
 
@@ -534,6 +625,7 @@ function setupSuggestions(){
   }
 
   async function runLocationSearch(){
+    clearMessage();
     const query=locationInput.value.trim();
     selectedLocation=null;
 
@@ -643,7 +735,13 @@ function getJob(){
     salary: buildSalary(),
     description: el('description').value.trim(),
     requirements: el('requirements').value.trim(),
-    benefits: el('benefits').value.trim()
+    benefits: el('benefits').value.trim(),
+    onet_soc_code: selectedOnetCode || null,
+    location_city: selectedLocation?.city || null,
+    location_state: selectedLocation?.state_code || null,
+    location_postal_code: selectedLocation?.postal_code || null,
+    location_latitude: selectedLocation?.latitude ?? null,
+    location_longitude: selectedLocation?.longitude ?? null
   };
 }
 
@@ -728,12 +826,22 @@ async function publishJob(){
   button.disabled = true;
   button.textContent = 'Publishing…';
 
-  const { error } = await sb.from('jobs').insert({
-    employer_id: session.user.id,
-    ...job,
+  const jobPayload={
+    employer_id:session.user.id,
+    title:job.title,
+    company:job.company,
+    location:job.location,
+    job_type:job.job_type,
+    work_style:job.work_style,
+    salary:job.salary,
+    description:job.description,
+    requirements:job.requirements,
+    benefits:job.benefits,
     status:'active',
     created_at:new Date().toISOString()
-  });
+  };
+
+  const { error } = await sb.from('jobs').insert(jobPayload);
 
   if(error){
     console.error('Job posting failed:',error);
