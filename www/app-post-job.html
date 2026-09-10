@@ -172,68 +172,6 @@ html[data-theme="dark"] .lock{background:#2B2414;border-color:#6D5729;color:#F3D
 html[data-theme="dark"] .loading{background:rgba(7,18,29,.97)}
 html[data-theme="dark"] .progress{background:#263545}
 html[data-theme="dark"] .spinner{border-color:#2B3A4B;border-top-color:#8EB5DF}
-.skill-suggest-copy{
-  margin:6px 0 10px;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-}
-.custom-add-row{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 92px;
-  gap:10px;
-  margin-top:12px;
-}
-.custom-add-row .suggest-wrap{min-width:0}
-.custom-add-btn{
-  min-height:48px;
-  border:1px solid rgba(52,95,145,.28);
-  border-radius:15px;
-  background:#EDF3F9;
-  color:var(--brand-dark);
-  font-size:12px;
-  font-weight:900;
-}
-html[data-theme="dark"] .custom-add-btn{
-  background:#173047;
-  color:#9DC3E7;
-  border-color:#355068;
-}
-@media(max-width:390px){
-  .custom-add-row{grid-template-columns:minmax(0,1fr) 78px}
-}
-
-.free-slot-notice{
-  margin:0 0 18px;
-  padding:16px 18px;
-  border:1px solid rgba(64,156,103,.34);
-  border-radius:20px;
-  background:#EFF9F3;
-}
-.free-slot-kicker{
-  color:#268A58;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:1.25px;
-  text-transform:uppercase;
-}
-.free-slot-title{
-  margin-top:5px;
-  color:var(--text);
-  font-size:14px;
-  line-height:1.35;
-  font-weight:900;
-}
-.free-slot-copy{
-  margin-top:6px;
-  color:var(--muted);
-  font-size:11px;
-  line-height:1.55;
-}
-html[data-theme="dark"] .free-slot-notice{
-  background:#10291F;
-  border-color:#285A43;
-}
 
 </style>
 </head>
@@ -253,12 +191,7 @@ html[data-theme="dark"] .free-slot-notice{
 </header>
 
 <main class="page">
-  <div class="free-slot-notice" id="free-slot-notice" hidden>
-    <div class="free-slot-kicker">Included free job slot</div>
-    <div class="free-slot-title">This job will use your free job slot.</div>
-    <div class="free-slot-copy" id="free-slot-copy"></div>
-  </div>
-<div class="progress-wrap">
+  <div class="progress-wrap">
     <div class="progress-top">
       <span class="step-label" id="step-label">Step 1 of 5</span>
       <span class="step-name" id="step-name">Role</span>
@@ -279,7 +212,7 @@ html[data-theme="dark"] .free-slot-notice{
         <label>Company</label>
         <div class="company-box">
           <div class="company-name" id="company-name">Loading company…</div>
-          
+          <div class="company-note">Pulled from your employer profile</div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
       </div>
@@ -372,20 +305,8 @@ html[data-theme="dark"] .free-slot-notice{
           <label>Requirements and skills</label>
           <span class="selection-count" id="skills-count">0 selected</span>
         </div>
-        <div class="skill-suggest-copy">
-          Alygnn recommends up to 3 role-relevant skills. Tap a suggestion or add your own.
-        </div>
+        <div class="selection-help">Tap every skill that applies. Selected buttons will appear in the candidate preview.</div>
         <div class="chips" id="skill-chips"></div>
-
-        <div class="custom-add-row">
-          <div class="suggest-wrap">
-            <input class="input" id="custom-skill" type="text" maxlength="80"
-              placeholder="Type a skill" autocomplete="off">
-            <div class="suggest-list" id="skill-suggestions"></div>
-          </div>
-          <button class="custom-add-btn" id="add-skill-btn" type="button">Add</button>
-        </div>
-
         <input type="hidden" id="requirements">
       </div>
 
@@ -394,20 +315,8 @@ html[data-theme="dark"] .free-slot-notice{
           <label>Benefits</label>
           <span class="selection-count" id="benefits-count">0 selected</span>
         </div>
-        <div class="skill-suggest-copy">
-          Alygnn recommends up to 3 common benefits. Type at least 3 letters to search, or add your own.
-        </div>
+        <div class="selection-help">Tap the benefits this job actually offers.</div>
         <div class="chips" id="benefit-chips"></div>
-
-        <div class="custom-add-row">
-          <div class="suggest-wrap">
-            <input class="input" id="custom-benefit" type="text" maxlength="80"
-              placeholder="Type a benefit" autocomplete="off">
-            <div class="suggest-list" id="benefit-suggestions"></div>
-          </div>
-          <button class="custom-add-btn" id="add-benefit-btn" type="button">Add</button>
-        </div>
-
         <input type="hidden" id="benefits">
       </div>
     </div>
@@ -462,14 +371,10 @@ let verificationStatus = 'not_submitted';
 let verificationDocumentSubmitted = false;
 let currentCompanyId = '';
 let currentCompany = null;
-let editingJobId = '';
-let activeJobDraftId='';
-let draftAutosaveTimer=null;
-let draftAutosaveBusy=false;
-let draftAutosaveQueued=false;
-let editingOriginalStatus = 'active';
-let slotEntitlement = null;
-let slotUsage = {used:0,limit:1};
+let teamAccess = null;
+let sharedCompanyContext = {};
+let workspaceContext = {};
+let ownerEmployerId = '';
 
 
 let titleSearchTimer=null;
@@ -526,15 +431,7 @@ analyst:['Excel','Data analysis','Reporting','SQL','Dashboard creation','Critica
 marketing:['Content creation','Social media management','Campaign reporting','Copywriting','Canva','Digital marketing']
 };
 
-const BENEFITS=[
-  'Health insurance','Dental insurance','Vision insurance','Paid time off',
-  'Paid holidays','Sick leave','401(k)','401(k) matching','Flexible schedule',
-  'Remote work','Hybrid work','Employee discount','Professional development',
-  'Paid training','Tuition reimbursement','Parental leave','Life insurance',
-  'Disability insurance','Employee assistance program','Wellness program',
-  'Commuter benefits','Referral bonus','Performance bonus','Mileage reimbursement',
-  'Career advancement opportunities'
-];
+const BENEFITS=['Health insurance','Dental insurance','Vision insurance','Paid time off','401(k)','Flexible schedule','Employee discount','Professional development','Paid training','Referral bonus','Performance bonus','Mileage reimbursement','Work from home','Career advancement opportunities'];
 
 
 function roleCategory(title){
@@ -657,199 +554,24 @@ function renderSelectableChips(containerId,values,selectedSet){
   syncSelectedValues();
 }
 
-function uniqueClean(values){
-  return [...new Set(
-    (values||[])
-      .map(value=>String(value||'').trim())
-      .filter(Boolean)
-  )];
-}
-
-function professionalLabel(value){
-  let clean=String(value||'')
-    .replace(/[<>]/g,'')
-    .replace(/\s+/g,' ')
-    .trim();
-
-  if(!clean)return'';
-
-  const acronyms={
-    'crm':'CRM',
-    'sql':'SQL',
-    'cpr':'CPR',
-    'c++':'C++',
-    'excel':'Excel',
-    'microsoft office':'Microsoft Office',
-    'microsoft excel':'Microsoft Excel',
-    'microsoft word':'Microsoft Word',
-    '401(k)':'401(k)'
-  };
-
-  return acronyms[clean.toLowerCase()] ||
-    clean.charAt(0).toUpperCase()+clean.slice(1);
-}
-
-function recommendedSkills(){
-  const occupation=occupationSkillNames();
-  if(occupation.length){
-    return uniqueClean(occupation).slice(0,3);
-  }
-
-  const category=roleCategory(el('title').value);
-  return uniqueClean([
-    ...(ROLE_SKILLS[category]||[]),
-    ...BASE_SKILLS
-  ]).slice(0,3);
-}
-
-function recommendedBenefits(){
-  const title=String(el('title').value||'').toLowerCase();
-
-  let priority;
-  if(/remote|software|developer|analyst|data|marketing/.test(title)){
-    priority=['Remote work','Flexible schedule','Professional development'];
-  }else if(/sales|account|business development|representative/.test(title)){
-    priority=['Performance bonus','Paid training','Career advancement opportunities'];
-  }else if(/manager|director|supervisor|lead/.test(title)){
-    priority=['Health insurance','Paid time off','401(k) matching'];
-  }else{
-    priority=['Health insurance','Paid time off','Paid training'];
-  }
-
-  return uniqueClean([...priority,...BENEFITS]).slice(0,3);
-}
-
 function renderBenefitSuggestions(){
-  renderSelectableChips(
-    'benefit-chips',
-    recommendedBenefits(),
-    selectedBenefits
-  );
+  renderSelectableChips('benefit-chips',BENEFITS,selectedBenefits);
 }
 
 function refreshRoleSuggestions(){
-  renderSelectableChips(
-    'skill-chips',
-    recommendedSkills(),
-    selectedSkills
-  );
-  renderBenefitSuggestions();
-}
+  const occupationSkills=occupationSkillNames();
 
-function suggestionMatches(query,values,selectedSet){
-  const q=String(query||'').trim().toLowerCase();
-  if(q.length<3)return[];
-
-  return uniqueClean(values)
-    .filter(value=>!selectedSet.has(value))
-    .filter(value=>value.toLowerCase().includes(q))
-    .slice(0,8);
-}
-
-function renderTextSuggestions(box,rows,onSelect){
-  if(!rows.length){
-    closeSuggestionBox(box);
+  if(occupationSkills.length){
+    renderSelectableChips('skill-chips',occupationSkills,selectedSkills);
     return;
   }
 
-  box.innerHTML=rows.map((value,index)=>`
-    <button type="button" class="suggest-item custom-result" data-index="${index}">
-      <span class="suggest-main">${escapeHtml(value)}</span>
-    </button>
-  `).join('');
-
-  box.classList.add('show');
-
-  box.querySelectorAll('.custom-result').forEach(button=>{
-    button.addEventListener('click',event=>{
-      event.preventDefault();
-      const value=rows[Number(button.dataset.index)];
-      if(value)onSelect(value);
-      closeSuggestionBox(box);
-    });
-  });
-}
-
-function addCustomSelection(inputId,selectedSet,refreshFn){
-  const input=el(inputId);
-  const value=professionalLabel(input.value);
-
-  if(value.length<2){
-    showMessage('Enter a professional skill or benefit before adding it.');
-    return false;
-  }
-
-  selectedSet.add(value);
-  input.value='';
-  refreshFn();
-  syncSelectedValues();
-  clearMessage();
-  return true;
-}
-
-function setupSkillBenefitTypeahead(){
-  const skillInput=el('custom-skill');
-  const benefitInput=el('custom-benefit');
-  const skillBox=el('skill-suggestions');
-  const benefitBox=el('benefit-suggestions');
-
-  const fullSkillCatalog=()=>uniqueClean([
-    ...occupationSkillNames(),
-    ...Object.values(ROLE_SKILLS).flat(),
-    ...BASE_SKILLS,
-    ...selectedSkills
-  ]);
-
-  const fullBenefitCatalog=()=>uniqueClean([
-    ...BENEFITS,
-    ...selectedBenefits
-  ]);
-
-  skillInput.addEventListener('input',()=>{
-    renderTextSuggestions(
-      skillBox,
-      suggestionMatches(skillInput.value,fullSkillCatalog(),selectedSkills),
-      value=>{
-        skillInput.value=value;
-        addCustomSelection('custom-skill',selectedSkills,refreshRoleSuggestions);
-      }
-    );
-  });
-
-  benefitInput.addEventListener('input',()=>{
-    renderTextSuggestions(
-      benefitBox,
-      suggestionMatches(benefitInput.value,fullBenefitCatalog(),selectedBenefits),
-      value=>{
-        benefitInput.value=value;
-        addCustomSelection('custom-benefit',selectedBenefits,renderBenefitSuggestions);
-      }
-    );
-  });
-
-  el('add-skill-btn').addEventListener('click',()=>{
-    addCustomSelection('custom-skill',selectedSkills,refreshRoleSuggestions);
-    closeSuggestionBox(skillBox);
-  });
-
-  el('add-benefit-btn').addEventListener('click',()=>{
-    addCustomSelection('custom-benefit',selectedBenefits,renderBenefitSuggestions);
-    closeSuggestionBox(benefitBox);
-  });
-
-  skillInput.addEventListener('keydown',event=>{
-    if(event.key==='Enter'){
-      event.preventDefault();
-      el('add-skill-btn').click();
-    }
-  });
-
-  benefitInput.addEventListener('keydown',event=>{
-    if(event.key==='Enter'){
-      event.preventDefault();
-      el('add-benefit-btn').click();
-    }
-  });
+  const category=roleCategory(el('title').value);
+  renderSelectableChips(
+    'skill-chips',
+    [...BASE_SKILLS,...(ROLE_SKILLS[category]||[])],
+    selectedSkills
+  );
 }
 
 async function loadOccupationProfile(onetCode){
@@ -897,7 +619,7 @@ function applyOccupationProfileToForm(){
     .filter(Boolean)
     .slice(0,8);
 
-  const skillLines=occupationSkillNames().slice(0,3);
+  const skillLines=occupationSkillNames().slice(0,12);
 
   if(!el('description').value.trim()){
     const intro=currentOccupationProfile.description||
@@ -1019,746 +741,6 @@ function showMessage(text,type='error'){
 function clearMessage(){
   el('message').className = 'message';
   el('message').textContent = '';
-}
-
-function slotEntitlementActive(entitlement){
-  const plan=String(entitlement?.plan||'free').toLowerCase();
-  if(!plan||plan==='free')return true;
-
-  const status=String(entitlement?.subscription_status||'').toLowerCase();
-  if(!['active','trialing'].includes(status))return false;
-
-  const end=entitlement?.current_period_end;
-  if(!end)return true;
-
-  const time=new Date(end).getTime();
-  return Number.isNaN(time)||time>Date.now();
-}
-
-function slotLimitForEntitlement(entitlement){
-  if(!entitlement||!slotEntitlementActive(entitlement))return 1;
-
-  const plan=String(
-    entitlement.test_plan||
-    entitlement.plan||
-    'free'
-  ).toLowerCase();
-
-  const defaults={
-    free:0,
-    launch:3,
-    growth:5,
-    scale:8,
-    business:3,
-    enterprise:8
-  };
-
-  if(plan==='weekly_slot'){
-    return 2;
-  }
-
-  const stored=Number(entitlement.slot_limit);
-  const planSlots=
-    Number.isFinite(stored)&&stored>0
-      ? stored
-      : (defaults[plan]||0);
-
-  // Every plan gets its plan slots PLUS the always-included free slot.
-  return Math.max(1,planSlots+1);
-}
-
-function jobConsumesSlot(job){
-  const status=String(job?.status||'active').toLowerCase();
-  return !['paused','closed','draft','inactive','archived','deleted'].includes(status);
-}
-
-async function loadJobsForSlotCheck(userId,companyId){
-  const collected=[];
-  const seen=new Set();
-  let successfulQueries=0;
-
-  const addRows=rows=>{
-    (rows||[]).forEach(job=>{
-      const key=String(job?.id||[
-        job?.title,
-        job?.created_at,
-        job?.company_id,
-        job?.employer_id
-      ].join('|'));
-
-      if(seen.has(key))return;
-      seen.add(key);
-      collected.push(job);
-    });
-  };
-
-  for(const column of ['employer_id','created_by','user_id','owner_id']){
-    const result=await sb
-      .from('jobs')
-      .select('*')
-      .eq(column,userId);
-
-    if(!result.error){
-      successfulQueries+=1;
-      addRows(result.data);
-    }else{
-      console.warn(`Slot check using ${column} failed:`,result.error);
-    }
-  }
-
-  if(companyId){
-    const companyResult=await sb
-      .from('jobs')
-      .select('*')
-      .eq('company_id',companyId);
-
-    if(!companyResult.error){
-      successfulQueries+=1;
-      addRows(companyResult.data);
-    }else{
-      console.warn('Slot check using company_id failed:',companyResult.error);
-    }
-  }
-
-  if(!successfulQueries){
-    throw new Error('Alygnn could not verify current job-slot usage.');
-  }
-
-  return collected;
-}
-
-function parseExistingSalaryFallback(job){
-  if(
-    job?.pay_min != null ||
-    job?.pay_max != null
-  ){
-    return{
-      min:job?.pay_min ?? null,
-      max:job?.pay_max ?? null,
-      period:job?.pay_period || 'hour'
-    };
-  }
-
-  const salary=String(job?.salary||'');
-
-  const numbers=[
-    ...salary.matchAll(
-      /\$?\s*([\d,.]+(?:\.\d+)?)/g
-    )
-  ].map(match=>
-    Number(
-      String(match[1]).replace(/,/g,'')
-    )
-  ).filter(Number.isFinite);
-
-  let period='hour';
-
-  if(/year|annual/i.test(salary)){
-    period='year';
-  }else if(/month/i.test(salary)){
-    period='month';
-  }else if(/week/i.test(salary)){
-    period='week';
-  }
-
-  return{
-    min:numbers[0] ?? null,
-    max:numbers[1] ?? numbers[0] ?? null,
-    period
-  };
-}
-
-async function loadExistingJobForEdit(
-  userId,
-  companyId
-){
-  const editId=String(
-    new URLSearchParams(location.search).get('edit') ||
-    sessionStorage.getItem('alygnnEditJobId') ||
-    ''
-  ).trim();
-
-  if(!editId){
-    editingJobId='';
-    return false;
-  }
-
-  const {data:job,error}=await sb
-    .from('jobs')
-    .select('*')
-    .eq('id',editId)
-    .maybeSingle();
-
-  if(error||!job){
-    console.error(
-      'Could not load job for editing:',
-      error
-    );
-
-    sessionStorage.removeItem(
-      'alygnnEditJobId'
-    );
-
-    throw new Error(
-      'Alygnn could not load this job for editing.'
-    );
-  }
-
-  const ownedByUser=
-    String(job.employer_id||'')===
-    String(userId||'');
-
-  const ownedByCompany=
-    companyId &&
-    String(job.company_id||'')===
-    String(companyId||'');
-
-  if(!ownedByUser&&!ownedByCompany){
-    sessionStorage.removeItem(
-      'alygnnEditJobId'
-    );
-
-    throw new Error(
-      'You do not have permission to edit this job.'
-    );
-  }
-
-  editingJobId=String(job.id);
-  editingOriginalStatus=String(
-    job.status||'active'
-  );
-
-  sessionStorage.setItem(
-    'alygnnEditJobId',
-    editingJobId
-  );
-
-  const pay=
-    parseExistingSalaryFallback(job);
-
-  /*
-   * Replace any stale new-job draft with the exact database job.
-   * Edit Job must never open a blank posting form.
-   */
-  const editDraft={
-    edit_job_id:editingJobId,
-    original_status:editingOriginalStatus,
-
-    employer_id:
-      job.employer_id||
-      userId,
-
-    company_id:
-      job.company_id||
-      companyId||
-      null,
-
-    title:
-      job.title||
-      '',
-
-    company:
-      job.company||
-      currentCompany?.company_name||
-      currentCompany?.legal_name||
-      currentCompany?.name||
-      '',
-
-    location:
-      job.location||
-      '',
-
-    job_type:
-      job.job_type||
-      'Full-time',
-
-    work_style:
-      job.work_style||
-      'On-site',
-
-    salary:
-      job.salary||
-      '',
-
-    description:
-      job.description||
-      '',
-
-    requirements:
-      job.requirements||
-      '',
-
-    benefits:
-      job.benefits||
-      '',
-
-    pay_period:
-      job.pay_period||
-      pay.period||
-      'hour',
-
-    pay_min:
-      job.pay_min ??
-      pay.min,
-
-    pay_max:
-      job.pay_max ??
-      pay.max,
-
-    onet_soc_code:
-      job.onet_soc_code||
-      null,
-
-    location_city:
-      job.location_city||
-      null,
-
-    location_state:
-      job.location_state||
-      null,
-
-    location_postal_code:
-      job.location_postal_code||
-      null,
-
-    location_latitude:
-      job.location_latitude ??
-      null,
-
-    location_longitude:
-      job.location_longitude ??
-      null,
-
-    company_logo:
-      job.company_logo||
-      profile?.company_logo||
-      profile?.logo_url||
-      localStorage.getItem('companyLogo')||
-      '',
-
-    company_headline:
-      job.company_headline||
-      profile?.company_headline||
-      '',
-
-    company_website:
-      job.company_website||
-      currentCompany?.website||
-      profile?.company_website||
-      '',
-
-    employer_verified:
-      employerVerified,
-
-    verification_status:
-      verificationStatus,
-
-    created_at:
-      job.created_at||
-      new Date().toISOString()
-  };
-
-  sessionStorage.setItem(
-    'alygnnJobDraft',
-    JSON.stringify(editDraft)
-  );
-
-  return true;
-}
-
-
-async function validEditJob(userId,companyId){
-  const editId=
-    new URLSearchParams(location.search).get('edit') ||
-    sessionStorage.getItem('alygnnEditJobId') ||
-    '';
-  if(!editId)return false;
-
-  const {data,error}=await sb
-    .from('jobs')
-    .select('*')
-    .eq('id',editId)
-    .maybeSingle();
-
-  if(error||!data){
-    console.warn('Could not validate edit job:',error);
-    return false;
-  }
-
-  const ownedByUser=String(data.employer_id||'')===String(userId||'');
-  const ownedByCompany=companyId&&String(data.company_id||'')===String(companyId);
-
-  if(ownedByUser||ownedByCompany){
-    sessionStorage.setItem('alygnnEditJobId',String(editId));
-    return true;
-  }
-
-  return false;
-}
-
-
-function planDisplayName(raw){
-  const value=String(raw||'').trim().toLowerCase();
-  if(value==='launch') return 'Launch';
-  if(value==='growth') return 'Growth';
-  if(value==='scale') return 'Scale';
-  if(value==='enterprise') return 'Enterprise';
-  return '';
-}
-
-function paidPlanSlotCount(access){
-  const explicit=Number(access?.plan_slot_limit);
-
-  if(Number.isFinite(explicit)&&explicit>=0){
-    return Math.floor(explicit);
-  }
-
-  const plan=String(
-    access?.test_plan||
-    access?.plan||
-    slotEntitlement?.test_plan||
-    slotEntitlement?.plan||
-    'free'
-  ).toLowerCase();
-
-  if(plan==='launch'||plan==='business')return 3;
-  if(plan==='growth')return 5;
-  if(plan==='scale'||plan==='enterprise')return 8;
-
-  return 0;
-}
-
-function showSlotSourceNotice(access){
-  const box=el('free-slot-notice');
-  if(!box)return;
-
-  box.hidden=true;
-
-  const paidPlanActive=
-    access?.active_paid_plan===true ||
-    access?.base_paid_plan===true;
-
-  const planSlots=paidPlanSlotCount(access);
-
-  /*
-   * IMPORTANT:
-   * Never infer the free slot from "active job count === plan slots".
-   *
-   * An employer can already have the free slot occupied while one of the
-   * paid-plan slots is available. In that case the NEXT job must use the
-   * available plan slot, not a second free slot.
-   */
-  const nextSlotType=String(
-    access?.next_slot_type||
-    ''
-  ).toLowerCase();
-
-  const freeSlotInUse=
-    access?.free_slot_in_use===true ||
-    Number(access?.free_slots_in_use||0)>=1;
-
-  const planSlotsInUse=Math.max(
-    0,
-    Number(access?.plan_slots_in_use||0)
-  );
-
-  let usesFreeSlot=false;
-
-  if(nextSlotType){
-    usesFreeSlot=nextSlotType==='free';
-  }else if(paidPlanActive){
-    /*
-     * Compatibility behavior for an older RPC:
-     * the free slot can be next ONLY if it is not already occupied and all
-     * paid plan slots are occupied.
-     */
-    usesFreeSlot=
-      !freeSlotInUse &&
-      planSlotsInUse>=planSlots;
-  }else{
-    usesFreeSlot=!freeSlotInUse;
-  }
-
-  if(!usesFreeSlot){
-    return;
-  }
-
-  if(paidPlanActive){
-    const planName=
-      planDisplayName(
-        access?.test_plan||
-        access?.plan
-      )||'your plan';
-
-    el('free-slot-copy').textContent=
-      `You've used all ${planSlots} ${planName} job slots. This job uses the 1 free reusable job slot included with every Alygnn employer account.`;
-  }else{
-    el('free-slot-copy').textContent=
-      'This is the 1 free reusable job slot included with every Alygnn employer account.';
-  }
-
-  box.hidden=false;
-}
-
-async function augmentPostingAccessWithActualSlotUsage(
-  access,
-  userId,
-  companyId
-){
-  if(
-    access &&
-    typeof access==='object' &&
-    access.next_slot_type
-  ){
-    return access;
-  }
-
-  try{
-    const ownedJobs=await loadJobsForSlotCheck(
-      userId,
-      companyId
-    );
-
-    const active=ownedJobs.filter(
-      jobConsumesSlot
-    );
-
-    const typeOf=job=>
-      String(
-        job?.posting_access_type||
-        ''
-      ).toLowerCase();
-
-    const freeSlotsInUse=
-      active.filter(job=>typeOf(job)==='free').length;
-
-    const planSlotsInUse=
-      active.filter(job=>typeOf(job)==='plan').length;
-
-    const secondSlotsInUse=
-      active.filter(job=>
-        ['second_slot','additional_slot'].includes(
-          typeOf(job)
-        )
-      ).length;
-
-    const weeklySlotsInUse=
-      active.filter(job=>typeOf(job)==='weekly').length;
-
-    const paidPlanActive=
-      access?.active_paid_plan===true ||
-      access?.base_paid_plan===true;
-
-    const planSlots=
-      paidPlanSlotCount(access);
-
-    const weeklySlots=Math.max(
-      0,
-      Number(access?.weekly_slot_count||0)
-    );
-
-    const secondSlotActive=
-      access?.second_slot_active===true ||
-      Number(access?.second_slot_count||0)>0;
-
-    let next='';
-
-    if(paidPlanActive){
-      if(planSlotsInUse<planSlots){
-        next='plan';
-      }else if(freeSlotsInUse<1){
-        next='free';
-      }else if(weeklySlotsInUse<weeklySlots){
-        next='weekly';
-      }
-    }else{
-      if(freeSlotsInUse<1){
-        next='free';
-      }else if(
-        secondSlotActive &&
-        secondSlotsInUse<1
-      ){
-        next='second_slot';
-      }else if(weeklySlotsInUse<weeklySlots){
-        next='weekly';
-      }
-    }
-
-    return{
-      ...(access||{}),
-      free_slot_in_use:freeSlotsInUse>=1,
-      free_slots_in_use:freeSlotsInUse,
-      plan_slots_in_use:planSlotsInUse,
-      second_slots_in_use:secondSlotsInUse,
-      weekly_slots_in_use:weeklySlotsInUse,
-      next_slot_type:next
-    };
-
-  }catch(error){
-    console.warn(
-      'Could not augment posting access with actual slot usage:',
-      error
-    );
-
-    return access;
-  }
-}
-
-
-async function enforceJobSlotAccess(userId,companyId){
-  // Editing an existing job does not create another occupied slot.
-  if(await validEditJob(userId,companyId))return true;
-
-  /*
-   * Supabase's unified posting-access RPC is the primary source of truth.
-   * It includes the base plan PLUS active $99 Weekly Job Slots.
-   *
-   * Example:
-   *   Growth = 5
-   *   Weekly Job Slot = +1
-   *   Current usage = 5
-   *   Live capacity = 6
-   *
-   * The old builder only read employer_entitlements.slot_limit, which could
-   * still be 5 and immediately redirect the employer back to pricing.
-   */
-  try{
-    const {data:access,error:accessError}=await sb.rpc(
-      'get_employer_posting_access'
-    );
-
-    if(accessError)throw accessError;
-
-    if(access&&typeof access==='object'){
-      access=
-        await augmentPostingAccessWithActualSlotUsage(
-          access,
-          userId,
-          companyId
-        );
-
-      const used=Math.max(
-        0,
-        Number(access.active_job_count||0)
-      );
-
-      const limit=Math.max(
-        1,
-        Number(access.slot_limit||1)
-      );
-
-      slotUsage={used,limit};
-
-      // Trust the actual numeric capacity too, even if an older RPC boolean
-      // briefly comes back stale.
-      const hasCapacity=
-        used<limit ||
-        access.can_post===true;
-
-      if(hasCapacity){
-        sessionStorage.removeItem(
-          'alygnn_job_slot_gate'
-        );
-        showSlotSourceNotice(access);
-        return true;
-      }
-
-      sessionStorage.setItem(
-        'alygnn_job_slot_gate',
-        JSON.stringify({
-          used,
-          limit,
-          checked_at:new Date().toISOString(),
-          source:'app-post-job-rpc'
-        })
-      );
-
-      const params=new URLSearchParams({
-        reason:'slot_limit',
-        used:String(used),
-        limit:String(limit)
-      });
-
-      location.replace(
-        `app-employer-pricing.html?${params.toString()}`
-      );
-      return false;
-    }
-  }catch(error){
-    console.warn(
-      'Unified posting-access check unavailable; using compatibility fallback:',
-      error
-    );
-  }
-
-  /*
-   * Compatibility fallback only. This remains for older installations where
-   * get_employer_posting_access has not been deployed yet.
-   */
-  const entitlementResult=await sb
-    .from('employer_entitlements')
-    .select('*')
-    .eq('employer_id',userId)
-    .maybeSingle();
-
-  if(entitlementResult.error){
-    console.warn(
-      'Entitlement check unavailable; using free-slot fallback:',
-      entitlementResult.error
-    );
-    slotEntitlement=null;
-  }else{
-    slotEntitlement=entitlementResult.data||null;
-  }
-
-  const ownedJobs=await loadJobsForSlotCheck(
-    userId,
-    companyId
-  );
-
-  const used=
-    ownedJobs.filter(jobConsumesSlot).length;
-
-  const limit=
-    slotLimitForEntitlement(slotEntitlement);
-
-  slotUsage={used,limit};
-
-  if(used<limit){
-    sessionStorage.removeItem(
-      'alygnn_job_slot_gate'
-    );
-    showSlotSourceNotice({
-      active_job_count:used,
-      slot_limit:limit,
-      base_slot_limit:limit,
-      base_paid_plan:
-        String(slotEntitlement?.plan||'free').toLowerCase()!=='free',
-      plan:slotEntitlement?.plan||'free'
-    });
-    return true;
-  }
-
-  sessionStorage.setItem(
-    'alygnn_job_slot_gate',
-    JSON.stringify({
-      used,
-      limit,
-      checked_at:new Date().toISOString(),
-      source:'app-post-job-fallback'
-    })
-  );
-
-  const params=new URLSearchParams({
-    reason:'slot_limit',
-    used:String(used),
-    limit:String(limit)
-  });
-
-  location.replace(
-    `app-employer-pricing.html?${params.toString()}`
-  );
-  return false;
 }
 
 function hideLoading(){
@@ -1935,6 +917,7 @@ function getJob(){
       currentCompany?.company_name ||
       currentCompany?.legal_name ||
       currentCompany?.name ||
+      sharedCompanyContext?.company_name ||
       profile?.company_name ||
       session?.user?.user_metadata?.company_name ||
       '',
@@ -1952,81 +935,6 @@ function getJob(){
     location_latitude: selectedLocation?.latitude ?? null,
     location_longitude: selectedLocation?.longitude ?? null
   };
-}
-
-async function checkFreeRepostRotation(){
-  /*
-   * Editing an existing posting is not a new ad and should not be blocked.
-   */
-  const editId=
-    new URLSearchParams(location.search).get('edit') ||
-    sessionStorage.getItem('alygnnEditJobId') ||
-    '';
-
-  if(editId)return true;
-
-  const title=el('title').value.trim();
-
-  if(!title)return true;
-
-  try{
-    const {data,error}=await sb.rpc(
-      'check_free_job_repost_eligibility',
-      {
-        p_title:title
-      }
-    );
-
-    if(error)throw error;
-
-    if(!data||data.allowed!==false){
-      sessionStorage.removeItem(
-        'alygnn_free_repost_gate'
-      );
-      return true;
-    }
-
-    const needed=Math.max(
-      1,
-      Number(data.different_jobs_needed||1)
-    );
-
-    saveCurrentJobDraft();
-
-    sessionStorage.setItem(
-      'alygnn_free_repost_gate',
-      JSON.stringify({
-        title,
-        matched_title:data.matched_title||title,
-        different_jobs_needed:needed,
-        checked_at:new Date().toISOString()
-      })
-    );
-
-    const params=new URLSearchParams({
-      reason:'free_repost_rotation',
-      title,
-      different_jobs_needed:String(needed)
-    });
-
-    location.href=
-      'app-employer-pricing.html?'+
-      params.toString();
-
-    return false;
-
-  }catch(error){
-    /*
-     * The database insert trigger is still the final enforcement layer.
-     * A temporary pre-check failure should not break normal job creation.
-     */
-    console.warn(
-      'Free-job repost pre-check unavailable:',
-      error
-    );
-
-    return true;
-  }
 }
 
 function validateStep(step){
@@ -2091,194 +999,11 @@ function showStep(step){
   el('subheading').textContent = copy[2];
   el('progress-bar').style.width = `${step * 20}%`;
   el('previous-btn').textContent = step === 1 ? 'Cancel' : 'Back';
-  el('next-btn').textContent=
-    step===5
-      ? (
-          editingJobId
-            ? 'Review Changes'
-            : 'Preview as Candidate'
-        )
-      : 'Continue';
-
-  if(editingJobId && step===1){
-    el('heading').textContent=
-      'Edit this job';
-
-    el('subheading').textContent=
-      'Update the existing listing. Saving changes will not create another job or use another slot.';
-  }
+  el('next-btn').textContent = step === 5 ? 'Preview as Candidate' : 'Continue';
 
   if(step === 5) updatePreview();
-
-  if(session?.user&&!editingJobId){
-    queueJobDraftAutosave(
-      250
-    );
-  }
-
   clearMessage();
   window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function employerCompanyMeta(){
-  const metadata=session?.user?.user_metadata||{};
-  return{
-    setup:metadata.onboarding_company_profile||{},
-    ai:metadata.employer_ai_profile||{},
-    metadata
-  };
-}
-
-function firstCompanyValue(...values){
-  for(const value of values){
-    if(value!==undefined&&value!==null&&String(value).trim()!=='')return value;
-  }
-  return '';
-}
-
-function currentCompanyLogo(){
-  const {setup,ai,metadata}=employerCompanyMeta();
-  return String(firstCompanyValue(
-    ai.company_logo,
-    setup.company_logo,
-    metadata.company_logo,
-    metadata.logo_url,
-    currentCompany?.logo_url,
-    currentCompany?.company_logo,
-    profile?.company_logo,
-    profile?.logo_url,
-    localStorage.getItem('companyLogo')
-  )||'').trim();
-}
-
-function normalizeJobCompanyLinks(value){
-  let input=value;
-
-  if(typeof input==='string'){
-    try{
-      input=JSON.parse(input);
-    }catch(_error){
-      input=[input];
-    }
-  }
-
-  if(!Array.isArray(input)){
-    input=[];
-  }
-
-  const links=[];
-  const seen=new Set();
-
-  input.forEach(item=>{
-    const raw=
-      typeof item==='string'
-        ?item
-        :item?.url;
-
-    if(!raw)return;
-
-    let url=String(raw).trim();
-
-    if(!/^https?:\/\//i.test(url)){
-      url='https://'+url;
-    }
-
-    try{
-      const parsed=new URL(url);
-
-      if(!['http:','https:'].includes(parsed.protocol)){
-        return;
-      }
-
-      const normalized=parsed.href;
-      const key=normalized
-        .replace(/\/+$/,'')
-        .toLowerCase();
-
-      if(!seen.has(key)){
-        seen.add(key);
-        links.push(normalized);
-      }
-    }catch(_error){}
-  });
-
-  return links;
-}
-
-function currentCompanyLinks(){
-  const {setup,ai,metadata}=employerCompanyMeta();
-
-  return normalizeJobCompanyLinks([
-    ...(normalizeJobCompanyLinks(ai.company_links)),
-    ...(normalizeJobCompanyLinks(setup.company_links)),
-    ...(normalizeJobCompanyLinks(metadata.company_links)),
-    ...(normalizeJobCompanyLinks(currentCompany?.company_links)),
-    ai.linkedin_url,
-    setup.linkedin_url,
-    metadata.linkedin_url,
-    currentCompany?.linkedin_url,
-    ai.instagram_url,
-    setup.instagram_url,
-    metadata.instagram_url,
-    currentCompany?.instagram_url,
-    ai.facebook_url,
-    setup.facebook_url,
-    metadata.facebook_url,
-    currentCompany?.facebook_url,
-    ai.x_url,
-    setup.x_url,
-    metadata.x_url,
-    metadata.twitter_url,
-    currentCompany?.x_url
-  ]);
-}
-
-function companyLinkTypeForJob(value){
-  try{
-    const host=new URL(value)
-      .hostname
-      .toLowerCase()
-      .replace(/^www\./,'');
-
-    if(host==='linkedin.com'||host.endsWith('.linkedin.com'))return 'linkedin';
-    if(host==='instagram.com'||host.endsWith('.instagram.com'))return 'instagram';
-    if(host==='facebook.com'||host.endsWith('.facebook.com')||host==='fb.com')return 'facebook';
-    if(host==='x.com'||host.endsWith('.x.com')||host==='twitter.com'||host.endsWith('.twitter.com'))return 'x';
-  }catch(_error){}
-
-  return '';
-}
-
-function companyLegacySocialForJob(type){
-  return currentCompanyLinks()
-    .find(url=>
-      companyLinkTypeForJob(url)===type
-    )||'';
-}
-
-function companyDescriptionForJob(){
-  const {setup,ai,metadata}=employerCompanyMeta();
-  return firstCompanyValue(
-    ai.company_description,
-    setup.company_description,
-    metadata.company_description,
-    currentCompany?.company_description,
-    currentCompany?.description
-  );
-}
-
-function requireCompanyLogoBeforeJob(){
-  if(currentCompanyLogo())return true;
-
-  const params=new URLSearchParams(location.search);
-  const editId=params.get('edit')||sessionStorage.getItem('alygnnEditJobId')||'';
-  const returnUrl=editId
-    ?`app-post-job.html?edit=${encodeURIComponent(editId)}&from=company-profile`
-    :'app-post-job.html?from=company-profile';
-
-  sessionStorage.setItem('alygnnCompanyProfileReturn',returnUrl);
-  location.replace('app-employer-dashboard.html?view=company&edit=1&reason=logo_required');
-  return false;
 }
 
 function saveCurrentJobDraft(){
@@ -2286,298 +1011,58 @@ function saveCurrentJobDraft(){
 
   const job=getJob();
   const metadata=session.user.user_metadata||{};
-  const aiProfile=metadata.employer_ai_profile||{};
-
-  const previousDraft=(()=>{
-    try{
-      return JSON.parse(
-        sessionStorage.getItem('alygnnJobDraft')||
-        '{}'
-      );
-    }catch(_error){
-      return{};
-    }
-  })();
+  const aiProfile=(sharedCompanyContext?.ai_profile &&
+    Object.keys(sharedCompanyContext.ai_profile||{}).length)
+      ? sharedCompanyContext.ai_profile
+      : (metadata.employer_ai_profile||{});
 
   const draft={
     ...job,
-
-    edit_job_id:
-      editingJobId||
-      new URLSearchParams(location.search).get('edit')||
-      sessionStorage.getItem('alygnnEditJobId')||
-      null,
-
-    original_status:
-      editingOriginalStatus||
-      previousDraft.original_status||
-      null,
-
-    employer_id:session.user.id,
+    // Jobs belong to the COMPANY OWNER for billing/slot enforcement. The
+    // signed-in recruiter remains the authenticated actor and may write only
+    // when their team permission allows jobs_manage.
+    employer_id:ownerEmployerId||teamAccess?.owner_user_id||session.user.id,
     company_id:currentCompanyId||null,
-    company_logo:currentCompanyLogo(),
-    company_headline:profile?.company_headline||'',
+    company_logo:
+      currentCompany?.company_logo||
+      currentCompany?.logo_url||
+      aiProfile?.company_logo||
+      aiProfile?.logo_url||
+      profile?.company_logo||
+      profile?.logo_url||
+      localStorage.getItem('companyLogo')||'',
+    company_headline:
+      currentCompany?.company_headline||
+      currentCompany?.headline||
+      aiProfile?.headline||
+      profile?.company_headline||'',
     company_website:
       aiProfile.website ||
       currentCompany?.website ||
       profile?.company_website ||
       '',
-    company_description:companyDescriptionForJob(),
-    company_links:currentCompanyLinks(),
-    company_linkedin_url:companyLegacySocialForJob('linkedin'),
-    company_instagram_url:companyLegacySocialForJob('instagram'),
-    company_facebook_url:companyLegacySocialForJob('facebook'),
-    company_x_url:companyLegacySocialForJob('x'),
-
     pay_period:el('pay-period').value,
     pay_min:Number(el('pay-min').value)||null,
     pay_max:Number(el('pay-max').value)||null,
     employer_verified:employerVerified,
     verification_status:verificationStatus,
-    created_at:
-      editingJobId
-        ? (
-            previousDraft.created_at||
-            new Date().toISOString()
-          )
-        : new Date().toISOString()
+    created_at:new Date().toISOString()
   };
 
-  sessionStorage.setItem(
-    'alygnnJobDraft',
-    JSON.stringify(draft)
-  );
-
-  return draft;
+  sessionStorage.setItem('alygnnJobDraft',JSON.stringify(draft));
 }
 
-function draftHasMeaningfulContent(draft){
-  if(!draft||typeof draft!=='object'){
-    return false;
-  }
-
-  return Boolean(
-    String(draft.title||'').trim()||
-    String(draft.location||'').trim()||
-    String(draft.description||'').trim()||
-    String(draft.requirements||'').trim()||
-    String(draft.benefits||'').trim()||
-    Number(draft.pay_min||0)||
-    Number(draft.pay_max||0)
-  );
-}
-
-async function persistJobDraftNow(){
-  if(
-    !session?.user?.id ||
-    editingJobId
-  ){
+function saveDraftAndOpenPreview(){
+  if(!aiProfileComplete){
+    showMessage('Complete your Company AI Profile before previewing this job.');
+    el('verification-lock').textContent=
+      'Complete your Company AI Profile before publishing a job.';
+    el('verification-lock').hidden=false;
+    el('company-ai-link').hidden=false;
     return;
   }
 
-  if(draftAutosaveBusy){
-    draftAutosaveQueued=true;
-    return;
-  }
-
-  const draft=
-    saveCurrentJobDraft();
-
-  if(!draftHasMeaningfulContent(draft)){
-    return;
-  }
-
-  draftAutosaveBusy=true;
-
-  try{
-    const row={
-      employer_id:
-        session.user.id,
-
-      title:
-        String(
-          draft.title||
-          ''
-        ).trim()||
-        'Untitled job draft',
-
-      location:
-        String(
-          draft.location||
-          ''
-        ).trim()||
-        null,
-
-      current_step:
-        Math.max(
-          1,
-          Math.min(
-            5,
-            Number(currentStep||1)
-          )
-        ),
-
-      draft_data:draft,
-      updated_at:
-        new Date().toISOString()
-    };
-
-    if(activeJobDraftId){
-      const {error}=await sb
-        .from('employer_job_drafts')
-        .update(row)
-        .eq(
-          'id',
-          activeJobDraftId
-        )
-        .eq(
-          'employer_id',
-          session.user.id
-        );
-
-      if(error)throw error;
-    }else{
-      const {data,error}=await sb
-        .from('employer_job_drafts')
-        .insert(row)
-        .select('id')
-        .single();
-
-      if(error)throw error;
-
-      activeJobDraftId=
-        String(
-          data?.id||
-          ''
-        );
-
-      if(activeJobDraftId){
-        sessionStorage.setItem(
-          'alygnnActiveJobDraftId',
-          activeJobDraftId
-        );
-      }
-    }
-  }catch(error){
-    console.warn(
-      'Could not cloud-save job draft:',
-      error
-    );
-  }finally{
-    draftAutosaveBusy=false;
-
-    if(draftAutosaveQueued){
-      draftAutosaveQueued=false;
-      queueJobDraftAutosave(
-        150
-      );
-    }
-  }
-}
-
-function queueJobDraftAutosave(
-  delay=700
-){
-  if(editingJobId){
-    return;
-  }
-
-  clearTimeout(
-    draftAutosaveTimer
-  );
-
-  draftAutosaveTimer=
-    setTimeout(
-      ()=>{
-        persistJobDraftNow();
-      },
-      delay
-    );
-}
-
-async function loadPersistentDraftIfRequested(){
-  const params=
-    new URLSearchParams(
-      location.search
-    );
-
-  const requestedId=
-    params.get('draft')||
-    sessionStorage.getItem(
-      'alygnnActiveJobDraftId'
-    )||
-    '';
-
-  if(!requestedId){
-    activeJobDraftId='';
-    return;
-  }
-
-  const {data,error}=await sb
-    .from('employer_job_drafts')
-    .select(
-      'id,draft_data,current_step'
-    )
-    .eq(
-      'id',
-      requestedId
-    )
-    .eq(
-      'employer_id',
-      session.user.id
-    )
-    .maybeSingle();
-
-  if(error){
-    console.warn(
-      'Could not restore cloud draft:',
-      error
-    );
-    return;
-  }
-
-  if(!data?.id){
-    return;
-  }
-
-  activeJobDraftId=
-    String(data.id);
-
-  sessionStorage.setItem(
-    'alygnnActiveJobDraftId',
-    activeJobDraftId
-  );
-
-  sessionStorage.setItem(
-    'alygnnJobDraft',
-    JSON.stringify(
-      data.draft_data||{}
-    )
-  );
-
-  sessionStorage.setItem(
-    'alygnnJobReturnStep',
-    String(
-      Math.max(
-        1,
-        Math.min(
-          5,
-          Number(
-            data.current_step||
-            1
-          )||1
-        )
-      )
-    )
-  );
-}
-
-async function saveDraftAndOpenPreview(){
-  // Employer setup already collected company-level voice, strengths, and
-  // hiring priorities. A separate Company AI Profile is optional refinement,
-  // not a requirement for creating or previewing a job.
   saveCurrentJobDraft();
-  await persistJobDraftNow();
   location.href='app-job-preview.html';
 }
 
@@ -2646,61 +1131,55 @@ el('next-btn').addEventListener('click', async () => {
 
   if(currentStep < 5){
     const error = validateStep(currentStep);
-
     if(error){
       showMessage(error);
       return;
     }
-
-    if(
-      currentStep===1 &&
-      !(await checkFreeRepostRotation())
-    ){
-      return;
-    }
-
     showStep(currentStep + 1);
     return;
   }
 
-  await saveDraftAndOpenPreview();
+  saveDraftAndOpenPreview();
 });
 
-el('previous-btn').addEventListener('click', async () => {
+el('previous-btn').addEventListener('click', () => {
   if(currentStep === 1){
-    await persistJobDraftNow();
-    location.href = 'app-employer-dashboard.html?view=jobs';
+    location.href = 'app-employer-dashboard.html';
   }else{
     showStep(currentStep - 1);
   }
 });
 
-el('back-btn').addEventListener('click', async () => {
-  if(currentStep === 1){
-    await persistJobDraftNow();
-    location.href = 'app-employer-dashboard.html?view=jobs';
-  }else{
-    showStep(currentStep - 1);
-  }
+el('back-btn').addEventListener('click', () => {
+  if(currentStep === 1) location.href = 'app-employer-dashboard.html';
+  else showStep(currentStep - 1);
 });
 
 el('company-ai-link').addEventListener('click',()=>{
   saveCurrentJobDraft();
 
-  // This action is now only used for business-verification issues.
-  // Company AI Profile completion never blocks job creation.
-  if(currentCompanyId){
-    localStorage.setItem('alygnn_company_id',currentCompanyId);
+  if(aiProfileComplete){
+    if(currentCompanyId){
+      localStorage.setItem('alygnn_company_id',currentCompanyId);
+    }
+
+    const params=new URLSearchParams({
+      return_to:'app-post-job.html'
+    });
+    if(currentCompanyId)params.set('company_id',currentCompanyId);
+
+    location.href=
+      'app-employer-document-upload.html' +
+      (params.toString()?`?${params.toString()}`:'');
+    return;
   }
 
+  sessionStorage.setItem('alygnnAiProfileReturnTo','app-post-job.html');
   const params=new URLSearchParams({
     return_to:'app-post-job.html'
   });
   if(currentCompanyId)params.set('company_id',currentCompanyId);
-
-  location.href=
-    'app-employer-document-upload.html' +
-    (params.toString()?`?${params.toString()}`:'');
+  location.href=`app-employer-ai-profile.html?${params.toString()}`;
 });
 
 
@@ -2712,7 +1191,7 @@ el('use-role-data-btn').addEventListener('click',()=>{
 
   applyOccupationProfileToForm();
   showMessage(
-    'Role-specific responsibilities were added and up to 3 matching skills were selected. You can add or remove anything before publishing.',
+    'Role-specific responsibilities were added and matching skill buttons were selected. Review them before publishing.',
     'success'
   );
 });
@@ -2728,41 +1207,8 @@ el('description').addEventListener('input', () => {
   el('description-count').textContent = el('description').value.length;
 });
 
-document.addEventListener(
-  'input',
-  event=>{
-    if(
-      event.target?.matches?.(
-        'input,textarea,select'
-      )
-    ){
-      queueJobDraftAutosave();
-    }
-  }
-);
-
-document.addEventListener(
-  'change',
-  event=>{
-    if(
-      event.target?.matches?.(
-        'input,textarea,select'
-      )
-    ){
-      queueJobDraftAutosave(
-        300
-      );
-    }
-  }
-);
-
 (async function init(){
   try{
-    const entryParams=new URLSearchParams(location.search);
-    if(entryParams.get('capacity')==='available'){
-      sessionStorage.removeItem('alygnn_job_slot_gate');
-      sessionStorage.removeItem('alygnnEditJobId');
-    }
     const {data:sessionData,error:sessionError}=await sb.auth.getSession();
 
     if(sessionError||!sessionData.session){
@@ -2772,8 +1218,7 @@ document.addEventListener(
 
     session=sessionData.session;
 
-    // Refresh the Auth user so recently saved Company AI Profile metadata is
-    // available immediately instead of using a stale cached session object.
+    // Refresh Auth first so the latest account metadata is available.
     const {data:userData,error:userError}=await sb.auth.getUser();
     if(!userError&&userData?.user){
       session={...session,user:userData.user};
@@ -2781,78 +1226,116 @@ document.addEventListener(
 
     const userId=session.user.id;
 
-    activeJobDraftId=
-      String(
-        sessionStorage.getItem(
-          'alygnnActiveJobDraftId'
-        )||
-        ''
-      );
+    // The ACTIVE employer workspace is the canonical scope. Never choose a
+    // random company_members row for a recruiter who belongs to many companies.
+    const {data:accessData,error:accessError}=await sb.rpc('get_my_team_access');
+    if(accessError) throw accessError;
 
-    await loadPersistentDraftIfRequested();
+    teamAccess=accessData||{};
+    currentCompanyId=String(teamAccess.company_id||'').trim();
+    ownerEmployerId=String(teamAccess.owner_user_id||userId).trim();
 
-    const [
-      profileResult,
-      verificationResult,
-      membershipResult
-    ]=await Promise.all([
-      sb.from('profiles').select('*').eq('id',userId).maybeSingle(),
-      sb.from('employer_verifications').select('*').eq('user_id',userId).maybeSingle(),
-      sb.from('company_members')
-        .select('company_id,companies(*)')
-        .eq('user_id',userId)
-        .eq('membership_status','active')
-        .limit(1)
-        .maybeSingle()
-    ]);
+    if(!currentCompanyId){
+      throw new Error('No active employer workspace was found.');
+    }
 
-    if(profileResult.error)console.warn('Profile load failed:',profileResult.error);
+    const canManageJobs=
+      teamAccess.is_owner===true ||
+      teamAccess.permissions?.jobs_manage===true;
+
+    if(!canManageJobs){
+      throw new Error('You do not have permission to post jobs in this employer workspace.');
+    }
+
+    try{
+      const {data,error}=await sb.rpc('get_my_workspace_context');
+      if(!error && data) workspaceContext=data||{};
+    }catch(error){
+      console.warn('Workspace list could not load:',error);
+    }
+
+    try{
+      const {data,error}=await sb.rpc('get_my_company_shared_context');
+      if(!error && data){
+        sharedCompanyContext=Array.isArray(data)?(data[0]||{}):(data||{});
+      }
+    }catch(error){
+      console.warn('Shared company context could not load:',error);
+    }
+
+    const workspaceSummary=(workspaceContext?.employer_workspaces||[]).find(item=>
+      String(item?.company_id||'')===currentCompanyId
+    )||{};
+
+    // Load only records that belong to the active company. The owner profile
+    // remains useful for logo/headline compatibility; recruiter personal
+    // metadata is never treated as the selected company's employer profile.
+    const profilePromise=sb
+      .from('profiles')
+      .select('*')
+      .eq('id',ownerEmployerId)
+      .maybeSingle();
+
+    let verificationPromise=Promise.resolve({data:null,error:null});
+    if(teamAccess.is_owner===true){
+      verificationPromise=sb
+        .from('employer_verifications')
+        .select('*')
+        .eq('user_id',ownerEmployerId)
+        .maybeSingle();
+    }
+
+    const membershipPromise=teamAccess.is_owner===true
+      ? Promise.resolve({data:null,error:null})
+      : sb.from('company_members')
+          .select('company_id,companies(*)')
+          .eq('user_id',userId)
+          .eq('company_id',currentCompanyId)
+          .eq('membership_status','active')
+          .maybeSingle();
+
+    const companyPromise=sb
+      .from('companies')
+      .select('*')
+      .eq('id',currentCompanyId)
+      .maybeSingle();
+
+    const [profileResult,verificationResult,membershipResult,companyResult]=
+      await Promise.all([
+        profilePromise,
+        verificationPromise,
+        membershipPromise,
+        companyPromise
+      ]);
+
+    if(profileResult.error)console.warn('Owner profile load failed:',profileResult.error);
     if(verificationResult.error)console.warn('Verification load failed:',verificationResult.error);
     if(membershipResult.error)console.warn('Company membership load failed:',membershipResult.error);
+    if(companyResult.error)console.warn('Company record load failed:',companyResult.error);
 
     profile=profileResult.data||{};
     const verification=verificationResult.data||{};
     const membership=membershipResult.data||null;
-
-    currentCompanyId=
-      membership?.company_id ||
-      verification.company_id ||
-      sessionStorage.getItem('alygnn_company_id') ||
-      '';
-
-    currentCompany=membership
+    const membershipCompany=membership
       ? (Array.isArray(membership.companies)?membership.companies[0]:membership.companies)
       : null;
 
-    if(!requireCompanyLogoBeforeJob()){
-      return;
-    }
+    currentCompany={
+      ...(workspaceSummary ? {
+        id:workspaceSummary.company_id||currentCompanyId,
+        company_name:workspaceSummary.company_name||'',
+        account_number:workspaceSummary.account_number||'',
+        verification_status:workspaceSummary.verification_status||''
+      } : {}),
+      ...(membershipCompany||{}),
+      ...(companyResult.data||{})
+    };
 
-    /*
-     * The builder should never become unusable because a preflight slot lookup
-     * hits an older jobs-table schema or a temporary Supabase/RLS issue.
-     * We still perform the authoritative slot check again on Publish.
-     */
     try{
-      const continuingDraft=
-        Boolean(
-          new URLSearchParams(
-            location.search
-          ).get('draft')
-        );
-
-      if(!continuingDraft){
-        const slotAllowed=
-          await enforceJobSlotAccess(
-            userId,
-            currentCompanyId
-          );
-
-        if(!slotAllowed)return;
-      }
-    }catch(slotCheckError){
-      console.error('Job-slot preflight check deferred:',slotCheckError);
-    }
+      localStorage.setItem('alygnn_company_id',currentCompanyId);
+      sessionStorage.setItem('alygnn_company_id',currentCompanyId);
+      localStorage.setItem(`alygnn_company_id_${userId}`,currentCompanyId);
+    }catch(_){}
 
     let verificationDocument=null;
 
@@ -2875,13 +1358,18 @@ document.addEventListener(
     verificationDocumentSubmitted=Boolean(verificationDocument);
 
     const metadata=session.user.user_metadata||{};
-    const savedAiProfile=metadata.employer_ai_profile||{};
+    const savedAiProfile=(sharedCompanyContext?.ai_profile &&
+      Object.keys(sharedCompanyContext.ai_profile||{}).length)
+        ? sharedCompanyContext.ai_profile
+        : (metadata.employer_ai_profile||{});
     const completedCompanyId=String(metadata.employer_ai_profile_complete_company_id||'');
     const currentId=String(currentCompanyId||'');
 
     aiProfileComplete=Boolean(
-      verification.profile_complete ||
+      sharedCompanyContext?.ai_profile_complete===true ||
+      (teamAccess.is_owner===true && verification.profile_complete===true) ||
       (
+        teamAccess.is_owner===true &&
         metadata.employer_ai_profile_complete===true &&
         (
           !completedCompanyId ||
@@ -2892,43 +1380,39 @@ document.addEventListener(
       savedAiProfile.profile_complete===true
     );
 
-    /*
-     * The latest verification document is the item Alygnn Trust & Safety
-     * actually reviews, so its review_status must be the first source of truth.
-     *
-     * This fixes the case where the admin page says APPROVED but older
-     * company/profile records still say pending_review.
-     */
     const documentVerificationStatus=String(
       verificationDocument?.review_status || ''
     ).toLowerCase();
 
     const storedVerificationStatus=String(
       documentVerificationStatus ||
+      sharedCompanyContext?.company_verification_status ||
       currentCompany?.verification_status ||
       verification.verification_status ||
-      profile.verification_status ||
+      (teamAccess.is_owner===true ? profile.verification_status : '') ||
       'not_submitted'
     ).toLowerCase();
 
     employerVerified=
-      profile.employer_verified===true ||
+      storedVerificationStatus==='approved' ||
       documentVerificationStatus==='approved' ||
-      storedVerificationStatus==='approved';
+      (teamAccess.is_owner===true && profile.employer_verified===true);
 
     if(employerVerified){
       verificationStatus='approved';
-    }else if(!verificationDocumentSubmitted){
-      // A newly created company may default to pending_review in the database.
-      // It is not truly pending until a verification document has been uploaded.
-      verificationStatus='not_submitted';
     }else if(
-      documentVerificationStatus==='rejected' ||
-      storedVerificationStatus==='rejected'
+      storedVerificationStatus==='rejected' ||
+      documentVerificationStatus==='rejected'
     ){
       verificationStatus='rejected';
-    }else{
+    }else if(
+      storedVerificationStatus==='pending_review' ||
+      storedVerificationStatus==='pending' ||
+      verificationDocumentSubmitted
+    ){
       verificationStatus='pending_review';
+    }else{
+      verificationStatus='not_submitted';
     }
 
     localStorage.setItem(
@@ -2940,73 +1424,67 @@ document.addEventListener(
       currentCompany?.company_name ||
       currentCompany?.legal_name ||
       currentCompany?.name ||
+      sharedCompanyContext?.company_name ||
       verification.company_name ||
       savedAiProfile.company_name ||
-      metadata.onboarding_company_profile?.company_name ||
+      (teamAccess.is_owner===true ? metadata.onboarding_company_profile?.company_name : '') ||
       profile.company_name ||
-      metadata.company_name ||
       'Your company';
+
+    // Keep the in-memory company object complete so every step/preview uses the
+    // selected employer workspace rather than personal recruiter metadata.
+    currentCompany={
+      ...(currentCompany||{}),
+      id:currentCompanyId,
+      company_name:companyName,
+      verification_status:verificationStatus
+    };
 
     el('company-name').textContent=companyName;
 
     const aiButton=el('company-ai-link');
     const lock=el('verification-lock');
 
-    if(employerVerified){
+    if(!aiProfileComplete){
+      aiButton.textContent='Complete Company AI Profile';
+      aiButton.hidden=false;
+      lock.textContent='Complete your Company AI Profile before publishing a job.';
+      lock.hidden=false;
+    }else if(employerVerified){
       aiButton.hidden=true;
       lock.hidden=true;
     }else if(verificationStatus==='not_submitted'){
       aiButton.textContent='Verify Company';
       aiButton.hidden=false;
       lock.textContent=
-        'Verify your company by uploading an official business document.';
+        'Your AI Profile is complete. Verify your company by uploading an official business document before this job can be published.';
       lock.hidden=false;
     }else if(verificationStatus==='rejected'){
       aiButton.textContent='Resubmit Company Verification';
       aiButton.hidden=false;
       lock.textContent=
-        'Your company verification needs attention. Upload a corrected business document.';
+        'Your company verification needs attention. Upload a corrected business document before this job can be published.';
       lock.hidden=false;
     }else{
       aiButton.hidden=true;
       lock.textContent=
-        'Your company verification is pending. You can continue building this job while Alygnn reviews it.';
+        'Your company verification is pending. You can finish this job draft while Alygnn reviews it.';
       lock.hidden=false;
     }
 
-    /*
-     * If Edit Job supplied an ID, load the exact existing database row before
-     * restoreDraft(). This prevents a blank/new-job form from appearing.
-     */
-    await loadExistingJobForEdit(
-      userId,
-      currentCompanyId
-    );
-
     setupSuggestions();
-    setupSkillBenefitTypeahead();
     restoreDraft();
-    refreshRoleSuggestions();
-
-    const requestedReturnStep=Number(
-      sessionStorage.getItem('alygnnJobReturnStep')||1
-    );
-    sessionStorage.removeItem('alygnnJobReturnStep');
-
-    showStep(
-      Number.isInteger(requestedReturnStep) &&
-      requestedReturnStep>=1 &&
-      requestedReturnStep<=5
-        ? requestedReturnStep
-        : 1
-    );
+    showStep(1);
   }catch(error){
     console.error(error);
-    showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
+    showMessage(
+      error?.message||
+      'Could not prepare the job form. Please return to the dashboard and try again.'
+    );
   }finally{
     hideLoading();
   }
-})();
+})()
 </script>
 </body>
 </html>
