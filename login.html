@@ -333,6 +333,33 @@ const { createClient } = supabase;
   // because profiles.verification_status has a default/premature value.
   const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-onboarding.html' : '/account.html');
 
+  async function resolveSignedInDestination(user, roleHint='seeker'){
+    // Team membership is a workspace assignment, not company ownership.
+    // It must take priority over the old candidate/employer profile role.
+    try{
+      const teamResult = await Promise.race([
+        sb.rpc('get_my_team_operational_state'),
+        new Promise(resolve => setTimeout(
+          () => resolve({data:null,error:{message:'team route timeout'}}),
+          2500
+        ))
+      ]);
+
+      const runtime = teamResult?.data;
+      if(
+        !teamResult?.error &&
+        runtime?.has_company === true &&
+        runtime?.access?.is_owner === false
+      ){
+        return window.location.origin + '/employer-dashboard.html?team_member=1';
+      }
+    }catch(error){
+      console.warn('Could not resolve team workspace after sign-in:',error);
+    }
+
+    return redirectFor(normalizeRole(roleHint));
+  }
+
   function normalizeRole(value) {
     const role = String(value || '').toLowerCase();
     return role === 'employer' ? 'employer' : 'seeker';
@@ -514,7 +541,7 @@ const { createClient } = supabase;
 
     // Password setup is intentionally optional. Google/Apple users continue
     // directly into Alygnn and can add a password later in Account settings.
-    window.location.replace(redirectFor(role));
+    window.location.replace(await resolveSignedInDestination(user, role));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -607,7 +634,7 @@ const { createClient } = supabase;
     if (error) { showMsg(error.message); return; }
     await savePendingPreferences(data.user);
     const r = data.user?.user_metadata?.role || 'seeker';
-    window.location.href = redirectFor(r);
+    window.location.href = await resolveSignedInDestination(data.user, r);
   }
 
   async function doSignup() {
@@ -698,7 +725,8 @@ const { createClient } = supabase;
     if (data.session) {
       await savePendingPreferences(data.user, name);
       showMsg('Account created! Redirecting…', 'success');
-      setTimeout(() => { window.location.href = redirectFor(currentRole); }, 600);
+      const destination = await resolveSignedInDestination(data.user, currentRole);
+      setTimeout(() => { window.location.href = destination; }, 600);
       return;
     }
 
