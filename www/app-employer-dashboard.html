@@ -4983,8 +4983,8 @@
           <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
         </div>
 
-        <div class="section-kicker">Workspace mode</div>
-        <section class="section">
+        <div class="section-kicker" id="candidate-mode-kicker" hidden>Workspace mode</div>
+        <section class="section" id="candidate-mode-section" hidden>
           <button class="settings-link" id="switch-candidate-mode" type="button" onclick="switchToCandidateMode()">
             <span class="settings-icon-label"><span class="settings-icon">C</span><span class="settings-copy"><strong>Switch to Candidate Mode</strong><small>Browse matches, apply to jobs, and manage your applications</small></span></span><span>›</span>
           </button>
@@ -12024,6 +12024,28 @@
       const isOwner=
         state.teamAccess?.is_owner===true;
 
+      // Candidate-mode switching is intentionally NOT available to the
+      // primary employer/owner. Only an added company team member whose
+      // Alygnn team role is Admin may switch between employer and candidate
+      // workspaces. Keep the section hidden by default so owners never see
+      // it flash while team access is loading.
+      const teamRole=String(
+        state.teamAccess?.role||''
+      ).toLowerCase().trim();
+
+      const candidateModeAllowed=
+        !isOwner && teamRole==='admin';
+
+      const candidateModeKicker=$('candidate-mode-kicker');
+      const candidateModeSection=$('candidate-mode-section');
+
+      if(candidateModeKicker){
+        candidateModeKicker.hidden=!candidateModeAllowed;
+      }
+      if(candidateModeSection){
+        candidateModeSection.hidden=!candidateModeAllowed;
+      }
+
       const billingAllowed=
         isOwner||
         teamCan('billing_view');
@@ -14670,6 +14692,17 @@
         'app-employer-ai-profile.html?section=hiring';
     };
     function switchToCandidateMode(){
+      const isOwner=state.teamAccess?.is_owner===true;
+      const teamRole=String(state.teamAccess?.role||'').toLowerCase().trim();
+
+      // Never allow the main employer/owner to enter candidate mode from
+      // the employer workspace. This guard also blocks manual/programmatic
+      // calls even when the Settings button is hidden.
+      if(isOwner || teamRole!=='admin'){
+        toast('Candidate Mode is available only to added Admin team members.');
+        return;
+      }
+
       try{
         localStorage.setItem('alygnn_active_mode','candidate');
         sessionStorage.setItem('alygnn_active_mode','candidate');
