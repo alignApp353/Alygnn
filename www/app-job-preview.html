@@ -1969,14 +1969,6 @@ body.preview-details-open{
   white-space:pre-wrap;
   word-break:break-word;
 }
-.company-about-card{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
-.company-about-logo{width:58px;height:58px;flex:0 0 auto;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#edf3f8;display:grid;place-items:center;color:var(--brand);font-weight:900;font-size:20px}
-.company-about-logo img{width:100%;height:100%;object-fit:contain;background:#fff}
-.company-about-name{font-weight:900;color:var(--text);font-size:17px}
-.company-about-verified{margin-top:5px;color:var(--brand);font-size:11px;font-weight:800}
-.company-about-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.company-about-link{display:inline-flex;align-items:center;min-height:34px;padding:0 11px;border:1px solid var(--border);border-radius:999px;text-decoration:none;color:var(--brand);font-size:11px;font-weight:800}
-
 
 .details-list{
   display:grid;
@@ -2107,221 +2099,6 @@ html[data-theme="dark"] .details-footer{
   }
 }
 
-
-.preview-kicker-clean{
-  margin:0 0 14px;
-  color:var(--brand);
-  font-size:11px;
-  font-weight:900;
-  letter-spacing:1.2px;
-  text-transform:uppercase;
-}
-
-/* ==========================================================
-   ALYGNN EMPLOYER JOB PREVIEW — CLEAN 2026 LAYOUT
-   ========================================================== */
-.page{
-  width:100%!important;
-  max-width:520px!important;
-  min-height:0!important;
-  margin:0 auto!important;
-  padding:24px 20px 132px!important;
-  display:block!important;
-  background:var(--bg)!important;
-}
-
-.preview-intro{
-  width:100%;
-  max-width:460px;
-  margin:0 auto 18px;
-}
-
-.preview-kicker-clean{
-  margin:0 0 7px!important;
-  padding:0!important;
-  color:var(--brand)!important;
-  font-size:10px!important;
-  font-weight:900!important;
-  letter-spacing:1.35px!important;
-  text-transform:uppercase!important;
-}
-
-.preview-intro h1{
-  margin:0;
-  color:var(--text);
-  font-size:27px;
-  line-height:1.08;
-  letter-spacing:-.55px;
-  font-weight:900;
-}
-
-.preview-intro p{
-  margin:8px 0 0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.55;
-}
-
-.status-wrap{
-  max-width:460px!important;
-  margin:0 auto 12px!important;
-  padding:0!important;
-}
-
-.candidate-preview-swipe-area{
-  width:100%!important;
-  min-height:0!important;
-  padding:0!important;
-  display:block!important;
-}
-
-.flip-shell{
-  width:100%!important;
-  max-width:460px!important;
-  height:470px!important;
-  min-height:470px!important;
-  margin:0 auto!important;
-  perspective:none!important;
-}
-
-/* Keep only a subtle stack hint instead of the exaggerated floating stack. */
-.flip-shell::before{
-  display:block!important;
-  inset:8px 10px -8px!important;
-  transform:none!important;
-  border-radius:25px!important;
-  opacity:.65!important;
-}
-
-.flip-shell::after{
-  display:none!important;
-}
-
-.flip-shadow{
-  display:none!important;
-}
-
-.flip-inner{
-  height:100%!important;
-}
-
-.candidate-card-preview{
-  height:100%!important;
-  padding:20px!important;
-  border-radius:25px!important;
-  box-shadow:0 16px 38px rgba(27,43,63,.09)!important;
-}
-
-.candidate-card-toolbar{
-  min-height:34px!important;
-  margin-bottom:10px!important;
-}
-
-.candidate-icon-btn,
-.candidate-save-btn{
-  width:34px!important;
-  height:34px!important;
-}
-
-.candidate-card-top{
-  gap:14px!important;
-  margin-bottom:15px!important;
-}
-
-.candidate-company-logo{
-  width:64px!important;
-  height:64px!important;
-  flex-basis:64px!important;
-  border-radius:19px!important;
-}
-
-.candidate-job-title{
-  font-size:29px!important;
-  line-height:1.04!important;
-}
-
-.candidate-company-name{
-  font-size:14px!important;
-}
-
-.candidate-card-pills{
-  gap:7px!important;
-  margin-bottom:15px!important;
-}
-
-.candidate-pill{
-  padding:7px 10px!important;
-  font-size:11px!important;
-}
-
-.candidate-overview{
-  margin-top:8px!important;
-  padding-top:13px!important;
-}
-
-.candidate-overview-label{
-  font-size:9px!important;
-  letter-spacing:1.2px!important;
-}
-
-.candidate-card-desc{
-  margin-top:7px!important;
-  font-size:12px!important;
-  line-height:1.55!important;
-  -webkit-line-clamp:4!important;
-}
-
-.candidate-card-bottom{
-  margin-top:auto!important;
-  padding-top:13px!important;
-}
-
-.candidate-view-full{
-  font-size:12px!important;
-}
-
-/* Full ad remains available from "View full job ad", but no giant preview gap. */
-.page.detail-open .flip-shell{
-  width:100%!important;
-  max-width:460px!important;
-  height:min(610px,calc(100dvh - 245px))!important;
-  min-height:480px!important;
-}
-
-/* Footer stays separate and easy to reach. */
-.footer{
-  background:color-mix(in srgb,var(--bg) 96%,transparent)!important;
-  backdrop-filter:blur(16px)!important;
-  -webkit-backdrop-filter:blur(16px)!important;
-}
-
-@media(max-width:390px){
-  .page{
-    padding:20px 16px 124px!important;
-  }
-
-  .preview-intro h1{
-    font-size:25px;
-  }
-
-  .flip-shell{
-    height:455px!important;
-    min-height:455px!important;
-  }
-
-  .candidate-card-preview{
-    padding:18px!important;
-  }
-
-  .candidate-job-title{
-    font-size:27px!important;
-  }
-}
-
-html[data-theme="dark"] .candidate-card-preview{
-  box-shadow:none!important;
-}
-
 </style>
 </head>
 
@@ -2342,10 +2119,31 @@ html[data-theme="dark"] .candidate-card-preview{
 
 <main class="page" id="page" hidden>
 
-  <section class="preview-intro">
-    <div class="preview-kicker-clean">Candidate preview</div>
-    <h1>See what candidates will see.</h1>
-    <p>Review the job card, open the full job ad, then publish when everything looks right.</p>
+  <!-- Mirrors the candidate Discover progress area. -->
+  <section class="candidate-progress-shell" aria-label="Candidate portal preview">
+    <div class="candidate-progress-card">
+      <div class="candidate-stat">
+        <div class="candidate-stat-value">0</div>
+        <div class="candidate-stat-label">Applied</div>
+      </div>
+
+      <div class="candidate-stat">
+        <div class="candidate-stat-value">0</div>
+        <div class="candidate-stat-label">Passed</div>
+      </div>
+
+      <div class="candidate-stat">
+        <div class="candidate-stat-value">1</div>
+        <div class="candidate-stat-label">Left</div>
+      </div>
+
+      <div class="candidate-job-progress">
+        <div class="candidate-progress-copy">Job 1 of 1</div>
+        <div class="candidate-progress-track">
+          <div class="candidate-progress-fill"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <div class="status-wrap" id="status-wrap"></div>
@@ -2475,6 +2273,23 @@ html[data-theme="dark"] .candidate-card-preview{
     </div>
   </div>
 
+    <div class="candidate-preview-actions" aria-label="Candidate action preview">
+      <button class="candidate-action-btn candidate-undo-btn" type="button" tabindex="-1" aria-hidden="true">
+        <span class="candidate-action-undo">↶</span>
+        <span class="candidate-action-main">Undo</span>
+      </button>
+
+      <button class="candidate-action-btn candidate-skip-btn" type="button" tabindex="-1" aria-hidden="true">
+        <span class="candidate-action-main">Not for me</span>
+        <span class="candidate-action-sub">Skip this job</span>
+      </button>
+
+      <button class="candidate-action-btn candidate-apply-btn" type="button" tabindex="-1" aria-hidden="true">
+        <span class="candidate-action-main">Apply now</span>
+        <span class="candidate-action-sub">Send my application</span>
+        <span class="candidate-action-arrow">→</span>
+      </button>
+    </div>
   </section>
 
   <div class="message" id="message"></div>
@@ -2548,7 +2363,7 @@ html[data-theme="dark"] .candidate-card-preview{
       </button>
 
       <button class="view" id="view-job-btn" type="button">
-        View Job
+        View Live Job
       </button>
     </div>
   </div>
@@ -2572,19 +2387,8 @@ const $=id=>document.getElementById(id);
 let session=null;
 let draft=null;
 let liveCompany=null;
+let teamAccess=null;
 let publishedJobId=null;
-
-function editJobId(){
-  return String(
-    draft?.edit_job_id ||
-    sessionStorage.getItem('alygnnEditJobId') ||
-    ''
-  ).trim();
-}
-
-function isEditMode(){
-  return Boolean(editJobId());
-}
 
 function initials(name){
   const parts=String(name||'Company')
@@ -2670,32 +2474,33 @@ function slotEntitlementActive(entitlement){
 }
 
 function slotLimitForEntitlement(entitlement){
-  if(!entitlement||!entitlementActive(entitlement))return 1;
+  if(!entitlement||!slotEntitlementActive(entitlement))return 1;
 
-  const plan=String(
-    entitlement.test_plan||
-    entitlement.plan||
-    'free'
-  ).toLowerCase();
-
+  const plan=String(entitlement.plan||'free').toLowerCase();
   const defaults={
-    free:0,
+    free:1,
+    weekly_slot:2,
     launch:3,
     growth:5,
     scale:8,
-    business:3,
-    enterprise:8
+    enterprise:15
   };
 
-  if(plan==='weekly_slot') return 2;
-
   const stored=Number(entitlement.slot_limit);
-  const planSlots=
-    Number.isFinite(stored)&&stored>0
-      ? stored
-      : (defaults[plan]||0);
 
-  return Math.max(1,planSlots+1);
+  // Weekly is the second-job option: one paid reusable slot is added
+  // to the employer's free reusable slot for the active 7-day term.
+  if(plan==='weekly_slot'){
+    return Math.max(
+      2,
+      Number.isFinite(stored)&&stored>0 ? stored : 2
+    );
+  }
+
+  return Math.max(
+    1,
+    Number.isFinite(stored)&&stored>0 ? stored : (defaults[plan]||1)
+  );
 }
 
 function jobConsumesSlot(job){
@@ -2734,32 +2539,25 @@ async function loadJobsForFinalSlotCheck(userId){
 }
 
 async function enforceFinalJobSlotAccess(){
-  /*
-   * Editing an existing listing does not consume additional capacity.
-   */
-  if(isEditMode()){
-    return true;
+  const ownerId=String(
+    draft?.employer_id||
+    teamAccess?.owner_user_id||
+    session?.user?.id||
+    ''
+  ).trim();
+
+  const companyId=String(
+    draft?.company_id||
+    teamAccess?.company_id||
+    ''
+  ).trim();
+
+  if(!ownerId){
+    throw new Error('Your employer session expired. Sign in again and retry.');
   }
 
-  const userId=session?.user?.id;
-
-  if(!userId){
-    throw new Error(
-      'Your employer session expired. Sign in again and retry.'
-    );
-  }
-
-  /*
-   * ALWAYS ask the unified Supabase posting-access function first.
-   * It includes the active base plan + standalone Second Job Slot
-   * + every active $99 Weekly Job Slot.
-   *
-   * Example:
-   *   Growth 5 slots + one Weekly slot = slot_limit 6.
-   *
-   * The older local entitlement row only knows Growth=5 and would
-   * incorrectly block the 6th job.
-   */
+  // Primary source: the multi-workspace RPC resolves the selected company's
+  // OWNER entitlement instead of the recruiter's personal user id.
   try{
     const result=await promiseTimeout(
       sb.rpc('get_employer_posting_access'),
@@ -2769,35 +2567,26 @@ async function enforceFinalJobSlotAccess(){
 
     if(!result.error && result.data){
       const access=result.data;
-      const used=Math.max(
-        0,
-        Number(access.active_job_count||0)
-      );
-      const limit=Math.max(
-        1,
-        Number(access.slot_limit||1)
-      );
+      const accessCompanyId=String(access.company_id||'').trim();
+      if(accessCompanyId && companyId && accessCompanyId!==companyId){
+        throw new Error('Your active employer workspace changed. Return to the job builder and try again.');
+      }
 
-      const hasCapacity =
-        used < limit ||
-        access.can_post === true;
+      const used=Math.max(0,Number(access.active_job_count||0));
+      const limit=Math.max(1,Number(access.slot_limit||1));
+      const hasCapacity=used<limit || access.can_post===true;
 
       if(hasCapacity){
-        sessionStorage.removeItem(
-          'alygnn_job_slot_gate'
-        );
+        sessionStorage.removeItem('alygnn_job_slot_gate');
         return true;
       }
 
-      sessionStorage.setItem(
-        'alygnn_job_slot_gate',
-        JSON.stringify({
-          used,
-          limit,
-          checked_at:new Date().toISOString(),
-          source:'app-job-preview-rpc'
-        })
-      );
+      sessionStorage.setItem('alygnn_job_slot_gate',JSON.stringify({
+        used,
+        limit,
+        checked_at:new Date().toISOString(),
+        source:'app-job-preview-rpc'
+      }));
 
       const params=new URLSearchParams({
         reason:'slot_limit',
@@ -2805,31 +2594,19 @@ async function enforceFinalJobSlotAccess(){
         limit:String(limit)
       });
 
-      location.replace(
-        'app-employer-pricing.html?'+
-        params.toString()
-      );
-
+      location.replace('app-employer-pricing.html?'+params.toString());
       return false;
     }
 
     if(result.error){
-      console.warn(
-        'Unified posting-access RPC unavailable; using compatibility fallback:',
-        result.error
-      );
+      console.warn('Posting-access RPC unavailable; using owner fallback:',result.error);
     }
   }catch(error){
-    console.warn(
-      'Unified posting-access check timed out; using compatibility fallback:',
-      error
-    );
+    if(String(error?.message||'').includes('active employer workspace changed')) throw error;
+    console.warn('Posting-access check unavailable; using owner fallback:',error);
   }
 
-  /*
-   * Compatibility fallback for an installation where the RPC has not
-   * been deployed yet. The database trigger is still the final guard.
-   */
+  // Compatibility fallback if the new RPC has not been installed yet.
   let entitlement=null;
 
   try{
@@ -2837,7 +2614,7 @@ async function enforceFinalJobSlotAccess(){
       sb
         .from('employer_entitlements')
         .select('*')
-        .eq('employer_id',userId)
+        .eq('employer_id',ownerId)
         .maybeSingle(),
       5000,
       'Alygnn could not finish checking your hiring plan.'
@@ -2847,34 +2624,35 @@ async function enforceFinalJobSlotAccess(){
       entitlement=entitlementResult.data||null;
     }
   }catch(error){
-    console.warn(
-      'Fallback entitlement lookup unavailable:',
-      error
-    );
+    console.warn('Fallback entitlement lookup unavailable:',error);
   }
 
-  const jobs=
-    await loadJobsForFinalSlotCheck(userId);
+  const jobs=await loadJobsForFinalSlotCheck(ownerId);
+  const used=jobs.filter(jobConsumesSlot).length;
 
-  const used=
-    jobs.filter(jobConsumesSlot).length;
+  let limit=slotLimitForEntitlement(entitlement);
+  const plan=String(entitlement?.test_plan||entitlement?.plan||'free').toLowerCase();
+  const status=String(entitlement?.subscription_status||'').toLowerCase();
+  const activePaid=['active','trialing'].includes(status) &&
+    ['launch','growth','scale','business','enterprise'].includes(plan);
 
-  const limit=
-    slotLimitForEntitlement(entitlement);
-
-  if(used<limit){
-    return true;
+  if(activePaid){
+    const planDefaults={launch:3,growth:5,scale:8,business:3,enterprise:8};
+    const stored=Number(entitlement?.slot_limit);
+    const paidSlots=Number.isFinite(stored)&&stored>0
+      ?stored
+      :(planDefaults[plan]||0);
+    limit=Math.max(1,paidSlots+1);
   }
 
-  sessionStorage.setItem(
-    'alygnn_job_slot_gate',
-    JSON.stringify({
-      used,
-      limit,
-      checked_at:new Date().toISOString(),
-      source:'app-job-preview-fallback'
-    })
-  );
+  if(used<limit)return true;
+
+  sessionStorage.setItem('alygnn_job_slot_gate',JSON.stringify({
+    used,
+    limit,
+    checked_at:new Date().toISOString(),
+    source:'app-job-preview-owner-fallback'
+  }));
 
   const params=new URLSearchParams({
     reason:'slot_limit',
@@ -2882,40 +2660,78 @@ async function enforceFinalJobSlotAccess(){
     limit:String(limit)
   });
 
-  location.replace(
-    'app-employer-pricing.html?'+
-    params.toString()
-  );
-
+  location.replace('app-employer-pricing.html?'+params.toString());
   return false;
 }
 
 async function resolveCompanyLive(){
-  try{
-    const response=await fetch(
-      'https://alygnn.com/api/company/resolve-company',
-      {
-        headers:{
-          Authorization:'Bearer '+session.access_token
-        },
-        cache:'no-store'
+  const companyId=String(
+    draft?.company_id||
+    teamAccess?.company_id||
+    ''
+  ).trim();
+
+  if(companyId){
+    try{
+      const {data,error}=await sb
+        .from('companies')
+        .select('*')
+        .eq('id',companyId)
+        .maybeSingle();
+
+      if(!error && data){
+        return{
+          ...data,
+          id:data.id||companyId,
+          name:data.company_name||data.legal_name||data.name||draft?.company||'Company',
+          verificationStatus:data.verification_status||draft?.verification_status||'',
+          accountStatus:data.account_status||'active'
+        };
       }
-    );
-
-    const result=await response.json().catch(()=>({}));
-
-    if(response.ok&&result?.company){
-      return result.company;
+    }catch(error){
+      console.warn('Direct active-company lookup failed:',error);
     }
 
-    return null;
-  }catch(error){
-    console.warn(
-      'Live company lookup failed:',
-      error
-    );
-    return null;
+    try{
+      const {data,error}=await sb.rpc('get_my_workspace_context');
+      if(!error && data){
+        const workspace=(data.employer_workspaces||[]).find(item=>
+          String(item?.company_id||'')===companyId
+        );
+        if(workspace){
+          return{
+            ...workspace,
+            id:workspace.company_id,
+            name:workspace.company_name||draft?.company||'Company',
+            verificationStatus:workspace.verification_status||draft?.verification_status||'',
+            accountStatus:'active'
+          };
+        }
+      }
+    }catch(error){
+      console.warn('Workspace company lookup failed:',error);
+    }
   }
+
+  // Legacy owner-only fallback. Do not use it when a selected company id is known.
+  if(!companyId){
+    try{
+      const response=await fetch(
+        'https://alygnn.com/api/company/resolve-company',
+        {
+          headers:{Authorization:'Bearer '+session.access_token},
+          cache:'no-store'
+        }
+      );
+
+      const result=await response.json().catch(()=>({}));
+      if(response.ok&&result?.company) return result.company;
+    }catch(error){
+      console.warn('Legacy live company lookup failed:',error);
+    }
+  }
+
+  return null;
 }
 
 function setLogo(){
@@ -3150,139 +2966,6 @@ function previewListHtml(value,fallback){
   `;
 }
 
-function safeExternalUrl(value){
-  const raw=String(value||'').trim();
-  if(!raw)return '';
-  try{
-    const url=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw);
-    return ['http:','https:'].includes(url.protocol)?url.href:'';
-  }catch(_error){
-    return '';
-  }
-}
-
-function normalizedPreviewCompanyLinks(){
-  let links=draft?.company_links;
-
-  if(typeof links==='string'){
-    try{
-      links=JSON.parse(links);
-    }catch(_error){
-      links=[];
-    }
-  }
-
-  if(!Array.isArray(links)){
-    links=[];
-  }
-
-  const legacy=[
-    draft?.company_linkedin_url,
-    draft?.company_instagram_url,
-    draft?.company_facebook_url,
-    draft?.company_x_url
-  ];
-
-  const seen=new Set();
-
-  return [...links,...legacy]
-    .map(item=>
-      safeExternalUrl(
-        typeof item==='string'
-          ?item
-          :item?.url
-      )
-    )
-    .filter(Boolean)
-    .filter(url=>{
-      const key=url
-        .replace(/\/+$/,'')
-        .toLowerCase();
-
-      if(seen.has(key)){
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    });
-}
-
-function previewCompanyLinkType(value){
-  const url=safeExternalUrl(value);
-
-  if(!url)return 'link';
-
-  const host=new URL(url).hostname
-    .toLowerCase()
-    .replace(/^www\./,'');
-
-  if(host==='facebook.com'||host.endsWith('.facebook.com')||host==='fb.com')return 'facebook';
-  if(host==='instagram.com'||host.endsWith('.instagram.com'))return 'instagram';
-  if(host==='linkedin.com'||host.endsWith('.linkedin.com'))return 'linkedin';
-  if(host==='x.com'||host.endsWith('.x.com')||host==='twitter.com'||host.endsWith('.twitter.com'))return 'x';
-  if(host==='tiktok.com'||host.endsWith('.tiktok.com'))return 'tiktok';
-  if(host==='youtube.com'||host.endsWith('.youtube.com')||host==='youtu.be')return 'youtube';
-  if(host==='threads.net'||host.endsWith('.threads.net'))return 'threads';
-
-  return 'website';
-}
-
-function previewCompanyLinkLabel(value){
-  const type=previewCompanyLinkType(value);
-
-  return {
-    facebook:'Facebook',
-    instagram:'Instagram',
-    linkedin:'LinkedIn',
-    x:'X',
-    tiktok:'TikTok',
-    youtube:'YouTube',
-    threads:'Threads',
-    website:'Website',
-    link:'Link'
-  }[type]||'Link';
-}
-
-function previewCompanyLinkIcon(value){
-  const type=previewCompanyLinkType(value);
-
-  return {
-    facebook:'f',
-    instagram:'◎',
-    linkedin:'in',
-    x:'𝕏',
-    tiktok:'♪',
-    youtube:'▶',
-    threads:'@',
-    website:'↗',
-    link:'↗'
-  }[type]||'↗';
-}
-
-function previewCompanyLogoHtml(){
-  const logo=safeExternalUrl(draft.company_logo);
-  if(!logo)return escapePreviewHtml(initials(draft.company));
-  return `<img src="${escapePreviewHtml(logo)}" alt="${escapePreviewHtml(draft.company||'Company')} logo" onerror="this.remove();this.parentElement.textContent='${escapePreviewHtml(initials(draft.company))}'">`;
-}
-
-function previewCompanyLinkHtml(value){
-  const url=safeExternalUrl(value);
-  if(!url)return '';
-
-  return `
-    <a
-      class="company-about-link"
-      href="${escapePreviewHtml(url)}"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="${escapePreviewHtml(previewCompanyLinkLabel(url))}">
-      <span aria-hidden="true">${escapePreviewHtml(previewCompanyLinkIcon(url))}</span>
-      <span>${escapePreviewHtml(previewCompanyLinkLabel(url))}</span>
-    </a>
-  `;
-}
-
 function openCandidateDetailsPreview(){
   const company=
     draft.company||
@@ -3375,23 +3058,7 @@ function openCandidateDetailsPreview(){
 
     <section class="details-section">
       <h2>About ${escapePreviewHtml(company)}</h2>
-
-      <div class="company-about-card">
-        <div class="company-about-logo">${previewCompanyLogoHtml()}</div>
-        <div>
-          <div class="company-about-name">${escapePreviewHtml(company)}</div>
-          <div class="company-about-verified">Verified employer on Alygnn</div>
-        </div>
-      </div>
-
       <div class="details-copy">${escapePreviewHtml(aboutCompany)}</div>
-
-      <div class="company-about-links">
-        ${previewCompanyLinkHtml(draft.company_website)}
-        ${normalizedPreviewCompanyLinks()
-          .map(previewCompanyLinkHtml)
-          .join('')}
-      </div>
     </section>
   `;
 
@@ -3423,25 +3090,19 @@ function editJob(){
     );
   }
 
+  // Tell the job builder to reopen Step 5 with the saved draft.
+  // This prevents "Back to Edit" from restarting the entire flow.
   sessionStorage.setItem(
     'alygnnJobReturnStep',
     '5'
   );
 
-  const id=editJobId();
-
-  location.replace(
-    id
-      ? 'app-post-job.html?edit='+
-        encodeURIComponent(id)+
-        '&return=review'
-      : 'app-post-job.html?return=review'
-  );
+  location.href='app-post-job.html';
 }
 
 function baseJobPayload(){
   return{
-    employer_id:session.user.id,
+    employer_id:draft.employer_id||teamAccess?.owner_user_id||session.user.id,
     title:draft.title,
     company:draft.company,
     location:draft.location,
@@ -3453,101 +3114,6 @@ function baseJobPayload(){
     benefits:draft.benefits,
     status:'active',
     created_at:new Date().toISOString()
-  };
-}
-
-function baseJobUpdatePayload(){
-  return{
-    title:draft.title,
-    company:draft.company,
-    location:draft.location,
-    job_type:draft.job_type,
-    work_style:draft.work_style,
-    salary:draft.salary,
-    description:draft.description,
-    requirements:draft.requirements,
-    benefits:draft.benefits,
-    updated_at:new Date().toISOString()
-  };
-}
-
-function extendedJobUpdatePayload(){
-  return{
-    ...baseJobUpdatePayload(),
-
-    company_id:
-      draft.company_id||
-      liveCompany?.id||
-      null,
-
-    pay_period:
-      draft.pay_period||
-      null,
-
-    pay_min:
-      draft.pay_min??
-      null,
-
-    pay_max:
-      draft.pay_max??
-      null,
-
-    onet_soc_code:
-      draft.onet_soc_code||
-      null,
-
-    location_city:
-      draft.location_city||
-      null,
-
-    location_state:
-      draft.location_state||
-      null,
-
-    location_postal_code:
-      draft.location_postal_code||
-      null,
-
-    location_latitude:
-      draft.location_latitude??
-      null,
-
-    location_longitude:
-      draft.location_longitude??
-      null,
-
-    company_logo:
-      draft.company_logo||
-      null,
-
-    company_website:
-      draft.company_website||
-      null,
-
-    company_description:
-      draft.company_description||
-      null,
-
-    company_links:
-      Array.isArray(draft.company_links)
-        ?draft.company_links
-        :normalizedPreviewCompanyLinks(),
-
-    company_linkedin_url:
-      draft.company_linkedin_url||
-      null,
-
-    company_instagram_url:
-      draft.company_instagram_url||
-      null,
-
-    company_facebook_url:
-      draft.company_facebook_url||
-      null,
-
-    company_x_url:
-      draft.company_x_url||
-      null
   };
 }
 
@@ -3594,39 +3160,6 @@ function extendedJobPayload(){
 
     location_longitude:
       draft.location_longitude??
-      null,
-
-    company_logo:
-      draft.company_logo||
-      null,
-
-    company_website:
-      draft.company_website||
-      null,
-
-    company_description:
-      draft.company_description||
-      null,
-
-    company_links:
-      Array.isArray(draft.company_links)
-        ?draft.company_links
-        :normalizedPreviewCompanyLinks(),
-
-    company_linkedin_url:
-      draft.company_linkedin_url||
-      null,
-
-    company_instagram_url:
-      draft.company_instagram_url||
-      null,
-
-    company_facebook_url:
-      draft.company_facebook_url||
-      null,
-
-    company_x_url:
-      draft.company_x_url||
       null
   };
 }
@@ -3644,77 +3177,29 @@ function missingColumn(error){
   );
 }
 
-async function saveJob(){
-  const id=editJobId();
-
-  if(id){
-    /*
-     * EDIT MODE:
-     * update the same database record.
-     */
-    let result=await promiseTimeout(
-      sb
-        .from('jobs')
-        .update(
-          extendedJobUpdatePayload()
-        )
-        .eq('id',id),
-      12000,
-      'Saving changes is taking too long. Check My Jobs before trying again.'
-    );
-
-    if(
-      result.error &&
-      missingColumn(result.error)
-    ){
-      result=await promiseTimeout(
-        sb
-          .from('jobs')
-          .update(
-            baseJobUpdatePayload()
-          )
-          .eq('id',id),
-        12000,
-        'Saving changes is taking too long. Check My Jobs before trying again.'
-      );
-    }
-
-    if(!result.error){
-      publishedJobId=id;
-
-      sessionStorage.setItem(
-        'alygnnLastPublishedJobId',
-        id
-      );
-    }
-
-    return result;
-  }
-
+async function insertJob(){
   /*
-   * NEW JOB MODE:
-   * normal insert behavior.
+   * Do not request the inserted row back here. In WebView builds an INSERT
+   * followed by .select().single() can leave the Publish button waiting for a
+   * representation even though the write itself is the only thing we need.
+   * Supabase's normal INSERT response is enough to confirm success.
    */
   let result=await promiseTimeout(
     sb
       .from('jobs')
-      .insert(
-        extendedJobPayload()
-      ),
+      .insert(extendedJobPayload()),
     12000,
     'Publishing is taking too long. Check My Jobs before trying again.'
   );
 
   if(
-    result.error &&
+    result.error&&
     missingColumn(result.error)
   ){
     result=await promiseTimeout(
       sb
         .from('jobs')
-        .insert(
-          baseJobPayload()
-        ),
+        .insert(baseJobPayload()),
       12000,
       'Publishing is taking too long. Check My Jobs before trying again.'
     );
@@ -3723,126 +3208,31 @@ async function saveJob(){
   return result;
 }
 
-async function resolvePublishedJobIdBestEffort(maxAttempts=5){
-  if(publishedJobId){
-    return publishedJobId;
-  }
-
-  const saved=sessionStorage.getItem(
-    'alygnnLastPublishedJobId'
-  );
-
-  if(saved){
-    publishedJobId=saved;
-    return publishedJobId;
-  }
-
-  for(let attempt=0;attempt<maxAttempts;attempt++){
-    try{
-      const result=await promiseTimeout(
-        sb
-          .from('jobs')
-          .select('id')
-          .eq('employer_id',session.user.id)
-          .eq('title',draft.title)
-          .order('created_at',{ascending:false})
-          .limit(1)
-          .maybeSingle(),
-        3500,
-        'Job ID lookup timed out.'
-      );
-
-      if(!result.error&&result.data?.id){
-        publishedJobId=String(result.data.id);
-
-        sessionStorage.setItem(
-          'alygnnLastPublishedJobId',
-          publishedJobId
-        );
-
-        return publishedJobId;
-      }
-    }catch(error){
-      console.warn(
-        'Published job ID lookup attempt failed:',
-        error
-      );
-    }
-
-    if(attempt<maxAttempts-1){
-      await new Promise(resolve=>
-        setTimeout(resolve,300)
-      );
-    }
-  }
-
-  return '';
-}
-
-function isFreeRepostRotationError(error){
-  return /FREE_REPOST_ROTATION/i.test(
-    String(error?.message||'')
-  );
-}
-
-function goToFreeRepostOptions(){
-  const params=new URLSearchParams({
-    reason:'free_repost_rotation',
-    title:String(draft?.title||'')
-  });
-
-  location.href=
-    'app-employer-pricing.html?'+
-    params.toString();
-}
-
-async function deletePersistentDraftAfterPublish(){
-  const id=
-    sessionStorage.getItem(
-      'alygnnActiveJobDraftId'
-    )||
-    '';
-
-  if(!id){
-    return;
-  }
-
+async function resolvePublishedJobIdBestEffort(){
   try{
-    const {error}=await sb
-      .from('employer_job_drafts')
-      .delete()
-      .eq('id',id);
+    const result=await promiseTimeout(
+      sb
+        .from('jobs')
+        .select('id')
+        .eq('employer_id',draft.employer_id||teamAccess?.owner_user_id||session.user.id)
+        .eq('title',draft.title)
+        .order('created_at',{ascending:false})
+        .limit(1)
+        .maybeSingle(),
+      3000,
+      'Job ID lookup timed out.'
+    );
 
-    if(error){
-      console.warn(
-        'Published job, but draft cleanup failed:',
-        error
-      );
+    if(!result.error&&result.data?.id){
+      publishedJobId=result.data.id;
     }
   }catch(error){
-    console.warn(
-      'Published job, but draft cleanup failed:',
-      error
-    );
+    console.warn('Published job ID lookup skipped:',error);
   }
-
-  sessionStorage.removeItem(
-    'alygnnActiveJobDraftId'
-  );
 }
-
 
 async function publishJob(){
   clearMessage();
-
-  if(!String(draft?.company_logo||'').trim()){
-    showMessage('Add your company logo before publishing this job.');
-    sessionStorage.setItem('alygnnCompanyProfileReturn','app-job-preview.html');
-    setTimeout(()=>{
-      location.href='app-employer-dashboard.html?view=company&edit=1&reason=logo_required';
-    },450);
-    return;
-  }
 
   liveCompany=
     await resolveCompanyLive();
@@ -3877,10 +3267,7 @@ async function publishJob(){
   const button=$('publish-btn');
 
   button.disabled=true;
-  button.textContent=
-    isEditMode()
-      ? 'Saving changes…'
-      : 'Checking access…';
+  button.textContent='Checking access…';
 
   try{
     // Final payment/slot check happens immediately before the database insert.
@@ -3892,46 +3279,19 @@ async function publishJob(){
       return;
     }
 
-    button.textContent=
-      isEditMode()
-        ? 'Saving changes…'
-        : 'Publishing…';
+    button.textContent='Publishing…';
 
     const{
       error
-    }=await saveJob();
+    }=await insertJob();
 
     if(error){
       throw error;
     }
 
-    /*
-     * The insert is complete. Resolve the exact new job ID before showing
-     * the success screen so View Job always knows which posting to open.
-     */
-    if(isEditMode()){
-      publishedJobId=editJobId();
-
-      sessionStorage.setItem(
-        'alygnnLastPublishedJobId',
-        publishedJobId
-      );
-    }else{
-      publishedJobId='';
-
-      sessionStorage.removeItem(
-        'alygnnLastPublishedJobId'
-      );
-
-      await resolvePublishedJobIdBestEffort();
-    }
-
-    const updatedExistingJob=
-      isEditMode();
-
-    if(!updatedExistingJob){
-      await deletePersistentDraftAfterPublish();
-    }
+    /* The insert is complete. Resolve the ID separately without blocking UI. */
+    publishedJobId='';
+    resolvePublishedJobIdBestEffort();
 
     sessionStorage.removeItem(
       'alygnnJobDraft'
@@ -3940,34 +3300,6 @@ async function publishJob(){
     sessionStorage.removeItem(
       'alygnnEditJobId'
     );
-
-    const successTitle=
-      $('success').querySelector('h2');
-
-    const successCopy=
-      $('success').querySelector('p');
-
-    if(updatedExistingJob){
-      if(successTitle){
-        successTitle.textContent=
-          'Job updated';
-      }
-
-      if(successCopy){
-        successCopy.textContent=
-          'Your changes were saved to this existing job listing.';
-      }
-    }else{
-      if(successTitle){
-        successTitle.textContent=
-          'Job published';
-      }
-
-      if(successCopy){
-        successCopy.textContent=
-          'Your job was saved to Alygnn and is now available to candidates.';
-      }
-    }
 
     $('success-job').textContent=
       (draft.title||'Job')+
@@ -3989,18 +3321,6 @@ async function publishJob(){
 
     const errorText=String(error?.message||'');
 
-    if(isFreeRepostRotationError(error)){
-      showMessage(
-        'This role matches one of your previous 5 job ads. Free accounts must post 5 different jobs before reposting the same role. To post this role again now, add the $150/month Second Job Slot or choose a monthly or quarterly plan.'
-      );
-
-      button.disabled=false;
-      button.textContent='View hiring options';
-      button.onclick=goToFreeRepostOptions;
-
-      return;
-    }
-
     if(isPostingCapacityError(error)){
       showMessage(
         'Your included free job slot is already being used. Choose another job slot to post this role.'
@@ -4021,10 +3341,7 @@ async function publishJob(){
     );
 
     button.disabled=false;
-    button.textContent=
-      isEditMode()
-        ? 'Save Changes'
-        : 'Publish Job';
+    button.textContent='Publish Job';
   }
 }
 
@@ -4101,51 +3418,22 @@ function wire(){
     );
   };
 
-  $('view-job-btn').onclick=async()=>{
-    const button=$('view-job-btn');
-    const original=button.textContent;
-
-    button.disabled=true;
-    button.textContent='Opening job…';
-
-    try{
-      const id=
-        publishedJobId ||
-        await resolvePublishedJobIdBestEffort();
-
-      if(!id){
-        throw new Error(
-          'Alygnn could not locate the job that was just published.'
-        );
-      }
-
-      sessionStorage.setItem(
-        'alygnnOpenEmployerJobId',
-        String(id)
+  $('view-job-btn').onclick=()=>{
+    if(publishedJobId){
+      // Employer live-view is a terminal preview, not another step in the
+      // job-builder history. Replace the success screen and tell the details
+      // page to return directly to My Jobs.
+      location.replace(
+        'app-job-details.html?id='+
+        encodeURIComponent(publishedJobId)+
+        '&from=employer-live'
       );
-
-      const params=new URLSearchParams({
-        view:'jobs',
-        open_job:String(id)
-      });
-
-      location.href=
-        'app-employer-dashboard.html?'+
-        params.toString();
-
-    }catch(error){
-      console.error(
-        'Could not open published job:',
-        error
-      );
-
-      showMessage(
-        'Your job is published, but Alygnn could not open it automatically. Open My Jobs to view it.'
-      );
-
-      button.disabled=false;
-      button.textContent=original;
+      return;
     }
+
+    location.replace(
+      'app-employer-dashboard.html?view=jobs'
+    );
   };
 }
 
@@ -4153,10 +3441,7 @@ function wire(){
   wire();
 
   try{
-    const raw=
-      sessionStorage.getItem(
-        'alygnnJobDraft'
-      );
+    const raw=sessionStorage.getItem('alygnnJobDraft');
 
     if(!raw){
       $('error-state').hidden=false;
@@ -4165,51 +3450,53 @@ function wire(){
 
     draft=JSON.parse(raw);
 
-    if(isEditMode()){
-      $('publish-btn').textContent=
-        'Save Changes';
-    }
+    const {data,error}=await sb.auth.getSession();
 
-    const{
-      data,
-      error
-    }=await sb.auth.getSession();
-
-    if(
-      error||
-      !data.session
-    ){
-      location.replace(
-        'app-employer-login.html'
-      );
+    if(error||!data.session){
+      location.replace('app-employer-login.html');
       return;
     }
 
     session=data.session;
 
-    if(
-      draft.employer_id&&
-      draft.employer_id!==session.user.id
-    ){
-      sessionStorage.removeItem(
-        'alygnnJobDraft'
-      );
+    const accessResult=await sb.rpc('get_my_team_access');
+    if(accessResult.error) throw accessResult.error;
+    teamAccess=accessResult.data||{};
 
+    const activeCompanyId=String(teamAccess.company_id||'').trim();
+    const activeOwnerId=String(teamAccess.owner_user_id||session.user.id).trim();
+    const draftCompanyId=String(draft.company_id||'').trim();
+
+    if(!activeCompanyId){
+      throw new Error('No active employer workspace was found.');
+    }
+
+    if(draftCompanyId && draftCompanyId!==activeCompanyId){
+      // Never publish a draft into a different company than the active workspace.
+      sessionStorage.removeItem('alygnnJobDraft');
       $('error-state').hidden=false;
       return;
     }
 
-    liveCompany=
-      await resolveCompanyLive();
+    const canManageJobs=
+      teamAccess.is_owner===true ||
+      teamAccess.permissions?.jobs_manage===true;
 
-    if(liveCompany?.name){
-      draft.company=
-        liveCompany.name;
+    if(!canManageJobs){
+      throw new Error('You do not have permission to publish jobs in this employer workspace.');
     }
 
-    if(liveCompany?.id){
-      draft.company_id=
-        liveCompany.id;
+    draft.company_id=activeCompanyId;
+    draft.employer_id=activeOwnerId;
+
+    liveCompany=await resolveCompanyLive();
+
+    if(liveCompany?.name){
+      draft.company=liveCompany.name;
+    }
+
+    if(liveCompany?.id && String(liveCompany.id)===activeCompanyId){
+      draft.company_id=activeCompanyId;
     }
 
     render();
@@ -4219,11 +3506,16 @@ function wire(){
 
   }catch(error){
     console.error(error);
-    $('error-state').hidden=false;
+    const state=$('error-state');
+    if(state){
+      state.hidden=false;
+      const copy=state.querySelector('p');
+      if(copy && error?.message) copy.textContent=error.message;
+    }
   }finally{
     $('loading').hidden=true;
   }
-})();
+})()
 </script>
 </body>
 </html>
