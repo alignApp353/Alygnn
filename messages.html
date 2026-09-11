@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<title>Messages — Alygnn</title>
+<title>Employer Messages — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -185,48 +185,198 @@
     body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
   }
 </style>
+
+<style id="employer-messages-myjobs-shell">
+/* Employer Messages now uses the exact Employer My Jobs shell. */
+body.employer-role{
+  padding-top:64px !important;
+}
+
+body.employer-role nav{
+  position:fixed !important;
+  top:0 !important;
+  left:0 !important;
+  right:0 !important;
+  width:100% !important;
+  z-index:1000 !important;
+  height:64px !important;
+  padding:0 5% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  background:rgba(246,248,247,.95) !important;
+  backdrop-filter:blur(12px) !important;
+  border-bottom:1px solid var(--border) !important;
+}
+
+body.employer-role .logo{
+  font-family:'DM Serif Display',serif !important;
+  font-size:22px !important;
+  color:var(--brand) !important;
+  text-decoration:none !important;
+}
+
+body.employer-role .nav-right{
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+  position:relative !important;
+}
+
+body.employer-role .nav-user{
+  font-family:'DM Sans',sans-serif !important;
+  font-size:13px !important;
+  color:var(--muted) !important;
+}
+
+body.employer-role .btn-logout{
+  min-height:38px !important;
+  padding:0 16px !important;
+  border-radius:10px !important;
+  border:1px solid var(--border) !important;
+  background:var(--card) !important;
+  color:var(--muted) !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:13px !important;
+  cursor:pointer !important;
+}
+
+body.employer-role .notif-bell{
+  width:40px !important;
+  height:40px !important;
+  display:grid !important;
+  place-items:center !important;
+  border:1px solid var(--border) !important;
+  border-radius:10px !important;
+  background:var(--card) !important;
+  color:var(--muted) !important;
+  cursor:pointer !important;
+}
+body.employer-role .notif-bell svg{width:19px !important;height:19px !important}
+body.employer-role .notif-bell:hover{color:var(--brand) !important;border-color:var(--brand) !important}
+
+.messages-notif-menu{
+  position:absolute;
+  top:48px;
+  right:108px;
+  width:290px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 12px 32px rgba(0,0,0,.12);
+  z-index:1200;
+}
+.messages-notif-menu[hidden]{display:none !important}
+.messages-notif-title{font-size:13px;font-weight:600;margin-bottom:5px}
+.messages-notif-copy{font-size:12px;line-height:1.45;color:var(--muted);margin-bottom:10px}
+.messages-notif-link{font-size:12px;font-weight:600;color:var(--brand);text-decoration:none}
+
+/* Fixed left rail exactly like Employer My Jobs. */
+body.employer-role .layout{
+  display:block !important;
+  min-height:calc(100vh - 64px) !important;
+  padding-top:0 !important;
+}
+body.employer-role .sidebar{
+  position:fixed !important;
+  top:64px !important;
+  left:0 !important;
+  width:240px !important;
+  height:calc(100vh - 64px) !important;
+  padding:32px 20px !important;
+  overflow:hidden !important;
+  background:var(--card) !important;
+  border-right:1px solid var(--border) !important;
+  z-index:100 !important;
+}
+body.employer-role .sidebar-label{
+  font-family:'DM Sans',sans-serif !important;
+  font-size:10px !important;
+  letter-spacing:2px !important;
+  text-transform:uppercase !important;
+  color:var(--muted) !important;
+  font-weight:500 !important;
+  margin-bottom:10px !important;
+  padding:0 8px !important;
+}
+body.employer-role .side-link{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  width:100% !important;
+  padding:10px 12px !important;
+  border-radius:10px !important;
+  color:var(--muted) !important;
+  text-decoration:none !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:14px !important;
+  font-weight:400 !important;
+  line-height:1.35 !important;
+  margin-bottom:2px !important;
+}
+body.employer-role .side-link:hover{background:var(--brand-light) !important;color:var(--text) !important}
+body.employer-role .side-link.active{background:var(--brand-light) !important;color:var(--brand) !important;font-weight:500 !important}
+body.employer-role .side-icon{width:20px !important;height:20px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;flex-shrink:0 !important}
+body.employer-role .side-icon svg{width:18px !important;height:18px !important;display:block !important;fill:none !important;stroke:currentColor !important;stroke-width:1.8 !important;stroke-linecap:round !important;stroke-linejoin:round !important}
+body.employer-role .sidebar hr{border:0 !important;border-top:1px solid var(--border) !important;margin:12px 0 !important}
+
+/* Main content begins in exactly the same place as My Jobs. */
+body.employer-role main{
+  margin-left:240px !important;
+  max-width:none !important;
+  width:auto !important;
+  padding:40px 5% 70px !important;
+}
+body.employer-role .page-kicker{display:none !important}
+body.employer-role h1{
+  font-family:'DM Serif Display',serif !important;
+  font-size:32px !important;
+  line-height:1.08 !important;
+  letter-spacing:-.5px !important;
+  margin-bottom:6px !important;
+  font-weight:400 !important;
+}
+body.employer-role .page-sub{
+  font-family:'DM Sans',sans-serif !important;
+  font-size:14px !important;
+  color:var(--muted) !important;
+  margin-bottom:32px !important;
+}
+
+body.employer-role .chat-shell{
+  width:100% !important;
+  height:calc(100vh - 64px - 40px - 32px - 39px - 70px) !important;
+  min-height:560px !important;
+  max-height:720px !important;
+}
+
+@media(max-width:860px){
+  body.employer-role .sidebar{display:none !important}
+  body.employer-role main{margin-left:0 !important;padding:32px 5% 70px !important}
+}
+</style>
+
 </head>
 <body>
 <div id="loading">Loading messages…</div>
 
 <nav>
-  <a class="logo" href="index.html">Alygnn<span>.</span></a>
-
-  <div class="candidate-nav-links nav-readiness-pending" id="candidate-nav-links">
-    <a href="account.html">Account</a>
-    <a href="my-jobs.html">My jobs</a>
-    <a href="messages.html" class="active">Messages</a>
-    <a href="swipe.html" id="candidate-swipe-link" style="display:none;">Swipe</a>
-  </div>
-
-  <div class="candidate-nav-actions" id="candidate-nav-actions">
-    <button class="candidate-nav-signout" type="button" onclick="candidateSignOut()">Sign out</button>
-  </div>
-
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-right" id="employer-nav-right">
-    <span class="nav-name" id="nav-name"></span>
-    <a class="nav-btn" id="account-link" href="employer-account.html">My account</a>
-    <a class="nav-btn primary" id="dashboard-link" href="employer-dashboard.html">Dashboard</a>
+    <button class="notif-bell" type="button" aria-label="Notifications" title="Notifications" onclick="toggleMessagesNotifMenu(event)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+    <div class="messages-notif-menu" id="messages-notif-menu" hidden>
+      <div class="messages-notif-title">Notifications</div>
+      <div class="messages-notif-copy">Open your dashboard to review employer notifications.</div>
+      <a href="employer-dashboard.html" class="messages-notif-link">Open dashboard</a>
+    </div>
+    <span class="nav-user" id="nav-name"></span>
+    <button class="btn-logout" type="button" onclick="candidateSignOut()">Sign out</button>
   </div>
 </nav>
-<script>
-(function(){
-  const nav = document.getElementById('candidate-nav-links');
-  const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
-  if(!nav || !swipe) return;
 
-  let cached = null;
-  try { cached = window.sessionStorage.getItem('alygnn_matching_ready_v1'); } catch (_) {}
-
-  if(cached === '1'){
-    swipe.style.display = '';
-    nav.classList.remove('nav-readiness-pending');
-  }else if(cached === '0'){
-    swipe.style.display = 'none';
-    nav.classList.remove('nav-readiness-pending');
-  }
-})();
-</script>
 
 
 <div class="layout">
@@ -378,7 +528,7 @@ function setSidebar(){
         Messages
       </a>
 
-      <a href="employer-dashboard.html#post" class="side-link">
+      <a href="employer-dashboard.html#post" class="side-link" id="messages-post-job-link">
         <span class="side-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         </span>
@@ -387,15 +537,12 @@ function setSidebar(){
 
       <hr>
 
-      <a href="employer-account.html" class="side-link">
+      <a href="employer-account.html" class="side-link" id="messages-account-link">
         <span class="side-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
         </span>
         My account
-      </a>`;
-    document.getElementById('account-link').href='employer-account.html';
-    document.getElementById('dashboard-link').href='employer-dashboard.html';
-    document.getElementById('dashboard-link').textContent='Dashboard';
+      </a>
   }else{
     document.body.classList.remove('employer-role');
     document.body.classList.add('candidate-role');
@@ -972,6 +1119,22 @@ async function init(){
 
   currentProfile=profile||{};
 
+  // Dedicated Employer Messages route. A normal candidate who lands here from
+  // an old bookmark is sent to the candidate Messages page instead.
+  const hasEmployerWorkspace=runtimeResult?.data?.has_company===true;
+  const employerMarker=String(
+    profile?.role||
+    currentUser.user_metadata?.account_type||
+    currentUser.user_metadata?.role||
+    currentUser.app_metadata?.account_type||
+    currentUser.app_metadata?.role||
+    ''
+  ).toLowerCase();
+  if(!hasEmployerWorkspace && employerMarker!=='employer'){
+    location.replace('candidate-messages.html');
+    return;
+  }
+
   if(isTeamMember){
     if(!messageTeamCan('messages_manage')){
       currentRole='employer';
@@ -987,10 +1150,10 @@ async function init(){
 
     setSidebar();
 
-    const postLink=document.querySelector('a[href="employer-dashboard.html#post"]');
+    const postLink=document.getElementById('messages-post-job-link');
     if(postLink&&!messageTeamCan('jobs_manage'))postLink.style.display='none';
 
-    const accountLink=document.querySelector('a[href="employer-account.html"]');
+    const accountLink=document.getElementById('messages-account-link');
     if(accountLink&&!(
       messageTeamCan('company_edit')||
       messageTeamCan('billing_view')||
@@ -998,14 +1161,7 @@ async function init(){
       messageTeamCan('team_manage')
     ))accountLink.style.display='none';
   }else{
-    currentRole=String(profile?.role||currentUser.user_metadata?.role||'candidate').toLowerCase();
-
-    // messages.html is the dedicated employer route. Candidate accounts use
-    // candidate-messages.html so the two workspaces can never overwrite each other.
-    if(currentRole!=='employer'){
-      location.replace('candidate-messages.html');
-      return;
-    }
+    currentRole='employer';
 
     if(currentRole!=='employer'){
       const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
@@ -1059,6 +1215,18 @@ async function init(){
 
   document.body.classList.add('ready');
 }
+
+
+function toggleMessagesNotifMenu(event){
+  if(event) event.stopPropagation();
+  const menu=document.getElementById('messages-notif-menu');
+  if(!menu) return;
+  menu.hidden=!menu.hidden;
+}
+document.addEventListener('click',()=>{
+  const menu=document.getElementById('messages-notif-menu');
+  if(menu) menu.hidden=true;
+});
 
 window.addEventListener('beforeunload',()=>{
   if(messageChannel)sb.removeChannel(messageChannel);
