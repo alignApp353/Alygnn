@@ -881,6 +881,23 @@ body.candidate-role main{
 }
 </style>
 
+
+<style id="candidate-swipe-readiness-hard-fix">
+/* Hide the entire center nav until the CURRENT user's setup state is loaded. */
+body.candidate-role .candidate-nav-links.nav-readiness-pending{
+  visibility:hidden !important;
+}
+body.candidate-role .candidate-nav-links:not(.nav-readiness-pending){
+  visibility:visible !important;
+}
+
+/* `hidden` must beat the nav's `display:flex !important`. */
+body.candidate-role #candidate-swipe-link[hidden],
+body.candidate-role #nav-swipe-link[hidden]{
+  display:none !important;
+}
+</style>
+
 </head>
 <body>
 <div id="loading">Loading messages…</div>
@@ -892,7 +909,7 @@ body.candidate-role main{
     <a href="account.html">Account</a>
     <a href="my-jobs.html">My jobs</a>
     <a href="candidate-messages.html" class="active">Messages</a>
-    <a href="swipe.html" id="candidate-swipe-link" style="display:none;">Swipe</a>
+    <a href="swipe.html" id="candidate-swipe-link" hidden>Swipe</a>
   </div>
 
   <div class="candidate-nav-actions nav-actions" id="candidate-nav-actions">
@@ -922,20 +939,12 @@ body.candidate-role main{
 </nav>
 <script>
 (function(){
-  const nav = document.getElementById('candidate-nav-links');
   const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
-  if(!nav || !swipe) return;
+  if(!swipe) return;
 
-  let cached = null;
-  try { cached = window.sessionStorage.getItem('alygnn_matching_ready_v1'); } catch (_) {}
-
-  if(cached === '1'){
-    swipe.style.display = '';
-    nav.classList.remove('nav-readiness-pending');
-  }else if(cached === '0'){
-    swipe.style.display = 'none';
-    nav.classList.remove('nav-readiness-pending');
-  }
+  // Never reveal Swipe from a stale sessionStorage value belonging to another
+  // candidate/login. init() will decide after reading this user's live profile.
+  swipe.hidden = true;
 })();
 </script>
 
@@ -1035,7 +1044,11 @@ function syncCandidateSwipeNav(matchingReady) {
     window.sessionStorage.setItem('alygnn_matching_ready_v1', ready ? '1' : '0');
   } catch (_) {}
 
-  if (swipe) swipe.style.display = ready ? '' : 'none';
+  if (swipe) {
+    swipe.hidden = !ready;
+    swipe.setAttribute('aria-hidden', ready ? 'false' : 'true');
+  }
+
   if (nav) nav.classList.remove('nav-readiness-pending');
 }
 
