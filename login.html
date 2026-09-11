@@ -350,90 +350,157 @@ const { createClient } = supabase;
   // because profiles.verification_status has a default/premature value.
   const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-onboarding.html' : '/account.html');
 
-
-  function alygnnEmployerOnboardingComplete(profile){
-    const blueprint =
-      profile?.hiring_blueprint &&
-      typeof profile.hiring_blueprint === 'object'
-        ? profile.hiring_blueprint
-        : null;
-
-    if(!blueprint) return false;
-
-    if(blueprint.onboarding_complete === true) return true;
-
-    const companyId = String(blueprint.company_id || '').trim();
-    const documentPath = String(blueprint.irs_document_path || '').trim();
-    const companyPriorities = Array.isArray(blueprint.company_priorities)
-      ? blueprint.company_priorities
-      : [];
-    const candidatePriorities = Array.isArray(blueprint.candidate_priorities)
-      ? blueprint.candidate_priorities
-      : [];
-
-    // Backward compatibility for employers who finished setup before the
-    // onboarding_complete flag was introduced.
-    return !!(
-      companyId &&
-      documentPath &&
-      companyPriorities.length >= 5 &&
-      candidatePriorities.length >= 5
-    );
-  }
-
   async function resolveSignedInDestination(user, roleHint='seeker'){
-    // 1) Active company teammates go straight into the employer workspace.
-    // Their team membership takes priority over an old seeker/candidate profile role.
-    try{
-      const teamResult = await Promise.race([
-        sb.rpc('get_my_team_operational_state'),
-        new Promise(resolve => setTimeout(
-          () => resolve({data:null,error:{message:'team route timeout'}}),
-          2500
-        ))
-      ]);
+    const requestedRole = normalizeRole(roleHint);
 
-      const runtime = teamResult?.data;
-      if(
-        !teamResult?.error &&
-        runtime?.has_company === true &&
-        runtime?.access?.is_owner === false
-      ){
-        return window.location.origin + '/employer-dashboard.html?team_member=1';
+    // Read the canonical Alygnn profile when available. App accounts may use
+    // auth.user_metadata.account_type instead of user_metadata.role, so the
+    // website must understand BOTH formats.
+    let profile = null;
+    try {
+      const { data, error } = await sb
+        .from('profiles')
+        .select('role,is_admin,employer_verified,verification_status,hiring_blueprint,company_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Could not read login profile:', error);
+      } else {
+        profile = data || null;
       }
-    }catch(error){
-      console.warn('Could not resolve team workspace after sign-in:',error);
+    } catch (error) {
+      console.warn('Login profile lookup failed:', error);
     }
 
-    const normalizedRole = normalizeRole(roleHint);
+    // Admin accounts never fall through to the normal candidate/employer UI.
+    if (profile?.is_admin === true) {
+      return window.location.origin + '/employer-verification-admin.html';
+    }
 
-    // 2) Candidate/job-seeker accounts keep the normal candidate route.
-    if(normalizedRole !== 'employer'){
+    const rawAccountRole = String(
+      profile?.role ||
+      user?.user_metadata?.role ||
+      user?.user_metadata?.account_type ||
+      user?.user_metadata?.user_type ||
+      user?.app_metadata?.account_type ||
+      user?.app_metadata?.role ||
+      ''
+    ).trim().toLowerCase();
+
+    const primaryEmployerAccount = ['employer','business','company'].includes(rawAccountRole);
+
+    const blueprint =
+      profile?.hiring_blueprint && typeof profile.hiring_blueprint === 'object'
+        ? profile.hiring_blueprint
+        : null;
+    const status = String(profile?.verification_status || '').trim().toLowerCase();
+    const blueprintCompanyId = String(blueprint?.company_id || '').trim();
+    const blueprintDocumentPath = String(blueprint?.irs_document_path || '').trim();
+    const blueprintLooksComplete = !!blueprint && (
+      blueprint.onboarding_complete === true ||
+      (
+        !!blueprintCompanyId &&
+        !!blueprintDocumentPath &&
+        Array.isArray(blueprint.company_priorities) && blueprint.company_priorities.length >= 5 &&
+        Array.isArray(blueprint.candidate_priorities) && blueprint.candidate_priorities.length >= 5
+      )
+    );
+    const employerSetupComplete =
+      profile?.employer_verified === true ||
+      status === 'approved' ||
+      blueprintLooksComplete;
+
+    async function hasEmployerWorkspaceAccess(){
+      // Modern app/workspace model. This is what allows a candidate account
+      // that was added as an employer Admin/Recruiter to use the Employer side
+      // with the SAME Alygnn login.
+      try {
+        const result = await Promise.race([
+          sb.rpc('get_my_workspace_context'),
+          new Promise(resolve => setTimeout(
+            () => resolve({ data:null, error:{ message:'workspace route timeout' } }),
+            2500
+          ))
+        ]);
+        const context = result?.data || {};
+        const workspaces = Array.isArray(context.employer_workspaces)
+          ? context.employer_workspaces
+          : [];
+        if (!result?.error && (workspaces.length > 0 || context.active_company_id)) {
+          return true;
+        }
+      } catch (error) {
+        console.warn('Workspace context unavailable during sign in:', error);
+      }
+
+      // Backward-compatible operational-state RPC used by the website.
+      try {
+        const result = await Promise.race([
+          sb.rpc('get_my_team_operational_state'),
+          new Promise(resolve => setTimeout(
+            () => resolve({ data:null, error:{ message:'team route timeout' } }),
+            2500
+          ))
+        ]);
+        if (!result?.error && result?.data?.has_company === true) {
+          return true;
+        }
+      } catch (error) {
+        console.warn('Team workspace check unavailable during sign in:', error);
+      }
+
+      // Direct membership fallback in case one of the RPCs is unavailable.
+      try {
+        const { data, error } = await sb
+          .from('company_members')
+          .select('company_id,membership_status')
+          .eq('user_id', user.id)
+          .in('membership_status', ['active','pending'])
+          .limit(1)
+          .maybeSingle();
+        if (!error && data?.company_id) return true;
+      } catch (error) {
+        console.warn('Company membership check unavailable during sign in:', error);
+      }
+
+      return false;
+    }
+
+    // JOB SEEKER selected:
+    // - real candidate / dual-mode Admin accounts go to Candidate mode;
+    // - a primary employer owner is kept on the employer side so the default
+    //   Job Seeker tab cannot accidentally dump an employer into candidate UI.
+    if (requestedRole !== 'employer') {
+      if (primaryEmployerAccount) {
+        return window.location.origin + (
+          employerSetupComplete
+            ? '/employer-dashboard.html'
+            : '/employer-onboarding.html'
+        );
+      }
       return window.location.origin + '/account.html';
     }
 
-    // 3) Employer owners should NOT be sent through onboarding first on every login.
-    // Check whether onboarding is already complete BEFORE navigating anywhere.
-    try{
-      const {data:profile,error:profileError}=await sb
-        .from('profiles')
-        .select('role,employer_verified,verification_status,hiring_blueprint')
-        .eq('id',user.id)
-        .maybeSingle();
-
-      if(profileError){
-        console.warn('Could not check employer onboarding state:',profileError);
-      }else{
-        if(alygnnEmployerOnboardingComplete(profile)){
-          return window.location.origin + '/employer-dashboard.html';
-        }
-      }
-    }catch(error){
-      console.warn('Employer onboarding route check failed:',error);
+    // EMPLOYER selected:
+    // First honor any real company/team workspace assignment. This is the key
+    // fix for candidate accounts that can switch into an employer workspace.
+    if (await hasEmployerWorkspaceAccess()) {
+      return window.location.origin + '/employer-dashboard.html';
     }
 
-    // Brand-new/incomplete employer accounts still must complete onboarding first.
-    return window.location.origin + '/employer-onboarding.html';
+    // A true employer owner with no workspace yet is a brand-new employer and
+    // still needs guided setup. Existing completed owners go straight in.
+    if (primaryEmployerAccount) {
+      return window.location.origin + (
+        employerSetupComplete
+          ? '/employer-dashboard.html'
+          : '/employer-onboarding.html'
+      );
+    }
+
+    // Candidate-only account with no employer workspace. Returning null lets
+    // the login form show a useful message instead of silently misrouting.
+    return null;
   }
 
   function normalizeRole(value) {
@@ -613,11 +680,30 @@ const { createClient } = supabase;
     }
 
     await savePendingPreferences(user, fullName);
+
+    // On SIGN IN, honor the role toggle selected before OAuth. On SIGN UP,
+    // continue using the newly-created account role. This keeps Google/Apple
+    // consistent with email/password for dual-mode users.
+    const destinationRole = storedMode === 'login'
+      ? normalizeRole(storedRole)
+      : role;
+    const destination = await resolveSignedInDestination(user, destinationRole);
+
+    if (!destination) {
+      await sb.auth.signOut();
+      clearOAuthContext();
+      history.replaceState({}, '', 'login.html?role=employer');
+      switchRole('employer');
+      switchTab('login');
+      showMsg('This account does not have access to an employer workspace. Choose Job Seeker, or ask the company owner to add this account to their employer team.');
+      return;
+    }
+
     clearOAuthContext();
 
     // Password setup is intentionally optional. Google/Apple users continue
     // directly into Alygnn and can add a password later in Account settings.
-    window.location.replace(await resolveSignedInDestination(user, role));
+    window.location.replace(destination);
   }
 
   async function finishEmployerEmailConfirmationReturn() {
@@ -834,8 +920,20 @@ const { createClient } = supabase;
     if (resendBtn) resendBtn.style.display = 'none';
 
     await savePendingPreferences(data.user);
-    const r = data.user?.user_metadata?.role || 'seeker';
-    window.location.href = await resolveSignedInDestination(data.user, r);
+
+    // The role toggle the user actually selected controls this login. Do not
+    // blindly route from user_metadata.role: app accounts may store
+    // account_type instead, and dual-mode candidate/employer users need to
+    // choose which workspace they are entering.
+    const destination = await resolveSignedInDestination(data.user, currentRole);
+
+    if (!destination) {
+      await sb.auth.signOut();
+      showMsg('This account does not have access to an employer workspace. Choose Job Seeker, or ask the company owner to add this account to their employer team.');
+      return;
+    }
+
+    window.location.href = destination;
   }
 
   async function doSignup() {
