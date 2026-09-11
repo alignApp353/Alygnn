@@ -488,6 +488,120 @@ body.employer-role .messages-legal a:hover{
 }
 </style>
 
+
+<style id="messages-myjobs-notification-match">
+body.employer-role .notif-wrap{position:relative !important;}
+
+body.employer-role .notif-bell{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:36px !important;
+  height:36px !important;
+  border-radius:10px !important;
+  border:1px solid var(--border) !important;
+  background:var(--card-bg) !important;
+  color:var(--muted) !important;
+  cursor:pointer !important;
+  padding:0 !important;
+}
+body.employer-role .notif-bell:hover{
+  color:var(--brand) !important;
+  border-color:var(--brand) !important;
+}
+body.employer-role .notif-bell svg{
+  width:18px !important;
+  height:18px !important;
+}
+body.employer-role .notif-badge{
+  position:absolute !important;
+  top:-5px !important;
+  right:-5px !important;
+  min-width:16px !important;
+  height:16px !important;
+  padding:0 4px !important;
+  background:var(--rose) !important;
+  color:white !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  border-radius:999px !important;
+  display:flex;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:1 !important;
+}
+body.employer-role .notif-dropdown{
+  position:absolute !important;
+  top:calc(100% + 10px) !important;
+  right:0 !important;
+  width:340px !important;
+  max-height:420px !important;
+  overflow-y:auto !important;
+  background:var(--card-bg) !important;
+  border:1px solid var(--border) !important;
+  border-radius:14px !important;
+  box-shadow:0 12px 32px rgba(0,0,0,.12) !important;
+  z-index:1200 !important;
+}
+body.employer-role .notif-dropdown-header{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:12px !important;
+  font-size:13px !important;
+  font-weight:600 !important;
+  color:var(--text) !important;
+  padding:14px 16px 8px !important;
+}
+body.employer-role .notif-mark-all{
+  border:0 !important;
+  background:transparent !important;
+  color:var(--brand) !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:11px !important;
+  font-weight:500 !important;
+  cursor:pointer !important;
+  padding:0 !important;
+  white-space:nowrap !important;
+}
+body.employer-role .notif-mark-all:hover{opacity:.8 !important;}
+body.employer-role .notif-mark-all:disabled{opacity:.5 !important;cursor:default !important;}
+body.employer-role .notif-empty{
+  font-size:13px !important;
+  color:var(--muted) !important;
+  padding:20px 16px !important;
+  text-align:center !important;
+}
+body.employer-role .notif-item{
+  display:block !important;
+  padding:10px 16px !important;
+  border-top:1px solid var(--border) !important;
+  text-decoration:none !important;
+  color:inherit !important;
+}
+body.employer-role .notif-item:hover,
+body.employer-role .notif-item.unread{
+  background:var(--brand-light) !important;
+}
+body.employer-role .notif-item-title{
+  font-size:13px !important;
+  font-weight:600 !important;
+  color:var(--text) !important;
+  margin-bottom:2px !important;
+}
+body.employer-role .notif-item-body{
+  font-size:12px !important;
+  color:var(--muted) !important;
+  line-height:1.4 !important;
+}
+body.employer-role .notif-item-time{
+  font-size:11px !important;
+  color:var(--muted) !important;
+  margin-top:4px !important;
+}
+</style>
+
 </head>
 <body>
 <div id="loading">Loading messages…</div>
@@ -495,13 +609,18 @@ body.employer-role .messages-legal a:hover{
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-right" id="employer-nav-right">
-    <button class="notif-bell" type="button" aria-label="Notifications" title="Notifications" onclick="toggleMessagesNotifMenu(event)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    </button>
-    <div class="messages-notif-menu" id="messages-notif-menu" hidden>
-      <div class="messages-notif-title">Notifications</div>
-      <div class="messages-notif-copy">Open your dashboard to review employer notifications.</div>
-      <a href="employer-dashboard.html" class="messages-notif-link">Open dashboard</a>
+    <div class="notif-wrap" id="notif-wrap">
+      <button class="notif-bell" id="notif-bell" type="button" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <div class="notif-dropdown" id="notif-dropdown" style="display:none">
+        <div class="notif-dropdown-header">
+          <span>Notifications</span>
+          <button class="notif-mark-all" id="notif-mark-all-btn" type="button" onclick="markAllMessagesEmployerNotificationsRead(event)">Mark all read</button>
+        </div>
+        <div id="notif-list"><div class="notif-empty">No notifications yet.</div></div>
+      </div>
     </div>
     <span class="nav-user" id="nav-name"></span>
     <button class="btn-logout" type="button" onclick="candidateSignOut()">Sign out</button>
@@ -1350,20 +1469,169 @@ async function init(){
   subscribeToThreads();
   if(activeThreadId)subscribeToMessages(activeThreadId);
 
+  initMessagesEmployerNotifications();
   document.body.classList.add('ready');
 }
 
 
-function toggleMessagesNotifMenu(event){
-  if(event) event.stopPropagation();
-  const menu=document.getElementById('messages-notif-menu');
-  if(!menu) return;
-  menu.hidden=!menu.hidden;
+
+
+let messagesEmployerNotificationItems=[];
+
+function messagesNotificationTimeAgo(iso){
+  const t=new Date(iso).getTime();
+  if(!Number.isFinite(t)) return '';
+  const mins=Math.floor((Date.now()-t)/60000);
+  if(mins<1) return 'just now';
+  if(mins<60) return `${mins}m ago`;
+  const hrs=Math.floor(mins/60);
+  if(hrs<24) return `${hrs}h ago`;
+  const days=Math.floor(hrs/24);
+  if(days<7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
-document.addEventListener('click',()=>{
-  const menu=document.getElementById('messages-notif-menu');
-  if(menu) menu.hidden=true;
-});
+
+async function fetchMessagesEmployerNotifications(){
+  if(!currentUser?.id) return [];
+
+  const {data,error}=await sb
+    .from('notifications')
+    .select('id,type,title,body,link,read_at,created_at')
+    .order('created_at',{ascending:false})
+    .limit(20);
+
+  if(error){
+    console.warn('Could not load employer notifications:',error);
+    return [];
+  }
+
+  return data||[];
+}
+
+function renderMessagesEmployerNotifications(items){
+  messagesEmployerNotificationItems=items||[];
+
+  const badge=document.getElementById('notif-badge');
+  const list=document.getElementById('notif-list');
+  if(!badge||!list) return;
+
+  const unreadCount=messagesEmployerNotificationItems.filter(n=>!n.read_at).length;
+  if(unreadCount>0){
+    badge.style.display='flex';
+    badge.textContent=unreadCount>9?'9+':String(unreadCount);
+  }else{
+    badge.style.display='none';
+  }
+
+  if(!messagesEmployerNotificationItems.length){
+    list.innerHTML='<div class="notif-empty">No notifications yet.</div>';
+    return;
+  }
+
+  list.innerHTML=messagesEmployerNotificationItems.slice(0,6).map(n=>`
+    <a class="notif-item ${n.read_at?'':'unread'}"
+       href="${n.link?escapeHtml(n.link):'#'}"
+       onclick="handleMessagesEmployerNotification(event,'${n.id}')">
+      <div class="notif-item-title">${escapeHtml(n.title||'Notification')}</div>
+      ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
+      <div class="notif-item-time">${escapeHtml(messagesNotificationTimeAgo(n.created_at))}</div>
+    </a>
+  `).join('');
+}
+
+async function refreshMessagesEmployerNotifications(){
+  const items=await fetchMessagesEmployerNotifications();
+  renderMessagesEmployerNotifications(items);
+}
+
+async function handleMessagesEmployerNotification(event,id){
+  if(event) event.preventDefault();
+
+  const item=messagesEmployerNotificationItems.find(n=>String(n.id)===String(id));
+  if(!item) return;
+
+  if(!item.read_at){
+    const now=new Date().toISOString();
+    const {error}=await sb
+      .from('notifications')
+      .update({read_at:now})
+      .eq('id',id);
+    if(error) console.warn('Could not mark notification read:',error);
+  }
+
+  const dropdown=document.getElementById('notif-dropdown');
+  if(dropdown) dropdown.style.display='none';
+
+  if(item.link){
+    window.location.href=item.link;
+  }else{
+    await refreshMessagesEmployerNotifications();
+  }
+}
+
+async function markAllMessagesEmployerNotificationsRead(event){
+  if(event){
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const btn=document.getElementById('notif-mark-all-btn');
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='Marking…';
+  }
+
+  const unreadIds=messagesEmployerNotificationItems
+    .filter(n=>!n.read_at&&n.id)
+    .map(n=>n.id);
+
+  try{
+    if(unreadIds.length){
+      const {error}=await sb
+        .from('notifications')
+        .update({read_at:new Date().toISOString()})
+        .in('id',unreadIds);
+      if(error) console.warn('Could not mark notifications read:',error);
+    }
+    await refreshMessagesEmployerNotifications();
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent='Mark all read';
+    }
+  }
+}
+
+function initMessagesEmployerNotifications(){
+  const bell=document.getElementById('notif-bell');
+  const dropdown=document.getElementById('notif-dropdown');
+  const wrap=document.getElementById('notif-wrap');
+  if(!bell||!dropdown||!wrap||!currentUser?.id) return;
+
+  refreshMessagesEmployerNotifications();
+
+  bell.addEventListener('click',event=>{
+    event.stopPropagation();
+    const isOpen=dropdown.style.display!=='none';
+    dropdown.style.display=isOpen?'none':'block';
+    if(!isOpen) refreshMessagesEmployerNotifications();
+  });
+
+  document.addEventListener('click',event=>{
+    if(!wrap.contains(event.target)){
+      dropdown.style.display='none';
+    }
+  });
+
+  sb.channel('messages-page-employer-notifications-'+currentUser.id)
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'notifications',
+      filter:`recipient_id=eq.${currentUser.id}`
+    },()=>refreshMessagesEmployerNotifications())
+    .subscribe();
+}
 
 window.addEventListener('beforeunload',()=>{
   if(messageChannel)sb.removeChannel(messageChannel);
