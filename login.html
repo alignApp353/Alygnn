@@ -588,27 +588,109 @@ const { createClient } = supabase;
     window.location.replace(await resolveSignedInDestination(user, role));
   }
 
-  document.addEventListener('DOMContentLoaded', async () => {
+  async function finishEmployerEmailConfirmationReturn() {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('confirmed') !== '1') return false;
 
-    // Employer confirmation MUST come back to the login screen first.
-    // Supabase may create a temporary browser session when the confirmation
-    // link is opened; clear that local session so the employer explicitly
-    // signs in before onboarding.
-    if (params.get('confirmed') === '1') {
+    // IMPORTANT:
+    // Do not clear the URL or sign out immediately.
+    // Supabase still needs the confirmation callback that is in this URL
+    // (usually the hash tokens) to finish creating the confirmed session.
+    // Clearing/signing out too early can leave the account looking unconfirmed.
+    switchRole('employer');
+    switchTab('login');
+    showMsg('Finishing email confirmation…', 'success');
+
+    let confirmedSession = null;
+    let confirmedEmail = '';
+
+    // getSession() waits for Supabase Auth initialization. A short retry loop
+    // also covers browsers that finish parsing the confirmation URL a moment
+    // after DOMContentLoaded.
+    for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        await sb.auth.signOut({ scope: 'local' });
-      } catch (signOutError) {
-        console.warn('Could not clear confirmation session:', signOutError);
+        const { data, error } = await sb.auth.getSession();
+        if (error) console.warn('Confirmation session check:', error);
+
+        const session = data?.session || null;
+        const user = session?.user || null;
+        const isConfirmed = !!(
+          user?.email_confirmed_at ||
+          user?.confirmed_at
+        );
+
+        if (session && user && isConfirmed) {
+          confirmedSession = session;
+          confirmedEmail = user.email || '';
+          break;
+        }
+      } catch (error) {
+        console.warn('Waiting for confirmation session:', error);
       }
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
+    if (!confirmedSession) {
+      // If Supabase itself returned an auth error in the confirmation URL,
+      // surface that instead of falsely saying the email was confirmed.
+      const hashParams = new URLSearchParams(
+        window.location.hash.startsWith('#')
+          ? window.location.hash.slice(1)
+          : window.location.hash
+      );
+
+      const description =
+        hashParams.get('error_description') ||
+        params.get('error_description');
 
       switchRole('employer');
       switchTab('login');
 
-      history.replaceState({}, '', 'login.html?role=employer');
-      showMsg('Email confirmed successfully. Sign in to continue to Employer Setup.', 'success');
-      return;
+      showMsg(
+        description
+          ? decodeURIComponent(description.replace(/\+/g, ' '))
+          : 'We could not finish confirming this email. Please open the newest confirmation email and click Confirm email again.'
+      );
+      return true;
     }
+
+    // Only AFTER Supabase reports email_confirmed_at do we clear the temporary
+    // confirmation session. This keeps the required flow:
+    // Confirm email -> Login -> Sign in -> Onboarding -> Dashboard.
+    try {
+      await sb.auth.signOut({ scope: 'local' });
+    } catch (signOutError) {
+      console.warn('Could not clear post-confirmation session:', signOutError);
+    }
+
+    const cleanUrl = new URL(window.location.origin + '/login.html');
+    cleanUrl.searchParams.set('role', 'employer');
+    history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+
+    switchRole('employer');
+    switchTab('login');
+
+    if (confirmedEmail) {
+      const emailInput = document.getElementById('email');
+      if (emailInput) emailInput.value = confirmedEmail;
+    }
+
+    showMsg(
+      'Email confirmed successfully. Sign in to continue to Employer Setup.',
+      'success'
+    );
+
+    return true;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+
+    const handledConfirmation =
+      await finishEmployerEmailConfirmationReturn();
+
+    if (handledConfirmation) return;
 
     // Returning from account deletion should always land on SIGN IN, not
     // accidentally leave the user on the Create account tab.
