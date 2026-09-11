@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<title>Candidate Messages — Alygnn</title>
+<title>Messages — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -185,11 +185,35 @@
     body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
   }
 
-  /* Dedicated candidate page: keep the candidate navigation visible while scrolling. */
-  body.candidate-role nav{
-    position:sticky !important;
-    top:0 !important;
-    z-index:1000 !important;
+
+  /* Dedicated Candidate Messages — use the same desktop shell as Employer Messages. */
+  body.candidate-role .candidate-nav-links,
+  body.candidate-role .candidate-nav-actions{display:none !important}
+  body.candidate-role #employer-nav-right{display:flex !important;align-items:center;gap:12px}
+  body.candidate-role .layout{
+    display:grid !important;
+    grid-template-columns:220px minmax(0,1fr) !important;
+    min-height:calc(100vh - 64px) !important;
+  }
+  body.candidate-role .sidebar{
+    display:block !important;
+    position:sticky;
+    top:64px;
+    align-self:start;
+    height:calc(100vh - 64px);
+    overflow:hidden;
+  }
+  body.candidate-role main{
+    max-width:1420px !important;
+    width:100% !important;
+    margin:0 auto !important;
+    padding:36px 4.5% 70px !important;
+  }
+  body.candidate-role nav{position:sticky !important;top:0;z-index:1000}
+  @media(max-width:900px){
+    body.candidate-role .layout{grid-template-columns:1fr !important}
+    body.candidate-role .sidebar{display:none !important}
+    body.candidate-role main{padding:24px 14px 50px !important}
   }
 
 </style>
@@ -379,7 +403,7 @@ function setSidebar(){
         Candidates
       </a>
 
-      <a href="candidate-messages.html" class="side-link active">
+      <a href="messages.html" class="side-link active">
         <span class="side-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3V5z"/><path d="m7 9 5 4 5-4"/></svg>
         </span>
@@ -958,20 +982,6 @@ async function init(){
   currentUser=session.user;
   workspaceOwnerId=currentUser.id;
 
-  const runtimeResult=await sb.rpc('get_my_team_operational_state');
-  if(!runtimeResult.error&&runtimeResult.data?.has_company){
-    teamRuntime=runtimeResult.data;
-    teamAccess=runtimeResult.data.access||null;
-    isTeamMember=teamAccess?.is_owner===false;
-    workspaceOwnerId=runtimeResult.data.owner_user_id||teamAccess?.owner_user_id||currentUser.id;
-  }
-
-  // This is the dedicated candidate Messages page. Company membership must not switch it into Employer mode.
-  isTeamMember=false;
-  teamAccess=null;
-  teamRuntime=null;
-  workspaceOwnerId=currentUser.id;
-
   const {data:profile,error:profileError}=await sb
     .from('profiles')
     .select('id,role,full_name,company_name,resume_file_path,resume_data,preferences')
@@ -986,50 +996,17 @@ async function init(){
 
   currentProfile=profile||{};
 
-  if(isTeamMember){
-    if(!messageTeamCan('messages_manage')){
-      currentRole='employer';
-      setSidebar();
-      showSetup('Your company role does not include candidate messaging.');
-      return;
-    }
+  // This is the dedicated candidate workspace. Never switch this page into
+  // employer mode just because the same user also belongs to an employer team.
+  currentRole='candidate';
+  const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
+  const hasPreferences=!!profile?.preferences;
+  syncCandidateSwipeNav(hasResume && hasPreferences);
 
-    currentRole='employer';
-    document.getElementById('nav-name').textContent=
-      teamRuntime?.owner_profile?.company_name||
-      'Company';
+  document.getElementById('nav-name').textContent=
+    profile?.full_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||'Candidate';
 
-    setSidebar();
-
-    const postLink=document.querySelector('a[href="employer-dashboard.html#post"]');
-    if(postLink&&!messageTeamCan('jobs_manage'))postLink.style.display='none';
-
-    const accountLink=document.querySelector('a[href="employer-account.html"]');
-    if(accountLink&&!(
-      messageTeamCan('company_edit')||
-      messageTeamCan('billing_view')||
-      messageTeamCan('billing_manage')||
-      messageTeamCan('team_manage')
-    ))accountLink.style.display='none';
-  }else{
-    currentRole='candidate';
-
-    if(currentRole!=='employer'){
-      const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
-      const hasPreferences=!!profile?.preferences;
-      syncCandidateSwipeNav(hasResume && hasPreferences);
-    }
-
-    if(currentRole==='employer'){
-      document.getElementById('nav-name').textContent=
-        await resolveEmployerCompanyName(profile,currentUser);
-    }else{
-      document.getElementById('nav-name').textContent=
-        profile?.full_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||'Candidate';
-    }
-
-    setSidebar();
-  }
+  setSidebar();
 
   // If arriving from Candidates → Message, resolve that exact application
   // first so the correct candidate/job chat appears immediately.
