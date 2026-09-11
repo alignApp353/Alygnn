@@ -184,22 +184,17 @@
     body.candidate-role .candidate-nav-links a{font-size:12px}
     body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
   }
-</style>
 
-<style id="candidate-messages-only">
-  body.candidate-role .candidate-nav-links{display:flex!important;align-items:center;gap:28px}
-  body.candidate-role .candidate-nav-actions{display:flex!important;align-items:center}
-  body.candidate-role .layout{display:block!important;min-height:calc(100vh - 64px)}
-  body.candidate-role main{max-width:1100px;margin:0 auto;padding:40px 6% 90px}
-  @media(max-width:720px){
-    body.candidate-role nav{padding:0 18px}
-    body.candidate-role .candidate-nav-links{gap:14px}
-    body.candidate-role .candidate-nav-links a{font-size:12px}
-    body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
+  /* Dedicated candidate page: keep the candidate navigation visible while scrolling. */
+  body.candidate-role nav{
+    position:sticky !important;
+    top:0 !important;
+    z-index:1000 !important;
   }
+
 </style>
 </head>
-<body class="candidate-role">
+<body>
 <div id="loading">Loading messages…</div>
 
 <nav>
@@ -214,6 +209,12 @@
 
   <div class="candidate-nav-actions" id="candidate-nav-actions">
     <button class="candidate-nav-signout" type="button" onclick="candidateSignOut()">Sign out</button>
+  </div>
+
+  <div class="nav-right" id="employer-nav-right">
+    <span class="nav-name" id="nav-name"></span>
+    <a class="nav-btn" id="account-link" href="employer-account.html">My account</a>
+    <a class="nav-btn primary" id="dashboard-link" href="employer-dashboard.html">Dashboard</a>
   </div>
 </nav>
 <script>
@@ -237,6 +238,8 @@
 
 
 <div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+
   <main>
     <div class="page-kicker">Alygnn messages</div>
     <h1>Messages</h1>
@@ -354,12 +357,77 @@ async function candidateSignOut(){
   window.location.href='login.html';
 }
 function setSidebar(){
-  // Candidate-only Messages page. Employer navigation lives in the separate
-  // employer Messages file and is intentionally not touched here.
-  document.body.classList.remove('employer-role');
-  document.body.classList.add('candidate-role');
-}
+  const sidebar=document.getElementById('sidebar');
+  if(currentRole==='employer'){
+    document.body.classList.remove('candidate-role');
+    document.body.classList.add('employer-role');
+    document.getElementById('employer-nav-right').style.display = 'flex';
+    sidebar.innerHTML=`
+      <div class="sidebar-label">Employer</div>
 
+      <a href="employer-dashboard.html" class="side-link">
+        <span class="side-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M3 11h18"/><path d="M10 11v2h4v-2"/></svg>
+        </span>
+        My Jobs
+      </a>
+
+      <a href="candidates.html" class="side-link">
+        <span class="side-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg>
+        </span>
+        Candidates
+      </a>
+
+      <a href="candidate-messages.html" class="side-link active">
+        <span class="side-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3V5z"/><path d="m7 9 5 4 5-4"/></svg>
+        </span>
+        Messages
+      </a>
+
+      <a href="employer-dashboard.html#post" class="side-link">
+        <span class="side-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </span>
+        Post a Job
+      </a>
+
+      <hr>
+
+      <a href="employer-account.html" class="side-link">
+        <span class="side-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
+        </span>
+        My account
+      </a>`;
+    document.getElementById('account-link').href='employer-account.html';
+    document.getElementById('dashboard-link').href='employer-dashboard.html';
+    document.getElementById('dashboard-link').textContent='Dashboard';
+  }else{
+    document.body.classList.remove('employer-role');
+    document.body.classList.add('candidate-role');
+    sidebar.innerHTML=`
+      <div class="sidebar-label">Candidate</div>
+      <a href="swipe.html" class="side-link"><span class="side-icon">⌕</span><span class="side-label-text">Discover</span></a>
+      <a href="my-jobs.html" class="side-link">
+        <span class="side-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="18" height="13" rx="2"></rect>
+            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <path d="M3 12h18"></path>
+          </svg>
+        </span>
+        <span class="side-label-text">My Jobs</span>
+      </a>
+      <a href="candidate-messages.html" class="side-link active"><span class="side-icon">✉</span><span class="side-label-text">Messages</span></a>
+      <hr>
+      <a href="account.html" class="side-link"><span class="side-icon">←</span><span class="side-label-text">My account</span></a>`;
+    document.getElementById('account-link').href='account.html';
+    document.getElementById('dashboard-link').href='swipe.html';
+    document.getElementById('dashboard-link').textContent='Discover';
+  }
+}
 
 async function loadRequestedApplicationContext(){
   const params=new URLSearchParams(location.search);
@@ -400,8 +468,9 @@ async function loadRequestedApplicationContext(){
   const candidate=candidateResult.data||{id:application.candidate_id,full_name:'Candidate'};
 
   // Validate that the signed-in user is actually part of the application.
+  const isEmployer=(currentRole==='employer'&&workspaceOwnerId===job.employer_id);
   const isCandidate=currentUser.id===application.candidate_id;
-  if(!isCandidate){
+  if(!isEmployer&&!isCandidate){
     showSetup('You do not have access to this conversation.');
     return null;
   }
@@ -422,7 +491,7 @@ async function getOrCreateRequestedThread(){
 
   // Employer-first messaging: an empty conversation is never created from the
   // website. Only return an existing employer-started conversation here.
-  const hiddenField='candidate_hidden_at';
+  const hiddenField=currentRole==='employer'?'employer_hidden_at':'candidate_hidden_at';
   const {data,error}=await sb
     .from('application_conversations')
     .select('id,employer_hidden_at,candidate_hidden_at')
@@ -438,11 +507,10 @@ async function getOrCreateRequestedThread(){
 }
 
 async function loadThreads(){
-  const hiddenField='candidate_hidden_at';
+  const hiddenField=currentRole==='employer'?'employer_hidden_at':'candidate_hidden_at';
   const {data,error}=await sb
     .from('application_conversations')
     .select('id,application_id,job_id,employer_id,candidate_id,candidate_name,job_title,company_name,employer_started_at,created_at,last_message_at,employer_hidden_at,candidate_hidden_at')
-    .eq('candidate_id',currentUser.id)
     .is(hiddenField,null)
     .order('last_message_at',{ascending:false,nullsFirst:false});
 
@@ -493,13 +561,15 @@ async function loadThreadDetails(){
     const job=jobsMap[String(t.job_id)]||{};
     const candidateName=String(t.candidate_name||'').trim();
     const companyName=String(t.company_name||job.company_name||job.company||job.employer_name||'').trim();
-    const displayName=companyName||'Company';
+    const displayName=currentRole==='employer'
+      ? (candidateName||'Candidate')
+      : (companyName||'Company');
     const jobTitle=String(t.job_title||job.title||'Job application').trim();
     const mergedJob={...job,title:jobTitle};
 
     threadDetails.set(t.id,{
       thread:t,
-      otherId:t.employer_id,
+      otherId:currentRole==='employer'?t.candidate_id:t.employer_id,
       name:displayName,
       initials:initials(displayName),
       job:mergedJob,
@@ -525,7 +595,9 @@ function renderConversationList(){
   if(!list.length){
     const emptyListCopy = threads.length
       ? 'No conversations match your search.'
-      : 'No conversations yet. Messages about your applications will appear here.';
+      : currentRole === 'employer'
+        ? 'No conversations yet. Start from a candidate application to begin messaging.'
+        : 'No conversations yet. Messages about your applications will appear here.';
 
     el.innerHTML=`<div style="padding:30px 18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.55">
       ${emptyListCopy}
@@ -619,7 +691,9 @@ function activeConversationDetails(){
   // prior messages yet, still render that exact candidate/job as a new chat.
   if(requestedApplicationContext){
     const c=requestedApplicationContext;
-    const otherName=c.job?.company||'Company';
+    const otherName=currentRole==='employer'
+      ? (c.candidate?.full_name||'Candidate')
+      : (c.job?.company||'Company');
 
     return {
       thread:{
@@ -629,7 +703,7 @@ function activeConversationDetails(){
         employer_id:c.employerId,
         candidate_id:c.candidateId
       },
-      otherId:c.employerId,
+      otherId:currentRole==='employer'?c.candidateId:c.employerId,
       name:otherName,
       initials:initials(otherName),
       job:c.job,
@@ -648,7 +722,9 @@ function renderChat(){
   const d=activeConversationDetails();
 
   if(!d){
-    const emptyChatCopy = 'Choose a conversation from the left when you receive a message about one of your applications.';
+    const emptyChatCopy = currentRole === 'employer'
+      ? 'Choose a conversation from the left, or start one from a candidate application.'
+      : 'Choose a conversation from the left when you receive a message about one of your applications.';
 
     panel.innerHTML=`
       <div class="empty-chat">
@@ -666,11 +742,13 @@ function renderChat(){
         <div class="avatar">${escapeHtml(d.initials||'?')}</div>
         <div>
           <div class="chat-head-name">${escapeHtml(d.name||'Conversation')}</div>
-          <div class="chat-head-job">Conversation about ${escapeHtml(d.job?.title||'this job')}${jobClosed?' · Closed':''}</div>
+          <div class="chat-head-job">${currentRole==='employer'?'Applied for':'Conversation about'} ${escapeHtml(d.job?.title||'this job')}${jobClosed?' · Closed':''}</div>
         </div>
       </div>
       <div class="chat-head-actions">
-        <a class="context-pill" href="my-jobs.html">View application</a>
+        ${currentRole==='employer'
+          ? `<a class="context-pill" href="candidates.html?job=${encodeURIComponent(d.thread?.job_id||'')}&application=${encodeURIComponent(d.thread?.application_id||'')}">View candidate</a>`
+          : `<a class="context-pill" href="my-jobs.html">View application</a>`}
         ${d.thread?.id?`<button class="delete-conversation" type="button" onclick="deleteConversationForMe('${escapeHtml(d.thread.id)}')">Delete</button>`:''}
       </div>
     </div>
@@ -687,8 +765,8 @@ function renderChat(){
              </div>`).join('')}`
         : `<div class="empty-chat" style="min-height:100%">
              <div class="empty-chat-icon">✉</div>
-             <div class="empty-chat-title">Conversation opened</div>
-             <div class="empty-chat-copy">The employer opened this conversation about ${escapeHtml(d.job?.title||'your application')}.</div>
+             <div class="empty-chat-title">${currentRole==='employer'?'Start the conversation':'Conversation opened'}</div>
+             <div class="empty-chat-copy">${currentRole==='employer'?'Send the first message to this applicant.':'The employer opened this conversation about '+escapeHtml(d.job?.title||'your application')+'.'}</div>
            </div>`}
     </div>
 
@@ -721,13 +799,49 @@ async function sendMessage(){
   showSetup('');
   document.getElementById('setup-note').style.display='none';
 
-  // Candidate-only rule: the employer must start the conversation first.
-  if(!activeThreadId){
+  // No existing conversation means this must be the employer's first message.
+  // Candidates are never allowed to create/start a thread.
+  if(!activeThreadId&&requestedApplicationId){
+    if(currentRole!=='employer'){
+      btn.disabled=false;
+      showSetup('The employer must start the conversation before you can reply.');
+      return;
+    }
+
+    const ctx=requestedApplicationContext||{};
+    const candidateName=ctx.candidate?.full_name||ctx.candidate?.name||'Candidate';
+    const jobTitle=ctx.job?.title||'Job application';
+
+    const {data,error}=await sb.rpc('start_application_conversation_v3',{
+      p_application_id:String(requestedApplicationId),
+      p_body:body,
+      p_candidate_name:candidateName,
+      p_job_title:jobTitle
+    });
+
     btn.disabled=false;
-    showSetup('The employer must start the conversation before you can reply.');
+    if(error){
+      console.error(error);
+      showSetup(error.message||'Could not start this conversation.');
+      return;
+    }
+
+    input.value='';
+    activeThreadId=data?.conversation_id||null;
+    await loadThreads();
+    await loadThreadDetails();
+    if(activeThreadId)await loadMessages(activeThreadId);
+    renderConversationList();
+    renderChat();
+    if(activeThreadId)subscribeToMessages(activeThreadId);
     return;
   }
 
+  if(!activeThreadId){
+    btn.disabled=false;
+    showSetup('No employer-started conversation is available yet.');
+    return;
+  }
 
   const {data,error}=await sb
     .from('application_messages')
@@ -842,8 +956,21 @@ async function init(){
   }
 
   currentUser=session.user;
-  currentRole='candidate';
-  setSidebar();
+  workspaceOwnerId=currentUser.id;
+
+  const runtimeResult=await sb.rpc('get_my_team_operational_state');
+  if(!runtimeResult.error&&runtimeResult.data?.has_company){
+    teamRuntime=runtimeResult.data;
+    teamAccess=runtimeResult.data.access||null;
+    isTeamMember=teamAccess?.is_owner===false;
+    workspaceOwnerId=runtimeResult.data.owner_user_id||teamAccess?.owner_user_id||currentUser.id;
+  }
+
+  // This is the dedicated candidate Messages page. Company membership must not switch it into Employer mode.
+  isTeamMember=false;
+  teamAccess=null;
+  teamRuntime=null;
+  workspaceOwnerId=currentUser.id;
 
   const {data:profile,error:profileError}=await sb
     .from('profiles')
@@ -859,20 +986,65 @@ async function init(){
 
   currentProfile=profile||{};
 
-  const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
-  const hasPreferences=!!profile?.preferences;
-  syncCandidateSwipeNav(hasResume && hasPreferences);
+  if(isTeamMember){
+    if(!messageTeamCan('messages_manage')){
+      currentRole='employer';
+      setSidebar();
+      showSetup('Your company role does not include candidate messaging.');
+      return;
+    }
 
-  // A candidate can open only conversations that an employer already started.
+    currentRole='employer';
+    document.getElementById('nav-name').textContent=
+      teamRuntime?.owner_profile?.company_name||
+      'Company';
+
+    setSidebar();
+
+    const postLink=document.querySelector('a[href="employer-dashboard.html#post"]');
+    if(postLink&&!messageTeamCan('jobs_manage'))postLink.style.display='none';
+
+    const accountLink=document.querySelector('a[href="employer-account.html"]');
+    if(accountLink&&!(
+      messageTeamCan('company_edit')||
+      messageTeamCan('billing_view')||
+      messageTeamCan('billing_manage')||
+      messageTeamCan('team_manage')
+    ))accountLink.style.display='none';
+  }else{
+    currentRole='candidate';
+
+    if(currentRole!=='employer'){
+      const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
+      const hasPreferences=!!profile?.preferences;
+      syncCandidateSwipeNav(hasResume && hasPreferences);
+    }
+
+    if(currentRole==='employer'){
+      document.getElementById('nav-name').textContent=
+        await resolveEmployerCompanyName(profile,currentUser);
+    }else{
+      document.getElementById('nav-name').textContent=
+        profile?.full_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||'Candidate';
+    }
+
+    setSidebar();
+  }
+
+  // If arriving from Candidates → Message, resolve that exact application
+  // first so the correct candidate/job chat appears immediately.
   await loadRequestedApplicationContext();
+
   const requestedThreadId=await getOrCreateRequestedThread();
   await loadThreads();
   await loadThreadDetails();
 
   const urlThread=new URLSearchParams(location.search).get('thread');
 
+  // Prefer the exact requested application. Do not silently open some other
+  // existing conversation when the user clicked Message on a candidate.
   if(requestedApplicationId){
-    const matchingThread=threads.find(t=>String(t.application_id)===String(requestedApplicationId));
+    const matchingThread=threads.find(t=>t.application_id===requestedApplicationId);
     activeThreadId=requestedThreadId||matchingThread?.id||null;
   }else{
     activeThreadId=urlThread||threads[0]?.id||null;
@@ -886,12 +1058,14 @@ async function init(){
     activeMessages=[];
   }
 
+  // Even with zero previous messages, renderChat() uses the resolved real
+  // application context and shows "Start the conversation" for that candidate.
   renderChat();
   subscribeToThreads();
   if(activeThreadId)subscribeToMessages(activeThreadId);
+
   document.body.classList.add('ready');
 }
-
 
 window.addEventListener('beforeunload',()=>{
   if(messageChannel)sb.removeChannel(messageChannel);
