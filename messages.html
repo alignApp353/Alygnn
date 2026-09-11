@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<title>Employer Messages — Alygnn</title>
+<title>Messages — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -972,22 +972,6 @@ async function init(){
 
   currentProfile=profile||{};
 
-  // Dedicated Employer Messages route. A normal candidate who lands here from
-  // an old bookmark is sent to the candidate Messages page instead.
-  const hasEmployerWorkspace=runtimeResult?.data?.has_company===true;
-  const employerMarker=String(
-    profile?.role||
-    currentUser.user_metadata?.account_type||
-    currentUser.user_metadata?.role||
-    currentUser.app_metadata?.account_type||
-    currentUser.app_metadata?.role||
-    ''
-  ).toLowerCase();
-  if(!hasEmployerWorkspace && employerMarker!=='employer'){
-    location.replace('candidate-messages.html');
-    return;
-  }
-
   if(isTeamMember){
     if(!messageTeamCan('messages_manage')){
       currentRole='employer';
@@ -1014,7 +998,14 @@ async function init(){
       messageTeamCan('team_manage')
     ))accountLink.style.display='none';
   }else{
-    currentRole='employer';
+    currentRole=String(profile?.role||currentUser.user_metadata?.role||'candidate').toLowerCase();
+
+    // messages.html is the dedicated employer route. Candidate accounts use
+    // candidate-messages.html so the two workspaces can never overwrite each other.
+    if(currentRole!=='employer'){
+      location.replace('candidate-messages.html');
+      return;
+    }
 
     if(currentRole!=='employer'){
       const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
