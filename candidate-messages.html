@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Candidate Messages — Alygnn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--card:#FCFCFA;
+    --text:#1A2530;--muted:#4A5968;--border:#DDE3E8;--mint:#6FBF8F;
+    --rose:#D79A9A;--brand-light:rgba(93,127,163,.10)
+  }
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;visibility:hidden}
+  body.ready{visibility:visible}
+  #loading{
+    visibility:visible;position:fixed;inset:0;background:var(--bg);z-index:9999;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px
+  }
+  body.ready #loading{display:none}
+  nav{
+    height:64px;padding:0 5%;display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--border);background:rgba(246,248,247,.95);
+    backdrop-filter:blur(12px);position:sticky;top:0;z-index:50
+  }
+  .logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--brand);text-decoration:none}.logo span{color:var(--sage)}
+  .nav-right{display:flex;align-items:center;gap:12px}.nav-name{font-size:13px;color:var(--muted)}
+  .nav-btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:12px;font-weight:600}
+  .nav-btn.primary{background:var(--brand);color:white;border-color:var(--brand)}
+  .layout{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 64px)}
+  .sidebar{border-right:1px solid var(--border);padding:28px 18px;background:rgba(252,252,250,.65)}
+  .sidebar-label{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:#8794A0;margin:0 10px 10px}
+  .side-link{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border-radius:10px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;margin-bottom:5px}
+  .side-link:hover{background:white;color:var(--text)}.side-link.active{background:var(--brand-light);color:var(--brand)}
+  .side-icon{
+    width:20px;
+    height:20px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .side-icon svg{
+    width:18px;
+    height:18px;
+    display:block;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+  .sidebar hr{border:0;border-top:1px solid var(--border);margin:18px 0}
+  main{padding:36px 4.5% 70px;max-width:1420px;width:100%;margin:0 auto}
+  .page-kicker{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--brand);font-weight:700;margin-bottom:6px}
+  h1{font-family:'DM Serif Display',serif;font-size:34px;line-height:1.05;margin-bottom:6px}
+  .page-sub{font-size:13px;line-height:1.55;color:var(--muted);margin-bottom:24px}
+  .chat-shell{height:680px;display:grid;grid-template-columns:320px minmax(0,1fr);background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 12px 32px rgba(38,54,70,.04)}
+  .conversations{border-right:1px solid var(--border);background:rgba(255,255,255,.7);min-width:0;display:flex;flex-direction:column}
+  .conversations-head{padding:18px;border-bottom:1px solid var(--border)}.conversations-title{font-size:14px;font-weight:700;margin-bottom:10px}
+  .search{width:100%;border:1px solid var(--border);background:white;color:var(--text);border-radius:11px;padding:10px 12px;font:12px 'DM Sans',sans-serif;outline:none}
+  .search:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(93,127,163,.08)}
+  .conversation-list{flex:1;overflow-y:auto}
+  .conversation{width:100%;border:0;border-bottom:1px solid rgba(221,227,232,.75);background:transparent;padding:15px 16px;display:flex;gap:11px;text-align:left;cursor:pointer;font-family:inherit}
+  .conversation:hover{background:rgba(93,127,163,.04)}.conversation.active{background:var(--brand-light)}
+  .avatar{width:42px;height:42px;border-radius:13px;background:var(--brand-light);color:var(--brand);display:grid;place-items:center;font-family:'DM Serif Display',serif;font-size:16px;flex-shrink:0}
+  .conversation-copy{min-width:0;flex:1}.conversation-top{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
+  .conversation-name{font-size:12.5px;font-weight:700;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.conversation-time{font-size:9.5px;color:#8A96A0;flex-shrink:0}
+  .conversation-job{font-size:10.5px;color:var(--brand);margin-bottom:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .conversation-preview{font-size:10.5px;line-height:1.4;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);margin-top:6px;flex-shrink:0}
+  .chat-panel{min-width:0;display:flex;flex-direction:column;background:white}.chat-head{height:78px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px}
+  .chat-person{display:flex;align-items:center;gap:11px;min-width:0}.chat-head-name{font-size:13px;font-weight:700;margin-bottom:2px}.chat-head-job{font-size:10.5px;color:var(--muted)}
+  .context-pill{display:inline-flex;align-items:center;min-height:30px;padding:0 11px;border-radius:999px;background:var(--brand-light);color:var(--brand);font-size:10.5px;font-weight:700;text-decoration:none;white-space:nowrap}
+  .chat-head-actions{display:flex;align-items:center;gap:8px}.delete-conversation{min-height:30px;border:1px solid #E8BABA;border-radius:999px;background:#FFF3F3;color:#B64242;padding:0 11px;font:700 10.5px 'DM Sans',sans-serif;cursor:pointer}.delete-conversation:hover{background:#FCE8E8}
+  .messages{flex:1;overflow-y:auto;padding:22px 22px 14px;background:radial-gradient(circle at top left,rgba(140,182,155,.055),transparent 34%),white}
+  .date-divider{text-align:center;font-size:9px;color:#8A96A0;margin:2px 0 18px}.msg-row{display:flex;margin-bottom:11px}.msg-row.mine{justify-content:flex-end}
+  .bubble{max-width:min(72%,560px);border:1px solid var(--border);border-radius:15px 15px 15px 5px;padding:10px 12px;background:white;font-size:12px;line-height:1.55;color:var(--text)}
+  .mine .bubble{background:var(--brand);color:white;border-color:var(--brand);border-radius:15px 15px 5px 15px}.bubble-time{margin-top:5px;font-size:8.5px;color:#8A96A0}.mine .bubble-time{color:rgba(255,255,255,.72);text-align:right}
+  .composer{border-top:1px solid var(--border);padding:14px 16px;display:flex;gap:9px;align-items:flex-end;background:var(--card)}
+  .composer textarea{flex:1;min-height:46px;max-height:110px;resize:none;border:1px solid var(--border);border-radius:13px;padding:12px 13px;font:12px/1.45 'DM Sans',sans-serif;outline:none;color:var(--text);background:white}
+  .composer textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(93,127,163,.08)}.send-btn{min-width:78px;height:46px;border:0;border-radius:13px;background:var(--brand);color:white;font:700 12px 'DM Sans',sans-serif;cursor:pointer}.send-btn:hover{opacity:.92}
+  .empty-chat{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--muted)}
+  .empty-chat-icon{width:54px;height:54px;border-radius:17px;background:var(--brand-light);color:var(--brand);display:grid;place-items:center;font-size:22px;margin-bottom:12px}
+  .empty-chat-title{font-family:'DM Serif Display',serif;color:var(--text);font-size:21px;margin-bottom:5px}.empty-chat-copy{font-size:12px;line-height:1.55;max-width:360px}
+  .error-note{margin-top:14px;border:1px solid rgba(215,154,154,.3);background:rgba(215,154,154,.1);color:#8a5555;border-radius:12px;padding:11px 13px;font-size:11.5px;line-height:1.5}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{display:none}.chat-shell{grid-template-columns:280px minmax(0,1fr)}}
+  @media(max-width:680px){main{padding:24px 14px 50px}.chat-shell{grid-template-columns:1fr;height:auto;min-height:700px}.conversations{max-height:280px;border-right:0;border-bottom:1px solid var(--border)}.chat-panel{min-height:520px}.chat-head{padding:0 14px}.context-pill{display:none}.bubble{max-width:86%}}
+
+    /* Readability pass — slightly larger messaging text without changing layout */
+    .messages-title{font-size:30px}
+    .messages-sub{font-size:14px}
+    .conversation-name{font-size:15px}
+    .conversation-preview{font-size:13px}
+    .conversation-time{font-size:12px}
+    .chat-person{font-size:17px}
+    .chat-job{font-size:13px}
+    .message-bubble{font-size:15px; line-height:1.5}
+    .message-time{font-size:11px}
+    .composer textarea{font-size:15px}
+    .send-btn{font-size:14px}
+
+/* Candidate-only active-page marker. Employer navigation is intentionally untouched. */
+.candidate-role .side-label-text{
+  display:inline-block;
+  padding-bottom:4px;
+  border-bottom:2px solid transparent;
+}
+.candidate-role .side-link.active .side-label-text{
+  border-bottom-color:var(--brand);
+}
+
+  /* Candidate Messages matches the Account / My Jobs top navigation.
+     Employer Messages keeps its existing sidebar and dashboard controls. */
+  .candidate-nav-links,
+  .candidate-nav-actions{display:none}
+
+  body.candidate-role .candidate-nav-links.nav-readiness-pending{visibility:hidden}
+
+  body.candidate-role .candidate-nav-links{
+    display:flex;
+    align-items:center;
+    gap:28px;
+  }
+
+  body.candidate-role .candidate-nav-links a{
+    color:var(--muted);
+    text-decoration:none;
+    font-size:14px;
+    padding:6px 0;
+    border-bottom:2px solid transparent;
+  }
+
+  body.candidate-role .candidate-nav-links a:hover{color:var(--text)}
+  body.candidate-role .candidate-nav-links a.active{
+    color:var(--text);
+    border-bottom-color:var(--brand);
+  }
+
+  body.candidate-role .candidate-nav-actions{
+    display:flex;
+    align-items:center;
+  }
+
+  .candidate-nav-signout{
+    font:500 13px 'DM Sans',sans-serif;
+    color:var(--muted);
+    background:transparent;
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:7px 15px;
+    cursor:pointer;
+    transition:border-color .2s,color .2s;
+  }
+  .candidate-nav-signout:hover{
+    border-color:var(--brand);
+    color:var(--brand);
+  }
+
+  body.candidate-role #employer-nav-right{display:none}
+  body.candidate-role .layout{
+    display:block;
+    min-height:calc(100vh - 64px);
+  }
+  body.candidate-role .sidebar{display:none}
+  body.candidate-role main{
+    max-width:1100px;
+    margin:0 auto;
+    padding:40px 6% 90px;
+  }
+
+  body.candidate-role .page-kicker{margin-bottom:6px}
+  body.candidate-role .page-sub{
+    font-size:14px;
+    margin-bottom:26px;
+  }
+
+  @media(max-width:720px){
+    body.candidate-role nav{padding:0 18px}
+    body.candidate-role .candidate-nav-links{gap:14px}
+    body.candidate-role .candidate-nav-links a{font-size:12px}
+    body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
+  }
+</style>
+
+<style id="candidate-messages-only">
+  body.candidate-role .candidate-nav-links{display:flex!important;align-items:center;gap:28px}
+  body.candidate-role .candidate-nav-actions{display:flex!important;align-items:center}
+  body.candidate-role .layout{display:block!important;min-height:calc(100vh - 64px)}
+  body.candidate-role main{max-width:1100px;margin:0 auto;padding:40px 6% 90px}
+  @media(max-width:720px){
+    body.candidate-role nav{padding:0 18px}
+    body.candidate-role .candidate-nav-links{gap:14px}
+    body.candidate-role .candidate-nav-links a{font-size:12px}
+    body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
+  }
+</style>
+</head>
+<body class="candidate-role">
+<div id="loading">Loading messages…</div>
+
+<nav>
+  <a class="logo" href="index.html">Alygnn<span>.</span></a>
+
+  <div class="candidate-nav-links nav-readiness-pending" id="candidate-nav-links">
+    <a href="account.html">Account</a>
+    <a href="my-jobs.html">My jobs</a>
+    <a href="candidate-messages.html" class="active">Messages</a>
+    <a href="swipe.html" id="candidate-swipe-link" style="display:none;">Swipe</a>
+  </div>
+
+  <div class="candidate-nav-actions" id="candidate-nav-actions">
+    <button class="candidate-nav-signout" type="button" onclick="candidateSignOut()">Sign out</button>
+  </div>
+</nav>
+<script>
+(function(){
+  const nav = document.getElementById('candidate-nav-links');
+  const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
+  if(!nav || !swipe) return;
+
+  let cached = null;
+  try { cached = window.sessionStorage.getItem('alygnn_matching_ready_v1'); } catch (_) {}
+
+  if(cached === '1'){
+    swipe.style.display = '';
+    nav.classList.remove('nav-readiness-pending');
+  }else if(cached === '0'){
+    swipe.style.display = 'none';
+    nav.classList.remove('nav-readiness-pending');
+  }
+})();
+</script>
+
+
+<div class="layout">
+  <main>
+    <div class="page-kicker">Alygnn messages</div>
+    <h1>Messages</h1>
+    <div class="page-sub">Conversations stay tied to the application and job that connected you.</div>
+
+    <section class="chat-shell">
+      <div class="conversations">
+        <div class="conversations-head">
+          <div class="conversations-title">Conversations</div>
+          <input class="search" id="conversation-search" type="text" placeholder="Search person or job…" oninput="renderConversationList()">
+        </div>
+        <div class="conversation-list" id="conversation-list"></div>
+      </div>
+      <div class="chat-panel" id="chat-panel"></div>
+    </section>
+
+    <div class="error-note" id="setup-note" style="display:none"></div>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL='https://auth.alygnn.com';
+const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+
+function alygnnAuthStorageKey() {
+  let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+  if (!tabId) {
+    tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
+  }
+  return `alygnn-auth-${tabId}`;
+}
+
+const {createClient}=supabase;
+const sb=// Keep Alygnn authentication isolated to this browser tab.
+// This lets a candidate account stay open in one tab while a different
+// employer account is signed in in another tab.
+createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: window.sessionStorage,
+      storageKey: alygnnAuthStorageKey(),
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+
+
+function syncCandidateSwipeNav(matchingReady) {
+  const ready = matchingReady === true;
+  const nav = document.getElementById('candidate-nav-links');
+  const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
+
+  try {
+    window.sessionStorage.setItem('alygnn_matching_ready_v1', ready ? '1' : '0');
+  } catch (_) {}
+
+  if (swipe) swipe.style.display = ready ? '' : 'none';
+  if (nav) nav.classList.remove('nav-readiness-pending');
+}
+
+let currentUser=null;
+let currentProfile=null;
+let currentRole='';
+let teamAccess=null;
+let teamRuntime=null;
+let isTeamMember=false;
+let workspaceOwnerId=null;
+
+function messageTeamCan(permission){
+  if(!isTeamMember)return true;
+  return teamAccess?.permissions?.[permission]===true;
+}
+
+let threads=[];
+let threadDetails=new Map();
+let activeThreadId=null;
+let activeMessages=[];
+let requestedApplicationId=null;
+let requestedApplicationContext=null;
+let messageChannel=null;
+let threadChannel=null;
+
+function escapeHtml(v){
+  return String(v||'')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+}
+function initials(name){
+  return String(name||'?').trim().split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase()||'?';
+}
+function timeLabel(iso){
+  if(!iso)return '';
+  const d=new Date(iso);
+  const now=new Date();
+  if(d.toDateString()===now.toDateString())return d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  const yesterday=new Date(now);yesterday.setDate(now.getDate()-1);
+  if(d.toDateString()===yesterday.toDateString())return 'Yesterday';
+  return d.toLocaleDateString([],{month:'short',day:'numeric'});
+}
+function fullTime(iso){
+  if(!iso)return '';
+  return new Date(iso).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+}
+function showSetup(message){
+  const el=document.getElementById('setup-note');
+  el.textContent=message;
+  el.style.display='block';
+}
+
+async function candidateSignOut(){
+  await sb.auth.signOut({ scope: 'local' });
+  window.location.href='login.html';
+}
+function setSidebar(){
+  // Candidate-only Messages page. Employer navigation lives in the separate
+  // employer Messages file and is intentionally not touched here.
+  document.body.classList.remove('employer-role');
+  document.body.classList.add('candidate-role');
+}
+
+
+async function loadRequestedApplicationContext(){
+  const params=new URLSearchParams(location.search);
+  requestedApplicationId=params.get('application');
+  if(!requestedApplicationId)return null;
+
+  // Resolve the exact real application first. This makes the chat header open
+  // immediately even when the thread has never had a message before.
+  const {data:application,error:appError}=await sb
+    .from('applications')
+    .select('id,job_id,candidate_id,status,applied_at')
+    .eq('id',requestedApplicationId)
+    .maybeSingle();
+
+  if(appError||!application){
+    console.error('Could not load requested application:',appError);
+    showSetup('Could not open this application for messaging.');
+    return null;
+  }
+
+  const jobId=new URLSearchParams(location.search).get('job')||application.job_id;
+
+  const [jobResult,candidateResult]=await Promise.all([
+    sb.from('jobs')
+      .select('id,title,status,location,employer_id,company')
+      .eq('id',jobId)
+      .maybeSingle(),
+    sb.from('profiles')
+      .select('id,full_name,company_name')
+      .eq('id',application.candidate_id)
+      .maybeSingle()
+  ]);
+
+  if(jobResult.error)console.error('Could not load message job:',jobResult.error);
+  if(candidateResult.error)console.error('Could not load message candidate:',candidateResult.error);
+
+  const job=jobResult.data||{id:jobId,title:'Job'};
+  const candidate=candidateResult.data||{id:application.candidate_id,full_name:'Candidate'};
+
+  // Validate that the signed-in user is actually part of the application.
+  const isCandidate=currentUser.id===application.candidate_id;
+  if(!isCandidate){
+    showSetup('You do not have access to this conversation.');
+    return null;
+  }
+
+  requestedApplicationContext={
+    application,
+    job,
+    candidate,
+    employerId:job.employer_id,
+    candidateId:application.candidate_id
+  };
+  return requestedApplicationContext;
+}
+
+async function getOrCreateRequestedThread(){
+  const applicationId=requestedApplicationId||new URLSearchParams(location.search).get('application');
+  if(!applicationId)return null;
+
+  // Employer-first messaging: an empty conversation is never created from the
+  // website. Only return an existing employer-started conversation here.
+  const hiddenField='candidate_hidden_at';
+  const {data,error}=await sb
+    .from('application_conversations')
+    .select('id,employer_hidden_at,candidate_hidden_at')
+    .eq('application_id',String(applicationId))
+    .is(hiddenField,null)
+    .maybeSingle();
+
+  if(error){
+    console.error('Could not open application conversation:',error);
+    return null;
+  }
+  return data?.id||null;
+}
+
+async function loadThreads(){
+  const hiddenField='candidate_hidden_at';
+  const {data,error}=await sb
+    .from('application_conversations')
+    .select('id,application_id,job_id,employer_id,candidate_id,candidate_name,job_title,company_name,employer_started_at,created_at,last_message_at,employer_hidden_at,candidate_hidden_at')
+    .eq('candidate_id',currentUser.id)
+    .is(hiddenField,null)
+    .order('last_message_at',{ascending:false,nullsFirst:false});
+
+  if(error){
+    console.error(error);
+    showSetup('Messages could not be loaded. Make sure the employer-first messaging SQL is installed in Supabase.');
+    threads=[];
+    return;
+  }
+  threads=data||[];
+}
+
+async function loadThreadDetails(){
+  threadDetails=new Map();
+  if(!threads.length)return;
+
+  const jobIds=[...new Set(threads.map(t=>t.job_id).filter(Boolean))];
+  const conversationIds=threads.map(t=>t.id).filter(Boolean);
+
+  const [jobsResult,lastMessagesResult]=await Promise.all([
+    jobIds.length
+      ? sb.from('jobs').select('*').in('id',jobIds)
+      : Promise.resolve({data:[]}),
+    conversationIds.length
+      ? sb.from('application_messages')
+          .select('id,conversation_id,sender_id,body,created_at,read_at')
+          .in('conversation_id',conversationIds)
+          .order('created_at',{ascending:false})
+      : Promise.resolve({data:[]})
+  ]);
+
+  if(jobsResult.error)console.error(jobsResult.error);
+  if(lastMessagesResult.error)console.error(lastMessagesResult.error);
+
+  const jobsMap=Object.fromEntries((jobsResult.data||[]).map(j=>[String(j.id),j]));
+  const newestByThread={};
+  const unreadByThread={};
+
+  for(const m of (lastMessagesResult.data||[])){
+    const id=String(m.conversation_id);
+    if(!newestByThread[id])newestByThread[id]=m;
+    if(String(m.sender_id)!==String(currentUser.id)&&!m.read_at){
+      unreadByThread[id]=(unreadByThread[id]||0)+1;
+    }
+  }
+
+  for(const t of threads){
+    const job=jobsMap[String(t.job_id)]||{};
+    const candidateName=String(t.candidate_name||'').trim();
+    const companyName=String(t.company_name||job.company_name||job.company||job.employer_name||'').trim();
+    const displayName=companyName||'Company';
+    const jobTitle=String(t.job_title||job.title||'Job application').trim();
+    const mergedJob={...job,title:jobTitle};
+
+    threadDetails.set(t.id,{
+      thread:t,
+      otherId:t.employer_id,
+      name:displayName,
+      initials:initials(displayName),
+      job:mergedJob,
+      lastMessage:newestByThread[String(t.id)]||null,
+      unread:unreadByThread[String(t.id)]||0
+    });
+  }
+}
+
+function filteredThreads(){
+  const q=(document.getElementById('conversation-search')?.value||'').trim().toLowerCase();
+  if(!q)return threads;
+  return threads.filter(t=>{
+    const d=threadDetails.get(t.id)||{};
+    return [d.name,d.job?.title,d.lastMessage?.body].join(' ').toLowerCase().includes(q);
+  });
+}
+
+function renderConversationList(){
+  const el=document.getElementById('conversation-list');
+  const list=filteredThreads();
+
+  if(!list.length){
+    const emptyListCopy = threads.length
+      ? 'No conversations match your search.'
+      : 'No conversations yet. Messages about your applications will appear here.';
+
+    el.innerHTML=`<div style="padding:30px 18px;text-align:center;color:var(--muted);font-size:12px;line-height:1.55">
+      ${emptyListCopy}
+    </div>`;
+    return;
+  }
+
+  el.innerHTML=list.map(t=>{
+    const d=threadDetails.get(t.id)||{};
+    const last=d.lastMessage;
+    return `
+      <button class="conversation ${t.id===activeThreadId?'active':''}" onclick="openThread('${t.id}')">
+        <div class="avatar">${escapeHtml(d.initials||'?')}</div>
+        <div class="conversation-copy">
+          <div class="conversation-top">
+            <div class="conversation-name">${escapeHtml(d.name||'Conversation')}</div>
+            <div class="conversation-time">${escapeHtml(timeLabel(last?.created_at||t.last_message_at||t.created_at))}</div>
+          </div>
+          <div class="conversation-job">${escapeHtml(d.job?.title||'Job')}</div>
+          <div class="conversation-preview">${escapeHtml(last?.body||'Start the conversation')}</div>
+        </div>
+        ${d.unread?'<span class="unread-dot" title="Unread messages"></span>':''}
+      </button>`;
+  }).join('');
+}
+
+async function deleteConversationForMe(threadId){
+  if(!threadId)return;
+  const d=threadDetails.get(threadId)||{};
+  const label=d.name||'this conversation';
+  if(!confirm(`Delete the conversation with ${label} from your Messages?\n\nThis removes it only from your side. The other person will still keep the conversation. If they send you a new message later, it will appear again.`))return;
+
+  try{
+    let result=await sb.rpc('hide_application_conversation',{p_conversation_id:threadId});
+    if(result.error&&String(result.error.message||'').toLowerCase().includes('function')){
+      result=await sb.rpc('delete_application_conversation',{p_conversation_id:threadId});
+    }
+    if(result.error)throw result.error;
+
+    if(messageChannel){sb.removeChannel(messageChannel);messageChannel=null;}
+    if(activeThreadId===threadId){activeThreadId=null;activeMessages=[];}
+    showSetup('Conversation removed from your Messages.');
+    await refreshAll(true);
+  }catch(error){
+    console.error(error);
+    showSetup(error?.message||'Conversation could not be removed.');
+  }
+}
+
+async function markThreadRead(threadId){
+  try{
+    const {error}=await sb.rpc('mark_application_conversation_read',{p_conversation_id:threadId});
+    if(error)console.warn('Could not mark messages read:',error);
+  }catch(error){
+    console.warn('Could not mark messages read:',error);
+  }
+}
+
+async function openThread(threadId){
+  activeThreadId=threadId;
+  await markThreadRead(threadId);
+  await loadMessages(threadId);
+  const d=threadDetails.get(threadId);
+  if(d)d.unread=0;
+  renderConversationList();
+  renderChat();
+  subscribeToMessages(threadId);
+}
+
+async function loadMessages(threadId){
+  const {data,error}=await sb
+    .from('application_messages')
+    .select('id,conversation_id,sender_id,body,created_at,read_at')
+    .eq('conversation_id',threadId)
+    .order('created_at',{ascending:true});
+  if(error){
+    console.error(error);
+    activeMessages=[];
+    return;
+  }
+  activeMessages=data||[];
+}
+
+function activeConversationDetails(){
+  if(activeThreadId){
+    const existing=threadDetails.get(activeThreadId);
+    if(existing)return existing;
+  }
+
+  // If the employer just clicked Message on a candidate and there are no
+  // prior messages yet, still render that exact candidate/job as a new chat.
+  if(requestedApplicationContext){
+    const c=requestedApplicationContext;
+    const otherName=c.job?.company||'Company';
+
+    return {
+      thread:{
+        id:activeThreadId,
+        application_id:c.application.id,
+        job_id:c.job.id,
+        employer_id:c.employerId,
+        candidate_id:c.candidateId
+      },
+      otherId:c.employerId,
+      name:otherName,
+      initials:initials(otherName),
+      job:c.job,
+      lastMessage:null,
+      unread:0,
+      pendingThread:!activeThreadId
+    };
+  }
+
+  return null;
+}
+
+function renderChat(){
+  const panel=document.getElementById('chat-panel');
+
+  const d=activeConversationDetails();
+
+  if(!d){
+    const emptyChatCopy = 'Choose a conversation from the left when you receive a message about one of your applications.';
+
+    panel.innerHTML=`
+      <div class="empty-chat">
+        <div class="empty-chat-icon">✉</div>
+        <div class="empty-chat-title">No conversation selected</div>
+        <div class="empty-chat-copy">${emptyChatCopy}</div>
+      </div>`;
+    return;
+  }
+  const jobClosed=String(d.job?.status||'').toLowerCase()==='closed';
+
+  panel.innerHTML=`
+    <div class="chat-head">
+      <div class="chat-person">
+        <div class="avatar">${escapeHtml(d.initials||'?')}</div>
+        <div>
+          <div class="chat-head-name">${escapeHtml(d.name||'Conversation')}</div>
+          <div class="chat-head-job">Conversation about ${escapeHtml(d.job?.title||'this job')}${jobClosed?' · Closed':''}</div>
+        </div>
+      </div>
+      <div class="chat-head-actions">
+        <a class="context-pill" href="my-jobs.html">View application</a>
+        ${d.thread?.id?`<button class="delete-conversation" type="button" onclick="deleteConversationForMe('${escapeHtml(d.thread.id)}')">Delete</button>`:''}
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      ${activeMessages.length
+        ? `<div class="date-divider">${new Date(activeMessages[0].created_at).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})}</div>
+           ${activeMessages.map(m=>`
+             <div class="msg-row ${m.sender_id===currentUser.id?'mine':''}">
+               <div class="bubble">
+                 ${escapeHtml(m.body)}
+                 <div class="bubble-time">${escapeHtml(fullTime(m.created_at))}</div>
+               </div>
+             </div>`).join('')}`
+        : `<div class="empty-chat" style="min-height:100%">
+             <div class="empty-chat-icon">✉</div>
+             <div class="empty-chat-title">Conversation opened</div>
+             <div class="empty-chat-copy">The employer opened this conversation about ${escapeHtml(d.job?.title||'your application')}.</div>
+           </div>`}
+    </div>
+
+    <div class="composer">
+      <textarea id="message-input" maxlength="2000" placeholder="Write a message…" onkeydown="handleComposerKey(event)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+    </div>`;
+
+  requestAnimationFrame(()=>{
+    const messages=document.getElementById('messages');
+    if(messages)messages.scrollTop=messages.scrollHeight;
+  });
+}
+
+function handleComposerKey(event){
+  if(event.key==='Enter'&&!event.shiftKey){
+    event.preventDefault();
+    sendMessage();
+  }
+}
+
+async function sendMessage(){
+  const input=document.getElementById('message-input');
+  const btn=document.getElementById('send-btn');
+  if(!input||!btn)return;
+  const body=input.value.trim();
+  if(!body)return;
+
+  btn.disabled=true;
+  showSetup('');
+  document.getElementById('setup-note').style.display='none';
+
+  // Candidate-only rule: the employer must start the conversation first.
+  if(!activeThreadId){
+    btn.disabled=false;
+    showSetup('The employer must start the conversation before you can reply.');
+    return;
+  }
+
+
+  const {data,error}=await sb
+    .from('application_messages')
+    .insert({conversation_id:activeThreadId,sender_id:currentUser.id,body})
+    .select('id,conversation_id,sender_id,body,created_at,read_at')
+    .single();
+
+  btn.disabled=false;
+  if(error){
+    console.error(error);
+    showSetup(error.message||'Could not send the message.');
+    return;
+  }
+
+  input.value='';
+  activeMessages.push(data);
+  const d=threadDetails.get(activeThreadId);
+  if(d)d.lastMessage=data;
+  renderConversationList();
+  renderChat();
+}
+
+function subscribeToMessages(threadId){
+  if(messageChannel)sb.removeChannel(messageChannel);
+
+  messageChannel=sb.channel('application-messages-thread-'+threadId)
+    .on('postgres_changes',{
+      event:'INSERT',schema:'public',table:'application_messages',
+      filter:`conversation_id=eq.${threadId}`
+    },async payload=>{
+      const m=payload.new;
+      if(!activeMessages.some(x=>x.id===m.id))activeMessages.push(m);
+      if(String(m.sender_id)!==String(currentUser.id))await markThreadRead(threadId);
+      const d=threadDetails.get(threadId);
+      if(d){d.lastMessage=m;d.unread=0}
+      renderConversationList();
+      renderChat();
+    })
+    .subscribe();
+}
+
+function subscribeToThreads(){
+  if(threadChannel)sb.removeChannel(threadChannel);
+
+  threadChannel=sb.channel('application-conversations-'+currentUser.id)
+    .on('postgres_changes',{
+      event:'*',schema:'public',table:'application_conversations'
+    },async ()=>{
+      await refreshAll(false);
+    })
+    .on('postgres_changes',{
+      event:'INSERT',schema:'public',table:'application_messages'
+    },async payload=>{
+      if(payload.new.conversation_id===activeThreadId)return;
+      await refreshAll(false);
+    })
+    .subscribe();
+}
+
+async function refreshAll(chooseFirst=true){
+  await loadThreads();
+  await loadThreadDetails();
+
+  if(activeThreadId&&!threads.some(t=>t.id===activeThreadId))activeThreadId=null;
+  if(!activeThreadId&&chooseFirst&&threads.length)activeThreadId=threads[0].id;
+
+  renderConversationList();
+
+  if(activeThreadId){
+    await loadMessages(activeThreadId);
+    renderChat();
+  }else{
+    renderChat();
+  }
+}
+
+async function resolveEmployerCompanyName(profile, sessionUser){
+  // Primary source: the same profiles.company_name used by the employer
+  // dashboard/account pages.
+  const fromProfile = String(profile?.company_name || '').trim();
+  if(fromProfile) return fromProfile;
+
+  // Google/email metadata may already contain the company name.
+  const fromMetadata = String(sessionUser?.user_metadata?.company_name || '').trim();
+  if(fromMetadata) return fromMetadata;
+
+  // Backward-compatible fallback in case an older employer row stores the
+  // company name in the employers table instead of profiles.
+  try{
+    const {data,error}=await sb
+      .from('employers')
+      .select('company_name')
+      .eq('id',sessionUser.id)
+      .maybeSingle();
+
+    if(!error && String(data?.company_name || '').trim()){
+      return String(data.company_name).trim();
+    }
+  }catch(error){
+    console.warn('Could not read employer company name fallback:', error);
+  }
+
+  // Never show the generic word "Employer" as the account name.
+  return String(profile?.full_name || sessionUser?.user_metadata?.full_name || sessionUser?.user_metadata?.name || 'Company').trim();
+}
+
+async function init(){
+  const {data:{session},error}=await sb.auth.getSession();
+  if(error||!session){
+    location.replace('login.html');
+    return;
+  }
+
+  currentUser=session.user;
+  currentRole='candidate';
+  setSidebar();
+
+  const {data:profile,error:profileError}=await sb
+    .from('profiles')
+    .select('id,role,full_name,company_name,resume_file_path,resume_data,preferences')
+    .eq('id',currentUser.id)
+    .maybeSingle();
+
+  if(profileError&&profileError.code!=='PGRST116'){
+    console.error(profileError);
+    location.replace('login.html');
+    return;
+  }
+
+  currentProfile=profile||{};
+
+  const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
+  const hasPreferences=!!profile?.preferences;
+  syncCandidateSwipeNav(hasResume && hasPreferences);
+
+  // A candidate can open only conversations that an employer already started.
+  await loadRequestedApplicationContext();
+  const requestedThreadId=await getOrCreateRequestedThread();
+  await loadThreads();
+  await loadThreadDetails();
+
+  const urlThread=new URLSearchParams(location.search).get('thread');
+
+  if(requestedApplicationId){
+    const matchingThread=threads.find(t=>String(t.application_id)===String(requestedApplicationId));
+    activeThreadId=requestedThreadId||matchingThread?.id||null;
+  }else{
+    activeThreadId=urlThread||threads[0]?.id||null;
+  }
+
+  renderConversationList();
+  if(activeThreadId){
+    await markThreadRead(activeThreadId);
+    await loadMessages(activeThreadId);
+  }else{
+    activeMessages=[];
+  }
+
+  renderChat();
+  subscribeToThreads();
+  if(activeThreadId)subscribeToMessages(activeThreadId);
+  document.body.classList.add('ready');
+}
+
+
+window.addEventListener('beforeunload',()=>{
+  if(messageChannel)sb.removeChannel(messageChannel);
+  if(threadChannel)sb.removeChannel(threadChannel);
+});
+
+init();
+</script>
+</body>
+</html>
