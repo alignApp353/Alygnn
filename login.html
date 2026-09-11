@@ -350,6 +350,37 @@ const { createClient } = supabase;
   // because profiles.verification_status has a default/premature value.
   const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-onboarding.html' : '/account.html');
 
+
+  function alygnnEmployerOnboardingComplete(profile){
+    const blueprint =
+      profile?.hiring_blueprint &&
+      typeof profile.hiring_blueprint === 'object'
+        ? profile.hiring_blueprint
+        : null;
+
+    if(!blueprint) return false;
+
+    if(blueprint.onboarding_complete === true) return true;
+
+    const companyId = String(blueprint.company_id || '').trim();
+    const documentPath = String(blueprint.irs_document_path || '').trim();
+    const companyPriorities = Array.isArray(blueprint.company_priorities)
+      ? blueprint.company_priorities
+      : [];
+    const candidatePriorities = Array.isArray(blueprint.candidate_priorities)
+      ? blueprint.candidate_priorities
+      : [];
+
+    // Backward compatibility for employers who finished setup before the
+    // onboarding_complete flag was introduced.
+    return !!(
+      companyId &&
+      documentPath &&
+      companyPriorities.length >= 5 &&
+      candidatePriorities.length >= 5
+    );
+  }
+
   async function resolveSignedInDestination(user, roleHint='seeker'){
     // 1) Active company teammates go straight into the employer workspace.
     // Their team membership takes priority over an old seeker/candidate profile role.
@@ -393,23 +424,7 @@ const { createClient } = supabase;
       if(profileError){
         console.warn('Could not check employer onboarding state:',profileError);
       }else{
-        const status=String(profile?.verification_status||'').trim().toLowerCase();
-        const blueprint=
-          profile?.hiring_blueprint &&
-          typeof profile.hiring_blueprint==='object'
-            ? profile.hiring_blueprint
-            : null;
-
-        const hasBlueprint =
-          !!blueprint &&
-          Object.keys(blueprint).length>0;
-
-        const onboardingComplete =
-          profile?.employer_verified===true ||
-          status==='approved' ||
-          hasBlueprint;
-
-        if(onboardingComplete){
+        if(alygnnEmployerOnboardingComplete(profile)){
           return window.location.origin + '/employer-dashboard.html';
         }
       }
