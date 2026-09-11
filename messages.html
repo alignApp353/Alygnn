@@ -357,6 +357,137 @@ body.employer-role .chat-shell{
 }
 </style>
 
+
+<style id="employer-messages-no-page-scroll">
+html,
+body{
+  width:100%;
+  height:100%;
+  overflow:hidden !important;
+}
+
+body.employer-role{
+  height:100vh !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+/* 64px fixed header + remaining viewport workspace */
+body.employer-role .layout{
+  height:calc(100vh - 64px) !important;
+  min-height:0 !important;
+  max-height:calc(100vh - 64px) !important;
+  overflow:hidden !important;
+}
+
+/* Left Employer navigation never moves */
+body.employer-role .sidebar{
+  overflow:hidden !important;
+}
+
+/* Main Messages workspace stays completely inside the viewport */
+body.employer-role main{
+  height:calc(100vh - 64px) !important;
+  min-height:0 !important;
+  max-height:calc(100vh - 64px) !important;
+  padding:30px 5% 8px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+}
+
+body.employer-role h1,
+body.employer-role .page-sub,
+body.employer-role .error-note,
+body.employer-role .messages-legal{
+  flex:0 0 auto !important;
+}
+
+body.employer-role h1{
+  margin-top:0 !important;
+}
+
+body.employer-role .page-sub{
+  margin-bottom:16px !important;
+}
+
+/* Chat takes the available space rather than forcing the page taller. */
+body.employer-role .chat-shell{
+  flex:1 1 auto !important;
+  width:100% !important;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+}
+
+body.employer-role .conversations,
+body.employer-role .chat-panel{
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+
+/* These are the only areas allowed to scroll when there is lots of content. */
+body.employer-role .conversation-list,
+body.employer-role .messages{
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+}
+
+/* Keep setup errors compact so they cannot create page scrolling. */
+body.employer-role .error-note{
+  margin-top:6px !important;
+  padding:7px 10px !important;
+}
+
+/* Legal links always visible at the bottom of the Messages workspace. */
+body.employer-role .messages-legal{
+  min-height:26px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  gap:7px;
+  padding-top:7px;
+  font-family:'DM Sans',sans-serif;
+  font-size:11px;
+  color:var(--muted);
+}
+
+body.employer-role .messages-legal a{
+  color:var(--muted);
+  text-decoration:none;
+}
+
+body.employer-role .messages-legal a:hover{
+  color:var(--brand);
+}
+
+@media(max-width:860px){
+  html,
+  body{
+    overflow:auto !important;
+  }
+
+  body.employer-role{
+    height:auto !important;
+    min-height:100vh !important;
+    overflow:auto !important;
+  }
+
+  body.employer-role .layout,
+  body.employer-role main{
+    height:auto !important;
+    min-height:calc(100vh - 64px) !important;
+    max-height:none !important;
+    overflow:visible !important;
+  }
+
+  body.employer-role .chat-shell{
+    min-height:650px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div id="loading">Loading messages…</div>
@@ -399,6 +530,12 @@ body.employer-role .chat-shell{
     </section>
 
     <div class="error-note" id="setup-note" style="display:none"></div>
+
+    <div class="messages-legal" aria-label="Legal links">
+      <a href="privacy.html">Privacy</a>
+      <span>·</span>
+      <a href="terms.html">Terms &amp; Conditions</a>
+    </div>
   </main>
 </div>
 
