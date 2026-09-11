@@ -588,8 +588,27 @@ const { createClient } = supabase;
     window.location.replace(await resolveSignedInDestination(user, role));
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
+
+    // Employer confirmation MUST come back to the login screen first.
+    // Supabase may create a temporary browser session when the confirmation
+    // link is opened; clear that local session so the employer explicitly
+    // signs in before onboarding.
+    if (params.get('confirmed') === '1') {
+      try {
+        await sb.auth.signOut({ scope: 'local' });
+      } catch (signOutError) {
+        console.warn('Could not clear confirmation session:', signOutError);
+      }
+
+      switchRole('employer');
+      switchTab('login');
+
+      history.replaceState({}, '', 'login.html?role=employer');
+      showMsg('Email confirmed successfully. Sign in to continue to Employer Setup.', 'success');
+      return;
+    }
 
     // Returning from account deletion should always land on SIGN IN, not
     // accidentally leave the user on the Create account tab.
@@ -702,10 +721,13 @@ const { createClient } = supabase;
       password,
       options: {
         data: meta,
-        // New accounts must continue into the correct onboarding flow after
-        // email confirmation instead of falling back to Supabase's Site URL
-        // (which sends them to index.html).
-        emailRedirectTo: redirectFor(currentRole)
+        // Employer email confirmation returns to SIGN IN first.
+        // The required flow is:
+        // create account -> confirm email -> sign in -> onboarding -> dashboard.
+        // Candidate confirmation keeps its normal account destination.
+        emailRedirectTo: currentRole === 'employer'
+          ? window.location.origin + '/login.html?role=employer&confirmed=1'
+          : redirectFor(currentRole)
       }
     });
     if (error) {
@@ -774,7 +796,12 @@ const { createClient } = supabase;
       return;
     }
 
-    showMsg(currentRole === 'employer' ? 'Account created! Check your email to confirm. After confirmation, you’ll continue to Employer Setup.' : 'Account created! Check your email to confirm. After confirmation, you’ll continue to your Alygnn account.', 'success');
+    showMsg(
+      currentRole === 'employer'
+        ? 'Account created! Check your email to confirm. After confirmation, return here and sign in to continue to Employer Setup.'
+        : 'Account created! Check your email to confirm. After confirmation, you’ll continue to your Alygnn account.',
+      'success'
+    );
     setTimeout(() => switchTab('login'), 3000);
   }
 
