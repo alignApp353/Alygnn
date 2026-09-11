@@ -3,734 +3,246 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Account — Alygnn</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-:root{
-  --brand:#5D7FA3;
-  --sage:#8CB69B;
-  --bg:#F6F8F7;
-  --card-bg:#FCFCFA;
-  --text:#1A2530;
-  --text-muted:#4A5968;
-  --border:#DDE3E8;
-}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root{
+    --brand:#5D7FA3;
+    --sage:#8CB69B;
+    --mint:#6FBF8F;
+    --rose:#D79A9A;
+    --bg:#F6F8F7;
+    --card-bg:#FCFCFA;
+    --text:#1A2530;
+    --text-muted:#4A5968;
+    --border:#DDE3E8;
+    --brand-tint:rgba(93,127,163,0.1);
+    --mint-tint:rgba(111,191,143,0.15);
+    --rose-tint:rgba(215,154,154,0.15);
+  }
+
+  body{
+    font-family:'DM Sans', sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+  }
 
-*,
-*::before,
-*::after{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:'DM Sans', Arial, sans-serif !important;
-}
-
-html,
-body{
-  min-height:100%;
-  background:var(--bg);
-  color:var(--text);
-}
-
-body{
-  min-height:100vh;
-}
-
-nav{
-  position:sticky;
-  top:0;
-  z-index:100;
-  height:64px;
-  padding:0 5%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  background:rgba(246,248,247,.92);
-  backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-}
-
-.logo{
-  font-family:'DM Serif Display', serif !important;
-  font-size:22px;
-  color:var(--brand);
-  letter-spacing:-.5px;
-  text-decoration:none;
-}
-
-.logo span{
-  font-family:'DM Serif Display', serif !important;
-  color:var(--sage);
-}
-
-.nav-links{
-  display:flex;
-  align-items:center;
-  gap:28px;
-}
-
-.nav-links a{
-  color:var(--text-muted);
-  text-decoration:none;
-  font-size:14px;
-  padding:6px 0;
-  border-bottom:2px solid transparent;
-}
-
-.nav-links a.active{
-  color:var(--text);
-  border-bottom-color:var(--brand);
-}
-
-.nav-signout{
-  font-size:13px;
-  color:var(--text-muted);
-  background:none;
-  border:1px solid var(--border);
-  border-radius:100px;
-  padding:6px 14px;
-  cursor:pointer;
-  font-family:'DM Sans', sans-serif;
-  transition:all .2s;
-}
-
-.nav-signout:hover{
-  border-color:var(--brand);
-  color:var(--brand);
-}
-
-.nav-links a:hover{
-  color:var(--text);
-}
-
-.page{
-  max-width:880px;
-  margin:0 auto;
-  padding:56px 6% 100px;
-  opacity:0;
-  transform:translateY(8px);
-  transition:opacity .25s ease, transform .25s ease;
-}
-
-.page.ready{
-  opacity:1;
-  transform:translateY(0);
-}
-
-.loading{
-  max-width:880px;
-  margin:0 auto;
-  padding:56px 6%;
-  color:var(--text-muted);
-  font-size:14px;
-}
-
-.loading.hide{
-  display:none;
-}
-
-.setup-banner{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
-  background:rgba(231,184,109,0.12);
-  border:1px solid rgba(231,184,109,0.4);
-  border-radius:16px;
-  padding:20px 24px;
-  margin-bottom:24px;
-}
-
-.setup-title{
-  font-size:15px;
-  font-weight:500;
-  color:#7a5a1a;
-  margin-bottom:3px;
-}
-
-.setup-sub{
-  font-size:13px;
-  color:var(--text-muted);
-}
-
-.setup-cta{
-  flex-shrink:0;
-  background:var(--brand);
-  color:white;
-  text-decoration:none;
-  border-radius:100px;
-  padding:11px 22px;
-  font-size:14px;
-  font-weight:500;
-  white-space:nowrap;
-  transition:opacity .2s;
-}
-.setup-cta:hover{ opacity:0.88; }
-
-.profile-card{
-  display:flex;
-  align-items:center;
-  gap:22px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:32px;
-  margin-bottom:40px;
-}
-
-.avatar{
-  width:76px;
-  height:76px;
-  border-radius:50%;
-  background:var(--brand);
-  color:white;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  flex-shrink:0;
-  font-family:'DM Serif Display', serif !important;
-  font-size:1.7rem;
-}
-
-.avatar span{
-  font-family:'DM Serif Display', serif !important;
-}
-
-.profile-info{
-  flex:1;
-  min-width:0;
-}
-
-.profile-info h1{
-  font-family:'DM Serif Display', serif !important;
-  font-size:1.6rem;
-  letter-spacing:-.5px;
-  margin-bottom:4px;
-  color:var(--text);
-  word-break:break-word;
-}
-
-.profile-info p{
-  color:var(--text-muted);
-  font-size:14px;
-  font-weight:300;
-  word-break:break-word;
-}
-
-.name-lock-note{
-  font-size:12px;
-  color:var(--text-muted);
-  margin-top:-2px;
-}
-
-.name-lock-note a{
-  color:var(--brand);
-  text-decoration:none;
-}
-
-.name-lock-note a:hover{
-  text-decoration:underline;
-}
-
-.name-change-form{
-  margin-top:12px;
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:8px;
-}
-
-.name-change-form input{
-  flex:1;
-  min-width:160px;
-  padding:9px 12px;
-  border:1px solid var(--border);
-  border-radius:10px;
-  font-size:14px;
-  font-family:'DM Sans', sans-serif;
-  outline:none;
-}
-
-.name-change-form input:focus{
-  border-color:var(--brand);
-}
-
-.name-change-submit{
-  background:var(--brand);
-  color:white;
-  border:none;
-  border-radius:100px;
-  padding:9px 18px;
-  font-size:13px;
-  font-weight:500;
-  font-family:'DM Sans', sans-serif;
-  cursor:pointer;
-  transition:opacity .2s;
-  white-space:nowrap;
-}
-
-.name-change-submit:hover{ opacity:0.88; }
-.name-change-submit:disabled{ opacity:0.6; cursor:not-allowed; }
-
-.name-change-status{
-  width:100%;
-  font-size:12px;
-  color:var(--text-muted);
-  margin-top:2px;
-}
-
-[contenteditable="true"]{
-  outline:none;
-  border-radius:6px;
-}
-
-[contenteditable="true"]:hover{
-  background:rgba(93,127,163,.06);
-}
-
-[contenteditable="true"]:focus{
-  background:rgba(93,127,163,.08);
-}
-
-[contenteditable="true"]:empty::before{
-  content:attr(data-placeholder);
-  color:#9BA8B3;
-  font-style:italic;
-}
-
-#profile-name:empty::before{
-  font-family:'DM Serif Display', serif !important;
-  font-style:normal;
-}
-
-.section{
-  margin-bottom:40px;
-}
-
-.section-header{
-  display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  margin-bottom:16px;
-}
-
-.section-header h2{
-  font-family:'DM Serif Display', serif !important;
-  font-size:1.15rem;
-  letter-spacing:-.3px;
-}
-
-.empty-state{
-  background:var(--card-bg);
-  border:1px dashed var(--border);
-  border-radius:14px;
-  padding:28px;
-  text-align:center;
-  color:var(--text-muted);
-  font-size:14px;
-}
-
-.form-input{
-  background:white;
-  border:1.5px solid var(--border);
-  border-radius:12px;
-  padding:12px 16px;
-  font-size:14px;
-  font-family:'DM Sans', Arial, sans-serif;
-  color:var(--text);
-  outline:none;
-  transition:border-color .2s;
-  width:100%;
-}
-.form-input:focus{ border-color:var(--brand); }
-.form-input::placeholder{ color:#9BA8B3; }
-
-.links-row{
-  display:flex;
-  gap:14px;
-  flex-wrap:wrap;
-}
-
-.detail-card{
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:24px;
-}
-
-.detail-field{
-  margin-bottom:20px;
-}
-.detail-field:last-child{ margin-bottom:0; }
-
-.detail-label{
-  font-size:12px;
-  font-weight:500;
-  color:var(--text-muted);
-  display:block;
-  margin-bottom:8px;
-}
-
-textarea.form-input{
-  resize:vertical;
-  min-height:70px;
-}
-
-.skills-chip-wrap{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:10px;
-}
-
-.skill-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size:13px;
-  color:white;
-  background:var(--brand);
-  border-radius:100px;
-  padding:6px 8px 6px 14px;
-}
-.skill-chip button{
-  background:rgba(255,255,255,.25);
-  border:none;
-  color:white;
-  border-radius:50%;
-  width:18px;
-  height:18px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  font-size:11px;
-  line-height:1;
-}
-.skill-chip button:hover{ background:rgba(255,255,255,.4); }
-
-.entry-row-wrap{
-  margin-bottom:10px;
-}
-.entry-row-wrap .entry-row{
-  margin-bottom:6px;
-}
-
-.entry-row{
-  display:grid;
-  grid-template-columns:1.4fr 1.4fr .8fr .8fr auto;
-  gap:10px;
-  margin-bottom:10px;
-  align-items:center;
-}
-
-select.form-input{
-  cursor:pointer;
-}
-
-.btn-remove-entry{
-  background:rgba(215,154,154,.15);
-  color:#a05858;
-  border:none;
-  border-radius:8px;
-  padding:10px 12px;
-  cursor:pointer;
-  font-size:13px;
-  font-family:'DM Sans', Arial, sans-serif;
-}
-.btn-remove-entry:hover{ opacity:.8; }
-
-.btn-add-entry{
-  background:rgba(93,127,163,.08);
-  color:var(--brand);
-  border:1px solid rgba(93,127,163,.25);
-  border-radius:100px;
-  padding:8px 16px;
-  font-size:13px;
-  font-weight:500;
-  cursor:pointer;
-  font-family:'DM Sans', Arial, sans-serif;
-}
-.btn-add-entry:hover{ opacity:.85; }
-
-.btn-save-profile{
-  background:var(--brand);
-  color:white;
-  border:none;
-  border-radius:12px;
-  padding:12px 24px;
-  font-size:14px;
-  font-weight:500;
-  font-family:'DM Sans', Arial, sans-serif;
-  cursor:pointer;
-  margin-top:4px;
-}
-.btn-save-profile:hover{ opacity:.88; }
-.btn-save-profile:disabled{ opacity:.6; cursor:not-allowed; }
-
-.detail-empty-note{
-  font-size:12px;
-  color:var(--text-muted);
-  font-style:italic;
-  margin-bottom:10px;
-}
-
-@media(max-width:640px){
-  .entry-row{ grid-template-columns:1fr; }
-}
-
-.job-row-item{
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:16px 20px;
-  margin-bottom:10px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  cursor:pointer;
-  transition:border-color .2s, transform .2s;
-}
-.job-row-item:hover{
-  border-color:var(--brand);
-  transform:translateY(-1px);
-}
-.job-row-title{ font-size:14px; font-weight:500; color:var(--text); margin-bottom:3px; }
-.job-row-meta{ font-size:12px; color:var(--text-muted); }
-.job-row-status{
-  font-size:11px;
-  font-weight:500;
-  padding:4px 12px;
-  border-radius:100px;
-  border:1px solid var(--border);
-  color:var(--text-muted);
-  white-space:nowrap;
-  flex-shrink:0;
-}
-.job-row-status.status-accepted{ border-color:var(--sage); color:#2d8a57; background:rgba(140,182,155,.12); }
-.job-row-status.status-rejected{ border-color:#D79A9A; color:#a05858; background:rgba(215,154,154,.12); }
-
-.job-list-view-all{
-  display:block;
-  text-align:center;
-  font-size:13px;
-  font-weight:500;
-  color:var(--brand);
-  text-decoration:none;
-  padding:12px;
-}
-.job-list-view-all:hover{ text-decoration:underline; }
-
-.job-row-actions{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-end;
-  gap:8px;
-  flex-shrink:0;
-}
-.job-row-buttons{
-  display:flex;
-  gap:6px;
-}
-.job-row-actions.job-row-actions-inline{
-  flex-direction:row;
-  align-items:center;
-  gap:8px;
-}
-.job-action-btn{
-  font-size:11px;
-  font-weight:500;
-  padding:5px 12px;
-  border-radius:100px;
-  border:1px solid var(--border);
-  background:white;
-  cursor:pointer;
-  font-family:'DM Sans', Arial, sans-serif;
-  transition:all .2s;
-  white-space:nowrap;
-}
-.job-action-btn:hover{ border-color:var(--brand); color:var(--brand); }
-.job-action-btn.apply{ color:#2d8a57; border-color:var(--sage); background:rgba(140,182,155,.08); }
-.job-action-btn.apply:hover{ background:rgba(140,182,155,.18); border-color:var(--sage); color:#2d8a57; }
-.job-action-btn.restore{ color:var(--text-muted); }
-
-.field-error{
-  font-size:11px;
-  color:#a05858;
-  margin-top:-4px;
-  margin-bottom:8px;
-}
-
-.toast{
-  position:fixed;
-  bottom:32px;
-  left:50%;
-  transform:translateX(-50%) translateY(80px);
-  background:var(--text);
-  color:white;
-  padding:10px 20px;
-  border-radius:100px;
-  font-size:13px;
-  font-weight:500;
-  transition:transform .3s ease;
-  z-index:200;
-  white-space:nowrap;
-}
-.toast.show{ transform:translateX(-50%) translateY(0); }
-
-.link-card{
-  flex:1;
-  min-width:200px;
-  display:block;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:20px;
-  text-decoration:none;
-  color:var(--text);
-  transition:border-color .2s, transform .2s;
-}
-
-.link-card:hover{
-  border-color:var(--brand);
-  transform:translateY(-2px);
-}
-
-.link-card .icon{
-  font-size:1.3rem;
-  margin-bottom:8px;
-  display:block;
-}
-
-.link-card .label{
-  font-weight:500;
-  font-size:15px;
-}
-
-.link-card .sub{
-  font-size:13px;
-  color:var(--text-muted);
-  margin-top:2px;
-  font-weight:300;
-}
-
-.link-card .sub a{
-  color:var(--brand);
-  text-decoration:underline;
-}
-
-.resume-card-wrap{
-  flex:1;
-  min-width:200px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
-.resume-card-wrap .link-card{
-  flex:1;
-  min-width:0;
-}
-#resume-replace-link{
-  font-size:12px;
-  color:var(--text-muted);
-  text-decoration:underline;
-  text-align:center;
-}
-#resume-replace-link:hover{ color:var(--brand); }
-
-@media(max-width:640px){
   nav{
-    padding:0 18px;
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    height: 64px;
   }
-
-  .nav-links{
-    gap:14px;
+  .logo{
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--brand);
+    letter-spacing: -0.5px;
+    text-decoration:none;
   }
-
+  .logo span{ color: var(--sage); }
+  .nav-links{ display:flex; gap:32px; align-items:center; }
   .nav-links a{
+    text-decoration:none;
+    color:var(--text-muted);
+    font-size:14px;
+    padding:6px 0;
+    border-bottom:2px solid transparent;
+    transition:color .2s, border-color .2s;
+  }
+  .nav-links a.active{ color:var(--text); border-bottom-color:var(--brand); }
+  .nav-links a:hover{ color:var(--text); }
+
+  .page{
+    max-width:880px;
+    margin:0 auto;
+    padding:56px 6% 100px;
+  }
+
+  .demo-banner{
+    background:#FFF6E9;
+    border:1px solid #F0DDB8;
+    color:#8A6116;
     font-size:13px;
+    border-radius:12px;
+    padding:10px 16px;
+    margin-bottom:32px;
   }
 
   .profile-card{
-    padding:24px;
-    align-items:flex-start;
+    display:flex;
+    align-items:center;
+    gap:22px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:32px;
+    margin-bottom:40px;
+    min-width:0;
   }
-
-  .setup-banner{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-
-  .setup-cta{
-    width:100%;
-    text-align:center;
-  }
-
   .avatar{
-    width:60px;
-    height:60px;
-    font-size:1.35rem;
+    width:76px; height:76px;
+    border-radius:50%;
+    background:var(--brand);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'DM Serif Display', serif;
+    font-size:1.7rem;
+    color:white;
+    flex-shrink:0;
+  }
+  .profile-info{ min-width:0; flex:1; }
+  .profile-info h1{
+    font-family:'DM Serif Display', serif;
+    font-size:1.6rem;
+    letter-spacing:-0.5px;
+    color:var(--text);
+    margin-bottom:4px;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+    white-space:normal;
+  }
+  .profile-info p{
+    color:var(--text-muted);
+    font-size:14px;
+    font-weight:300;
+    word-wrap:break-word;
+    overflow-wrap:break-word;
+    white-space:normal;
+  }
+  .headline-empty{
+    color:#9BA8B3;
+    font-style:italic;
+  }
+  [contenteditable="true"]{
+    outline:none;
+    border-radius:6px;
+    transition:background .15s;
+  }
+  [contenteditable="true"]:hover{
+    background:rgba(93,127,163,0.06);
+  }
+  [contenteditable="true"]:focus{
+    background:rgba(93,127,163,0.08);
+  }
+  [contenteditable="true"]:empty::before{
+    content: attr(data-placeholder);
+    color:#9BA8B3;
+    font-style:italic;
+  }
+  #profile-name:empty::before{
+    font-style:normal;
+    font-family:'DM Serif Display', serif;
   }
 
-  .page{
-    padding-top:36px;
+  .section{ margin-bottom:40px; }
+  .section-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:16px;
   }
-}
+  .section-header h2{
+    font-family:'DM Serif Display', serif;
+    font-size:1.15rem;
+    letter-spacing:-0.3px;
+    color:var(--text);
+  }
+  .section-count{
+    font-size:12px;
+    color:var(--brand);
+    background:var(--brand-tint);
+    padding:3px 12px;
+    border-radius:100px;
+  }
 
-.mini-footer{ text-align:center; padding:24px 6% 40px; font-size:12px; color:var(--text-muted); }
-.mini-footer a{ color:var(--text-muted); text-decoration:none; }
-.mini-footer a:hover{ color:var(--brand); }
+  .job-list{ display:flex; flex-direction:column; gap:10px; }
+  .job-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px 18px;
+  }
+  .job-logo{
+    width:40px; height:40px;
+    border-radius:11px;
+    background:var(--brand-tint);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem;
+    flex-shrink:0;
+  }
+  .job-meta{ flex:1; min-width:0; }
+  .job-title{ font-weight:500; font-size:15px; color:var(--text); }
+  .job-company{ font-size:13px; color:var(--text-muted); }
+  .job-tag{
+    font-size:12px;
+    font-weight:500;
+    padding:4px 12px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .tag-applied{ background:var(--mint-tint); color:#3a9463; }
+  .tag-skipped{ background:var(--rose-tint); color:#a05858; }
+
+  .empty-state{
+    background:var(--card-bg);
+    border:1px dashed var(--border);
+    border-radius:14px;
+    padding:28px;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+  }
+
+  .links-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .link-card{
+    flex:1;
+    min-width:200px;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:20px;
+    text-decoration:none;
+    color:var(--text);
+    transition:border-color .2s, transform .2s;
+  }
+  .link-card:hover{ border-color:var(--brand); transform:translateY(-2px); }
+  .link-card .icon{ font-size:1.3rem; margin-bottom:8px; display:block; }
+  .link-card .label{ font-weight:500; font-size:15px; }
+  .link-card .sub{ font-size:13px; color:var(--text-muted); margin-top:2px; font-weight:300; }
 </style>
 </head>
-
 <body>
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
   <div class="nav-links">
     <a href="account.html" class="active">Account</a>
-    <a href="my-jobs.html">My jobs</a>
-    <a href="swipe.html" id="nav-swipe-link" style="display:none;">Swipe</a>
+    <a href="swipe.html">Swipe</a>
   </div>
-  <button class="nav-signout" onclick="signOutFromNav()">Sign out</button>
 </nav>
 
-<div class="loading" id="loading">Loading your account...</div>
-
-<div class="page" id="page">
-
-  <div class="setup-banner" id="setup-banner" style="display:none;">
-    <div class="setup-text">
-      <div class="setup-title" id="setup-title"></div>
-      <div class="setup-sub" id="setup-sub"></div>
-    </div>
-    <a class="setup-cta" id="setup-cta" href="#"></a>
-  </div>
+<div class="page">
 
   <div class="profile-card">
-    <div class="avatar">
-      <span id="avatar-initials">?</span>
+    <div class="avatar" id="avatar">
+      <span id="avatar-initials">LU</span>
     </div>
-
     <div class="profile-info">
-      <h1 id="profile-name" data-placeholder="Your name"></h1>
-      <p class="name-lock-note">
-        <a href="#" id="name-change-toggle" onclick="toggleNameChangeForm(); return false;">Change your name</a>
-      </p>
-
-      <div class="name-change-form" id="name-change-form" style="display:none;">
-        <input type="text" id="name-change-input" placeholder="New name" maxlength="60" />
-        <button type="button" class="name-change-submit" id="name-change-submit" onclick="submitNameChange()">Send confirmation email</button>
-        <p class="name-change-status" id="name-change-status"></p>
-      </div>
+      <h1 id="profile-name" contenteditable="true" data-placeholder="Your name" onblur="saveField('profileName', this)"></h1>
+      <p id="profile-headline" contenteditable="true" class="headline-empty" data-placeholder="Add a headline" onblur="saveField('profileHeadline', this)" onfocus="clearPlaceholder(this)"></p>
     </div>
   </div>
 
@@ -738,13 +250,8 @@ select.form-input{
     <div class="section-header">
       <h2>Applied jobs</h2>
     </div>
-    <!-- Search filters any element with class "job-row-item" inside #applied-jobs-list
-         by its text content. Works today with zero applied jobs; once real applied-job
-         cards are rendered here, give each card class="job-row-item" and search
-         will filter them automatically with no further changes. -->
-    <input type="text" class="form-input" id="applied-search-input" placeholder="Search applied jobs by title or company…" autocomplete="off" oninput="filterJobList('applied')" style="margin-bottom: 12px;">
-    <div id="applied-jobs-list">
-      <div class="empty-state" id="applied-empty-state">No applied jobs yet. Once you swipe right on a job, you'll see it here.</div>
+    <div class="empty-state">
+      No applied jobs yet. Once you swipe right on a job, you'll see it here.
     </div>
   </div>
 
@@ -752,9 +259,8 @@ select.form-input{
     <div class="section-header">
       <h2>Skipped jobs</h2>
     </div>
-    <input type="text" class="form-input" id="skipped-search-input" placeholder="Search skipped jobs by title or company…" autocomplete="off" oninput="filterJobList('skipped')" style="margin-bottom: 12px;">
-    <div id="skipped-jobs-list">
-      <div class="empty-state" id="skipped-empty-state">No skipped jobs yet. Once you swipe left on a job, you'll see it here.</div>
+    <div class="empty-state">
+      No skipped jobs yet. Once you swipe left on a job, you'll see it here.
     </div>
   </div>
 
@@ -762,742 +268,175 @@ select.form-input{
     <div class="section-header">
       <h2>Settings</h2>
     </div>
-
     <div class="links-row">
-      <a href="my-interviews.html" class="link-card">
-        <span class="icon">📅</span>
-        <div class="label">Interviews</div>
-        <div class="sub">Interviews employers have scheduled with you</div>
-      </a>
-
-      <a href="profile-details.html" class="link-card">
-        <span class="icon">📝</span>
-        <div class="label">Profile details</div>
-        <div class="sub">Summary, skills, experience, education</div>
-      </a>
-
       <a href="preferences.html" class="link-card">
         <span class="icon">⚙️</span>
         <div class="label">Edit preferences</div>
         <div class="sub">Update salary, location, work style</div>
       </a>
-
-      <div class="resume-card-wrap">
-        <a href="align-upload.html" class="link-card" id="resume-card">
-          <span class="icon">📄</span>
-          <div class="label" id="resume-card-label">Upload resume</div>
-          <div class="sub" id="resume-card-sub">Add your resume so employers can see your background</div>
-        </a>
-        <a href="align-upload.html" id="resume-replace-link" style="display:none;">Replace resume</a>
-      </div>
-
-      <a href="set-password.html" class="link-card" id="add-password-card" style="display:none;">
-        <span class="icon">🔑</span>
-        <div class="label">Add a password</div>
-        <div class="sub">Optional — lets you sign in with email too, not just Google/Apple</div>
+      <a href="align-upload.html" class="link-card">
+        <span class="icon">📄</span>
+        <div class="label">Update resume</div>
+        <div class="sub">Replace or re-upload your resume</div>
       </a>
-
-      <a href="account-settings.html" class="link-card">
+      <a href="#" class="link-card" onclick="setPassword(); return false;">
         <span class="icon">🔒</span>
-        <div class="label">Account settings</div>
-        <div class="sub">Password, linked accounts, sign out</div>
+        <div class="label">Set Password</div>
+        <div class="sub">Create a password for email login</div>
       </a>
     </div>
   </div>
 
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
-const SUPABASE_URL = 'https://auth.alygnn.com';
-const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-async function signOutFromNav() {
-  await sb.auth.signOut();
-  window.location.href = 'index.html';
-}
-
-let currentUserId = null;
-
-const pageEl = document.getElementById('page');
-const loadingEl = document.getElementById('loading');
-const nameEl = document.getElementById('profile-name');
-const initialsEl = document.getElementById('avatar-initials');
-const resumeCard = document.getElementById('resume-card');
-const resumeLabel = document.getElementById('resume-card-label');
-const resumeSub = document.getElementById('resume-card-sub');
-const resumeReplaceLink = document.getElementById('resume-replace-link');
-let currentResumeFilePath = null;
-
-function toggleNameChangeForm() {
-  const form = document.getElementById('name-change-form');
-  const isOpen = form.style.display !== 'none';
-  form.style.display = isOpen ? 'none' : 'flex';
-  if (!isOpen) document.getElementById('name-change-input').focus();
-}
-
-async function submitNameChange() {
-  const input = document.getElementById('name-change-input');
-  const status = document.getElementById('name-change-status');
-  const btn = document.getElementById('name-change-submit');
-  const newName = input.value.trim();
-
-  if (newName.length < 2) {
-    status.textContent = 'Enter a name with at least 2 characters.';
-    status.style.color = '#a05858';
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-  status.textContent = '';
-
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      status.textContent = 'Please sign in again and retry.';
-      status.style.color = '#a05858';
-      return;
+  // Keep the website candidate account on the SAME per-tab Supabase session
+  // used by login.html. Without this, login stores the session in sessionStorage
+  // but account.html looks in Supabase's default localStorage, sees no session,
+  // and immediately sends the user back to login.html.
+  function alygnnAuthStorageKey() {
+    let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+    if (!tabId) {
+      tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+      window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
     }
-
-    const res = await fetch(SUPABASE_URL + '/functions/v1/request-name-change', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + session.access_token,
-      },
-      body: JSON.stringify({ newName }),
-    });
-
-    const result = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      status.textContent = result.error || 'Could not send confirmation email. Please try again.';
-      status.style.color = '#a05858';
-      return;
-    }
-
-    status.textContent = 'Check your email — click the link there to confirm the change.';
-    status.style.color = '#2d8a57';
-    input.value = '';
-  } catch (err) {
-    console.error('submitNameChange error:', err);
-    status.textContent = 'Something went wrong. Please try again.';
-    status.style.color = '#a05858';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send confirmation email';
-  }
-}
-
-function showPage(){
-  loadingEl.classList.add('hide');
-  pageEl.classList.add('ready');
-}
-
-const JOB_LIST_PREVIEW_LIMIT = 3;
-
-// Shows only the first N rows in a job list, with a "view all" link
-// appended if there are more. Called after every render (loadAppliedJobs /
-// loadSkippedJobs) and again whenever the search box is cleared.
-function applyJobListPreview(kind){
-  const list = document.getElementById(kind + '-jobs-list');
-  if(!list) return;
-
-  const existingLink = document.getElementById(kind + '-view-all-link');
-  if(existingLink) existingLink.remove();
-
-  const rows = [...list.querySelectorAll('.job-row-item')];
-  rows.forEach((row, i) => {
-    row.style.display = i < JOB_LIST_PREVIEW_LIMIT ? '' : 'none';
-  });
-
-  if(rows.length > JOB_LIST_PREVIEW_LIMIT){
-    const link = document.createElement('a');
-    link.id = kind + '-view-all-link';
-    link.href = 'my-jobs.html';
-    link.className = 'job-list-view-all';
-    link.textContent = `… view all ${rows.length} ${kind === 'applied' ? 'applied' : 'skipped'} jobs →`;
-    list.appendChild(link);
-  }
-}
-
-// Filters any element with class "job-row-item" inside the given list
-// (#applied-jobs-list or #skipped-jobs-list) by its text content. Safe to
-// call with zero jobs — future code that renders real applied/skipped job
-// cards just needs to give each card class="job-row-item" and this will
-// work automatically with no further changes.
-//
-// While a search query is present, this searches every row regardless of
-// the 3-row preview collapse (so a match that's currently hidden by
-// "view all" still surfaces). Clearing the search restores the collapse.
-function filterJobList(kind){
-  const input = document.getElementById(kind + '-search-input');
-  const list = document.getElementById(kind + '-jobs-list');
-  const emptyState = document.getElementById(kind + '-empty-state');
-  if(!input || !list) return;
-
-  const query = input.value.trim().toLowerCase();
-
-  if(!query){
-    applyJobListPreview(kind);
-    const cards = list.querySelectorAll('.job-row-item');
-    if(emptyState && cards.length > 0) emptyState.style.display = 'none';
-    return;
+    return `alygnn-auth-${tabId}`;
   }
 
-  const link = document.getElementById(kind + '-view-all-link');
-  if(link) link.style.display = 'none';
-
-  const cards = list.querySelectorAll('.job-row-item');
-  let visibleCount = 0;
-
-  cards.forEach(card => {
-    const matches = card.textContent.toLowerCase().includes(query);
-    card.style.display = matches ? '' : 'none';
-    if(matches) visibleCount++;
-  });
-
-  if(emptyState && cards.length > 0){
-    emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-  }
-}
-
-let toastTimer;
-function showToast(msg, actionFn){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  t.style.cursor = actionFn ? 'pointer' : 'default';
-  t.onclick = actionFn ? () => { actionFn(); t.classList.remove('show'); } : null;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), actionFn ? 6000 : 2600);
-}
-
-// Advisory only — never blocks saving. Reuses the same AI-backed check
-// the requirements/benefits picker uses, but purely to offer a "did you
-// mean X?" suggestion the person can tap to accept. Because it can't
-// block anything, a case it judges wrong (like it once did with "fl
-// consulting") just means no suggestion shows up — not a locked-out save.
-// NOTE: this pair (checkRealisticText/checkFieldSpelling) now also lives
-// on profile-details.html, which is where they're actually used — kept
-// here too only if other code on this page still calls them.
-
-// Loads this candidate's own applications (RLS already lets a candidate
-// read their own rows) and joins in the job's title/company/location so
-// the "Applied jobs" list actually shows something, instead of the
-// static empty state it always displayed before. Each row is clickable
-// and takes the person to job-details.html for the full listing plus
-// their application status.
-async function loadAppliedJobs(){
-  if(!currentUserId) return;
-
-  const listEl = document.getElementById('applied-jobs-list');
-  const emptyState = document.getElementById('applied-empty-state');
-
-  const { data: apps, error: appsError } = await sb
-    .from('applications')
-    .select('id, job_id, status, applied_at')
-    .eq('candidate_id', currentUserId)
-    .order('applied_at', { ascending: false });
-
-  if(appsError){
-    console.error('Failed to load applied jobs:', appsError);
-    return;
-  }
-
-  if(!apps || apps.length === 0){
-    return; // static empty state in the HTML already covers this
-  }
-
-  const jobIds = [...new Set(apps.map(a => a.job_id))];
-
-  const { data: jobsData, error: jobsError } = await sb
-    .from('jobs')
-    .select('id, title, company, location, job_type')
-    .in('id', jobIds);
-
-  if(jobsError){
-    console.error('Failed to load job details for applied jobs:', jobsError);
-  }
-
-  const jobMap = {};
-  (jobsData || []).forEach(j => { jobMap[j.id] = j; });
-
-  const rows = apps
-    .map(app => ({ app, job: jobMap[app.job_id] }))
-    .filter(r => r.job);
-
-  if(rows.length === 0) return;
-
-  listEl.innerHTML = rows.map(({ app, job }) => {
-    const statusClass = app.status === 'accepted' ? 'status-accepted'
-      : app.status === 'rejected' ? 'status-rejected' : '';
-    const statusLabel = app.status === 'accepted' ? 'Accepted'
-      : app.status === 'rejected' ? 'Not selected' : 'Applied';
-
-    const metaParts = [job.company, job.job_type, job.location].filter(Boolean).join(' · ');
-    const detailsUrl = `job-details.html?job=${encodeURIComponent(job.id)}&app=${encodeURIComponent(app.id)}`;
-    const jobIdAttr = escapeHtml(job.id);
-
-    // Only offer "Skip" (withdraw) while the application is still pending —
-    // once an employer has accepted or rejected it, there's a real decision
-    // on record and this shouldn't let the person quietly erase that.
-    const skipButtonHtml = app.status === 'applied' || !app.status
-      ? `<div class="job-row-buttons">
-          <button type="button" class="job-action-btn restore" onclick="event.stopPropagation(); withdrawApplication('${jobIdAttr}')">Skip</button>
-        </div>`
-      : '';
-
-    return `
-      <div class="job-row-item" role="button" tabindex="0"
-        onclick="window.location.href='${detailsUrl}'"
-        onkeydown="if(event.key==='Enter'){ window.location.href='${detailsUrl}'; }">
-        <div style="flex:1; min-width:0;">
-          <div class="job-row-title">${escapeHtml(job.title || 'Untitled role')}</div>
-          <div class="job-row-meta">${escapeHtml(metaParts)}</div>
-        </div>
-        <div class="job-row-actions job-row-actions-inline">
-          <span class="job-row-status ${statusClass}">${statusLabel}</span>
-          ${skipButtonHtml}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  if(emptyState) emptyState.style.display = 'none';
-  applyJobListPreview('applied');
-}
-
-// Mirrors applyFromSkipped() in the other direction — removes the
-// application (so it no longer shows on the employer's Candidates page)
-// and records it as a skip instead, in case someone applied by mistake.
-async function withdrawApplication(jobId){
-  if(!currentUserId || !jobId) return;
-
-  const { error: deleteError } = await sb
-    .from('applications')
-    .delete()
-    .eq('candidate_id', currentUserId)
-    .eq('job_id', jobId);
-
-  if(deleteError){
-    console.error('Failed to withdraw application:', deleteError);
-    showToast('Could not skip — try again.');
-    return;
-  }
-
-  const { error: insertError } = await sb
-    .from('skipped_jobs')
-    .insert({ candidate_id: currentUserId, job_id: jobId });
-
-  if(insertError && insertError.code !== '23505'){
-    console.error('Failed to record skip after withdrawing:', insertError);
-  }
-
-  showToast('Moved to skipped.');
-  await loadAppliedJobs();
-  await loadSkippedJobs();
-}
-
-// Mirrors loadAppliedJobs() for the "Skipped jobs" list — reads this
-// candidate's own skipped_jobs rows (RLS: auth.uid() = candidate_id) and
-// joins in the job's title/company/location. Each row links to
-// job-details.html with just a job id (no app id, since a skip never
-// creates an application row) — job-details.html already handles that
-// case gracefully by simply not showing an application-status badge.
-async function loadSkippedJobs(){
-  if(!currentUserId) return;
-
-  const listEl = document.getElementById('skipped-jobs-list');
-  const emptyState = document.getElementById('skipped-empty-state');
-
-  const { data: skips, error: skipsError } = await sb
-    .from('skipped_jobs')
-    .select('id, job_id, skipped_at')
-    .eq('candidate_id', currentUserId)
-    .order('skipped_at', { ascending: false });
-
-  if(skipsError){
-    console.error('Failed to load skipped jobs:', skipsError);
-    return;
-  }
-
-  if(!skips || skips.length === 0){
-    return; // static empty state in the HTML already covers this
-  }
-
-  const jobIds = [...new Set(skips.map(s => s.job_id))];
-
-  const { data: jobsData, error: jobsError } = await sb
-    .from('jobs')
-    .select('id, title, company, location, job_type')
-    .in('id', jobIds);
-
-  if(jobsError){
-    console.error('Failed to load job details for skipped jobs:', jobsError);
-  }
-
-  const jobMap = {};
-  (jobsData || []).forEach(j => { jobMap[j.id] = j; });
-
-  const rows = skips
-    .map(skip => ({ skip, job: jobMap[skip.job_id] }))
-    .filter(r => r.job);
-
-  if(rows.length === 0) return;
-
-  listEl.innerHTML = rows.map(({ job }) => {
-    const metaParts = [job.company, job.job_type, job.location].filter(Boolean).join(' · ');
-    const detailsUrl = `job-details.html?job=${encodeURIComponent(job.id)}`;
-    const jobIdAttr = escapeHtml(job.id);
-
-    return `
-      <div class="job-row-item" role="button" tabindex="0"
-        onclick="window.location.href='${detailsUrl}'"
-        onkeydown="if(event.key==='Enter'){ window.location.href='${detailsUrl}'; }">
-        <div>
-          <div class="job-row-title">${escapeHtml(job.title || 'Untitled role')}</div>
-          <div class="job-row-meta">${escapeHtml(metaParts)}</div>
-        </div>
-        <div class="job-row-actions">
-          <div class="job-row-buttons">
-            <button type="button" class="job-action-btn apply" onclick="event.stopPropagation(); applyFromSkipped('${jobIdAttr}')">Apply</button>
-            <button type="button" class="job-action-btn restore" onclick="event.stopPropagation(); restoreSkippedJob('${jobIdAttr}')">Undo skip</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  if(emptyState) emptyState.style.display = 'none';
-  applyJobListPreview('skipped');
-}
-
-// Lets someone fix an accidental skip directly from the account page —
-// "Apply" records a real application (same insert loadAppliedJobs already
-// reads) and removes the skipped_jobs row so the job doesn't show up in
-// both lists at once. "Undo skip" just removes the skipped_jobs row,
-// which puts the job back into rotation in the swipe deck (loadJobs()
-// there excludes anything still in skipped_jobs).
-async function applyFromSkipped(jobId){
-  if(!currentUserId || !jobId) return;
-
-  const { error: insertError } = await sb
-    .from('applications')
-    .insert({ candidate_id: currentUserId, job_id: jobId, status: 'applied' });
-
-  if(insertError && insertError.code !== '23505'){
-    console.error('Failed to apply from skipped list:', insertError);
-    showToast('Could not apply — try again.');
-    return;
-  }
-
-  const { error: deleteError } = await sb
-    .from('skipped_jobs')
-    .delete()
-    .eq('candidate_id', currentUserId)
-    .eq('job_id', jobId);
-
-  if(deleteError){
-    console.error('Failed to clear skipped row after applying:', deleteError);
-  }
-
-  showToast('✓ Added to applications!');
-  await loadAppliedJobs();
-  await loadSkippedJobs();
-}
-
-async function restoreSkippedJob(jobId){
-  if(!currentUserId || !jobId) return;
-
-  const { error } = await sb
-    .from('skipped_jobs')
-    .delete()
-    .eq('candidate_id', currentUserId)
-    .eq('job_id', jobId);
-
-  if(error){
-    console.error('Failed to undo skip:', error);
-    showToast('Could not undo — try again.');
-    return;
-  }
-
-  showToast('Undone — you\'ll see this job again in your swipe deck.');
-  await loadSkippedJobs();
-}
-
-function getInitials(name){
-  if(!name) return '?';
-
-  return name
-    .trim()
-    .split(/\s+/)
-    .map(part => part[0])
-    .join('')
-    .substring(0, 2)
-    .toUpperCase();
-}
-
-function limitLength(el, max){
-  el.addEventListener('input', () => {
-    if(el.textContent.length > max){
-      el.textContent = el.textContent.slice(0, max);
-
-      const range = document.createRange();
-      const sel = window.getSelection();
-
-      range.selectNodeContents(el);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: window.sessionStorage,
+      storageKey: alygnnAuthStorageKey(),
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
     }
   });
-}
 
-async function saveProfileField(column, value){
-  if(!currentUserId) return;
+  let currentUserId = null;
 
-  const { error } = await sb
-    .from('profiles')
-    .upsert({
+  function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  }
+
+  async function saveField(key, el) {
+    if (!currentUserId) return;
+    const value = el.textContent.trim();
+    const column = key === 'profileName' ? 'full_name' : 'headline';
+    const { error } = await sb.from('profiles').upsert({
       id: currentUserId,
-      [column]: value
+      [column]: value,
     });
-
-  if(error){
-    console.error('Failed to save profile field:', error);
-    return;
+    if (error) console.error('Failed to save', column, error);
+    if (column === 'full_name') {
+      document.getElementById('avatar-initials').textContent = getInitials(value);
+    }
   }
 
-  if(column === 'full_name'){
-    initialsEl.textContent = getInitials(value);
-  }
-}
-
-function renderResumeCardFast(resumeFilePath, resumeData){
-  currentResumeFilePath = resumeFilePath || null;
-
-  if(!resumeFilePath && !resumeData){
-    resumeLabel.textContent = 'Upload resume';
-    resumeSub.textContent = 'Add your resume so employers can see your background';
-    resumeCard.href = 'align-upload.html';
-    resumeCard.removeAttribute('target');
-    resumeCard.onclick = null;
-    resumeReplaceLink.style.display = 'none';
-    return;
+  function clearPlaceholder(el){
+    // Prevents the italic placeholder styling from sticking once typing starts
+    el.classList.remove('headline-empty');
   }
 
-  if(!resumeFilePath && resumeData){
-    // Resume was built with the Alygnn resume builder (resume_data saved to
-    // the profile) but no file exists in Storage yet — most often because
-    // the generated-file upload silently failed. There's nothing in
-    // Storage to open with a signed URL, so send them back to the builder,
-    // which is where resume_data actually lives and can be edited.
-    resumeLabel.textContent = 'View resume';
-    resumeSub.textContent = 'Open the resume you built on Alygnn';
-    resumeCard.href = 'resume-builder.html?view=1';
-    resumeCard.removeAttribute('target');
-    resumeCard.onclick = null;
-    resumeReplaceLink.style.display = 'none';
-    return;
+  function limitLength(el, max){
+    el.addEventListener('input', function(){
+      if(el.textContent.length > max){
+        el.textContent = el.textContent.slice(0, max);
+        // move cursor to end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
   }
 
-  // FIX: this previously just relabeled the card to say "View resume" but
-  // left its href pointing at align-upload.html — the upload flow — so
-  // clicking it always sent the person back to "drop your resume here"
-  // instead of actually opening the file they'd already uploaded. Now it
-  // fetches a short-lived signed URL for the real file in storage and
-  // opens that. Replacing the file still needs align-upload.html, so
-  // that's kept as its own small link beneath the card.
-  resumeLabel.textContent = 'View resume';
-  resumeSub.textContent = 'Open your uploaded resume';
-  resumeCard.href = '#';
-  resumeCard.onclick = openResumeFile;
-  resumeReplaceLink.style.display = 'block';
-}
+  limitLength(document.getElementById('profile-name'), 60);
+  limitLength(document.getElementById('profile-headline'), 200);
 
-async function openResumeFile(e){
-  e.preventDefault();
-  if(!currentResumeFilePath) return;
+  async function waitForSession(maxWaitMs = 5000) {
+    const started = Date.now();
+    let result = await sb.auth.getSession();
+    let session = result.data.session;
 
-  const orig = resumeLabel.textContent;
-  resumeLabel.textContent = 'Opening…';
+    while (!session && Date.now() - started < maxWaitMs) {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      result = await sb.auth.getSession();
+      session = result.data.session;
+    }
 
-  const { data, error } = await sb.storage
-    .from('resumes')
-    .createSignedUrl(currentResumeFilePath, 60);
-
-  resumeLabel.textContent = orig;
-
-  if(error || !data?.signedUrl){
-    console.error('Failed to get resume URL:', error);
-    showToast('Could not open resume — try again.');
-    return;
+    return session;
   }
 
-  window.open(data.signedUrl, '_blank');
-}
+  async function initAccountPage() {
+    const session = await waitForSession();
 
-function escapeHtml(value){
-  return String(value || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-
-async function initAccountPage(){
-  const {
-    data: { session }
-  } = await sb.auth.getSession();
-
-  if(!session){
-    window.location.href = 'login.html';
-    return;
-  }
-
-  currentUserId = session.user.id;
-
-  // A user can have a candidate-style profile row AND still be an active
-  // employer teammate. Team membership takes priority for routing.
-  //
-  // Do NOT change them into the company owner. Their role/permissions live
-  // in company_members and get_my_team_operational_state().
-  try{
-    const teamRouteResult = await Promise.race([
-      sb.rpc('get_my_team_operational_state'),
-      new Promise(resolve => setTimeout(
-        () => resolve({data:null,error:{message:'team route timeout'}}),
-        2500
-      ))
-    ]);
-
-    const runtime = teamRouteResult?.data;
-    if(
-      !teamRouteResult?.error &&
-      runtime?.has_company === true &&
-      runtime?.access?.is_owner === false
-    ){
-      window.location.replace('employer-dashboard.html?team_member=1');
+    if (!session) {
+      window.location.href = 'login.html';
       return;
     }
-  }catch(teamRouteError){
-    console.warn('Could not check employer team membership:', teamRouteError);
-  }
 
-  const { data: profile, error } = await sb
-    .from('profiles')
-    .select('has_password, role, full_name, resume_file_path, resume_data, preferences')
-    .eq('id', currentUserId)
-    .maybeSingle();
+    currentUserId = session.user.id;
 
-  if(error && error.code !== 'PGRST116'){
-    console.error('Failed to load profile:', error);
-  }
-
-  // Supabase already knows how someone authenticated via user.identities —
-  // if they have an 'email' identity, they set a password at signup, full
-  // stop. Only OAuth-only users (Google/Apple) genuinely might not have a
-  // password yet.
-  //
-  // CHANGE: this used to force a redirect to set-password.html before
-  // letting a Google/Apple user do anything else on their account. That's
-  // unnecessary friction right after the exact signup flow someone chose
-  // specifically to avoid typing a password — so now it's an optional
-  // "Add password" card in Settings instead of a mandatory gate.
-  const identities = session.user.identities || [];
-  const hasEmailIdentity = identities.some(i => i.provider === 'email');
-  const needsPassword = !hasEmailIdentity && !profile?.has_password;
-
-  // Backfill: only for genuine email/password signups whose signup-time
-  // upsert silently failed (e.g. RLS blocked the write because no session
-  // existed yet during email confirmation). OAuth users who haven't set a
-  // password yet must NOT be backfilled here — that would incorrectly mark
-  // them as having one when they don't.
-  if(hasEmailIdentity && !profile?.has_password){
-    const { error: backfillError } = await sb
+    const { data: profile, error } = await sb
       .from('profiles')
-      .upsert({ id: currentUserId, has_password: true }, { onConflict: 'id' });
-    if(backfillError){
-      console.error('Failed to backfill has_password:', backfillError);
+      .select('full_name, headline')
+      .eq('id', currentUserId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Failed to load profile', error);
+    }
+
+    const nameEl = document.getElementById('profile-name');
+    const headlineEl = document.getElementById('profile-headline');
+
+    const fullName =
+      profile?.full_name ||
+      session.user.user_metadata?.full_name ||
+      session.user.user_metadata?.name ||
+      session.user.email?.split('@')[0] ||
+      '';
+
+    nameEl.textContent = fullName;
+    document.getElementById('avatar-initials').textContent = getInitials(fullName);
+
+    if (profile?.headline) {
+      headlineEl.textContent = profile.headline;
+      headlineEl.classList.remove('headline-empty');
     }
   }
+  async function setPassword() {
+    const newPassword = prompt("Enter a new password (minimum 8 characters):");
 
-  const role =
-    profile?.role ||
-    session.user.user_metadata?.role ||
-    'seeker';
+    if (!newPassword || newPassword.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
 
-  if(role === 'employer'){
-    window.location.href = 'employer-account.html';
-    return;
+    const { error } = await sb.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("Password successfully set! You can now sign in with email and password.");
   }
 
-  const fullName =
-    profile?.full_name ||
-    session.user.user_metadata?.full_name ||
-    session.user.user_metadata?.name ||
-    session.user.email?.split('@')[0] ||
-    '';
-
-  nameEl.textContent = fullName;
-  initialsEl.textContent = getInitials(fullName);
-
-  if(needsPassword){
-    const addPasswordCard = document.getElementById('add-password-card');
-    if(addPasswordCard) addPasswordCard.style.display = '';
-  }
-
-  renderResumeCardFast(profile?.resume_file_path, profile?.resume_data);
-
-  // The Swipe nav link only shows once there's actually something to
-  // swipe with — otherwise it's a link to a page that will immediately
-  // redirect the person right back to upload/preferences anyway. The
-  // setup banner tells them exactly what's still missing and gives them
-  // a direct way to finish it, instead of the link just silently vanishing.
-  const swipeLink = document.getElementById('nav-swipe-link');
-  const setupBanner = document.getElementById('setup-banner');
-  const setupTitle = document.getElementById('setup-title');
-  const setupSub = document.getElementById('setup-sub');
-  const setupCta = document.getElementById('setup-cta');
-
-  const hasResume = !!(profile?.resume_file_path || profile?.resume_data);
-
-  if (hasResume && profile?.preferences) {
-    if (swipeLink) swipeLink.style.display = '';
-  } else if (!hasResume) {
-    setupBanner.style.display = 'flex';
-    setupTitle.textContent = 'Upload your resume to start swiping';
-    setupSub.textContent = 'We need your resume before we can match you to jobs.';
-    setupCta.textContent = 'Upload resume';
-    setupCta.href = 'align-upload.html';
-  } else {
-    setupBanner.style.display = 'flex';
-    setupTitle.textContent = 'Set your preferences to start swiping';
-    setupSub.textContent = 'Tell us your salary, location, and work style so we can match you to the right jobs.';
-    setupCta.textContent = 'Set preferences';
-    setupCta.href = 'preferences.html';
-  }
-
-  await loadAppliedJobs();
-  await loadSkippedJobs();
-
-  showPage();
-}
-
-initAccountPage();
+  initAccountPage();
 </script>
-
-<div class="mini-footer">
-  <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
-</div>
 
 </body>
 </html>
