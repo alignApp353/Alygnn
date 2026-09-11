@@ -186,6 +186,14 @@
     </div>
 
     <div class="msg-box" id="msg-box"></div>
+    <button
+      type="button"
+      id="resend-confirm-btn"
+      onclick="resendConfirmationEmail()"
+      style="display:none;width:100%;margin:-10px 0 16px;border:1px solid #DDE3E8;background:#fff;color:#5D7FA3;border-radius:12px;padding:12px 16px;font:600 13px 'DM Sans',sans-serif;cursor:pointer;"
+    >
+      Resend confirmation email
+    </button>
 
     <!-- LOGIN FORM -->
     <div id="login-form">
@@ -306,6 +314,10 @@
   return `alygnn-auth-${tabId}`;
 }
 
+const confirmationReturnParams = new URLSearchParams(window.location.search);
+  const isEmployerConfirmationReturn =
+    confirmationReturnParams.get('confirmed') === '1';
+
 const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -313,7 +325,12 @@ const { createClient } = supabase;
       storageKey: alygnnAuthStorageKey(),
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+
+      // The Supabase /verify endpoint confirms the email BEFORE it redirects
+      // back to Alygnn. On this one confirmation-return URL, do not consume
+      // the returned auth session. We want the user to sign in manually.
+      // OAuth continues using normal detectSessionInUrl behavior.
+      detectSessionInUrl: !isEmployerConfirmationReturn
     }
   });
 
@@ -592,89 +609,49 @@ const { createClient } = supabase;
     const params = new URLSearchParams(window.location.search);
     if (params.get('confirmed') !== '1') return false;
 
-    // IMPORTANT:
-    // Do not clear the URL or sign out immediately.
-    // Supabase still needs the confirmation callback that is in this URL
-    // (usually the hash tokens) to finish creating the confirmed session.
-    // Clearing/signing out too early can leave the account looking unconfirmed.
     switchRole('employer');
     switchTab('login');
-    showMsg('Finishing email confirmation…', 'success');
 
-    let confirmedSession = null;
-    let confirmedEmail = '';
+    // Supabase redirects to this URL even when verification fails. Errors are
+    // usually returned in the URL fragment, so check those FIRST.
+    const hashParams = new URLSearchParams(
+      window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : window.location.hash
+    );
 
-    // getSession() waits for Supabase Auth initialization. A short retry loop
-    // also covers browsers that finish parsing the confirmation URL a moment
-    // after DOMContentLoaded.
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try {
-        const { data, error } = await sb.auth.getSession();
-        if (error) console.warn('Confirmation session check:', error);
+    const errorCode =
+      hashParams.get('error_code') ||
+      params.get('error_code') ||
+      hashParams.get('error');
 
-        const session = data?.session || null;
-        const user = session?.user || null;
-        const isConfirmed = !!(
-          user?.email_confirmed_at ||
-          user?.confirmed_at
-        );
+    const errorDescription =
+      hashParams.get('error_description') ||
+      params.get('error_description');
 
-        if (session && user && isConfirmed) {
-          confirmedSession = session;
-          confirmedEmail = user.email || '';
-          break;
-        }
-      } catch (error) {
-        console.warn('Waiting for confirmation session:', error);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
-
-    if (!confirmedSession) {
-      // If Supabase itself returned an auth error in the confirmation URL,
-      // surface that instead of falsely saying the email was confirmed.
-      const hashParams = new URLSearchParams(
-        window.location.hash.startsWith('#')
-          ? window.location.hash.slice(1)
-          : window.location.hash
-      );
-
-      const description =
-        hashParams.get('error_description') ||
-        params.get('error_description');
-
-      switchRole('employer');
-      switchTab('login');
-
+    if (errorCode || errorDescription) {
       showMsg(
-        description
-          ? decodeURIComponent(description.replace(/\+/g, ' '))
-          : 'We could not finish confirming this email. Please open the newest confirmation email and click Confirm email again.'
+        errorDescription
+          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+          : 'This confirmation link could not be used. Please resend the confirmation email.'
       );
+
+      const resendBtn = document.getElementById('resend-confirm-btn');
+      if (resendBtn) resendBtn.style.display = 'block';
       return true;
     }
 
-    // Only AFTER Supabase reports email_confirmed_at do we clear the temporary
-    // confirmation session. This keeps the required flow:
-    // Confirm email -> Login -> Sign in -> Onboarding -> Dashboard.
-    try {
-      await sb.auth.signOut({ scope: 'local' });
-    } catch (signOutError) {
-      console.warn('Could not clear post-confirmation session:', signOutError);
-    }
-
-    const cleanUrl = new URL(window.location.origin + '/login.html');
-    cleanUrl.searchParams.set('role', 'employer');
-    history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
-
-    switchRole('employer');
-    switchTab('login');
-
-    if (confirmedEmail) {
+    // At this point the user has already passed through Supabase's
+    // /auth/v1/verify endpoint. That endpoint is what marks email_confirmed_at.
+    // We intentionally do NOT call getSession(), signOut(), or modify the auth
+    // callback before verification finishes.
+    const pendingEmail = localStorage.getItem('alygnn_pending_employer_email') || '';
+    if (pendingEmail) {
       const emailInput = document.getElementById('email');
-      if (emailInput) emailInput.value = confirmedEmail;
+      if (emailInput) emailInput.value = pendingEmail;
     }
+
+    history.replaceState({}, '', '/login.html?role=employer');
 
     showMsg(
       'Email confirmed successfully. Sign in to continue to Employer Setup.',
@@ -682,6 +659,48 @@ const { createClient } = supabase;
     );
 
     return true;
+  }
+
+  async function resendConfirmationEmail() {
+    const email =
+      document.getElementById('email')?.value?.trim() ||
+      localStorage.getItem('alygnn_pending_employer_email') ||
+      '';
+
+    if (!email) {
+      showMsg('Enter your email address first.');
+      return;
+    }
+
+    const button = document.getElementById('resend-confirm-btn');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Sending confirmation…';
+    }
+
+    const redirectTo =
+      window.location.origin + '/login.html?role=employer&confirmed=1';
+
+    const { error } = await sb.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectTo
+      }
+    });
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Resend confirmation email';
+    }
+
+    if (error) {
+      showMsg(error.message || 'Could not resend the confirmation email.');
+      return;
+    }
+
+    localStorage.setItem('alygnn_pending_employer_email', email);
+    showMsg('A new confirmation email was sent. Use the newest email in your inbox.', 'success');
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -776,7 +795,29 @@ const { createClient } = supabase;
     const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Signing in…';
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     btn.disabled = false; btn.textContent = orig;
-    if (error) { showMsg(error.message); return; }
+    if (error) {
+      const message = String(error.message || '');
+
+      if (/email not confirmed/i.test(message)) {
+        localStorage.setItem('alygnn_pending_employer_email', email);
+
+        showMsg(
+          'This email is still marked unconfirmed in Alygnn. Click below to send a fresh confirmation email.'
+        );
+
+        const resendBtn = document.getElementById('resend-confirm-btn');
+        if (resendBtn) resendBtn.style.display = 'block';
+      } else {
+        showMsg(message);
+      }
+
+      return;
+    }
+
+    localStorage.removeItem('alygnn_pending_employer_email');
+    const resendBtn = document.getElementById('resend-confirm-btn');
+    if (resendBtn) resendBtn.style.display = 'none';
+
     await savePendingPreferences(data.user);
     const r = data.user?.user_metadata?.role || 'seeker';
     window.location.href = await resolveSignedInDestination(data.user, r);
@@ -798,6 +839,11 @@ const { createClient } = supabase;
     const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Creating account…';
     const meta = { full_name: name, role: currentRole };
     if (company) meta.company = company;
+
+    if (currentRole === 'employer') {
+      localStorage.setItem('alygnn_pending_employer_email', email);
+    }
+
     const { data, error } = await sb.auth.signUp({
       email,
       password,
