@@ -568,6 +568,319 @@ body.candidate-role .messages-legal{
 }
 </style>
 
+
+<style id="candidate-myjobs-template-override">
+/* Candidate Messages uses the exact Candidate My Jobs header template. */
+body.candidate-role{
+  padding-top:64px !important;
+  overflow:hidden !important;
+}
+
+/* Header */
+body.candidate-role nav{
+  position:fixed !important;
+  top:0 !important;
+  left:0 !important;
+  right:0 !important;
+  width:100% !important;
+  z-index:1000 !important;
+  height:64px !important;
+  padding:0 5% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  background:rgba(246,248,247,.92) !important;
+  backdrop-filter:blur(12px) !important;
+  border-bottom:1px solid var(--border) !important;
+}
+
+body.candidate-role .logo{
+  font-family:'DM Serif Display',serif !important;
+  font-size:22px !important;
+  color:var(--brand) !important;
+  text-decoration:none !important;
+}
+
+body.candidate-role .candidate-nav-links{
+  display:flex !important;
+  gap:40px !important;
+  align-items:center !important;
+  position:absolute !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  height:100% !important;
+  visibility:visible !important;
+}
+
+body.candidate-role .candidate-nav-links a{
+  height:100% !important;
+  display:flex !important;
+  align-items:center !important;
+  position:relative !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:14px !important;
+  color:var(--muted) !important;
+  text-decoration:none !important;
+  font-weight:400 !important;
+  padding:0 !important;
+  border:0 !important;
+}
+
+body.candidate-role .candidate-nav-links a:hover{
+  color:var(--text) !important;
+}
+
+body.candidate-role .candidate-nav-links a.active{
+  color:var(--text) !important;
+  font-weight:500 !important;
+}
+
+body.candidate-role .candidate-nav-links a.active::after{
+  content:'' !important;
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:20px !important;
+  height:2px !important;
+  border-radius:999px !important;
+  background:var(--brand) !important;
+}
+
+body.candidate-role .candidate-nav-actions{
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+}
+
+body.candidate-role #employer-nav-right{
+  display:none !important;
+}
+
+body.candidate-role .nav-signout{
+  min-height:38px !important;
+  padding:0 16px !important;
+  border-radius:100px !important;
+  border:1px solid var(--border) !important;
+  background:white !important;
+  color:var(--muted) !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:13px !important;
+  font-weight:400 !important;
+  cursor:pointer !important;
+}
+
+body.candidate-role .notification-btn{
+  position:relative !important;
+  width:40px !important;
+  height:40px !important;
+  display:grid !important;
+  place-items:center !important;
+  border:1px solid var(--border) !important;
+  border-radius:50% !important;
+  background:#fff !important;
+  color:var(--muted) !important;
+  cursor:pointer !important;
+  transition:border-color .2s,color .2s,transform .2s !important;
+}
+
+body.candidate-role .notification-btn:hover{
+  border-color:var(--brand) !important;
+  color:var(--brand) !important;
+  transform:translateY(-1px) !important;
+}
+
+body.candidate-role .notification-btn svg{
+  width:19px !important;
+  height:19px !important;
+  stroke:currentColor !important;
+}
+
+body.candidate-role .notification-badge{
+  position:absolute !important;
+  top:-4px !important;
+  right:-3px !important;
+  min-width:18px !important;
+  height:18px !important;
+  padding:0 5px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:2px solid var(--bg) !important;
+  border-radius:999px !important;
+  background:#D85A5A !important;
+  color:#fff !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  font-weight:700 !important;
+}
+body.candidate-role .notification-badge[hidden]{display:none !important;}
+
+/* Remove the left-side Candidate rail entirely. */
+body.candidate-role .layout{
+  display:block !important;
+  height:calc(100vh - 64px) !important;
+  min-height:0 !important;
+  padding-top:0 !important;
+  overflow:hidden !important;
+}
+
+body.candidate-role .sidebar{
+  display:none !important;
+}
+
+/* Center Messages under the same top navigation. */
+body.candidate-role main{
+  width:min(1180px,88%) !important;
+  max-width:1180px !important;
+  height:calc(100vh - 64px) !important;
+  min-height:0 !important;
+  margin:0 auto !important;
+  padding:22px 0 10px !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+/* Notifications */
+.notification-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1500;
+  display:none;
+  align-items:flex-start;
+  justify-content:flex-end;
+  padding:78px 5% 24px;
+  background:rgba(26,37,48,.18);
+  backdrop-filter:blur(2px);
+}
+.notification-overlay.open{display:flex}
+.notification-panel{
+  width:min(430px,100%);
+  max-height:min(70vh,620px);
+  overflow:auto;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:20px;
+  box-shadow:0 20px 70px rgba(26,37,48,.16);
+}
+.notification-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:20px 20px 16px;
+  background:#fff;
+  border-bottom:1px solid var(--border);
+}
+.notification-head h3{
+  font-family:'DM Serif Display',serif;
+  font-size:22px;
+  margin-bottom:3px;
+}
+.notification-head p{color:var(--muted);font-size:12px}
+.notification-head-actions{display:flex;align-items:center;gap:8px}
+.notification-close{
+  width:30px;
+  height:30px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:#fff;
+  color:var(--muted);
+  font-size:19px;
+  line-height:1;
+  cursor:pointer;
+}
+.notification-list{padding:6px 0}
+.notification-item{
+  width:100%;
+  display:grid;
+  grid-template-columns:38px 1fr auto;
+  gap:12px;
+  align-items:start;
+  padding:15px 18px;
+  border:0;
+  border-bottom:1px solid rgba(221,227,232,.72);
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+}
+.notification-item:hover{background:rgba(93,127,163,.055)}
+.notification-icon{
+  width:36px;
+  height:36px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  background:rgba(93,127,163,.10);
+  color:var(--brand);
+  font-size:16px;
+  font-weight:700;
+}
+.notification-copy strong{
+  display:block;
+  color:var(--text);
+  font-size:13px;
+  font-weight:600;
+  margin-bottom:3px;
+}
+.notification-copy span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.45;
+}
+.notification-time{
+  padding-top:2px;
+  color:var(--muted);
+  font-size:10px;
+  white-space:nowrap;
+}
+.notification-empty{
+  padding:34px 22px;
+  text-align:center;
+  color:var(--muted);
+}
+.notification-empty-icon{
+  width:44px;
+  height:44px;
+  margin:0 auto 12px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(111,191,143,.12);
+  color:#438661;
+  font-size:20px;
+}
+.notification-empty strong{
+  display:block;
+  color:var(--text);
+  margin-bottom:5px;
+  font-size:14px;
+}
+
+@media(max-width:640px){
+  body.candidate-role .candidate-nav-links{
+    position:static !important;
+    transform:none !important;
+    gap:14px !important;
+    height:64px !important;
+  }
+  body.candidate-role .candidate-nav-links a{font-size:12px !important}
+  body.candidate-role .candidate-nav-links a.active::after{bottom:15px !important}
+  body.candidate-role .candidate-nav-actions{gap:8px !important}
+  body.candidate-role .notification-btn{width:36px !important;height:36px !important}
+  body.candidate-role main{
+    width:100% !important;
+    padding:20px 14px 10px !important;
+  }
+  .notification-overlay{padding:68px 12px 12px}
+}
+</style>
+
 </head>
 <body>
 <div id="loading">Loading messages…</div>
@@ -582,8 +895,23 @@ body.candidate-role .messages-legal{
     <a href="swipe.html" id="candidate-swipe-link" style="display:none;">Swipe</a>
   </div>
 
-  <div class="candidate-nav-actions" id="candidate-nav-actions">
-    <button class="candidate-nav-signout" type="button" onclick="candidateSignOut()">Sign out</button>
+  <div class="candidate-nav-actions nav-actions" id="candidate-nav-actions">
+    <button
+      class="notification-btn"
+      id="candidate-notification-btn"
+      type="button"
+      aria-label="Open notifications"
+      title="Notifications"
+      onclick="openCandidateNotifications()"
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="M10 21h4" stroke-width="1.8" stroke-linecap="round"></path>
+      </svg>
+      <span class="notification-badge" id="candidate-notification-badge" hidden>0</span>
+    </button>
+
+    <button class="nav-signout" type="button" onclick="candidateSignOut()">Sign out</button>
   </div>
 
   <div class="nav-right" id="employer-nav-right">
@@ -639,6 +967,33 @@ body.candidate-role .messages-legal{
       <a href="terms.html">Terms</a>
     </div>
   </main>
+</div>
+
+
+<div
+  class="notification-overlay"
+  id="candidate-notification-overlay"
+  aria-hidden="true"
+  onclick="candidateNotificationBackdrop(event)"
+>
+  <section class="notification-panel" role="dialog" aria-modal="true" aria-labelledby="candidate-notification-title">
+    <div class="notification-head">
+      <div>
+        <h3 id="candidate-notification-title">Notifications</h3>
+        <p id="candidate-notification-count-label">You’re all caught up</p>
+      </div>
+      <div class="notification-head-actions">
+        <button class="notification-close" type="button" aria-label="Close notifications" onclick="closeCandidateNotifications()">×</button>
+      </div>
+    </div>
+    <div class="notification-list" id="candidate-notification-list">
+      <div class="notification-empty">
+        <div class="notification-empty-icon">✓</div>
+        <strong>You’re all caught up</strong>
+        <span>No new notifications right now.</span>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -994,6 +1349,7 @@ function filteredThreads(){
 }
 
 function renderConversationList(){
+  updateCandidateNotificationBadge();
   const el=document.getElementById('conversation-list');
   const list=filteredThreads();
 
@@ -1419,6 +1775,96 @@ async function init(){
   if(activeThreadId)subscribeToMessages(activeThreadId);
 
   document.body.classList.add('ready');
+}
+
+
+function candidateNotificationTime(iso){
+  if(!iso) return '';
+  const d=new Date(iso);
+  const now=new Date();
+  if(d.toDateString()===now.toDateString()){
+    return d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  }
+  return d.toLocaleDateString([],{month:'short',day:'numeric'});
+}
+
+function updateCandidateNotificationBadge(){
+  const badge=document.getElementById('candidate-notification-badge');
+  if(!badge) return;
+
+  let unread=0;
+  for(const t of threads){
+    const d=threadDetails.get(t.id);
+    unread += Number(d?.unread||0);
+  }
+
+  badge.textContent=unread>99?'99+':String(unread);
+  badge.hidden=unread===0;
+}
+
+function renderCandidateNotifications(){
+  const list=document.getElementById('candidate-notification-list');
+  const label=document.getElementById('candidate-notification-count-label');
+  if(!list||!label) return;
+
+  const unreadThreads=threads
+    .map(t=>({thread:t,details:threadDetails.get(t.id)}))
+    .filter(x=>Number(x.details?.unread||0)>0);
+
+  const unreadCount=unreadThreads.reduce((sum,x)=>sum+Number(x.details?.unread||0),0);
+
+  if(!unreadThreads.length){
+    label.textContent='You’re all caught up';
+    list.innerHTML=`
+      <div class="notification-empty">
+        <div class="notification-empty-icon">✓</div>
+        <strong>You’re all caught up</strong>
+        <span>No new notifications right now.</span>
+      </div>`;
+    return;
+  }
+
+  label.textContent=`${unreadCount} unread message${unreadCount===1?'':'s'}`;
+
+  list.innerHTML=unreadThreads.map(({thread,details})=>{
+    const last=details?.lastMessage||{};
+    const name=details?.name||'Employer';
+    const job=details?.job?.title||'your application';
+    return `
+      <button class="notification-item" type="button" onclick="openCandidateNotificationThread('${thread.id}')">
+        <span class="notification-icon">✉</span>
+        <span class="notification-copy">
+          <strong>${escapeHtml(name)}</strong>
+          <span>${escapeHtml(last.body||('New message about '+job))}</span>
+        </span>
+        <span class="notification-time">${escapeHtml(candidateNotificationTime(last.created_at||thread.last_message_at))}</span>
+      </button>`;
+  }).join('');
+}
+
+function openCandidateNotifications(){
+  renderCandidateNotifications();
+  const overlay=document.getElementById('candidate-notification-overlay');
+  if(!overlay) return;
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden','false');
+}
+
+function closeCandidateNotifications(){
+  const overlay=document.getElementById('candidate-notification-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden','true');
+}
+
+function candidateNotificationBackdrop(event){
+  if(event.target===event.currentTarget) closeCandidateNotifications();
+}
+
+async function openCandidateNotificationThread(threadId){
+  closeCandidateNotifications();
+  await openThread(threadId);
+  updateCandidateNotificationBadge();
 }
 
 window.addEventListener('beforeunload',()=>{
