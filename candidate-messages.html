@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<title>Messages — Alygnn</title>
+<title>Candidate Messages — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -185,35 +185,86 @@
     body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
   }
 
-
-  /* Dedicated Candidate Messages — use the same desktop shell as Employer Messages. */
+  /* Dedicated Candidate Messages shell.
+     Match the Employer Messages structure: fixed/sticky top bar,
+     persistent left sidebar, and the same chat workspace. */
   body.candidate-role .candidate-nav-links,
-  body.candidate-role .candidate-nav-actions{display:none !important}
-  body.candidate-role #employer-nav-right{display:flex !important;align-items:center;gap:12px}
+  body.candidate-role .candidate-nav-actions{
+    display:none !important;
+  }
+
+  body.candidate-role #employer-nav-right{
+    display:flex !important;
+    align-items:center;
+    gap:12px;
+  }
+
   body.candidate-role .layout{
     display:grid !important;
     grid-template-columns:220px minmax(0,1fr) !important;
     min-height:calc(100vh - 64px) !important;
   }
+
   body.candidate-role .sidebar{
     display:block !important;
-    position:sticky;
-    top:64px;
-    align-self:start;
-    height:calc(100vh - 64px);
-    overflow:hidden;
+    border-right:1px solid var(--border);
+    padding:28px 18px;
+    background:rgba(252,252,250,.65);
   }
+
   body.candidate-role main{
+    padding:36px 4.5% 70px !important;
     max-width:1420px !important;
     width:100% !important;
     margin:0 auto !important;
-    padding:36px 4.5% 70px !important;
   }
-  body.candidate-role nav{position:sticky !important;top:0;z-index:1000}
-  @media(max-width:900px){
-    body.candidate-role .layout{grid-template-columns:1fr !important}
-    body.candidate-role .sidebar{display:none !important}
-    body.candidate-role main{padding:24px 14px 50px !important}
+
+  @media (min-width:901px){
+    body.candidate-role nav{
+      position:fixed !important;
+      top:0 !important;
+      left:0 !important;
+      right:0 !important;
+      width:100% !important;
+      height:64px !important;
+      z-index:1000 !important;
+    }
+
+    body.candidate-role .layout{
+      display:block !important;
+      min-height:100vh !important;
+      padding-top:64px !important;
+    }
+
+    body.candidate-role .sidebar{
+      position:fixed !important;
+      top:64px !important;
+      left:0 !important;
+      width:220px !important;
+      height:calc(100vh - 64px) !important;
+      overflow:hidden !important;
+      z-index:90 !important;
+    }
+
+    body.candidate-role main{
+      margin-left:220px !important;
+      max-width:none !important;
+      width:auto !important;
+      padding:36px 5% 70px !important;
+    }
+  }
+
+  @media (max-width:900px){
+    body.candidate-role .layout{
+      display:block !important;
+    }
+    body.candidate-role .sidebar{
+      display:none !important;
+    }
+    body.candidate-role main{
+      margin-left:0 !important;
+      padding:24px 14px 50px !important;
+    }
   }
 
 </style>
@@ -267,7 +318,7 @@
   <main>
     <div class="page-kicker">Alygnn messages</div>
     <h1>Messages</h1>
-    <div class="page-sub">Conversations stay tied to the application and job that connected you.</div>
+    <div class="page-sub">Messages from employers stay tied to the job application that connected you.</div>
 
     <section class="chat-shell">
       <div class="conversations">
@@ -403,7 +454,7 @@ function setSidebar(){
         Candidates
       </a>
 
-      <a href="messages.html" class="side-link active">
+      <a href="candidate-messages.html" class="side-link active">
         <span class="side-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3V5z"/><path d="m7 9 5 4 5-4"/></svg>
         </span>
@@ -431,6 +482,7 @@ function setSidebar(){
   }else{
     document.body.classList.remove('employer-role');
     document.body.classList.add('candidate-role');
+    document.getElementById('employer-nav-right').style.display = 'flex';
     sidebar.innerHTML=`
       <div class="sidebar-label">Candidate</div>
       <a href="swipe.html" class="side-link"><span class="side-icon">⌕</span><span class="side-label-text">Discover</span></a>
@@ -535,6 +587,7 @@ async function loadThreads(){
   const {data,error}=await sb
     .from('application_conversations')
     .select('id,application_id,job_id,employer_id,candidate_id,candidate_name,job_title,company_name,employer_started_at,created_at,last_message_at,employer_hidden_at,candidate_hidden_at')
+    .eq('candidate_id',currentUser.id)
     .is(hiddenField,null)
     .order('last_message_at',{ascending:false,nullsFirst:false});
 
@@ -996,20 +1049,22 @@ async function init(){
 
   currentProfile=profile||{};
 
-  // This is the dedicated candidate workspace. Never switch this page into
-  // employer mode just because the same user also belongs to an employer team.
+  // Dedicated candidate route. If this login also has an employer workspace,
+  // candidate-messages.html still stays in Candidate mode.
   currentRole='candidate';
+
   const hasResume=!!(profile?.resume_file_path||profile?.resume_data);
   const hasPreferences=!!profile?.preferences;
   syncCandidateSwipeNav(hasResume && hasPreferences);
 
   document.getElementById('nav-name').textContent=
-    profile?.full_name||currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||'Candidate';
+    profile?.full_name||
+    currentUser.user_metadata?.full_name||
+    currentUser.user_metadata?.name||
+    'Candidate';
 
   setSidebar();
 
-  // If arriving from Candidates → Message, resolve that exact application
-  // first so the correct candidate/job chat appears immediately.
   await loadRequestedApplicationContext();
 
   const requestedThreadId=await getOrCreateRequestedThread();
@@ -1018,8 +1073,6 @@ async function init(){
 
   const urlThread=new URLSearchParams(location.search).get('thread');
 
-  // Prefer the exact requested application. Do not silently open some other
-  // existing conversation when the user clicked Message on a candidate.
   if(requestedApplicationId){
     const matchingThread=threads.find(t=>t.application_id===requestedApplicationId);
     activeThreadId=requestedThreadId||matchingThread?.id||null;
@@ -1028,6 +1081,7 @@ async function init(){
   }
 
   renderConversationList();
+
   if(activeThreadId){
     await markThreadRead(activeThreadId);
     await loadMessages(activeThreadId);
@@ -1035,8 +1089,6 @@ async function init(){
     activeMessages=[];
   }
 
-  // Even with zero previous messages, renderChat() uses the resolved real
-  // application context and shows "Start the conversation" for that candidate.
   renderChat();
   subscribeToThreads();
   if(activeThreadId)subscribeToMessages(activeThreadId);
