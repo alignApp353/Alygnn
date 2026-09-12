@@ -2099,9 +2099,9 @@
             </div>
 
             <div class="field">
-              <label for="jobTitle">Professional title <span aria-hidden="true">*</span></label>
+              <label for="jobTitle">Professional title <span class="optional">(optional)</span></label>
               <div class="suggest-wrap">
-                <input id="jobTitle" type="text" placeholder="Customer Success Specialist" autocomplete="off" required>
+                <input id="jobTitle" type="text" placeholder="Customer Success Specialist" autocomplete="off">
               </div>
             </div>
 
@@ -3894,7 +3894,6 @@
     const location = document.getElementById('location');
 
     if (fullName.value.trim().length < 2) add('Enter your full name.', fullName);
-    if (jobTitle.value.trim().length < 2) add('Enter your professional title.', jobTitle);
     if (!email.value.trim() || !email.checkValidity()) add('Enter a valid email address.', email);
     if (!isValidPhone(phone.value)) add('Enter a valid phone number.', phone);
     if (!isValidLocation(location.value)) add('Enter your location as City, State.', location);
