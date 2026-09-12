@@ -2477,6 +2477,52 @@
 }
 </style>
 
+
+<style id="four-template-full-height-row-fix">
+/* Keep the second row filling the rest of the resume page.
+   This makes the colored sidebar reach the bottom instead of ending
+   immediately after Education / Skills content. */
+.resume-paper.template-green.structured-two-column,
+.resume-paper.template-lavender.structured-two-column,
+.resume-paper.template-bluebar.structured-two-column,
+.resume-paper.template-editorial.structured-two-column{
+  grid-template-rows:auto minmax(0,1fr) !important;
+  align-content:stretch !important;
+}
+
+.resume-paper.template-green.structured-two-column > .resume-sidebar-column,
+.resume-paper.template-lavender.structured-two-column > .resume-sidebar-column,
+.resume-paper.template-bluebar.structured-two-column > .resume-sidebar-column,
+.resume-paper.template-editorial.structured-two-column > .resume-sidebar-column{
+  height:100% !important;
+  align-self:stretch !important;
+}
+
+.resume-paper.template-green.structured-two-column > .resume-main-column,
+.resume-paper.template-lavender.structured-two-column > .resume-main-column,
+.resume-paper.template-bluebar.structured-two-column > .resume-main-column,
+.resume-paper.template-editorial.structured-two-column > .resume-main-column{
+  align-self:start !important;
+}
+
+@media print{
+  .resume-paper.template-green.structured-two-column,
+  .resume-paper.template-lavender.structured-two-column,
+  .resume-paper.template-bluebar.structured-two-column,
+  .resume-paper.template-editorial.structured-two-column{
+    grid-template-rows:auto minmax(0,1fr) !important;
+    align-content:stretch !important;
+  }
+
+  .resume-paper.template-green.structured-two-column > .resume-sidebar-column,
+  .resume-paper.template-lavender.structured-two-column > .resume-sidebar-column,
+  .resume-paper.template-bluebar.structured-two-column > .resume-sidebar-column,
+  .resume-paper.template-editorial.structured-two-column > .resume-sidebar-column{
+    height:100% !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
