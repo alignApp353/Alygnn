@@ -8,6 +8,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY
 //
 // In Stripe Dashboard, point the webhook at this route and subscribe at least to:
+//   payment_intent.succeeded
 //   checkout.session.completed
 //   customer.subscription.updated
 //   customer.subscription.deleted
@@ -412,6 +413,39 @@ async function fulfillCheckout(session) {
   }
 }
 
+
+async function fulfillPaymentIntent(intent){
+  const meta=intent?.metadata||{};
+  const employerId=meta.employer_id;
+  const product=String(meta.product||'').toLowerCase();
+  if(!employerId||!product)return;
+
+  if(product==='plan_upgrade'){
+    await fulfillPaidPlanUpgrade(intent);
+    return;
+  }
+
+  if(product==='weekly_slot'){
+    await rpc('grant_weekly_job_slot',{
+      p_employer_id:employerId,
+      p_payment_reference:intent.id,
+      p_amount_cents:Number(intent.amount_received||intent.amount||9900),
+      p_days:7
+    });
+    return;
+  }
+
+  if(product==='job_boost'){
+    await rpc('activate_paid_job_boost',{
+      p_employer_id:employerId,
+      p_job_id:meta.job_id,
+      p_days:Math.max(1,Number.parseInt(meta.days||'1',10)||1),
+      p_payment_reference:intent.id,
+      p_amount_cents:Number(intent.amount_received||intent.amount||0)||null
+    });
+  }
+}
+
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
@@ -419,6 +453,10 @@ async function fulfillSubscription(subscription, forceStatus) {
   if (!employerId) return;
 
   const status = normalizedSubscriptionStatus(subscription, forceStatus);
+
+  // Native PaymentSheet creates recurring subscriptions as `incomplete` until
+  // the customer finishes the first payment. Never grant paid access early.
+  if(status==='incomplete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
     await rpc('sync_second_job_slot_subscription', {
@@ -509,6 +547,10 @@ module.exports = async function handler(req, res) {
     const event = JSON.parse(buffer.toString('utf8'));
 
     switch (event.type) {
+      case 'payment_intent.succeeded':
+        await fulfillPaymentIntent(event.data.object);
+        break;
+
       case 'checkout.session.completed':
         if (event.data.object.payment_status === 'paid' || event.data.object.mode === 'subscription') {
           await fulfillCheckout(event.data.object);
