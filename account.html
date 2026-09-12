@@ -1135,6 +1135,89 @@ select.form-input{
 }
 .resume-actions a:hover{ color:var(--brand); }
 
+.resume-picker-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1400;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(26,37,48,.36);
+  backdrop-filter:blur(3px);
+}
+.resume-picker-overlay.show{display:flex}
+.resume-picker-modal{
+  width:min(680px,100%);
+  max-height:min(82vh,760px);
+  overflow:auto;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:22px;
+  box-shadow:0 28px 80px rgba(26,37,48,.18);
+}
+.resume-picker-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:24px 26px 18px;
+  border-bottom:1px solid var(--border);
+}
+.resume-picker-head h3{
+  font-family:'DM Serif Display',serif;
+  font-size:27px;
+  font-weight:400;
+  margin:0 0 4px;
+}
+.resume-picker-head p{margin:0;color:var(--text-muted);font-size:13px;line-height:1.5}
+.resume-picker-close{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--border);
+  background:#fff;color:var(--text-muted);font-size:20px;cursor:pointer;
+}
+.resume-picker-list{display:grid;gap:12px;padding:20px 26px 10px}
+.resume-option{
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:14px;
+  align-items:center;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:#fff;
+}
+.resume-option.selected{border-color:rgba(93,127,163,.55);background:rgba(93,127,163,.065)}
+.resume-option-icon{
+  width:46px;height:46px;border-radius:13px;display:grid;place-items:center;
+  background:#F0F4F7;color:var(--brand);
+}
+.resume-option-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.resume-option-title{font-size:15px;font-weight:600;color:var(--text)}
+.resume-option-meta{margin-top:3px;font-size:12px;color:var(--text-muted);line-height:1.4}
+.resume-selected-pill{
+  display:inline-flex;margin-top:7px;padding:4px 8px;border-radius:999px;
+  background:rgba(111,191,143,.13);color:#3F7D5A;font-size:10px;font-weight:700;
+}
+.resume-option-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.resume-option-actions button,
+.resume-option-actions a{
+  min-height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--border);
+  background:#fff;color:var(--text-muted);font:500 12px 'DM Sans',sans-serif;
+  text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+}
+.resume-option-actions .primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.resume-option-actions .primary:disabled{opacity:.55;cursor:default}
+.resume-picker-footer{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:16px 26px 22px;
+}
+.resume-picker-footer a{font-size:12px;color:var(--brand);text-decoration:none;font-weight:600}
+@media(max-width:640px){
+  .resume-option{grid-template-columns:42px 1fr}
+  .resume-option-actions{grid-column:1/-1;justify-content:flex-start}
+}
+
+
 @media(max-width:640px){
   nav{
     padding:0 18px;
@@ -1196,7 +1279,7 @@ select.form-input{
   <div class="nav-links nav-readiness-pending" id="candidate-nav-links">
     <a href="account.html" class="active">Account</a>
     <a href="my-jobs.html">My jobs</a>
-    <a href="candidate-messages.html">Messages</a>
+    <a href="messages.html">Messages</a>
     <a href="swipe.html" id="nav-swipe-link" style="display:none;">Swipe</a>
   </div>
   <div class="nav-actions">
@@ -1382,7 +1465,7 @@ select.form-input{
       </a>
 
       <div class="resume-card-wrap">
-        <a href="align-upload.html" class="link-card" id="resume-card">
+        <a href="#" class="link-card" id="resume-card" onclick="openResumeChooser(event)">
           <span class="settings-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
         </span>
@@ -1648,7 +1731,7 @@ async function loadCandidateMessageNotificationItems(){
           ? `${jobTitle}: ${shortPreview}`
           : `You received a new message about ${jobTitle}.`,
         time:'New',
-        action:`candidate-messages.html?thread=${encodeURIComponent(message.thread_id)}`
+        action:`messages.html?thread=${encodeURIComponent(message.thread_id)}`
       };
     });
   }catch(error){
@@ -2141,6 +2224,15 @@ const resumeReplaceLink = document.getElementById('resume-replace-link');
 const resumeBuildLink = document.getElementById('resume-build-link');
 let currentResumeFilePath = null;
 
+let currentResumeData = null;
+let currentResumeSource = null;
+let currentResumeLibrary = {
+  uploaded_file_path: null,
+  builder_file_path: null,
+  active: null
+};
+
+
 function toggleNameChangeForm() {
   const form = document.getElementById('name-change-form');
   const isOpen = form.style.display !== 'none';
@@ -2603,14 +2695,55 @@ async function saveProfileField(column, value){
   }
 }
 
-function renderResumeCardFast(resumeFilePath, resumeData){
-  currentResumeFilePath = resumeFilePath || null;
+function resolveResumeLibrary(resumeFilePath, resumeSource, resumeData){
+  const data = resumeData && typeof resumeData === 'object' ? resumeData : {};
+  const saved =
+    data._alygnn_resume_library && typeof data._alygnn_resume_library === 'object'
+      ? data._alygnn_resume_library
+      : {};
 
-  if(!resumeFilePath && !resumeData){
+  const source = String(resumeSource || '').toLowerCase();
+  const builderFilePath =
+    saved.builder_file_path ||
+    (source === 'builder' ? resumeFilePath : null) ||
+    null;
+
+  const uploadedFilePath =
+    (resumeFilePath && source !== 'builder' ? resumeFilePath : null) ||
+    saved.uploaded_file_path ||
+    null;
+
+  let active = String(saved.active || source || '').toLowerCase();
+  if(!['uploaded','builder'].includes(active)){
+    active = uploadedFilePath ? 'uploaded' : (resumeData ? 'builder' : null);
+  }
+
+  return {
+    ...saved,
+    uploaded_file_path: uploadedFilePath,
+    builder_file_path: builderFilePath,
+    active
+  };
+}
+
+function renderResumeCardFast(resumeFilePath, resumeData, resumeSource){
+  currentResumeData = resumeData && typeof resumeData === 'object' ? resumeData : null;
+  currentResumeSource = String(resumeSource || '').toLowerCase() || null;
+  currentResumeLibrary = resolveResumeLibrary(resumeFilePath, resumeSource, resumeData);
+
+  const hasUploaded = !!currentResumeLibrary.uploaded_file_path;
+  const hasBuilder = !!resumeData;
+  const count = Number(hasUploaded) + Number(hasBuilder);
+
+  currentResumeFilePath =
+    currentResumeLibrary.active === 'builder'
+      ? currentResumeLibrary.builder_file_path
+      : currentResumeLibrary.uploaded_file_path;
+
+  if(!count){
     resumeLabel.textContent = 'Upload resume';
     resumeSub.textContent = 'Add your resume so employers can see your background';
     resumeCard.href = 'align-upload.html';
-    resumeCard.removeAttribute('target');
     resumeCard.onclick = null;
     resumeReplaceLink.style.display = 'none';
     resumeBuildLink.textContent = 'Build resume with Alygnn';
@@ -2618,39 +2751,164 @@ function renderResumeCardFast(resumeFilePath, resumeData){
     return;
   }
 
-  if(!resumeFilePath && resumeData){
-    // Resume was built with the Alygnn resume builder (resume_data saved to
-    // the profile) but no file exists in Storage yet — most often because
-    // the generated-file upload silently failed. There's nothing in
-    // Storage to open with a signed URL, so send them back to the builder,
-    // which is where resume_data actually lives and can be edited.
-    resumeLabel.textContent = 'View resume';
-    resumeSub.textContent = 'Open the resume you built on Alygnn';
-    resumeCard.href = 'resume-builder.html?view=1&from=account';
-    resumeCard.removeAttribute('target');
-    resumeCard.onclick = null;
-    resumeReplaceLink.style.display = 'block';
-    resumeReplaceLink.textContent = 'Upload a different resume';
-    resumeBuildLink.textContent = 'Edit in Alygnn builder';
-    resumeBuildLink.href = 'resume-builder.html?from=account';
+  resumeCard.href = '#';
+  resumeCard.onclick = openResumeChooser;
+
+  if(count > 1){
+    resumeLabel.textContent = 'Choose resume';
+    const activeLabel = currentResumeLibrary.active === 'builder'
+      ? 'Alygnn resume selected'
+      : 'Uploaded resume selected';
+    resumeSub.textContent = `${count} resumes available · ${activeLabel}`;
+  }else if(hasBuilder){
+    resumeLabel.textContent = 'Alygnn resume';
+    resumeSub.textContent = 'Built with Alygnn · click to manage';
+  }else{
+    resumeLabel.textContent = 'Uploaded resume';
+    resumeSub.textContent = 'Your uploaded resume · click to manage';
+  }
+
+  resumeReplaceLink.style.display = 'block';
+  resumeReplaceLink.textContent = 'Upload another resume';
+  resumeBuildLink.textContent = hasBuilder ? 'Edit Alygnn resume' : 'Build resume with Alygnn';
+  resumeBuildLink.href = 'resume-builder.html?from=account';
+}
+
+function resumeOptionIcon(){
+  return `<span class="resume-option-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>`;
+}
+
+function openResumeChooser(event){
+  if(event) event.preventDefault();
+  const overlay = document.getElementById('resume-picker-overlay');
+  if(!overlay) return;
+  renderResumeChooser();
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+}
+
+function closeResumeChooser(){
+  const overlay = document.getElementById('resume-picker-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+}
+
+function resumeChooserBackdrop(event){
+  if(event.target === event.currentTarget) closeResumeChooser();
+}
+
+function renderResumeChooser(){
+  const list = document.getElementById('resume-picker-list');
+  if(!list) return;
+
+  const rows = [];
+  const uploadedPath = currentResumeLibrary.uploaded_file_path;
+  const builderPath = currentResumeLibrary.builder_file_path;
+  const active = currentResumeLibrary.active;
+
+  if(uploadedPath){
+    rows.push(`
+      <div class="resume-option ${active === 'uploaded' ? 'selected' : ''}">
+        ${resumeOptionIcon()}
+        <div>
+          <div class="resume-option-title">Uploaded resume</div>
+          <div class="resume-option-meta">The PDF/DOC/DOCX you uploaded to Alygnn.</div>
+          ${active === 'uploaded' ? '<span class="resume-selected-pill">Currently selected</span>' : ''}
+        </div>
+        <div class="resume-option-actions">
+          <button type="button" onclick="openStoredResume('${escapeHtml(uploadedPath)}',this)">View</button>
+          <button type="button" class="primary" ${active === 'uploaded' ? 'disabled' : ''} onclick="selectResumeChoice('uploaded')">${active === 'uploaded' ? 'Selected' : 'Use this resume'}</button>
+        </div>
+      </div>`);
+  }
+
+  if(currentResumeData){
+    const builderReady = !!builderPath;
+    rows.push(`
+      <div class="resume-option ${active === 'builder' ? 'selected' : ''}">
+        ${resumeOptionIcon()}
+        <div>
+          <div class="resume-option-title">Alygnn resume</div>
+          <div class="resume-option-meta">The resume you created with Alygnn's resume builder.</div>
+          ${active === 'builder' ? '<span class="resume-selected-pill">Currently selected</span>' : ''}
+        </div>
+        <div class="resume-option-actions">
+          <a href="resume-builder.html?view=1&from=account">View / edit</a>
+          ${builderReady
+            ? `<button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder')">${active === 'builder' ? 'Selected' : 'Use this resume'}</button>`
+            : '<a class="primary" href="resume-builder.html?from=account&select=builder">Save once to use</a>'}
+        </div>
+      </div>`);
+  }
+
+  list.innerHTML = rows.length
+    ? rows.join('')
+    : '<div style="padding:14px;color:var(--text-muted);font-size:13px">No resumes yet.</div>';
+}
+
+async function openStoredResume(path, button){
+  if(!path) return;
+  const original = button?.textContent || 'View';
+  if(button){ button.disabled = true; button.textContent = 'Opening…'; }
+
+  try{
+    const { data, error } = await sb.storage.from('resumes').createSignedUrl(path,60);
+    if(error || !data?.signedUrl) throw error || new Error('No signed URL');
+    window.open(data.signedUrl,'_blank','noopener');
+  }catch(error){
+    console.error('Could not open resume:',error);
+    showToast('Could not open that resume — try again.');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = original; }
+  }
+}
+
+async function selectResumeChoice(kind){
+  if(!currentUserId) return;
+
+  const path = kind === 'builder'
+    ? currentResumeLibrary.builder_file_path
+    : currentResumeLibrary.uploaded_file_path;
+
+  if(kind === 'builder' && !path){
+    window.location.href = 'resume-builder.html?from=account&select=builder';
+    return;
+  }
+  if(!path) return;
+
+  const nextData = {
+    ...(currentResumeData || {}),
+    _alygnn_resume_library: {
+      ...currentResumeLibrary,
+      active: kind,
+      selected_at: new Date().toISOString()
+    }
+  };
+
+  const { error } = await sb
+    .from('profiles')
+    .update({
+      resume_file_path: path,
+      resume_source: kind,
+      resume_data: nextData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', currentUserId);
+
+  if(error){
+    console.error('Could not switch resume:', error);
+    showToast('Could not switch resumes — try again.');
     return;
   }
 
-  // FIX: this previously just relabeled the card to say "View resume" but
-  // left its href pointing at align-upload.html — the upload flow — so
-  // clicking it always sent the person back to "drop your resume here"
-  // instead of actually opening the file they'd already uploaded. Now it
-  // fetches a short-lived signed URL for the real file in storage and
-  // opens that. Replacing the file still needs align-upload.html, so
-  // that's kept as its own small link beneath the card.
-  resumeLabel.textContent = 'View resume';
-  resumeSub.textContent = 'Open your uploaded resume';
-  resumeCard.href = '#';
-  resumeCard.onclick = openResumeFile;
-  resumeReplaceLink.style.display = 'block';
-  resumeReplaceLink.textContent = 'Upload a different resume';
-  resumeBuildLink.textContent = 'Build resume with Alygnn';
-  resumeBuildLink.href = 'resume-builder.html?from=account';
+  currentResumeData = nextData;
+  currentResumeLibrary = nextData._alygnn_resume_library;
+  currentResumeSource = kind;
+  currentResumeFilePath = path;
+  renderResumeCardFast(path, nextData, kind);
+  renderResumeChooser();
+  showToast(kind === 'builder' ? 'Alygnn resume selected.' : 'Uploaded resume selected.');
 }
 
 async function openResumeFile(e){
@@ -2708,7 +2966,7 @@ async function initAccountPage(){
 
   const { data: profile, error } = await sb
     .from('profiles')
-    .select('has_password, role, full_name, resume_file_path, resume_data, preferences, is_admin')
+    .select('has_password, role, full_name, resume_file_path, resume_source, resume_data, preferences, is_admin')
     .eq('id', currentUserId)
     .maybeSingle();
 
@@ -2777,7 +3035,7 @@ async function initAccountPage(){
     if(addPasswordCard) addPasswordCard.style.display = '';
   }
 
-  renderResumeCardFast(profile?.resume_file_path, profile?.resume_data);
+  renderResumeCardFast(profile?.resume_file_path, profile?.resume_data, profile?.resume_source);
 
   // The Swipe nav link only shows once there's actually something to
   // swipe with — otherwise it's a link to a page that will immediately
@@ -2807,9 +3065,7 @@ async function initAccountPage(){
   }
 
   if(resumeStatusLink){
-    if(profile?.resume_file_path){
-      // The resume already exists: open the saved file directly rather than
-      // sending the user through the upload screen and waiting for it to redirect.
+    if(currentResumeFilePath){
       resumeStatusLink.href = '#';
       resumeStatusLink.onclick = openResumeFile;
     }else if(profile?.resume_data){
@@ -2866,6 +3122,24 @@ async function initAccountPage(){
 
 initAccountPage();
 </script>
+
+
+<div class="resume-picker-overlay" id="resume-picker-overlay" aria-hidden="true" onclick="resumeChooserBackdrop(event)">
+  <section class="resume-picker-modal" role="dialog" aria-modal="true" aria-labelledby="resume-picker-title">
+    <div class="resume-picker-head">
+      <div>
+        <h3 id="resume-picker-title">Choose your resume</h3>
+        <p>Pick which resume Alygnn should use for applications and employers.</p>
+      </div>
+      <button class="resume-picker-close" type="button" aria-label="Close" onclick="closeResumeChooser()">×</button>
+    </div>
+    <div class="resume-picker-list" id="resume-picker-list"></div>
+    <div class="resume-picker-footer">
+      <a href="align-upload.html">+ Upload another resume</a>
+      <a href="resume-builder.html?from=account">Build or edit with Alygnn →</a>
+    </div>
+  </section>
+</div>
 
 <div class="mini-footer">
   <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
