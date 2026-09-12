@@ -2666,6 +2666,49 @@
 }
 </style>
 
+
+<style id="pdf-sidebar-full-page-fix">
+/* PDF export only: make the resume an exact Letter-height canvas.
+   This removes the white strip under colored sidebars. */
+.pdf-export-stage{
+  width:8.5in !important;
+  height:11in !important;
+  min-height:11in !important;
+  overflow:hidden !important;
+}
+
+.pdf-export-stage .resume-paper{
+  width:8.5in !important;
+  max-width:8.5in !important;
+  height:11in !important;
+  min-height:11in !important;
+  max-height:11in !important;
+  box-sizing:border-box !important;
+}
+
+/* The four sidebar templates must fill the complete second grid row
+   all the way to the bottom edge of the PDF page. */
+.pdf-export-stage .resume-paper.template-green.structured-two-column,
+.pdf-export-stage .resume-paper.template-lavender.structured-two-column,
+.pdf-export-stage .resume-paper.template-bluebar.structured-two-column,
+.pdf-export-stage .resume-paper.template-editorial.structured-two-column{
+  height:11in !important;
+  min-height:11in !important;
+  grid-template-rows:auto minmax(0,1fr) !important;
+  align-content:stretch !important;
+}
+
+.pdf-export-stage .resume-paper.template-green.structured-two-column > .resume-sidebar-column,
+.pdf-export-stage .resume-paper.template-lavender.structured-two-column > .resume-sidebar-column,
+.pdf-export-stage .resume-paper.template-bluebar.structured-two-column > .resume-sidebar-column,
+.pdf-export-stage .resume-paper.template-editorial.structured-two-column > .resume-sidebar-column{
+  align-self:stretch !important;
+  height:auto !important;
+  min-height:100% !important;
+  margin-bottom:0 !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -5213,6 +5256,12 @@
 
       clone.id = 'resumePaperPdf';
       clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+
+      // Exact Letter canvas so colored sidebars reach the PDF bottom edge.
+      clone.style.width = '8.5in';
+      clone.style.height = '11in';
+      clone.style.minHeight = '11in';
+      clone.style.maxHeight = '11in';
 
       stage = document.createElement('div');
       stage.className = 'pdf-export-stage';
