@@ -2523,6 +2523,86 @@
 }
 </style>
 
+
+<style id="resume-pdf-isolation-fix">
+@page{
+  size: Letter portrait;
+  margin: 0;
+}
+
+@media print{
+  html,
+  body{
+    margin:0 !important;
+    padding:0 !important;
+    width:8.5in !important;
+    min-height:11in !important;
+    background:#fff !important;
+    overflow:visible !important;
+  }
+
+  /* Hide the entire resume-builder interface from the PDF. */
+  body *{
+    visibility:hidden !important;
+  }
+
+  /* Print ONLY the actual resume and everything inside it. */
+  #resumePaper,
+  #resumePaper *{
+    visibility:visible !important;
+  }
+
+  #resumePaper{
+    position:absolute !important;
+    top:0 !important;
+    left:0 !important;
+    width:8.5in !important;
+    max-width:8.5in !important;
+    min-height:11in !important;
+    margin:0 !important;
+    box-sizing:border-box !important;
+    box-shadow:none !important;
+    border:0 !important;
+    border-radius:0 !important;
+    transform:none !important;
+    overflow:visible !important;
+
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+
+  #resumePaper *,
+  #resumePaper::before,
+  #resumePaper::after{
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+
+  /* Explicitly keep builder controls out of print even if older rules change. */
+  nav,
+  .page-heading,
+  .form-column,
+  .score-card,
+  .template-picker,
+  .preview-toolbar,
+  .bottom-actions{
+    display:none !important;
+  }
+
+  .preview-column,
+  .preview-shell,
+  .resume-paper-wrap{
+    margin:0 !important;
+    padding:0 !important;
+    border:0 !important;
+    width:auto !important;
+    max-width:none !important;
+    overflow:visible !important;
+    background:transparent !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
