@@ -134,8 +134,18 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 .secure-icon{width:32px;height:32px;border-radius:10px;background:var(--card);display:grid;place-items:center;flex:none}
 .secure strong{font-size:11px;display:block}
 .secure span{font-size:9px;line-height:1.45;color:var(--muted);display:block;margin-top:2px}
-.test-banner{margin-bottom:12px;padding:11px;border:1px solid color-mix(in srgb,var(--sage) 55%,var(--border));border-radius:13px;background:color-mix(in srgb,var(--sage) 9%,var(--card));font-size:10px;line-height:1.5}
 .fineprint{margin-top:10px;font-size:9px;line-height:1.5;color:var(--muted);text-align:center}
+
+.billing-location{margin-top:14px;padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
+.billing-title{font-size:11px;font-weight:900}
+.billing-copy{font-size:9px;line-height:1.45;color:var(--muted);margin-top:3px}
+.billing-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+.billing-field{display:grid;gap:5px;font-size:9px;font-weight:800;color:var(--muted)}
+.billing-field span{padding-left:2px}
+.billing-field input,.billing-field select{width:100%;min-height:42px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--text);padding:0 11px;font:inherit;font-size:11px;outline:none}
+.billing-field input:focus,.billing-field select:focus{border-color:var(--brand);box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 12%,transparent)}
+.billing-wide{grid-column:1/-1}
+@media(max-width:390px){.billing-grid{grid-template-columns:1fr}.billing-wide{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -151,9 +161,6 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
   <div class="eyebrow">Employer checkout</div>
   <h1 id="checkout-heading">Confirm your job-slot plan.</h1>
   <p class="lede" id="checkout-lede">Your job-slot capacity is reusable during its active term. Closing or pausing a job frees that slot for another opening.</p>
-
-  <div class="test-banner" id="test-banner" hidden><strong>Developer test mode</strong><br>No payment will be charged. Choosing a plan will activate the same Alygnn hiring capacity as a paid plan for testing only.</div>
-
   <section class="panel" id="plan-panel">
     <div class="panel-title" id="plan-panel-title">1. Confirm your plan</div>
     <div class="tabs">
@@ -181,18 +188,41 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
       <div class="summary-row"><span>Subtotal</span><strong id="subtotal">$750.00</strong></div>
       <div class="summary-row" id="tax-row"><span>Tax</span><strong>Calculated at checkout</strong></div>
       <div class="summary-row"><span>Due today</span><strong id="due">$750.00 + tax</strong></div>
-      <div class="summary-row" id="developer-bypass-row" hidden>
-        <span>Developer bypass charge</span>
-        <strong id="developer-bypass-charge">$0.00</strong>
-      </div>
-    </div>
+</div>
   </section>
 
   <section class="panel">
     <div class="panel-title" id="payment-title">4. Payment</div>
     <div class="secure">
       <div class="secure-icon">⌁</div>
-      <div><strong id="secure-title">Secure payment checkout</strong><span id="secure-copy">Alygnn sends the payment to the secure checkout provider. Full card details are not stored in this app.</span></div>
+      <div><strong id="secure-title">Secure payment checkout</strong><span id="secure-copy">A secure Stripe payment sheet opens inside Alygnn. Full card details are handled by Stripe and are not stored by Alygnn.</span></div>
+    </div>
+
+    <div class="billing-location" id="billing-location">
+      <div class="billing-title">Billing address</div>
+      <div class="billing-copy">Used to calculate applicable taxes before the Stripe payment sheet opens.</div>
+      <div class="billing-grid">
+        <label class="billing-field billing-wide">
+          <span>Country</span>
+          <select id="billing-country" autocomplete="country"></select>
+        </label>
+        <label class="billing-field billing-wide">
+          <span>Address</span>
+          <input id="billing-line1" autocomplete="address-line1" placeholder="Street address">
+        </label>
+        <label class="billing-field">
+          <span>City</span>
+          <input id="billing-city" autocomplete="address-level2" placeholder="City">
+        </label>
+        <label class="billing-field">
+          <span>State / province</span>
+          <input id="billing-state" autocomplete="address-level1" placeholder="State or province">
+        </label>
+        <label class="billing-field billing-wide">
+          <span>ZIP / postal code</span>
+          <input id="billing-postal" autocomplete="postal-code" placeholder="ZIP or postal code">
+        </label>
+      </div>
     </div>
 
     <label class="terms" style="margin-top:14px">
@@ -203,7 +233,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 
     <button class="btn" id="checkout-btn" type="button" disabled>Accept terms to continue</button>
     <div class="message" id="message" hidden></div>
-    <div class="fineprint" id="payment-fineprint">Do not use real payment cards in the app until the app-return/deep-link flow is connected and tested.</div>
+    <div class="fineprint" id="payment-fineprint">Payments are processed securely by Stripe. Alygnn never stores full card details.</div>
   </section>
 </main>
 
@@ -216,17 +246,6 @@ const sb=supabase.createClient(
 
 const CHECKOUT_ENDPOINT='https://alygnn.com/api/create-checkout-session';
 const TERMS_VERSION='2026-08-26';
-
-/*
- * TEMPORARY APP TEST MODE.
- * While true, the Capacitor employer payment screen bypasses Stripe and calls
- * Supabase developer-test RPCs instead. The SQL patch also has a server-side
- * expiry switch so this cannot stay enabled forever by accident.
- *
- * IMPORTANT: set this back to false before public production release.
- */
-const FORCE_DEVELOPER_TEST_MODE=true;
-const TEST_MODE_EMAILS=[];
 
 const CATALOG={
   quarterly:{
@@ -308,11 +327,189 @@ let session=null;
 let billing='quarterly';
 let plan='launch';
 let product='job_plan';
-let developerTestMode=false;
 let postingAccess=null;
 let returnMode='dashboard';
 let boostJobId='';
 let boostDays=1;
+
+const COUNTRY_CODES=["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","ZA","ZM","ZW"];
+const BILLING_ADDRESS_KEY='alygnnBillingAddress';
+let nativePaymentHandled=false;
+let nativePendingContext=null;
+let stripeListenersInstalled=false;
+
+function stripePlugin(){
+  return window.Capacitor?.Plugins?.Stripe||null;
+}
+
+function nativeStripeAvailable(){
+  return Boolean(stripePlugin());
+}
+
+function populateBillingCountries(){
+  const select=$('billing-country');
+  if(!select)return;
+
+  let names=null;
+  try{names=new Intl.DisplayNames([navigator.language||'en'],{type:'region'});}catch(_error){}
+
+  const current=select.value;
+  select.innerHTML=COUNTRY_CODES.map(code=>{
+    let label=code;
+    try{label=names?.of(code)||code;}catch(_error){}
+    return `<option value="${code}">${label}</option>`;
+  }).join('');
+
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem(BILLING_ADDRESS_KEY)||'null');}catch(_error){}
+  select.value=current||saved?.country||'US';
+  if(saved){
+    $('billing-line1').value=saved.line1||'';
+    $('billing-city').value=saved.city||'';
+    $('billing-state').value=saved.state||'';
+    $('billing-postal').value=saved.postal_code||'';
+  }
+}
+
+function billingAddressPayload(){
+  const address={
+    country:String($('billing-country')?.value||'').trim().toUpperCase(),
+    line1:String($('billing-line1')?.value||'').trim(),
+    city:String($('billing-city')?.value||'').trim(),
+    state:String($('billing-state')?.value||'').trim(),
+    postal_code:String($('billing-postal')?.value||'').trim()
+  };
+
+  if(!/^[A-Z]{2}$/.test(address.country)){
+    throw new Error('Choose your billing country.');
+  }
+  if(address.country==='US'&&!address.postal_code){
+    throw new Error('Enter your ZIP code so Alygnn can calculate tax.');
+  }
+  if(!address.line1){
+    throw new Error('Enter your billing street address.');
+  }
+  if(!address.city){
+    throw new Error('Enter your billing city.');
+  }
+
+  try{localStorage.setItem(BILLING_ADDRESS_KEY,JSON.stringify(address));}catch(_error){}
+  return address;
+}
+
+function applyServerTotal(data){
+  const total=Number(data?.amount_total_cents);
+  const tax=Number(data?.tax_cents);
+  if(Number.isFinite(tax)&&tax>=0){
+    const taxStrong=document.querySelector('#tax-row strong');
+    if(taxStrong)taxStrong.textContent=money(tax/100);
+  }
+  if(Number.isFinite(total)&&total>=0){
+    $('due').textContent=money(total/100);
+  }
+}
+
+function nativeSuccessDestination(context){
+  if(context?.upgrade)return'app-employer-billing.html';
+  if(context?.product==='job_boost')return'app-employer-dashboard.html?view=jobs';
+  if(context?.returnMode==='preview')return'app-job-preview.html';
+  return'app-employer-dashboard.html?view=jobs';
+}
+
+async function handleNativePaymentCompleted(){
+  if(nativePaymentHandled)return;
+  nativePaymentHandled=true;
+  const context=nativePendingContext||{};
+  const btn=$('checkout-btn');
+  btn.disabled=true;
+  btn.textContent='Payment received ✓';
+  showMessage('Payment received. Alygnn is confirming it with Stripe and updating your access.');
+
+  // The verified Stripe webhook is the source of truth. Give it a moment before
+  // returning to the employer experience; no entitlement is granted client-side.
+  await new Promise(resolve=>setTimeout(resolve,1400));
+  location.replace(nativeSuccessDestination(context));
+}
+
+function handleNativePaymentCanceled(){
+  if(nativePaymentHandled)return;
+  nativePaymentHandled=true;
+  showMessage('Payment was canceled. Nothing was charged.');
+  updateCheckoutButton();
+}
+
+function handleNativePaymentFailed(error){
+  if(nativePaymentHandled)return;
+  nativePaymentHandled=true;
+  const message=typeof error==='string'?error:(error?.message||'Payment could not be completed.');
+  showMessage(message);
+  updateCheckoutButton();
+}
+
+async function installStripePaymentListeners(){
+  const stripe=stripePlugin();
+  if(!stripe||stripeListenersInstalled)return;
+  stripeListenersInstalled=true;
+  try{
+    await Promise.all([
+      stripe.addListener('paymentSheetCompleted',()=>handleNativePaymentCompleted()),
+      stripe.addListener('paymentSheetCanceled',()=>handleNativePaymentCanceled()),
+      stripe.addListener('paymentSheetFailed',(error)=>handleNativePaymentFailed(error))
+    ]);
+  }catch(error){
+    console.warn('Stripe PaymentSheet listeners could not be registered:',error);
+  }
+}
+
+async function presentNativePaymentSheet(data,context,address){
+  const stripe=stripePlugin();
+  if(!stripe)throw new Error('Native Stripe PaymentSheet is unavailable on this device.');
+  if(!data?.publishable_key)throw new Error('Stripe publishable key was not returned by Alygnn.');
+
+  nativePendingContext=context||{};
+  nativePaymentHandled=false;
+  await installStripePaymentListeners();
+  await stripe.initialize({publishableKey:data.publishable_key});
+
+  if(data?.already_paid&&!data?.client_secret){
+    applyServerTotal(data);
+    await handleNativePaymentCompleted();
+    return;
+  }
+  if(!data?.client_secret)throw new Error('Stripe did not return a payment client secret.');
+
+  applyServerTotal(data);
+
+  await stripe.createPaymentSheet({
+    paymentIntentClientSecret:data.client_secret,
+    merchantDisplayName:'Alygnn',
+    countryCode:address?.country||'US',
+    paymentMethodLayout:'automatic',
+    defaultBillingDetails:{
+      email:session?.user?.email||'',
+      address:{
+        country:address?.country||'',
+        city:address?.city||'',
+        line1:address?.line1||'',
+        line2:'',
+        postalCode:address?.postal_code||'',
+        state:address?.state||''
+      }
+    },
+    billingDetailsCollectionConfiguration:{
+      email:'automatic',
+      name:'automatic',
+      phone:'never',
+      address:'automatic'
+    }
+  });
+
+  const result=await stripe.presentPaymentSheet();
+  const value=String(result?.paymentResult||'');
+  if(value==='paymentSheetCompleted')await handleNativePaymentCompleted();
+  else if(value==='paymentSheetCanceled')handleNativePaymentCanceled();
+  else if(value==='paymentSheetFailed')handleNativePaymentFailed('Payment could not be completed.');
+}
 
 function money(value){
   return '$'+Number(value||0).toLocaleString('en-US',{
@@ -550,165 +747,70 @@ function renderSummary(){
     if(change.upgrade){
       $('summary-price').innerHTML=
         `${display(change.difference)} <small>upgrade difference</small>`;
-
       $('summary-slots').textContent=
         `${target.slots} plan job slots + 1 included free = ${target.slots+1} total immediately after upgrade`;
-
-      $('features').innerHTML=
-        target.features
-          .map(x=>`<li>${x}</li>`)
-          .join('');
-
-      $('subtotal').textContent=
-        money(change.difference);
-
-      /*
-       * REAL BILLING MODEL:
-       * upgrades are prepaid. The FULL price difference is due immediately.
-       * Test mode bypasses the actual card charge but does not hide the
-       * commercial amount that would be due in production.
-       */
-      $('tax-row').hidden=
-        developerTestMode;
-
-      $('due').textContent=
-        developerTestMode
-          ?money(change.difference)
-          :money(change.difference)+
-            ' + tax';
-
-      const bypassRow=
-        $('developer-bypass-row');
-
-      if(bypassRow){
-        bypassRow.hidden=
-          !developerTestMode;
-
-        $('developer-bypass-charge').textContent=
-          '$0.00';
-      }
-
+      $('features').innerHTML=target.features.map(x=>`<li>${x}</li>`).join('');
+      $('subtotal').textContent=money(change.difference);
+      $('tax-row').hidden=false;
+      $('due').textContent=money(change.difference)+' + tax';
       $('authorization').textContent=
-        developerTestMode
-          ?`REAL BILLING RULE: the full ${display(change.difference)} upgrade difference is due upfront today. In this developer build only, Alygnn bypasses that payment and charges $0 so you can test ${planNameFromCode(change.target)}. In production, ${planNameFromCode(change.target)} will not activate until the full ${display(change.difference)} payment succeeds.`
-          :`By continuing, you authorize the full ${display(change.difference)} plan-price difference plus applicable tax to be charged upfront today. ${planNameFromCode(change.target)} activates only after that payment succeeds. Your current renewal date stays the same.`;
-
+        `By continuing, you authorize the full ${display(change.difference)} plan-price difference plus applicable tax to be charged upfront today. ${planNameFromCode(change.target)} activates only after that payment succeeds. Your current renewal date stays the same.`;
       updateCheckoutButton();
       return;
     }
 
-    $('summary-price').innerHTML=
-      '$0 <small>due today</small>';
-
+    $('summary-price').innerHTML='$0 <small>due today</small>';
     $('summary-slots').textContent=
       `${target.slots} plan job slots + 1 included free = ${target.slots+1} total beginning at renewal`;
-
-    $('features').innerHTML=
-      target.features
-        .map(x=>`<li>${x}</li>`)
-        .join('');
-
+    $('features').innerHTML=target.features.map(x=>`<li>${x}</li>`).join('');
     $('subtotal').textContent='$0.00';
     $('tax-row').hidden=true;
     $('due').textContent='$0.00';
-
-    const bypassRow=
-      $('developer-bypass-row');
-
-    if(bypassRow){
-      bypassRow.hidden=true;
-    }
-
     $('authorization').textContent=
       `By continuing, you schedule ${planNameFromCode(change.target)} for your next renewal. There is no refund or account credit. ${planNameFromCode(change.current)} remains active through the period already paid for.`;
-
     updateCheckoutButton();
     return;
   }
 
   $('summary-price').innerHTML=
     `${display(p.price)} <small>${p.suffix}</small>`;
-
   $('summary-slots').textContent=isAddon()
     ? 'Second reusable job slot · 2 base slots while subscribed'
     : isUrgentAddon()
       ? 'Urgently Hiring label add-on · no additional job slots'
       : isBoost()
-      ? `${boostDays} day${boostDays===1?'':'s'} · $15/day · applicant cap lifted while active`
-      : (billing==='weekly'||plan==='weekly_slot')
-        ? `+1 temporary reusable slot · ${addedSlotTotal()} total after activation`
-        : `${p.slots} plan job slots + 1 included free = ${p.slots+1} total`;
+        ? `${boostDays} day${boostDays===1?'':'s'} · $15/day · applicant cap lifted while active`
+        : (billing==='weekly'||plan==='weekly_slot')
+          ? `+1 temporary reusable slot · ${addedSlotTotal()} total after activation`
+          : `${p.slots} plan job slots + 1 included free = ${p.slots+1} total`;
 
-  $('features').innerHTML=
-    p.features.map(x=>`<li>${x}</li>`).join('');
-
+  $('features').innerHTML=p.features.map(x=>`<li>${x}</li>`).join('');
   $('subtotal').textContent=money(p.price);
+  $('tax-row').hidden=false;
+  $('due').textContent=money(p.price)+' + tax';
 
-  const bypassRow=
-    $('developer-bypass-row');
-
-  if(bypassRow){
-    bypassRow.hidden=
-      !developerTestMode;
-
-    $('developer-bypass-charge').textContent=
-      '$0.00';
-  }
-
-  if(developerTestMode){
-    $('tax-row').hidden=true;
-
-    /*
-     * Every Alygnn purchase is prepaid in production.
-     * Test mode only bypasses the real card charge.
-     */
-    $('due').textContent=
-      money(p.price);
-
-    $('authorization').textContent=isAddon()
-      ?'By continuing, you confirm this is a developer test activation of the standalone $150/month Second Job Slot. No payment will be processed.'
-      :isUrgentAddon()
-        ?'By continuing, you confirm this is a developer test activation of the Urgently Hiring add-on. No payment will be processed.'
-        :isBoost()
-        ?`By continuing, you confirm this is a developer test activation of a ${boostDays}-day Job Boost. No payment will be processed.`
-        :`By continuing, you confirm this is a developer test activation of ${p.name}. No payment will be processed.`;
-
+  if(isAddon()){
+    $('authorization').textContent=
+      "By continuing, you authorize $150 plus applicable tax each month for the standalone Second Job Slot until canceled according to Alygnn's Terms.";
+  }else if(isUrgentAddon()){
+    $('authorization').textContent=
+      `By continuing, you authorize ${display(p.price)} plus applicable tax ${billing==='quarterly'?'every three months':'each month'} for the Urgently Hiring add-on until canceled according to Alygnn's Terms.`;
+  }else if(isBoost()){
+    $('authorization').textContent=
+      `By continuing, you authorize ${display(p.price)} plus applicable tax for a ${boostDays}-day Job Boost at $15 per day. This is a one-time payment.`;
+  }else if(billing==='monthly'){
+    $('authorization').textContent=
+      `By continuing, you authorize ${display(p.price)} plus applicable tax each month until canceled according to Alygnn's Terms.`;
+  }else if(billing==='quarterly'){
+    $('authorization').textContent=
+      `By continuing, you authorize ${display(p.price)} plus applicable tax every three months until canceled according to Alygnn's Terms.`;
   }else{
-    const bypassRow=
-      $('developer-bypass-row');
-
-    if(bypassRow){
-      bypassRow.hidden=true;
-    }
-
-    $('tax-row').hidden=false;
-    $('due').textContent=
-      money(p.price)+' + tax';
-
-    if(isAddon()){
-      $('authorization').textContent=
-        "By continuing, you authorize $150 plus applicable tax each month for the standalone Second Job Slot until canceled according to Alygnn's Terms.";
-    }else if(isUrgentAddon()){
-      $('authorization').textContent=
-        `By continuing, you authorize ${display(p.price)} plus applicable tax ${billing==='quarterly'?'every three months':'each month'} for the Urgently Hiring add-on until canceled according to Alygnn's Terms.`;
-    }else if(isBoost()){
-      $('authorization').textContent=
-        `By continuing, you authorize ${display(p.price)} plus applicable tax for a ${boostDays}-day Job Boost at $15 per day. This is a one-time payment.`;
-    }else if(billing==='monthly'){
-      $('authorization').textContent=
-        `By continuing, you authorize ${display(p.price)} plus applicable tax each month until canceled according to Alygnn's Terms.`;
-    }else if(billing==='quarterly'){
-      $('authorization').textContent=
-        `By continuing, you authorize ${display(p.price)} plus applicable tax every three months until canceled according to Alygnn's Terms.`;
-    }else{
-      $('authorization').textContent=
-        `By continuing, you authorize ${display(p.price)} plus applicable tax for one reusable seven-day job slot.`;
-    }
+    $('authorization').textContent=
+      `By continuing, you authorize ${display(p.price)} plus applicable tax for one reusable seven-day job slot.`;
   }
 
   updateCheckoutButton();
 }
-
 function renderAll(){
   const change=existingPlanChange();
 
@@ -822,32 +924,22 @@ function updateCheckoutButton(){
   $('checkout-btn').disabled=!accepted;
 
   if(!accepted){
-    $('checkout-btn').textContent=
-      'Accept terms to continue';
+    $('checkout-btn').textContent='Accept terms to continue';
     return;
   }
 
   if(change?.upgrade){
-    $('checkout-btn').textContent=
-      developerTestMode
-        ?`Bypass ${display(change.difference)} payment & test upgrade — $0`
-        :`Pay ${display(change.difference)} upfront & upgrade`;
-
+    $('checkout-btn').textContent=`Pay ${display(change.difference)} upfront & upgrade`;
     return;
   }
 
   if(change?.downgrade){
-    $('checkout-btn').textContent=
-      `Schedule ${planNameFromCode(change.target)} — $0 today`;
+    $('checkout-btn').textContent=`Schedule ${planNameFromCode(change.target)} — $0 today`;
     return;
   }
 
-  $('checkout-btn').textContent=
-    developerTestMode
-      ?`Activate ${p.name} test access — $0`
-      :`Continue to secure payment — ${display(p.price)}`;
+  $('checkout-btn').textContent=`Continue to payment — ${display(p.price)}`;
 }
-
 function slotLimitFor(){
   if(billing==='weekly') return 1;
   if(plan==='growth') return 5;
@@ -996,7 +1088,13 @@ async function executeExistingPlanChange(){
         body:JSON.stringify({
           action:'change_plan',
           target_plan:change.target,
-          source:'capacitor_app'
+          source:'capacitor_app',
+          payment_ui:nativeStripeAvailable()?'payment_sheet':'checkout',
+          native_payment_sheet:nativeStripeAvailable(),
+          checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
+          terms_accepted:true,
+          terms_version:TERMS_VERSION,
+          billing_address:change.upgrade?billingAddressPayload():undefined
         })
       }
     );
@@ -1029,10 +1127,19 @@ async function executeExistingPlanChange(){
         `${display(amount)} is the upgrade difference. Complete the secure payment to unlock ${planNameFromCode(change.target)} immediately.`
       );
 
+      if(data.payment_sheet&&data.client_secret){
+        const address=billingAddressPayload();
+        await presentNativePaymentSheet(
+          data,
+          {upgrade:true,target_plan:change.target,returnMode},
+          address
+        );
+        return true;
+      }
+
       if(data.hosted_invoice_url){
         setTimeout(()=>{
-          location.href=
-            data.hosted_invoice_url;
+          location.href=data.hosted_invoice_url;
         },350);
         return true;
       }
@@ -1058,9 +1165,7 @@ async function executeExistingPlanChange(){
         `${planNameFromCode(change.target)} activated ✓`;
 
       showMessage(
-        developerTestMode
-          ? `${planNameFromCode(change.target)} is active now. This test simulated the ${display(amount)} plan-price difference; $0 was charged. Your renewal date stays the same.`
-          : `${planNameFromCode(change.target)} is active now. ${display(amount)} was the plan-price difference due today, and your renewal date stays the same.`
+        `${planNameFromCode(change.target)} is active now. ${display(amount)} was the plan-price difference due today, and your renewal date stays the same.`
       );
 
       setTimeout(()=>{
@@ -1309,6 +1414,8 @@ async function initialize(){
    */
   if(
     product==='job_plan' &&
+    plan!=='weekly_slot' &&
+    billing!=='weekly' &&
     basePaidPlanActive()
   ){
     const currentPeriod=
@@ -1372,28 +1479,6 @@ async function initialize(){
       'You already have one active Weekly Job Slot. For ongoing capacity, the next plan is the better-value choice.';
   }
 
-  developerTestMode=FORCE_DEVELOPER_TEST_MODE || TEST_MODE_EMAILS.includes(email.toLowerCase());
-  $('test-banner').hidden=!developerTestMode;
-
-  if(developerTestMode){
-    $('payment-title').textContent='4. Test activation';
-    $('secure-title').textContent='Activate access for testing';
-    const change=existingPlanChange();
-
-    $('secure-copy').textContent=
-      change?.upgrade
-        ?`Developer bypass is active. In production, the full ${display(change.difference)} upgrade difference is paid upfront today before ${planNameFromCode(change.target)} activates. This development build charges $0 only so you can test the upgraded capacity and features.`
-        :change?.downgrade
-          ?`Stripe is bypassed in this development build. Alygnn will schedule ${planNameFromCode(change.target)} for your current renewal date with no refund or credit.`
-          :isBoost()
-            ?'Stripe is bypassed in this temporary development build. Alygnn will activate the Job Boost in Supabase so you can test the applicant-limit behavior.'
-            :isUrgentAddon()
-              ?'Stripe is bypassed in this temporary development build. Alygnn will activate the Urgently Hiring add-on in Supabase for testing.'
-              :'Stripe is bypassed in this temporary development build. Alygnn will activate the selected package in Supabase so you can test the real plan limits and features.';
-    const fineprint=$('payment-fineprint');
-    if(fineprint) fineprint.textContent='MASTER TEST BYPASS: all employer billing is $0 and Stripe is skipped. Disable FORCE_DEVELOPER_TEST_MODE and the Supabase developer switch before release.';
-  }
-
   renderAll();
   updateUrl();
 
@@ -1404,204 +1489,6 @@ async function initialize(){
   $('loading').hidden=true;
 }
 
-async function activateDeveloperTest(){
-  const p=item();
-  const btn=$('checkout-btn');
-  const change=existingPlanChange();
-
-  let action='activate_plan';
-  let actionPlan=plan;
-  let actionBilling=billing;
-  let actionJobId=null;
-  let actionDays=1;
-
-  if(change){
-    action='change_plan';
-    actionPlan=change.target;
-    actionBilling=change.period;
-
-  }else if(isBoost()){
-    if(!boostEligible()){
-      showMessage(
-        boostIneligibleMessage()
-      );
-      updateCheckoutButton();
-      return;
-    }
-
-    if(!boostJobId){
-      showMessage(
-        'A job must be selected before starting a Job Boost.'
-      );
-      updateCheckoutButton();
-      return;
-    }
-
-    action='job_boost';
-    actionJobId=boostJobId;
-    actionDays=boostDays;
-
-  }else if(isAddon()){
-    action='second_slot';
-    actionPlan=null;
-    actionBilling='monthly';
-
-  }else if(isUrgentAddon()){
-    action='urgent_addon';
-    actionPlan=null;
-    actionBilling=billing;
-
-  }else if(
-    billing==='weekly' ||
-    plan==='weekly_slot'
-  ){
-    action='weekly_slot';
-    actionPlan=null;
-    actionBilling='weekly';
-  }
-
-  try{
-    const {data,error}=await sb.rpc(
-      'alygnn_developer_bypass',
-      {
-        p_action:action,
-        p_plan:actionPlan,
-        p_billing:actionBilling,
-        p_job_id:actionJobId,
-        p_days:actionDays
-      }
-    );
-
-    if(error)throw error;
-
-    if(change?.upgrade){
-      btn.textContent=
-        `${planNameFromCode(change.target)} activated ✓`;
-
-      showMessage(
-        `${planNameFromCode(change.target)} is active in developer test mode. Production would require the full ${display(change.difference)} upgrade difference upfront before access is granted. This test bypass charged $0. Your renewal date stays the same.`
-      );
-
-      setTimeout(()=>{
-        location.replace(
-          'app-employer-billing.html'
-        );
-      },750);
-
-      return;
-    }
-
-    if(change?.downgrade){
-      btn.textContent=
-        'Downgrade scheduled ✓';
-
-      showMessage(
-        `${planNameFromCode(change.current)} stays active until your renewal date. $0 was charged, and there is no refund or credit. ${planNameFromCode(change.target)} is scheduled for renewal.`
-      );
-
-      setTimeout(()=>{
-        location.replace(
-          'app-employer-billing.html'
-        );
-      },900);
-
-      return;
-    }
-
-    if(action==='job_boost'){
-      btn.textContent='Job Boost activated ✓';
-
-      setTimeout(()=>{
-        location.href=
-          'app-employer-dashboard.html?view=jobs';
-      },650);
-
-      return;
-    }
-
-    if(action==='second_slot'){
-      btn.textContent=
-        'Second Job Slot activated ✓';
-
-      setTimeout(()=>{
-        location.href=
-          returnMode==='preview'
-            ?'app-job-preview.html'
-            :'app-employer-dashboard.html?view=jobs';
-      },650);
-
-      return;
-    }
-
-    if(action==='weekly_slot'){
-      btn.textContent=
-        'Weekly Job Slot activated ✓';
-
-      setTimeout(()=>{
-        location.href=
-          returnMode==='preview'
-            ?'app-job-preview.html'
-            :'app-employer-dashboard.html?view=jobs';
-      },650);
-
-      return;
-    }
-
-    if(action==='urgent_addon'){
-      btn.textContent=
-        'Urgently Hiring activated ✓';
-
-      setTimeout(()=>{
-        location.href=
-          'app-employer-pricing.html';
-      },650);
-
-      return;
-    }
-
-    btn.textContent=
-      `${p.name} activated ✓`;
-
-    try{
-      localStorage.setItem(
-        'alygnn_test_entitlement',
-        JSON.stringify({
-          plan,
-          billing,
-          slot_limit:
-            Number(
-              data?.slot_limit||
-              slotLimitFor()
-            ),
-          expires_at:
-            data?.current_period_end||
-            expiryFor(),
-          test_mode:true
-        })
-      );
-    }catch(_error){}
-
-    setTimeout(()=>{
-      location.href=
-        returnMode==='preview'
-          ?'app-job-preview.html'
-          :'app-employer-dashboard.html?view=jobs';
-    },650);
-
-  }catch(error){
-    console.error(
-      'Master developer bypass failed:',
-      error
-    );
-
-    showMessage(
-      error.message||
-      'Developer bypass could not be applied. Run ALYGNN-MASTER-DEVELOPER-FREE-BYPASS.sql in Supabase and try again.'
-    );
-
-    updateCheckoutButton();
-  }
-}
 
 async function startCheckout(){
   if(!session) return;
@@ -1636,18 +1523,6 @@ async function startCheckout(){
   btn.disabled=true;
 
   /*
-   * MASTER DEVELOPER BYPASS:
-   * when test mode is ON, absolutely no Stripe or billing API is used.
-   * Every paid feature is simulated directly through the single
-   * Supabase developer-bypass RPC.
-   */
-  if(developerTestMode){
-    btn.textContent='Activating free test access…';
-    await activateDeveloperTest();
-    return;
-  }
-
-  /*
    * Production existing-plan changes use Alygnn billing:
    * upgrade = exact difference + instant access;
    * downgrade = $0 today + change at renewal.
@@ -1657,19 +1532,14 @@ async function startCheckout(){
     return;
   }
 
-  btn.textContent='Opening secure checkout…';
+  btn.textContent=nativeStripeAvailable()
+    ?'Opening payment sheet…'
+    :'Opening secure checkout…';
 
   try{
-    /*
-     * Stripe currently returns to alygnn.com after payment.
-     * The webhook grants the slot/plan server-side.
-     * Native app-link return can be wired separately without changing
-     * the entitlement/paywall logic in this file.
-     */
-    const successParams=new URLSearchParams({
-      payment:'success',
-      source:'app'
-    });
+    const address=billingAddressPayload();
+    const useNative=nativeStripeAvailable();
+    const successParams=new URLSearchParams({payment:'success',source:'app'});
 
     if(isAddon()){
       successParams.set('product','additional_slot');
@@ -1699,6 +1569,10 @@ async function startCheckout(){
       terms_accepted:true,
       terms_version:TERMS_VERSION,
       source:'capacitor_app',
+      payment_ui:useNative?'payment_sheet':'checkout',
+      native_payment_sheet:useNative,
+      checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
+      billing_address:address,
       success_url:
         'https://alygnn.com/employer-dashboard.html?'+successParams.toString(),
       cancel_url:'https://alygnn.com/pricing.html'
@@ -1714,16 +1588,34 @@ async function startCheckout(){
     });
 
     let data={};
-    try{
-      data=await response.json();
-    }catch(_){}
+    try{data=await response.json();}catch(_error){}
 
-    if(!response.ok||!data.url){
-      throw new Error(data.error||'Checkout is not connected yet.');
+    if(!response.ok){
+      throw new Error(data.error||'Payment could not be prepared.');
     }
 
-    location.href=data.url;
+    if(data.payment_sheet){
+      await presentNativePaymentSheet(
+        data,
+        {
+          product:payload.product,
+          plan,
+          billing,
+          returnMode,
+          job_id:boostJobId
+        },
+        address
+      );
+      return;
+    }
 
+    if(data.url){
+      // Browser fallback is retained only for non-native environments.
+      location.href=data.url;
+      return;
+    }
+
+    throw new Error('Alygnn did not return a payment method.');
   }catch(error){
     console.error(error);
     showMessage(
@@ -1742,7 +1634,151 @@ $('checkout-btn').addEventListener('click',startCheckout);
   $('tab-'+key).addEventListener('click',()=>switchBilling(key));
 });
 
+populateBillingCountries();
+installStripePaymentListeners();
 initialize();
 </script>
+
+<script id="ALYGNN_DIRECT_SELECTED_CHECKOUT_FIX">
+(() => {
+  function lockSelectedCheckout(){
+    const params = new URLSearchParams(location.search);
+
+    const explicitSelection =
+      params.has('plan') ||
+      params.has('product');
+
+    if(!explicitSelection) return;
+
+    const requestedBilling =
+      String(params.get('billing') || '').toLowerCase();
+
+    const requestedPlan =
+      String(params.get('plan') || '').toLowerCase();
+
+    /*
+     * Make sure the URL selection is the selection used by the page.
+     * Supports both versions of the Alygnn payment page.
+     */
+    try{
+      if(requestedBilling && typeof billing !== 'undefined'){
+        billing = requestedBilling;
+      }
+    }catch(_){}
+
+    try{
+      if(requestedPlan && typeof plan !== 'undefined'){
+        plan = requestedPlan;
+      }
+    }catch(_){}
+
+    try{
+      if(requestedBilling && typeof selectedBilling !== 'undefined'){
+        selectedBilling = requestedBilling;
+      }
+    }catch(_){}
+
+    try{
+      if(requestedPlan && typeof selectedPlan !== 'undefined'){
+        selectedPlan = requestedPlan;
+      }
+    }catch(_){}
+
+    /*
+     * Re-render once using the explicit choice.
+     */
+    try{
+      if(typeof renderAll === 'function'){
+        renderAll();
+      }else{
+        if(typeof renderBillingTabs === 'function') renderBillingTabs();
+        if(typeof renderPlanOptions === 'function') renderPlanOptions();
+        if(typeof renderOptions === 'function') renderOptions();
+        if(typeof renderSummary === 'function') renderSummary();
+      }
+    }catch(error){
+      console.warn('Selected checkout render:', error);
+    }
+
+    /*
+     * The customer already selected the product on Pricing.
+     * Do not ask them to select it again.
+     */
+    const planPanel = document.getElementById('plan-panel');
+
+    if(planPanel){
+      planPanel.hidden = true;
+      planPanel.style.display = 'none';
+    }
+
+    document.querySelectorAll(
+      '.billing-tabs, .tabs, #plan-options'
+    ).forEach(el=>{
+      const insidePlanPanel =
+        planPanel && planPanel.contains(el);
+
+      if(insidePlanPanel || el.id === 'plan-options'){
+        el.hidden = true;
+        el.style.display = 'none';
+      }
+    });
+
+    /*
+     * Renumber what remains.
+     */
+    const titles = [
+      ...document.querySelectorAll('.panel-title')
+    ];
+
+    let next = 1;
+
+    titles.forEach(title=>{
+      if(planPanel && planPanel.contains(title)) return;
+
+      const text = title.textContent
+        .replace(/^\s*\d+\.\s*/, '')
+        .trim();
+
+      if(
+        /employer account/i.test(text) ||
+        /order summary/i.test(text) ||
+        /payment/i.test(text)
+      ){
+        title.textContent = `${next}. ${text}`;
+        next++;
+      }
+    });
+
+    /*
+     * Bring the customer directly to the selected order.
+     */
+    setTimeout(()=>{
+      const summary =
+        document.getElementById('summary-price') ||
+        document.getElementById('subtotal');
+
+      const panel = summary?.closest('.panel');
+
+      if(panel){
+        panel.scrollIntoView({
+          block:'start',
+          behavior:'smooth'
+        });
+      }
+    },150);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener(
+      'DOMContentLoaded',
+      lockSelectedCheckout,
+      {once:true}
+    );
+  }else{
+    lockSelectedCheckout();
+  }
+})();
+</script>
+
 </body>
 </html>
