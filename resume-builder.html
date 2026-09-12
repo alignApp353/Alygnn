@@ -5000,6 +5000,59 @@
 </html>`;
   }
 
+
+  async function buildResumePdfBlobForStorage() {
+    if (typeof html2pdf !== 'function') {
+      throw new Error('PDF generator did not load.');
+    }
+
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    const sourcePaper = document.getElementById('resumePaper');
+    if (!sourcePaper) throw new Error('Resume preview is not available.');
+
+    const clone = sourcePaper.cloneNode(true);
+    clone.id = 'resumePaperStoragePdf';
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.style.width = '8.5in';
+    clone.style.height = '11in';
+    clone.style.minHeight = '11in';
+    clone.style.maxHeight = '11in';
+
+    const stage = document.createElement('div');
+    stage.className = 'pdf-export-stage';
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+
+    try {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const worker = html2pdf()
+        .set({
+          margin: 0,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+        })
+        .from(clone)
+        .toPdf();
+
+      return await worker.outputPdf('blob');
+    } finally {
+      stage.remove();
+    }
+  }
+
   async function saveToSupabase(data) {
     const { data: { session }, error: sessionError } = await sb.auth.getSession();
 
@@ -5008,56 +5061,118 @@
 
     const userId = session.user.id;
 
-    // IMPORTANT: resume_data is the source of truth for resumes created in
-    // Alygnn. Save it FIRST. A storage/MIME policy problem must never prevent
-    // the candidate from saving their resume or continuing to Preferences.
-    const { error: profileDataError } = await sb
+    const { data: existingProfile, error: existingProfileError } = await sb
       .from('profiles')
-      .upsert({
-        id: userId,
-        resume_data: data
-      });
+      .select('resume_file_path,resume_source,resume_data')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (profileDataError) throw profileDataError;
+    if (existingProfileError && existingProfileError.code !== 'PGRST116') {
+      throw existingProfileError;
+    }
 
-    // Best-effort secondary copy for pages that can open a stored resume file.
-    // Some Supabase buckets are configured to accept only PDF/DOC/DOCX, so a
-    // generated HTML file may be rejected. That should not invalidate the
-    // structured resume that already saved successfully above.
-    const filePath = `${userId}/generated-resume.html`;
-    let storageSynced = false;
+    const existingData =
+      existingProfile?.resume_data && typeof existingProfile.resume_data === 'object'
+        ? existingProfile.resume_data
+        : {};
+
+    const existingLibrary =
+      existingData._alygnn_resume_library &&
+      typeof existingData._alygnn_resume_library === 'object'
+        ? existingData._alygnn_resume_library
+        : {};
+
+    const currentPath = existingProfile?.resume_file_path || null;
+    const currentSource = String(existingProfile?.resume_source || '').toLowerCase();
+
+    // Preserve the candidate's uploaded resume instead of overwriting it when
+    // they create a second resume with Alygnn.
+    const uploadedFilePath =
+      (currentPath && currentSource !== 'builder' ? currentPath : null) ||
+      existingLibrary.uploaded_file_path ||
+      null;
+
+    const builderFilePath = `${userId}/alygnn-built-resume.pdf`;
+    let builderStored = false;
     let storageError = null;
 
     try {
-      const generatedHtml = buildGeneratedResumeHtml();
-      const generatedFile = new Blob([generatedHtml], { type: 'text/html;charset=utf-8' });
-
+      const builderPdfBlob = await buildResumePdfBlobForStorage();
       const { error: uploadError } = await sb.storage
         .from('resumes')
-        .upload(filePath, generatedFile, {
+        .upload(builderFilePath, builderPdfBlob, {
           upsert: true,
-          contentType: 'text/html;charset=utf-8'
+          contentType: 'application/pdf',
+          cacheControl: '3600'
         });
 
       if (uploadError) throw uploadError;
-
-      const { error: linkError } = await sb
-        .from('profiles')
-        .update({
-          resume_file_path: filePath,
-          resume_source: 'builder',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
-
-      if (linkError) throw linkError;
-      storageSynced = true;
+      builderStored = true;
     } catch (error) {
       storageError = error;
-      console.warn('Resume data saved, but generated resume file was not linked:', error);
+      console.warn('Structured resume saved, but its PDF copy could not be stored:', error);
     }
 
-    return { loggedIn: true, storageSynced, storageError, filePath: storageSynced ? filePath : null };
+    const params = new URLSearchParams(window.location.search);
+    const forceBuilderActive = String(params.get('select') || '').toLowerCase() === 'builder';
+
+    let active = String(existingLibrary.active || '').toLowerCase();
+    if (!['uploaded', 'builder'].includes(active)) {
+      if (currentSource === 'builder') active = 'builder';
+      else if (uploadedFilePath) active = 'uploaded';
+      else active = 'builder';
+    }
+
+    if (forceBuilderActive && builderStored) active = 'builder';
+    if (active === 'builder' && !builderStored && uploadedFilePath) active = 'uploaded';
+    if (active === 'uploaded' && !uploadedFilePath && builderStored) active = 'builder';
+
+    const library = {
+      ...existingLibrary,
+      uploaded_file_path: uploadedFilePath || null,
+      builder_file_path: builderStored
+        ? builderFilePath
+        : (existingLibrary.builder_file_path || null),
+      active,
+      builder_updated_at: new Date().toISOString()
+    };
+
+    // Keep the editable builder data plus the tiny resume-library metadata in
+    // the same JSON column so this works without a database migration.
+    data._alygnn_resume_library = library;
+
+    const activeBuilderPath = library.builder_file_path || null;
+    const activePath =
+      active === 'builder'
+        ? activeBuilderPath
+        : uploadedFilePath;
+
+    const payload = {
+      id: userId,
+      resume_data: data,
+      updated_at: new Date().toISOString()
+    };
+
+    // resume_file_path remains the compatibility field used by employer pages.
+    // It always mirrors whichever resume the candidate selected as active.
+    if (activePath) {
+      payload.resume_file_path = activePath;
+      payload.resume_source = active;
+    }
+
+    const { error: profileDataError } = await sb
+      .from('profiles')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (profileDataError) throw profileDataError;
+
+    return {
+      loggedIn: true,
+      storageSynced: builderStored,
+      storageError,
+      filePath: builderStored ? builderFilePath : null,
+      active
+    };
   }
 
   async function saveAndContinue() {
@@ -5096,10 +5211,13 @@
         'success'
       );
 
-      // Keep the structured resume available to the next page immediately.
-      // The Account page should use resume_data as a valid resume source even
-      // when no uploaded file path exists.
-      window.location.href = 'preferences.html';
+      // Keep the original onboarding flow, but when the user came from
+      // Account, return them to Account so they can choose between resumes.
+      const saveParams = new URLSearchParams(window.location.search);
+      const saveFrom = String(saveParams.get('from') || '').toLowerCase();
+      window.location.href = saveFrom === 'account'
+        ? 'account.html?resume=updated'
+        : 'preferences.html';
     } catch (error) {
       console.error('Resume save failed:', error);
       setSaveStatus('Your resume was saved locally, but account sync failed.', 'error');
