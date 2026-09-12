@@ -2632,6 +2632,40 @@
 }
 </style>
 
+
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+  integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"></script>
+
+
+<style id="direct-pdf-export-fix">
+.pdf-export-stage{
+  position:fixed;
+  left:-10000px;
+  top:0;
+  width:8.5in;
+  min-height:11in;
+  background:#fff;
+  z-index:-9999;
+  pointer-events:none;
+}
+
+.pdf-export-stage .resume-paper{
+  width:8.5in !important;
+  max-width:8.5in !important;
+  min-height:11in !important;
+  margin:0 !important;
+  box-sizing:border-box !important;
+  box-shadow:none !important;
+  border:0 !important;
+  border-radius:0 !important;
+  transform:none !important;
+  overflow:visible !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -5155,13 +5189,87 @@
     applyResumeTemplate(button.dataset.template, true);
   });
 
-  document.getElementById('downloadBtn').addEventListener('click', () => {
+  document.getElementById('downloadBtn').addEventListener('click', async () => {
     if (!validateResume()) return;
-    document.title = `${document.getElementById('fullName').value.trim()} Resume`;
-    window.print();
-    setTimeout(() => {
-      document.title = 'Alygnn — Build your resume';
-    }, 500);
+
+    const button = document.getElementById('downloadBtn');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Generating PDF…';
+
+    let stage = null;
+
+    try {
+      if (typeof html2pdf !== 'function') {
+        throw new Error('PDF generator did not load.');
+      }
+
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+
+      const sourcePaper = document.getElementById('resumePaper');
+      const clone = sourcePaper.cloneNode(true);
+
+      clone.id = 'resumePaperPdf';
+      clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+
+      stage = document.createElement('div');
+      stage.className = 'pdf-export-stage';
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+
+      // Let the browser finish laying out the off-screen resume before capture.
+      await new Promise(resolve =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(resolve)
+        )
+      );
+
+      const rawName = document.getElementById('fullName').value.trim() || 'Alygnn Resume';
+      const safeName = rawName
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const options = {
+        margin: 0,
+        filename: `${safeName} Resume.pdf`,
+        image: {
+          type: 'jpeg',
+          quality: 0.98
+        },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          scrollX: 0,
+          scrollY: 0
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'letter',
+          orientation: 'portrait'
+        },
+        pagebreak: {
+          mode: ['css', 'legacy']
+        }
+      };
+
+      await html2pdf()
+        .set(options)
+        .from(clone)
+        .save();
+
+    } catch (error) {
+      console.error('PDF download failed:', error);
+      alert('We could not generate the PDF. Please refresh the page and try again.');
+    } finally {
+      stage?.remove();
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   });
 
   document.getElementById('clearBtn').addEventListener('click', clearResume);
