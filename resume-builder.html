@@ -2221,6 +2221,262 @@
 }
 </style>
 
+
+<style id="four-template-independent-columns-fix">
+/* =========================================================
+   ONLY: Green Sidebar / Editorial / Lavender / Blue Column
+   Root fix: left and right columns now flow independently.
+   ========================================================= */
+
+.resume-paper.structured-two-column > .resume-sidebar-column,
+.resume-paper.structured-two-column > .resume-main-column{
+  min-width:0;
+}
+
+.resume-paper.structured-two-column > .resume-sidebar-column{
+  grid-column:1;
+  grid-row:2;
+  align-self:stretch;
+}
+
+.resume-paper.structured-two-column > .resume-main-column{
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+}
+
+.resume-paper.structured-two-column .resume-section{
+  grid-column:auto !important;
+  grid-row:auto !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+  padding-left:0 !important;
+  padding-right:0 !important;
+  background:transparent !important;
+  min-width:0 !important;
+}
+
+.resume-paper.structured-two-column .resume-sidebar-column .resume-section:first-child,
+.resume-paper.structured-two-column .resume-main-column .resume-section:first-child{
+  margin-top:0 !important;
+}
+
+.resume-paper.structured-two-column .resume-sidebar-column .resume-section + .resume-section,
+.resume-paper.structured-two-column .resume-main-column .resume-section + .resume-section{
+  margin-top:22px !important;
+}
+
+/* Education in a narrow sidebar: keep the degree intact, with the date below it. */
+.resume-paper.structured-two-column .resume-sidebar-column #previewEducation .entry-top{
+  display:block !important;
+}
+
+.resume-paper.structured-two-column .resume-sidebar-column #previewEducation .entry-date{
+  display:block !important;
+  margin-top:4px !important;
+  text-align:left !important;
+  white-space:normal !important;
+}
+
+.resume-paper.structured-two-column .resume-sidebar-column #previewEducation .entry-name,
+.resume-paper.structured-two-column .resume-sidebar-column #previewEducation .entry-sub{
+  overflow-wrap:normal !important;
+  word-break:normal !important;
+  hyphens:none !important;
+}
+
+/* ---------- GREEN SIDEBAR ---------- */
+.resume-paper.template-green.structured-two-column{
+  display:grid !important;
+  grid-template-columns:34% minmax(0,1fr) !important;
+  column-gap:0 !important;
+  align-content:start !important;
+  padding:0 !important;
+}
+
+.resume-paper.template-green.structured-two-column .resume-header{
+  grid-column:1/-1 !important;
+  grid-row:1 !important;
+}
+
+.resume-paper.template-green.structured-two-column > .resume-sidebar-column{
+  padding:29px 20px 30px 28px !important;
+  background:#F1F5F0 !important;
+}
+
+.resume-paper.template-green.structured-two-column > .resume-main-column{
+  padding:28px 34px 34px 28px !important;
+}
+
+.resume-paper.template-green.structured-two-column .resume-section-title{
+  border:0 !important;
+  color:#456B49 !important;
+}
+
+.resume-paper.template-green.structured-two-column .resume-main-column .resume-section-title{
+  border-bottom:1px solid #D6DFD5 !important;
+  color:#355C3A !important;
+}
+
+.resume-paper.template-green.structured-two-column .resume-skill{
+  padding:3px 0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:none !important;
+  color:#334D36 !important;
+}
+
+/* ---------- LAVENDER ---------- */
+.resume-paper.template-lavender.structured-two-column{
+  display:grid !important;
+  grid-template-columns:34% minmax(0,1fr) !important;
+  column-gap:0 !important;
+  align-content:start !important;
+  padding:0 !important;
+}
+
+.resume-paper.template-lavender.structured-two-column .resume-header{
+  grid-column:1/-1 !important;
+  grid-row:1 !important;
+}
+
+.resume-paper.template-lavender.structured-two-column > .resume-sidebar-column{
+  padding:29px 20px 30px 28px !important;
+  background:#E9DDF1 !important;
+}
+
+.resume-paper.template-lavender.structured-two-column > .resume-main-column{
+  padding:28px 34px 34px 28px !important;
+}
+
+.resume-paper.template-lavender.structured-two-column .resume-section-title{
+  border:0 !important;
+  color:#684A78 !important;
+}
+
+.resume-paper.template-lavender.structured-two-column .resume-main-column .resume-section-title{
+  border-bottom:1px solid #E2D9E6 !important;
+}
+
+.resume-paper.template-lavender.structured-two-column .resume-skill{
+  border:1px solid rgba(104,74,120,.18) !important;
+  background:rgba(255,255,255,.48) !important;
+  color:#5B4566 !important;
+}
+
+/* ---------- BLUE COLUMN ---------- */
+.resume-paper.template-bluebar.structured-two-column{
+  display:grid !important;
+  grid-template-columns:33% minmax(0,1fr) !important;
+  column-gap:0 !important;
+  align-content:start !important;
+  padding:0 !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column .resume-header{
+  grid-column:1/-1 !important;
+  grid-row:1 !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column > .resume-sidebar-column{
+  padding:29px 20px 30px 26px !important;
+  background:#EAF1F7 !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column > .resume-main-column{
+  padding:28px 34px 34px 28px !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column .resume-section-title{
+  border:0 !important;
+  color:#365F82 !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column .resume-main-column .resume-section-title{
+  border-bottom:1px solid #CCD9E3 !important;
+}
+
+.resume-paper.template-bluebar.structured-two-column .resume-skill{
+  border:0 !important;
+  background:#DCE8F1 !important;
+  color:#315B7D !important;
+}
+
+/* ---------- EDITORIAL ---------- */
+.resume-paper.template-editorial.structured-two-column{
+  display:grid !important;
+  grid-template-columns:33% minmax(0,1fr) !important;
+  column-gap:28px !important;
+  align-content:start !important;
+  padding:36px !important;
+}
+
+.resume-paper.template-editorial.structured-two-column .resume-header{
+  grid-column:1/-1 !important;
+  grid-row:1 !important;
+}
+
+.resume-paper.template-editorial.structured-two-column > .resume-sidebar-column{
+  padding:20px 15px !important;
+  background:#F2F0EA !important;
+}
+
+.resume-paper.template-editorial.structured-two-column > .resume-main-column{
+  padding:20px 0 0 !important;
+}
+
+.resume-paper.template-editorial.structured-two-column .resume-section-title{
+  border:0 !important;
+  color:#4D4A43 !important;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:9.5px !important;
+  letter-spacing:1.6px !important;
+}
+
+.resume-paper.template-editorial.structured-two-column .resume-main-column .resume-section-title{
+  border-bottom:1px solid #D4D0C8 !important;
+  padding-bottom:6px !important;
+}
+
+.resume-paper.template-editorial.structured-two-column .resume-skill{
+  padding:0 !important;
+  border:0 !important;
+  background:none !important;
+  color:#555148 !important;
+  font-family:'DM Sans',sans-serif !important;
+}
+
+/* Keep the four layouts identical in print/PDF. */
+@media print{
+  .resume-paper.template-green.structured-two-column,
+  .resume-paper.template-lavender.structured-two-column{
+    grid-template-columns:34% minmax(0,1fr) !important;
+  }
+
+  .resume-paper.template-bluebar.structured-two-column,
+  .resume-paper.template-editorial.structured-two-column{
+    grid-template-columns:33% minmax(0,1fr) !important;
+  }
+
+  .resume-paper.template-green.structured-two-column > .resume-main-column,
+  .resume-paper.template-lavender.structured-two-column > .resume-main-column,
+  .resume-paper.template-bluebar.structured-two-column > .resume-main-column{
+    padding:0.38in 0.45in 0.45in 0.38in !important;
+  }
+
+  .resume-paper.template-green.structured-two-column > .resume-sidebar-column,
+  .resume-paper.template-lavender.structured-two-column > .resume-sidebar-column,
+  .resume-paper.template-bluebar.structured-two-column > .resume-sidebar-column{
+    padding:0.40in 0.24in 0.45in 0.30in !important;
+  }
+
+  .resume-paper.template-editorial.structured-two-column{
+    column-gap:0.32in !important;
+    padding:0.42in !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -2652,6 +2908,62 @@
     template: 'classic'
   };
 
+
+  function syncTwoColumnResumeStructure(template) {
+    const paper = document.getElementById('resumePaper');
+    if (!paper) return;
+
+    const specialTemplates = new Set(['green', 'editorial', 'lavender', 'bluebar']);
+    const header = paper.querySelector('.resume-header');
+    const summary = document.getElementById('summaryPreviewSection');
+    const experience = document.getElementById('previewExperience')?.closest('.resume-section');
+    const education = document.getElementById('previewEducation')?.closest('.resume-section');
+    const skills = document.getElementById('previewSkills')?.closest('.resume-section');
+    const awards = document.getElementById('awardsPreviewSection');
+
+    if (!header || !summary || !experience || !education || !skills || !awards) return;
+
+    const existingSide = paper.querySelector(':scope > .resume-sidebar-column');
+    const existingMain = paper.querySelector(':scope > .resume-main-column');
+
+    if (specialTemplates.has(template)) {
+      let side = existingSide;
+      let main = existingMain;
+
+      if (!side || !main) {
+        side = document.createElement('div');
+        side.className = 'resume-sidebar-column';
+
+        main = document.createElement('div');
+        main.className = 'resume-main-column';
+
+        header.insertAdjacentElement('afterend', side);
+        side.insertAdjacentElement('afterend', main);
+      }
+
+      // Independent columns: left content no longer controls vertical spacing
+      // of the right content.
+      side.append(education, skills, awards);
+      main.append(summary, experience);
+      paper.classList.add('structured-two-column');
+      return;
+    }
+
+    // Restore the original DOM order for every other resume template.
+    if (existingSide || existingMain) {
+      header.insertAdjacentElement('afterend', summary);
+      summary.insertAdjacentElement('afterend', experience);
+      experience.insertAdjacentElement('afterend', education);
+      education.insertAdjacentElement('afterend', skills);
+      skills.insertAdjacentElement('afterend', awards);
+
+      existingSide?.remove();
+      existingMain?.remove();
+    }
+
+    paper.classList.remove('structured-two-column');
+  }
+
   function applyResumeTemplate(template, shouldSave = false) {
     const migratedTemplate = LEGACY_TEMPLATE_MAP[template] || template;
     const safeTemplate = Object.prototype.hasOwnProperty.call(TEMPLATE_NAMES, migratedTemplate)
@@ -2671,6 +2983,8 @@
       paper.classList.add(`template-${safeTemplate}`);
       paper.dataset.template = safeTemplate;
     }
+
+    syncTwoColumnResumeStructure(safeTemplate);
 
     document.querySelectorAll('.template-option[data-template]').forEach(button => {
       const selected = button.dataset.template === safeTemplate;
