@@ -223,6 +223,306 @@ async function stripeCreateCheckout(params) {
 }
 
 
+// Native mobile PaymentSheet support. Website checkout continues to use
+// Stripe Checkout; Capacitor can request a client secret instead so payment
+// stays inside Alygnn on iOS/Android.
+const STRIPE_NATIVE_API_VERSION='2025-11-17.clover';
+const ALYGNN_TAX_CODE='txcd_20040006';
+
+async function stripeNativeRequest(method,path,params={},extraHeaders={}){
+  const secret=process.env.STRIPE_SECRET_KEY;
+  if(!secret)throw new Error('STRIPE_SECRET_KEY is not configured.');
+
+  let url=STRIPE_API+'/'+String(path||'').replace(/^\//,'');
+  const options={
+    method,
+    headers:{
+      Authorization:'Bearer '+secret,
+      'Stripe-Version':STRIPE_NATIVE_API_VERSION,
+      ...extraHeaders
+    }
+  };
+
+  if(method==='GET'){
+    const u=new URL(url);
+    Object.entries(params||{}).forEach(([key,value])=>{
+      if(value===undefined||value===null||value==='')return;
+      u.searchParams.append(key,String(value));
+    });
+    url=u.toString();
+  }else{
+    const body=new URLSearchParams();
+    Object.entries(params||{}).forEach(([key,value])=>{
+      if(value===undefined||value===null||value==='')return;
+      body.append(key,String(value));
+    });
+    options.headers['Content-Type']='application/x-www-form-urlencoded';
+    options.body=body;
+  }
+
+  const response=await fetch(url,options);
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const error=new Error(data?.error?.message||'Stripe request failed.');
+    error.status=response.status;
+    error.stripe=data?.error||null;
+    throw error;
+  }
+  return data;
+}
+
+function nativePaymentSheetRequested(input){
+  return String(input?.payment_ui||'').toLowerCase()==='payment_sheet' ||
+    input?.native_payment_sheet===true;
+}
+
+function normalizeBillingAddress(value){
+  const input=value&&typeof value==='object'?value:{};
+  const country=String(input.country||'').trim().toUpperCase();
+  const postal=String(input.postal_code||input.postalCode||'').trim();
+  const address={
+    line1:String(input.line1||'').trim(),
+    line2:String(input.line2||'').trim(),
+    city:String(input.city||'').trim(),
+    state:String(input.state||'').trim(),
+    postal_code:postal,
+    country
+  };
+
+  if(!/^[A-Z]{2}$/.test(country)){
+    const error=new Error('Choose a valid billing country before payment.');
+    error.status=400;
+    throw error;
+  }
+  if(country==='US'&&!postal){
+    const error=new Error('ZIP code is required for United States billing addresses.');
+    error.status=400;
+    throw error;
+  }
+  return address;
+}
+
+function customerAddressParams(address){
+  const params={};
+  for(const key of ['line1','line2','city','state','postal_code','country']){
+    if(address?.[key])params[`address[${key}]`]=address[key];
+  }
+  return params;
+}
+
+async function findStripeCustomerForEmployer(employerId){
+  const query=`metadata["employer_id"]:"${String(employerId).replace(/"/g,'')}"`;
+  try{
+    const result=await stripeNativeRequest('GET','customers/search',{query,limit:10});
+    return (result?.data||[]).find(row=>!row?.deleted)||null;
+  }catch(error){
+    console.warn('Stripe customer search failed:',error?.message||error);
+    return null;
+  }
+}
+
+async function ensureNativeStripeCustomer({user,employerId,address,preferredCustomerId}){
+  let customer=null;
+
+  if(preferredCustomerId){
+    try{
+      customer=await stripeNativeRequest(
+        'GET',
+        'customers/'+encodeURIComponent(preferredCustomerId)
+      );
+    }catch(_error){}
+  }
+
+  if(!customer)customer=await findStripeCustomerForEmployer(employerId);
+
+  const common={
+    email:user?.email||undefined,
+    'metadata[employer_id]':employerId,
+    ...customerAddressParams(address)
+  };
+
+  if(customer?.id){
+    customer=await stripeNativeRequest(
+      'POST',
+      'customers/'+encodeURIComponent(customer.id),
+      common
+    );
+    return customer;
+  }
+
+  return await stripeNativeRequest('POST','customers',common);
+}
+
+async function createNativeTaxCalculation({customerId,cents,reference}){
+  const calculation=await stripeNativeRequest('POST','tax/calculations',{
+    currency:'usd',
+    customer:customerId,
+    'line_items[0][amount]':cents,
+    'line_items[0][reference]':String(reference||'alygnn-payment'),
+    'line_items[0][tax_code]':ALYGNN_TAX_CODE
+  });
+
+  if(!calculation?.id||!Number.isFinite(Number(calculation?.amount_total))){
+    throw new Error('Stripe Tax could not calculate this payment.');
+  }
+  return calculation;
+}
+
+async function createNativePaymentIntent({
+  user,
+  employerId,
+  customerId,
+  cents,
+  name,
+  metadata,
+  requestId
+}){
+  const tax=await createNativeTaxCalculation({
+    customerId,
+    cents,
+    reference:`${metadata?.product||'alygnn'}:${requestId||Date.now()}`
+  });
+
+  const params={
+    amount:Number(tax.amount_total),
+    currency:'usd',
+    customer:customerId,
+    description:name,
+    receipt_email:user?.email||undefined,
+    'automatic_payment_methods[enabled]':'true',
+    'hooks[inputs][tax][calculation]':tax.id
+  };
+
+  Object.entries(metadata||{}).forEach(([key,value])=>{
+    if(value===undefined||value===null||value==='')return;
+    params[`metadata[${key}]`]=value;
+  });
+
+  const headers={};
+  if(requestId)headers['Idempotency-Key']='alygnn-pi-'+String(requestId).slice(0,180);
+
+  const intent=await stripeNativeRequest('POST','payment_intents',params,headers);
+  if(!intent?.client_secret)throw new Error('Stripe did not return a PaymentSheet client secret.');
+
+  const subtotal=Number(cents)||0;
+  const total=Number(tax.amount_total)||subtotal;
+  const taxCents=Math.max(0,Number(tax.tax_amount_exclusive||0)||total-subtotal);
+
+  return{
+    payment_sheet:true,
+    client_secret:intent.client_secret,
+    payment_intent_id:intent.id,
+    customer_id:customerId,
+    amount_subtotal_cents:subtotal,
+    tax_cents:taxCents,
+    amount_total_cents:total,
+    currency:'usd'
+  };
+}
+
+async function createNativeSubscription({
+  employerId,
+  customerId,
+  priceId,
+  quantity,
+  metadata,
+  requestId
+}){
+  const params={
+    customer:customerId,
+    'items[0][price]':priceId,
+    'items[0][quantity]':quantity||1,
+    payment_behavior:'default_incomplete',
+    collection_method:'charge_automatically',
+    'payment_settings[save_default_payment_method]':'on_subscription',
+    'automatic_tax[enabled]':'true',
+    'expand[]':'latest_invoice.confirmation_secret'
+  };
+
+  Object.entries(metadata||{}).forEach(([key,value])=>{
+    if(value===undefined||value===null||value==='')return;
+    params[`metadata[${key}]`]=value;
+  });
+
+  const headers={};
+  if(requestId)headers['Idempotency-Key']='alygnn-sub-'+String(requestId).slice(0,178);
+
+  const subscription=await stripeNativeRequest('POST','subscriptions',params,headers);
+  const invoice=subscription?.latest_invoice||{};
+  const clientSecret=invoice?.confirmation_secret?.client_secret||null;
+  const status=String(subscription?.status||'').toLowerCase();
+
+  if(!clientSecret&&!['active','trialing'].includes(status)){
+    throw new Error('Stripe could not prepare the subscription payment sheet.');
+  }
+
+  const subtotal=Number(invoice?.subtotal||0);
+  const total=Number(invoice?.total||subtotal);
+
+  return{
+    payment_sheet:true,
+    client_secret:clientSecret,
+    subscription_id:subscription?.id||null,
+    customer_id:customerId,
+    already_paid:!clientSecret&&['active','trialing'].includes(status),
+    amount_subtotal_cents:subtotal,
+    tax_cents:Math.max(0,total-subtotal),
+    amount_total_cents:total,
+    currency:String(invoice?.currency||'usd').toLowerCase()
+  };
+}
+
+async function createNativePaymentSheetCheckout({
+  user,
+  employerId,
+  input,
+  mode,
+  priceId,
+  quantity,
+  cents,
+  name,
+  metadata,
+  preferredCustomerId
+}){
+  const publishableKey=process.env.STRIPE_PUBLISHABLE_KEY;
+  if(!publishableKey)throw new Error('STRIPE_PUBLISHABLE_KEY is not configured.');
+
+  const address=normalizeBillingAddress(input?.billing_address);
+  const customer=await ensureNativeStripeCustomer({
+    user,
+    employerId,
+    address,
+    preferredCustomerId
+  });
+
+  const requestId=String(input?.checkout_request_id||'').trim();
+  const result=mode==='subscription'
+    ?await createNativeSubscription({
+        employerId,
+        customerId:customer.id,
+        priceId,
+        quantity,
+        metadata,
+        requestId
+      })
+    :await createNativePaymentIntent({
+        user,
+        employerId,
+        customerId:customer.id,
+        cents,
+        name,
+        metadata,
+        requestId
+      });
+
+  return{
+    ...result,
+    publishable_key:publishableKey,
+    billing_address:address
+  };
+}
+
+
 const MANAGE_CATALOG={
   monthly:{
     launch:{name:'Alygnn Launch',cents:29900,slots:3,rank:1,interval:'month',intervalCount:1,priceId:PRICE_IDS.launch_monthly},
@@ -729,10 +1029,55 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const customerId=stripeCustomerId(sub,ent);
   if(!customerId)throw new Error('Stripe customer could not be identified.');
 
-  // Do NOT modify the existing subscription yet. The employer first pays the
-  // exact fixed difference through Stripe Checkout. The webhook swaps the
-  // recurring subscription Price only after checkout.session.completed.
+  // Do NOT modify the recurring subscription until the upgrade difference has
+  // succeeded. The verified webhook swaps the recurring Price afterward.
   const targetPrice=await ensureRecurringPrice(targetPlan,billing);
+
+  const metadata={
+    employer_id:employerId,
+    product:'plan_upgrade',
+    current_plan:currentPlan,
+    target_plan:targetPlan,
+    billing,
+    subscription_id:sub.id,
+    subscription_item_id:item.id,
+    target_price_id:targetPrice,
+    upgrade_price_id:upgrade.priceId,
+    fixed_difference_cents:difference,
+    source:String(input.source||'billing_settings'),
+    terms_version:String(input.terms_version||'')
+  };
+
+  if(nativePaymentSheetRequested(input)){
+    const native=await createNativePaymentSheetCheckout({
+      user:{email:input.employer_email||null},
+      employerId,
+      input,
+      mode:'payment',
+      priceId:upgrade.priceId,
+      quantity:1,
+      cents:difference,
+      name:`Alygnn ${currentPlan} to ${targetPlan} upgrade`,
+      metadata,
+      preferredCustomerId:customerId
+    });
+
+    return{
+      change:'upgrade_payment_required',
+      effective:'after_payment',
+      fixed_difference_cents:difference,
+      amount_due_now_cents:difference,
+      amount_due_cents:difference,
+      amount_paid_cents:0,
+      billing_period:billing,
+      current_plan:currentPlan,
+      target_plan:targetPlan,
+      next_renewal_amount_cents:targetCatalog.cents,
+      stripe_upgrade_price_id:upgrade.priceId,
+      stripe_target_plan_price_id:targetPrice,
+      ...native
+    };
+  }
 
   const successUrl=allowedReturnUrl(
     input.success_url,
@@ -752,39 +1097,24 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     'line_items[0][price]':upgrade.priceId,
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
-    billing_address_collection:'auto',
-    'metadata[employer_id]':employerId,
-    'metadata[product]':'plan_upgrade',
-    'metadata[current_plan]':currentPlan,
-    'metadata[target_plan]':targetPlan,
-    'metadata[billing]':billing,
-    'metadata[subscription_id]':sub.id,
-    'metadata[subscription_item_id]':item.id,
-    'metadata[target_price_id]':targetPrice,
-    'metadata[upgrade_price_id]':upgrade.priceId,
-    'metadata[fixed_difference_cents]':difference,
-    'metadata[source]':String(input.source||'billing_settings'),
-    'payment_intent_data[metadata][employer_id]':employerId,
-    'payment_intent_data[metadata][product]':'plan_upgrade',
-    'payment_intent_data[metadata][current_plan]':currentPlan,
-    'payment_intent_data[metadata][target_plan]':targetPlan,
-    'payment_intent_data[metadata][billing]':billing,
-    'payment_intent_data[metadata][subscription_id]':sub.id,
-    'payment_intent_data[metadata][target_price_id]':targetPrice,
-    'payment_intent_data[metadata][fixed_difference_cents]':difference
+    billing_address_collection:'auto'
   };
+
+  Object.entries(metadata).forEach(([key,value])=>{
+    if(value===undefined||value===null||value==='')return;
+    params[`metadata[${key}]`]=value;
+    params[`payment_intent_data[metadata][${key}]`]=value;
+  });
 
   const checkout=await stripeCreateCheckout(params);
 
-  return {
+  return{
     change:'upgrade_payment_required',
     effective:'after_payment',
     fixed_difference_cents:difference,
     amount_due_now_cents:difference,
     amount_due_cents:difference,
     amount_paid_cents:0,
-    // Keep hosted_invoice_url for backward compatibility with the current app UI.
-    // It points to Stripe Checkout now, not an invoice page.
     hosted_invoice_url:checkout.url,
     checkout_url:checkout.url,
     checkout_session_id:checkout.id,
@@ -797,7 +1127,6 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     stripe_target_plan_price_id:targetPrice
   };
 }
-
 
 function stripeCustomerId(sub,ent){
   return (
@@ -1204,7 +1533,7 @@ async function runManageAction(res,user,input){
       sub,
       targetPlan:target,
       billing:targetBilling,
-      input
+      input:{...input,employer_email:user.email||''}
     });
   }else{
     result=await scheduleDowngrade({
@@ -1411,6 +1740,36 @@ module.exports = async function handler(req, res) {
       source: String(input.source || 'website'),
       terms_version: String(input.terms_version || '')
     };
+
+    if (nativePaymentSheetRequested(input)) {
+      let preferredCustomerId=null;
+
+      // Reuse the plan customer whenever one already exists. This keeps saved
+      // billing details and recurring purchases on the same Stripe Customer.
+      try{
+        const ent=await getEntitlement(user.id);
+        let sub=null;
+        if(shouldResolveSubscription(ent)){
+          try{sub=await resolveSubscription(user.id,ent);}catch(_error){}
+        }
+        preferredCustomerId=stripeCustomerId(sub,ent);
+      }catch(_error){}
+
+      const native=await createNativePaymentSheetCheckout({
+        user,
+        employerId:user.id,
+        input,
+        mode,
+        priceId,
+        quantity,
+        cents,
+        name,
+        metadata,
+        preferredCustomerId
+      });
+
+      return send(res,200,native);
+    }
 
     const params = {
       mode,
