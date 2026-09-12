@@ -2023,6 +2023,204 @@
     }
   }
 </style>
+
+<style id="four-template-text-fit-fix">
+/* =========================================================
+   TEXT-FIT FIX — ONLY:
+   Green Sidebar / Editorial / Lavender / Blue Column
+   ========================================================= */
+
+/* The previous grids used two percentage columns that already totaled 100%,
+   then added a gap on top. That made the resume wider than its paper and
+   squeezed/clipped text. Keep one percentage sidebar and let the main column
+   use the actual remaining space. */
+.resume-paper.template-green{
+  grid-template-columns:34% minmax(0,1fr) !important;
+  column-gap:20px !important;
+}
+.resume-paper.template-lavender{
+  grid-template-columns:34% minmax(0,1fr) !important;
+  column-gap:20px !important;
+}
+.resume-paper.template-bluebar{
+  grid-template-columns:33% minmax(0,1fr) !important;
+  column-gap:20px !important;
+}
+.resume-paper.template-editorial{
+  grid-template-columns:33% minmax(0,1fr) !important;
+  column-gap:20px !important;
+  padding:30px !important;
+}
+
+/* Give the sidebar text more usable width. */
+.resume-paper.template-green .resume-section:nth-of-type(3),
+.resume-paper.template-green .resume-section:nth-of-type(4),
+.resume-paper.template-green #awardsPreviewSection,
+.resume-paper.template-lavender .resume-section:nth-of-type(3),
+.resume-paper.template-lavender .resume-section:nth-of-type(4),
+.resume-paper.template-lavender #awardsPreviewSection{
+  padding-left:20px !important;
+  padding-right:16px !important;
+}
+
+.resume-paper.template-bluebar .resume-section:nth-of-type(3),
+.resume-paper.template-bluebar .resume-section:nth-of-type(4),
+.resume-paper.template-bluebar #awardsPreviewSection{
+  padding-left:20px !important;
+  padding-right:15px !important;
+}
+
+.resume-paper.template-editorial .resume-section:nth-of-type(3),
+.resume-paper.template-editorial .resume-section:nth-of-type(4),
+.resume-paper.template-editorial #awardsPreviewSection{
+  padding-left:13px !important;
+  padding-right:13px !important;
+}
+
+/* Keep right-column content comfortably inside the page. */
+.resume-paper.template-green #summaryPreviewSection,
+.resume-paper.template-lavender #summaryPreviewSection,
+.resume-paper.template-bluebar #summaryPreviewSection{
+  margin-right:26px !important;
+}
+
+.resume-paper.template-green .resume-section:nth-of-type(2),
+.resume-paper.template-lavender .resume-section:nth-of-type(2),
+.resume-paper.template-bluebar .resume-section:nth-of-type(2){
+  margin-right:26px !important;
+}
+
+/* Do not split normal words letter-by-letter in the sidebar. */
+.resume-paper.template-green .resume-section:nth-of-type(3) .entry-name,
+.resume-paper.template-green .resume-section:nth-of-type(3) .entry-sub,
+.resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-name,
+.resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-sub,
+.resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-name,
+.resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-sub,
+.resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-name,
+.resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-sub{
+  overflow-wrap:normal !important;
+  word-break:normal !important;
+  hyphens:none !important;
+}
+
+/* Education dates work better beneath the degree in a narrow sidebar.
+   This prevents the date from stealing half the line from the degree text. */
+.resume-paper.template-green .resume-section:nth-of-type(3) .entry-top,
+.resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-top,
+.resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-top,
+.resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-top{
+  display:block !important;
+}
+
+.resume-paper.template-green .resume-section:nth-of-type(3) .entry-date,
+.resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-date,
+.resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-date,
+.resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-date{
+  display:block !important;
+  margin-top:3px !important;
+  text-align:left !important;
+  white-space:normal !important;
+}
+
+/* All grid children must be allowed to shrink inside the paper rather than
+   forcing overflow. */
+.resume-paper.template-green > *,
+.resume-paper.template-lavender > *,
+.resume-paper.template-bluebar > *,
+.resume-paper.template-editorial > *{
+  min-width:0 !important;
+  max-width:100%;
+}
+
+/* Match the same corrected layout in the downloaded/printed PDF. */
+@media print{
+  .resume-paper.template-green{
+    grid-template-columns:34% minmax(0,1fr) !important;
+    column-gap:14pt !important;
+  }
+
+  .resume-paper.template-lavender{
+    grid-template-columns:34% minmax(0,1fr) !important;
+    column-gap:14pt !important;
+  }
+
+  .resume-paper.template-bluebar{
+    grid-template-columns:33% minmax(0,1fr) !important;
+    column-gap:14pt !important;
+  }
+
+  .resume-paper.template-editorial{
+    grid-template-columns:33% minmax(0,1fr) !important;
+    column-gap:14pt !important;
+    padding:0.42in !important;
+  }
+
+  .resume-paper.template-green .resume-section:nth-of-type(3),
+  .resume-paper.template-green .resume-section:nth-of-type(4),
+  .resume-paper.template-green #awardsPreviewSection,
+  .resume-paper.template-lavender .resume-section:nth-of-type(3),
+  .resume-paper.template-lavender .resume-section:nth-of-type(4),
+  .resume-paper.template-lavender #awardsPreviewSection{
+    padding-left:15pt !important;
+    padding-right:12pt !important;
+  }
+
+  .resume-paper.template-bluebar .resume-section:nth-of-type(3),
+  .resume-paper.template-bluebar .resume-section:nth-of-type(4),
+  .resume-paper.template-bluebar #awardsPreviewSection{
+    padding-left:15pt !important;
+    padding-right:11pt !important;
+  }
+
+  .resume-paper.template-editorial .resume-section:nth-of-type(3),
+  .resume-paper.template-editorial .resume-section:nth-of-type(4),
+  .resume-paper.template-editorial #awardsPreviewSection{
+    padding-left:10pt !important;
+    padding-right:10pt !important;
+  }
+
+  .resume-paper.template-green #summaryPreviewSection,
+  .resume-paper.template-lavender #summaryPreviewSection,
+  .resume-paper.template-bluebar #summaryPreviewSection,
+  .resume-paper.template-green .resume-section:nth-of-type(2),
+  .resume-paper.template-lavender .resume-section:nth-of-type(2),
+  .resume-paper.template-bluebar .resume-section:nth-of-type(2){
+    margin-right:20pt !important;
+  }
+
+  .resume-paper.template-green .resume-section:nth-of-type(3) .entry-name,
+  .resume-paper.template-green .resume-section:nth-of-type(3) .entry-sub,
+  .resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-name,
+  .resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-sub,
+  .resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-name,
+  .resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-sub,
+  .resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-name,
+  .resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-sub{
+    overflow-wrap:normal !important;
+    word-break:normal !important;
+    hyphens:none !important;
+  }
+
+  .resume-paper.template-green .resume-section:nth-of-type(3) .entry-top,
+  .resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-top,
+  .resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-top,
+  .resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-top{
+    display:block !important;
+  }
+
+  .resume-paper.template-green .resume-section:nth-of-type(3) .entry-date,
+  .resume-paper.template-lavender .resume-section:nth-of-type(3) .entry-date,
+  .resume-paper.template-bluebar .resume-section:nth-of-type(3) .entry-date,
+  .resume-paper.template-editorial .resume-section:nth-of-type(3) .entry-date{
+    display:block !important;
+    margin-top:2pt !important;
+    text-align:left !important;
+    white-space:normal !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
