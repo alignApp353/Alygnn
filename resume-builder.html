@@ -2717,9 +2717,12 @@ body.resume-preview-only{
 }
 
 body.resume-preview-only nav{
-  position:sticky !important;
+  position:fixed !important;
   top:0 !important;
-  z-index:50 !important;
+  left:0 !important;
+  right:0 !important;
+  width:100% !important;
+  z-index:1000 !important;
 }
 
 body.resume-preview-only nav .nav-step{
@@ -2863,6 +2866,23 @@ body.resume-preview-only #resumePaper{
   if(backLink){
     backLink.href = 'account.html';
     backLink.textContent = '← Back to account';
+    backLink.addEventListener('click', event => {
+      // View now opens in the same authenticated tab. Going back preserves the
+      // exact Account state (including the resume chooser) and avoids creating
+      // a fresh unauthenticated Account navigation.
+      if(document.referrer){
+        try{
+          const referrer = new URL(document.referrer);
+          if(
+            referrer.origin === window.location.origin &&
+            referrer.pathname.toLowerCase().endsWith('/account.html')
+          ){
+            event.preventDefault();
+            window.history.back();
+          }
+        }catch(_){}
+      }
+    });
   }
 
   document.title = 'Alygnn — Resume preview';
@@ -3220,8 +3240,28 @@ body.resume-preview-only #resumePaper{
 <script>
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+
+  function alygnnAuthStorageKey() {
+    let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+    if (!tabId) {
+      tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+      window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
+    }
+    return `alygnn-auth-${tabId}`;
+  }
+
   const { createClient } = supabase;
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: window.sessionStorage,
+      storageKey: alygnnAuthStorageKey(),
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
 
   let STORAGE_KEY = null;
 
