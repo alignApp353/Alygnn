@@ -2958,10 +2958,9 @@ async function initAccountPage(){
   // A visitor may have uploaded a resume and chosen preferences before
   // creating an account. Claim that browser draft now that we know their user id.
   //
-  // IMPORTANT: when we just returned from the authenticated Alygnn resume
-  // builder, skip this pre-signup claim. Otherwise sessionStorage.resumeData
-  // can be mistaken for an uploaded pre-auth resume and reset resume_source
-  // back to "upload", creating the Save once to use -> builder -> account loop.
+  // IMPORTANT: do not run this after returning from the authenticated Alygnn
+  // resume builder. sessionStorage.resumeData is used by the builder too, and
+  // the pre-signup claimant would incorrectly relabel that resume as "upload".
   const accountParams = new URLSearchParams(window.location.search);
   const returningFromResumeBuilder =
     String(accountParams.get('resume') || '').toLowerCase() === 'updated';
@@ -3048,9 +3047,8 @@ async function initAccountPage(){
 
   renderResumeCardFast(profile?.resume_file_path, profile?.resume_data, profile?.resume_source);
 
-  // "Save once to use" returns here with select=builder. If the builder PDF
-  // was stored successfully, immediately make it the active resume instead
-  // of forcing the candidate to click "Use this resume" a second time.
+  // "Save once to use" means the candidate already chose the Alygnn resume.
+  // Once the builder PDF exists, finish that choice automatically.
   const requestedResumeSelection =
     String(accountParams.get('select') || '').toLowerCase();
 
