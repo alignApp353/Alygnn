@@ -19,10 +19,10 @@
   --border:#DDE3E8;
 }
 *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; font-family:'DM Sans', Arial, sans-serif; }
-body{ min-height:100vh; background:var(--bg); color:var(--text); }
+body{ min-height:100vh; padding-top:64px; background:var(--bg); color:var(--text); }
 
 nav{
-  position:sticky; top:0; z-index:100; height:64px; padding:0 5%;
+  position:fixed; top:0; left:0; right:0; width:100%; z-index:1000; height:64px; padding:0 5%;
   display:flex; align-items:center; justify-content:space-between;
   background:rgba(246,248,247,.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
 }
@@ -37,6 +37,8 @@ nav{
   transform:translateX(-50%);
   height:100%;
 }
+.nav-links.nav-readiness-pending{ visibility:hidden; }
+
 .nav-links a{
   height:100%;
   display:flex;
@@ -207,10 +209,10 @@ body.auth-ready #auth-loading { display: none; }
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
-  <div class="nav-links">
+  <div class="nav-links nav-readiness-pending" id="candidate-nav-links">
     <a href="account.html">Account</a>
     <a href="my-jobs.html" class="active">My jobs</a>
-    <a href="candidate-messages.html">Messages</a>
+    <a href="messages.html">Messages</a>
     <a href="swipe.html" id="nav-swipe-link" style="display:none;">Swipe</a>
   </div>
   <div class="nav-actions">
@@ -232,6 +234,21 @@ body.auth-ready #auth-loading { display: none; }
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
+<script>
+(function(){
+  const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
+  if(!swipe) return;
+
+  // Cached readiness may help set Swipe before the page becomes visible,
+  // but DO NOT reveal the center nav yet. The live profile check below is the
+  // source of truth, so all nav buttons appear at the exact same time.
+  let cached = null;
+  try { cached = window.sessionStorage.getItem('alygnn_matching_ready_v1'); } catch (_) {}
+
+  swipe.style.display = cached === '1' ? '' : 'none';
+})();
+</script>
+
 
 <main>
   <div class="eyebrow">Your jobs</div>
@@ -322,6 +339,20 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       detectSessionInUrl: true
     }
   });
+
+
+function syncCandidateSwipeNav(matchingReady) {
+  const ready = matchingReady === true;
+  const nav = document.getElementById('candidate-nav-links');
+  const swipe = document.getElementById('candidate-swipe-link') || document.getElementById('nav-swipe-link');
+
+  try {
+    window.sessionStorage.setItem('alygnn_matching_ready_v1', ready ? '1' : '0');
+  } catch (_) {}
+
+  if (swipe) swipe.style.display = ready ? '' : 'none';
+  if (nav) nav.classList.remove('nav-readiness-pending');
+}
 
 let currentUserId = null;
 let currentTab = 'applied';
@@ -420,12 +451,169 @@ function candidateStatusNotification(app, job){
   return null;
 }
 
+
+let candidateMessageNotificationChannel = null;
+let candidateNotificationProfileCache = null;
+let candidateMessageNotificationPollTimer = null;
+let candidateMessageNotificationRefreshBusy = false;
+
+async function loadCandidateMessageNotificationItems(){
+  if(!currentUserId)return [];
+
+  try{
+    const {data:threads,error:threadsError}=await sb
+      .from('message_threads')
+      .select('id,job_id,employer_id,candidate_id')
+      .eq('candidate_id',currentUserId);
+
+    if(threadsError)throw threadsError;
+
+    const candidateThreads=threads||[];
+    if(!candidateThreads.length)return [];
+
+    const threadIds=candidateThreads.map(t=>t.id).filter(Boolean);
+    if(!threadIds.length)return [];
+
+    const {data:messageRows,error:messagesError}=await sb
+      .from('messages')
+      .select('id,thread_id,sender_id,body,created_at,read_at')
+      .in('thread_id',threadIds)
+      .neq('sender_id',currentUserId)
+      .is('read_at',null)
+      .order('created_at',{ascending:false})
+      .limit(20);
+
+    if(messagesError)throw messagesError;
+
+    const unreadMessages=messageRows||[];
+    if(!unreadMessages.length)return [];
+
+    const threadMap=new Map(
+      candidateThreads.map(thread=>[String(thread.id),thread])
+    );
+
+    const jobIds=[...new Set(
+      candidateThreads.map(thread=>thread.job_id).filter(Boolean)
+    )];
+
+    let jobs=[];
+    if(jobIds.length){
+      const {data:jobRows,error:jobsError}=await sb
+        .from('jobs')
+        .select('id,title,company')
+        .in('id',jobIds);
+
+      if(jobsError)throw jobsError;
+      jobs=jobRows||[];
+    }
+
+    const jobMap=new Map(
+      jobs.map(job=>[String(job.id),job])
+    );
+
+    return unreadMessages.map(message=>{
+      const thread=threadMap.get(String(message.thread_id))||{};
+      const job=jobMap.get(String(thread.job_id))||{};
+      const company=String(job.company||'Employer').trim();
+      const jobTitle=String(job.title||'your application').trim();
+      const preview=String(message.body||'').trim().replace(/\s+/g,' ');
+      const shortPreview=preview.length>90?preview.slice(0,87)+'…':preview;
+
+      return {
+        id:`message-${message.id}`,
+        icon:'✉',
+        iconClass:'',
+        title:`New message from ${company}`,
+        copy:shortPreview
+          ? `${jobTitle}: ${shortPreview}`
+          : `You received a new message about ${jobTitle}.`,
+        time:'New',
+        action:`messages.html?thread=${encodeURIComponent(message.thread_id)}`
+      };
+    });
+  }catch(error){
+    console.warn('Could not load message notifications:',error);
+    return [];
+  }
+}
+
+async function refreshCandidateMessageNotifications(){
+  if(candidateMessageNotificationRefreshBusy || !currentUserId)return;
+
+  candidateMessageNotificationRefreshBusy = true;
+  try{
+    await loadCandidateNotifications(candidateNotificationProfileCache);
+  }finally{
+    candidateMessageNotificationRefreshBusy = false;
+  }
+}
+
+function ensureCandidateMessageNotificationPolling(){
+  if(candidateMessageNotificationPollTimer || !currentUserId)return;
+
+  // Realtime is the primary path. This lightweight fallback makes the bell
+  // reliable even if a browser/network temporarily misses a websocket event.
+  candidateMessageNotificationPollTimer = window.setInterval(()=>{
+    if(document.visibilityState === 'visible'){
+      refreshCandidateMessageNotifications();
+    }
+  },5000);
+}
+
+function ensureCandidateMessageNotificationRealtime(){
+  if(candidateMessageNotificationChannel||!currentUserId){
+    ensureCandidateMessageNotificationPolling();
+    return;
+  }
+
+  candidateMessageNotificationChannel=sb
+    .channel('candidate-message-notifications-'+currentUserId)
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'messages'
+    },async payload=>{
+      if(payload?.new?.sender_id===currentUserId)return;
+      await refreshCandidateMessageNotifications();
+    })
+    .subscribe(status=>{
+      if(status === 'SUBSCRIBED'){
+        // Re-check immediately in case a message arrived while the channel
+        // was connecting.
+        refreshCandidateMessageNotifications();
+      }
+
+      if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED'){
+        console.warn('Candidate message notification realtime status:',status);
+      }
+    });
+
+  ensureCandidateMessageNotificationPolling();
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState === 'visible' && currentUserId){
+    refreshCandidateMessageNotifications();
+  }
+});
+
+window.addEventListener('focus',()=>{
+  if(currentUserId){
+    refreshCandidateMessageNotifications();
+  }
+});
+
 async function loadCandidateNotifications(profile){
   if(!currentUserId) return;
+
+  candidateNotificationProfileCache = profile || null;
 
   const items = [];
   const hasResume = !!(profile?.resume_file_path || profile?.resume_data);
   const hasPreferences = !!profile?.preferences;
+
+  const messageItems = await loadCandidateMessageNotificationItems();
+  items.push(...messageItems);
 
   try{
     const { data: apps, error: appsError } = await sb
@@ -493,6 +681,7 @@ async function loadCandidateNotifications(profile){
 
   candidateNotifications = items;
   renderCandidateNotifications();
+  ensureCandidateMessageNotificationRealtime();
 }
 
 function renderCandidateNotifications(){
@@ -520,7 +709,7 @@ function renderCandidateNotifications(){
       <div class="notification-empty">
         <div class="notification-empty-icon">✓</div>
         <strong>You’re all caught up</strong>
-        <span>No new application or profile notifications right now.</span>
+        <span>No new messages, application updates, or profile notifications right now.</span>
       </div>
     `;
     return;
@@ -819,16 +1008,21 @@ document.getElementById('search-input').addEventListener('input', render);
   if (!session) { window.location.replace('login.html'); return; }
 
   currentUserId = session.user.id;
-  document.body.classList.add('auth-ready');
 
-  await loadData();
-  render();
-
-  const { data: profile, error: profileError } = await sb
+  // Resolve jobs and candidate onboarding readiness together. The page remains
+  // hidden until Swipe visibility is known, so the navigation never shifts.
+  const profilePromise = sb
     .from('profiles')
     .select('resume_file_path, resume_data, preferences')
     .eq('id', currentUserId)
     .maybeSingle();
+
+  const jobsPromise = loadData();
+
+  const [{ data: profile, error: profileError }] = await Promise.all([
+    profilePromise,
+    jobsPromise
+  ]);
 
   if (profileError && profileError.code !== 'PGRST116') {
     console.warn('Could not load profile for notifications:', profileError);
@@ -837,10 +1031,12 @@ document.getElementById('search-input').addEventListener('input', render);
   // Only expose Swipe after onboarding is complete.
   const hasResume = !!(profile?.resume_file_path || profile?.resume_data);
   const hasPreferences = !!profile?.preferences;
-  const swipeLink = document.getElementById('nav-swipe-link');
-  if (swipeLink && hasResume && hasPreferences) {
-    swipeLink.style.display = '';
-  }
+  syncCandidateSwipeNav(hasResume && hasPreferences);
+
+  render();
+
+  // Reveal everything only after the complete center navigation is resolved.
+  document.body.classList.add('auth-ready');
 
   await loadCandidateNotifications(profile || null);
 })();
