@@ -2818,7 +2818,7 @@ function renderResumeChooser(){
         </div>
         <div class="resume-option-actions">
           <button type="button" onclick="openStoredResume('${escapeHtml(uploadedPath)}',this)">View</button>
-          <button type="button" class="primary" ${active === 'uploaded' ? 'disabled' : ''} onclick="selectResumeChoice('uploaded')">${active === 'uploaded' ? 'Selected' : 'Use this resume'}</button>
+          <button type="button" class="primary" ${active === 'uploaded' ? 'disabled' : ''} onclick="selectResumeChoice('uploaded',this)">${active === 'uploaded' ? 'Selected' : 'Select'}</button>
         </div>
       </div>`);
   }
@@ -2834,10 +2834,9 @@ function renderResumeChooser(){
           ${active === 'builder' ? '<span class="resume-selected-pill">Currently selected</span>' : ''}
         </div>
         <div class="resume-option-actions">
-          <a href="resume-builder.html?view=1&from=account">View / edit</a>
-          ${builderReady
-            ? `<button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder')">${active === 'builder' ? 'Selected' : 'Use this resume'}</button>`
-            : '<a class="primary" href="resume-builder.html?from=account&select=builder">Save once to use</a>'}
+          <a href="resume-builder.html?view=1&from=account" target="_blank" rel="noopener">View</a>
+          <a href="resume-builder.html?from=account">Edit</a>
+          <button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder',this)">${active === 'builder' ? 'Selected' : 'Select'}</button>
         </div>
       </div>`);
   }
@@ -2864,18 +2863,130 @@ async function openStoredResume(path, button){
   }
 }
 
-async function selectResumeChoice(kind){
+async function createBuilderResumePdfInBackground(button){
+  if(!currentUserId || !currentResumeData) return null;
+
+  const originalText = button?.textContent || 'Select';
+  if(button){
+    button.disabled = true;
+    button.textContent = 'Preparing…';
+  }
+
+  let frame = null;
+
+  try{
+    frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden','true');
+    frame.tabIndex = -1;
+    frame.style.position = 'fixed';
+    frame.style.left = '-10000px';
+    frame.style.top = '0';
+    frame.style.width = '1400px';
+    frame.style.height = '1200px';
+    frame.style.opacity = '0';
+    frame.style.pointerEvents = 'none';
+    frame.src = `resume-builder.html?view=1&from=account&embedded=1&_=${Date.now()}`;
+    document.body.appendChild(frame);
+
+    await new Promise((resolve,reject)=>{
+      const timer = setTimeout(
+        ()=>reject(new Error('Resume builder took too long to load.')),
+        20000
+      );
+
+      frame.onload = ()=>{
+        clearTimeout(timer);
+        resolve();
+      };
+
+      frame.onerror = ()=>{
+        clearTimeout(timer);
+        reject(new Error('Could not load the Alygnn resume builder.'));
+      };
+    });
+
+    const started = Date.now();
+    while(Date.now() - started < 15000){
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+
+      if(
+        win &&
+        doc &&
+        typeof win.buildResumePdfBlobForStorage === 'function' &&
+        doc.getElementById('resumePaper')
+      ){
+        // Give the builder a moment to restore the saved Supabase resume
+        // and finish laying out the live preview.
+        await new Promise(resolve=>setTimeout(resolve,700));
+
+        const pdfBlob = await win.buildResumePdfBlobForStorage();
+
+        if(!(pdfBlob instanceof Blob) || !pdfBlob.size){
+          throw new Error('The Alygnn resume PDF could not be generated.');
+        }
+
+        const path =
+          `${currentUserId}/alygnn-built-resume-${Date.now()}.pdf`;
+
+        const { error: uploadError } = await sb.storage
+          .from('resumes')
+          .upload(path,pdfBlob,{
+            upsert:false,
+            contentType:'application/pdf',
+            cacheControl:'3600'
+          });
+
+        if(uploadError) throw uploadError;
+
+        return path;
+      }
+
+      await new Promise(resolve=>setTimeout(resolve,250));
+    }
+
+    throw new Error('The Alygnn resume preview was not ready.');
+  }catch(error){
+    console.error('Could not prepare Alygnn resume for selection:',error);
+    showToast('Could not prepare the Alygnn resume — try again.');
+    return null;
+  }finally{
+    frame?.remove();
+    if(button){
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
+async function selectResumeChoice(kind,button){
   if(!currentUserId) return;
 
-  const path = kind === 'builder'
+  const originalText = button?.textContent || 'Select';
+
+  let path = kind === 'builder'
     ? currentResumeLibrary.builder_file_path
     : currentResumeLibrary.uploaded_file_path;
 
+  // Older Alygnn-built resumes can have editable resume_data without a saved
+  // PDF object. Build that PDF invisibly here instead of sending the candidate
+  // back through the builder/account loop.
   if(kind === 'builder' && !path){
-    window.location.href = 'resume-builder.html?from=account&select=builder';
-    return;
+    path = await createBuilderResumePdfInBackground(button);
+    if(!path) return;
+
+    currentResumeLibrary = {
+      ...currentResumeLibrary,
+      builder_file_path:path
+    };
   }
+
   if(!path) return;
+
+  if(button){
+    button.disabled = true;
+    button.textContent = 'Selecting…';
+  }
 
   const nextData = {
     ...(currentResumeData || {}),
@@ -2899,6 +3010,10 @@ async function selectResumeChoice(kind){
   if(error){
     console.error('Could not switch resume:', error);
     showToast('Could not switch resumes — try again.');
+    if(button){
+      button.disabled = false;
+      button.textContent = originalText;
+    }
     return;
   }
 
@@ -2957,21 +3072,11 @@ async function initAccountPage(){
 
   // A visitor may have uploaded a resume and chosen preferences before
   // creating an account. Claim that browser draft now that we know their user id.
-  //
-  // IMPORTANT: do not run this after returning from the authenticated Alygnn
-  // resume builder. sessionStorage.resumeData is used by the builder too, and
-  // the pre-signup claimant would incorrectly relabel that resume as "upload".
-  const accountParams = new URLSearchParams(window.location.search);
-  const returningFromResumeBuilder =
-    String(accountParams.get('resume') || '').toLowerCase() === 'updated';
-
-  if(!returningFromResumeBuilder){
-    try {
-      await claimPendingCandidateOnboarding(session.user);
-    } catch (error) {
-      console.error('Could not attach pre-signup resume/preferences:', error);
-      showToast('Your account is ready, but we could not attach the resume you uploaded before signup. Please try again.');
-    }
+  try {
+    await claimPendingCandidateOnboarding(session.user);
+  } catch (error) {
+    console.error('Could not attach pre-signup resume/preferences:', error);
+    showToast('Your account is ready, but we could not attach the resume you uploaded before signup. Please try again.');
   }
 
   const { data: profile, error } = await sb
@@ -3046,19 +3151,6 @@ async function initAccountPage(){
   }
 
   renderResumeCardFast(profile?.resume_file_path, profile?.resume_data, profile?.resume_source);
-
-  // "Save once to use" means the candidate already chose the Alygnn resume.
-  // Once the builder PDF exists, finish that choice automatically.
-  const requestedResumeSelection =
-    String(accountParams.get('select') || '').toLowerCase();
-
-  if(
-    requestedResumeSelection === 'builder' &&
-    currentResumeLibrary?.builder_file_path &&
-    currentResumeLibrary?.active !== 'builder'
-  ){
-    await selectResumeChoice('builder');
-  }
 
   // The Swipe nav link only shows once there's actually something to
   // swipe with — otherwise it's a link to a page that will immediately
