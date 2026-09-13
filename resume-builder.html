@@ -2709,6 +2709,96 @@
 }
 </style>
 
+
+<style id="alygnn-resume-preview-only-mode">
+body.resume-preview-only{
+  background:#eef1f3 !important;
+  min-height:100vh !important;
+}
+
+body.resume-preview-only nav{
+  position:sticky !important;
+  top:0 !important;
+  z-index:50 !important;
+}
+
+body.resume-preview-only nav .nav-step{
+  font-size:14px !important;
+  font-weight:600 !important;
+}
+
+body.resume-preview-only nav .step-pill{
+  display:none !important;
+}
+
+body.resume-preview-only .page-heading,
+body.resume-preview-only .form-column,
+body.resume-preview-only .score-card,
+body.resume-preview-only .template-picker,
+body.resume-preview-only .preview-toolbar,
+body.resume-preview-only .bottom-actions{
+  display:none !important;
+}
+
+body.resume-preview-only main{
+  max-width:none !important;
+  width:100% !important;
+  margin:0 !important;
+  padding:26px 18px 50px !important;
+}
+
+body.resume-preview-only .builder-layout{
+  display:block !important;
+  width:100% !important;
+  max-width:930px !important;
+  margin:0 auto !important;
+}
+
+body.resume-preview-only .preview-column{
+  position:static !important;
+  top:auto !important;
+  width:100% !important;
+}
+
+body.resume-preview-only .preview-shell{
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  overflow:visible !important;
+}
+
+body.resume-preview-only .resume-paper-wrap{
+  max-height:none !important;
+  overflow:visible !important;
+  padding:0 !important;
+  display:flex !important;
+  justify-content:center !important;
+  align-items:flex-start !important;
+}
+
+body.resume-preview-only #resumePaper{
+  width:8.5in !important;
+  max-width:100% !important;
+  min-height:11in !important;
+  margin:0 auto !important;
+  box-sizing:border-box !important;
+  box-shadow:0 18px 55px rgba(26,37,48,.16) !important;
+}
+
+/* Small screens: keep the whole resume visible instead of turning View back
+   into the editable builder. */
+@media(max-width:900px){
+  body.resume-preview-only main{
+    padding:18px 10px 36px !important;
+  }
+
+  body.resume-preview-only #resumePaper{
+    width:100% !important;
+    min-height:auto !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -2754,6 +2844,28 @@
       }
     }
   } catch (_) {}
+})();
+</script>
+
+<script>
+(function configureResumePreviewMode(){
+  const params = new URLSearchParams(window.location.search);
+  const previewOnly = params.get('preview') === '1';
+
+  if(!previewOnly) return;
+
+  document.body.classList.add('resume-preview-only');
+
+  const navStep = document.querySelector('.nav-step');
+  if(navStep) navStep.textContent = 'Resume preview';
+
+  const backLink = document.getElementById('resume-builder-back');
+  if(backLink){
+    backLink.href = 'account.html';
+    backLink.textContent = '← Back to account';
+  }
+
+  document.title = 'Alygnn — Resume preview';
 })();
 </script>
 
@@ -5502,6 +5614,29 @@
     STORAGE_KEY = session?.user?.id
       ? 'alygnn_resume_builder_draft:' + session.user.id
       : 'alygnn_resume_builder_draft_anon';
+
+    const previewOnly =
+      new URLSearchParams(window.location.search).get('preview') === '1';
+
+    // View should show the saved Alygnn resume, not whatever happens to be in
+    // an old local draft. Pull resume_data from the profile first.
+    if(previewOnly && session?.user?.id){
+      const { data: profile, error: profileError } = await sb
+        .from('profiles')
+        .select('resume_data')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if(profileError){
+        console.warn('Could not load saved Alygnn resume for preview:', profileError);
+      }else if(profile?.resume_data){
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(profile.resume_data));
+        }catch(error){
+          console.warn('Could not stage saved resume for preview:', error);
+        }
+      }
+    }
 
     loadDraft();
     applyResumeTemplate(state.template || 'classic', false);
