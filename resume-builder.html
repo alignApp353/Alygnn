@@ -5092,7 +5092,10 @@
       existingLibrary.uploaded_file_path ||
       null;
 
-    const builderFilePath = `${userId}/alygnn-built-resume.pdf`;
+    // Use a fresh object name on each save. This avoids a Storage UPDATE/upsert
+    // policy blocking the builder PDF when an older copy already exists.
+    const builderFilePath =
+      `${userId}/alygnn-built-resume-${Date.now()}.pdf`;
     let builderStored = false;
     let storageError = null;
 
@@ -5101,7 +5104,7 @@
       const { error: uploadError } = await sb.storage
         .from('resumes')
         .upload(builderFilePath, builderPdfBlob, {
-          upsert: true,
+          upsert: false,
           contentType: 'application/pdf',
           cacheControl: '3600'
         });
@@ -5204,6 +5207,36 @@
 
       const result = await saveToSupabase(data);
 
+      const saveParams = new URLSearchParams(window.location.search);
+      const saveFrom = String(saveParams.get('from') || '').toLowerCase();
+      const requestedSelection =
+        String(saveParams.get('select') || '').toLowerCase();
+
+      // If this started from "Save once to use", the builder PDF must actually
+      // exist before we leave this page. Otherwise Account would send the user
+      // right back here and create the loop.
+      if(
+        result.loggedIn &&
+        requestedSelection === 'builder' &&
+        !result.storageSynced
+      ){
+        console.error('Alygnn builder PDF storage failed:', result.storageError);
+        setSaveStatus(
+          'Your resume details are saved, but the PDF copy could not be saved yet. Please click Save & continue again.',
+          'error'
+        );
+        button.disabled = false;
+        button.textContent = 'Save & continue →';
+        return;
+      }
+
+      // sessionStorage.resumeData is also used by pre-signup onboarding.
+      // Once an authenticated builder save succeeds, remove it so Account does
+      // not accidentally treat this Alygnn resume as a newly uploaded resume.
+      if(result.loggedIn){
+        sessionStorage.removeItem('resumeData');
+      }
+
       setSaveStatus(
         result.loggedIn
           ? 'Resume saved to your Alygnn account. Continuing…'
@@ -5211,13 +5244,13 @@
         'success'
       );
 
-      // Keep the original onboarding flow, but when the user came from
-      // Account, return them to Account so they can choose between resumes.
-      const saveParams = new URLSearchParams(window.location.search);
-      const saveFrom = String(saveParams.get('from') || '').toLowerCase();
-      window.location.href = saveFrom === 'account'
-        ? 'account.html?resume=updated'
-        : 'preferences.html';
+      if(saveFrom === 'account'){
+        window.location.href = requestedSelection === 'builder'
+          ? 'account.html?resume=updated&select=builder'
+          : 'account.html?resume=updated';
+      }else{
+        window.location.href = 'preferences.html';
+      }
     } catch (error) {
       console.error('Resume save failed:', error);
       setSaveStatus('Your resume was saved locally, but account sync failed.', 'error');
