@@ -2863,148 +2863,61 @@ async function openStoredResume(path, button){
   }
 }
 
-async function createBuilderResumePdfInBackground(button){
-  if(!currentUserId || !currentResumeData) return null;
-
-  const originalText = button?.textContent || 'Select';
-  if(button){
-    button.disabled = true;
-    button.textContent = 'Preparing…';
-  }
-
-  let frame = null;
-
-  try{
-    frame = document.createElement('iframe');
-    frame.setAttribute('aria-hidden','true');
-    frame.tabIndex = -1;
-    frame.style.position = 'fixed';
-    frame.style.left = '-10000px';
-    frame.style.top = '0';
-    frame.style.width = '1400px';
-    frame.style.height = '1200px';
-    frame.style.opacity = '0';
-    frame.style.pointerEvents = 'none';
-    frame.src = `resume-builder.html?view=1&from=account&embedded=1&_=${Date.now()}`;
-    document.body.appendChild(frame);
-
-    await new Promise((resolve,reject)=>{
-      const timer = setTimeout(
-        ()=>reject(new Error('Resume builder took too long to load.')),
-        20000
-      );
-
-      frame.onload = ()=>{
-        clearTimeout(timer);
-        resolve();
-      };
-
-      frame.onerror = ()=>{
-        clearTimeout(timer);
-        reject(new Error('Could not load the Alygnn resume builder.'));
-      };
-    });
-
-    const started = Date.now();
-    while(Date.now() - started < 15000){
-      const win = frame.contentWindow;
-      const doc = frame.contentDocument;
-
-      if(
-        win &&
-        doc &&
-        typeof win.buildResumePdfBlobForStorage === 'function' &&
-        doc.getElementById('resumePaper')
-      ){
-        // Give the builder a moment to restore the saved Supabase resume
-        // and finish laying out the live preview.
-        await new Promise(resolve=>setTimeout(resolve,700));
-
-        const pdfBlob = await win.buildResumePdfBlobForStorage();
-
-        if(!(pdfBlob instanceof Blob) || !pdfBlob.size){
-          throw new Error('The Alygnn resume PDF could not be generated.');
-        }
-
-        const path =
-          `${currentUserId}/alygnn-built-resume-${Date.now()}.pdf`;
-
-        const { error: uploadError } = await sb.storage
-          .from('resumes')
-          .upload(path,pdfBlob,{
-            upsert:false,
-            contentType:'application/pdf',
-            cacheControl:'3600'
-          });
-
-        if(uploadError) throw uploadError;
-
-        return path;
-      }
-
-      await new Promise(resolve=>setTimeout(resolve,250));
-    }
-
-    throw new Error('The Alygnn resume preview was not ready.');
-  }catch(error){
-    console.error('Could not prepare Alygnn resume for selection:',error);
-    showToast('Could not prepare the Alygnn resume — try again.');
-    return null;
-  }finally{
-    frame?.remove();
-    if(button){
-      button.disabled = false;
-      button.textContent = originalText;
-    }
-  }
-}
-
 async function selectResumeChoice(kind,button){
   if(!currentUserId) return;
 
   const originalText = button?.textContent || 'Select';
 
-  let path = kind === 'builder'
-    ? currentResumeLibrary.builder_file_path
-    : currentResumeLibrary.uploaded_file_path;
+  const path = kind === 'builder'
+    ? (currentResumeLibrary.builder_file_path || null)
+    : (currentResumeLibrary.uploaded_file_path || null);
 
-  // Older Alygnn-built resumes can have editable resume_data without a saved
-  // PDF object. Build that PDF invisibly here instead of sending the candidate
-  // back through the builder/account loop.
-  if(kind === 'builder' && !path){
-    path = await createBuilderResumePdfInBackground(button);
-    if(!path) return;
-
-    currentResumeLibrary = {
-      ...currentResumeLibrary,
-      builder_file_path:path
-    };
+  // Uploaded resumes still need their stored file path.
+  if(kind === 'uploaded' && !path){
+    showToast('Could not find the uploaded resume.');
+    return;
   }
 
-  if(!path) return;
+  // Alygnn resumes are valid from resume_data itself. Do NOT force the user
+  // to generate/store a PDF just to choose the resume.
+  if(kind === 'builder' && !currentResumeData){
+    showToast('Could not find the Alygnn resume.');
+    return;
+  }
 
   if(button){
     button.disabled = true;
     button.textContent = 'Selecting…';
   }
 
+  const nextLibrary = {
+    ...currentResumeLibrary,
+    active: kind,
+    selected_at: new Date().toISOString()
+  };
+
   const nextData = {
     ...(currentResumeData || {}),
-    _alygnn_resume_library: {
-      ...currentResumeLibrary,
-      active: kind,
-      selected_at: new Date().toISOString()
-    }
+    _alygnn_resume_library: nextLibrary
   };
+
+  const payload = {
+    resume_source: kind,
+    resume_data: nextData,
+    updated_at: new Date().toISOString()
+  };
+
+  // Compatibility rule:
+  // - uploaded active => resume_file_path is that uploaded file
+  // - Alygnn active => only use a builder PDF if one already exists;
+  //   otherwise NULL is correct because resume_data is the active resume.
+  payload.resume_file_path = kind === 'uploaded'
+    ? path
+    : (currentResumeLibrary.builder_file_path || null);
 
   const { error } = await sb
     .from('profiles')
-    .update({
-      resume_file_path: path,
-      resume_source: kind,
-      resume_data: nextData,
-      updated_at: new Date().toISOString()
-    })
+    .update(payload)
     .eq('id', currentUserId);
 
   if(error){
@@ -3018,12 +2931,22 @@ async function selectResumeChoice(kind,button){
   }
 
   currentResumeData = nextData;
-  currentResumeLibrary = nextData._alygnn_resume_library;
+  currentResumeLibrary = nextLibrary;
   currentResumeSource = kind;
-  currentResumeFilePath = path;
-  renderResumeCardFast(path, nextData, kind);
+  currentResumeFilePath = payload.resume_file_path || null;
+
+  renderResumeCardFast(
+    payload.resume_file_path || null,
+    nextData,
+    kind
+  );
   renderResumeChooser();
-  showToast(kind === 'builder' ? 'Alygnn resume selected.' : 'Uploaded resume selected.');
+
+  showToast(
+    kind === 'builder'
+      ? 'Alygnn resume selected.'
+      : 'Uploaded resume selected.'
+  );
 }
 
 async function openResumeFile(e){
