@@ -2834,7 +2834,7 @@ function renderResumeChooser(){
           ${active === 'builder' ? '<span class="resume-selected-pill">Currently selected</span>' : ''}
         </div>
         <div class="resume-option-actions">
-          <a href="resume-builder.html?view=1&from=account" target="_blank" rel="noopener">View</a>
+          <a href="resume-builder.html?preview=1&from=account" target="_blank" rel="noopener">View</a>
           <a href="resume-builder.html?from=account">Edit</a>
           <button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder',this)">${active === 'builder' ? 'Selected' : 'Select'}</button>
         </div>
@@ -3107,7 +3107,7 @@ async function initAccountPage(){
       resumeStatusLink.href = '#';
       resumeStatusLink.onclick = openResumeFile;
     }else if(profile?.resume_data){
-      resumeStatusLink.href = 'resume-builder.html?view=1&from=account';
+      resumeStatusLink.href = 'resume-builder.html?preview=1&from=account';
       resumeStatusLink.onclick = null;
     }else{
       resumeStatusLink.href = 'align-upload.html';
