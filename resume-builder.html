@@ -2802,6 +2802,41 @@ body.resume-preview-only #resumePaper{
 }
 </style>
 
+
+<script id="resume-preview-prepaint-guard">
+(function(){
+  try{
+    const isPreview =
+      new URLSearchParams(window.location.search).get('preview') === '1';
+
+    if(!isPreview) return;
+
+    document.documentElement.classList.add('resume-preview-booting');
+
+    // Safety fallback: never leave the page hidden forever if a network call fails.
+    window.__alygnnPreviewRevealTimer = window.setTimeout(() => {
+      document.documentElement.classList.remove('resume-preview-booting');
+      document.documentElement.classList.add('resume-preview-ready');
+    }, 10000);
+  }catch(_){}
+})();
+</script>
+
+<style id="resume-preview-prepaint-style">
+html.resume-preview-booting{
+  background:#eef1f3 !important;
+}
+
+html.resume-preview-booting body{
+  opacity:0 !important;
+  background:#eef1f3 !important;
+}
+
+html.resume-preview-ready body{
+  opacity:1 !important;
+}
+</style>
+
 </head>
 
 <body>
@@ -5683,6 +5718,27 @@ body.resume-preview-only #resumePaper{
     validateSummary();
     updatePreview();
     updateContinueState();
+
+    if(previewOnly){
+      try{
+        if(document.fonts?.ready){
+          await document.fonts.ready;
+        }
+      }catch(_){}
+
+      if(window.__alygnnPreviewRevealTimer){
+        clearTimeout(window.__alygnnPreviewRevealTimer);
+      }
+
+      // Wait through two paint frames so the finished resume is what becomes
+      // visible — not the empty/default preview state.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.documentElement.classList.remove('resume-preview-booting');
+          document.documentElement.classList.add('resume-preview-ready');
+        });
+      });
+    }
   })();
 </script>
 </body>
