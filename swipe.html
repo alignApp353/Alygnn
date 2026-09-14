@@ -193,11 +193,42 @@
     font-weight: 700;
   }
 
-  .pill.recommended {
-    background: rgba(93,127,163,0.10);
-    color: var(--brand);
-    border-color: rgba(93,127,163,0.35);
+  .alygnn-recommended-sticker {
+    position: absolute;
+    top: -12px;
+    right: 18px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border: 1px solid rgba(93,127,163,0.35);
+    border-radius: 10px;
+    background: var(--brand);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
     font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(26,37,48,0.14);
+    transform: rotate(4deg);
+    transform-origin: center;
+    pointer-events: none;
+  }
+
+  .job-card:not(:first-child) .alygnn-recommended-sticker {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .alygnn-recommended-sticker {
+      top: -10px;
+      right: 14px;
+      padding: 7px 12px;
+      font-size: 11px;
+      transform: rotate(3deg);
+    }
   }
 
   .match-badge {
@@ -853,7 +884,6 @@
     card.dataset.index = index;
 
     const pillsHTML = [
-      job.alygnn_recommended === true ? '<span class="pill recommended">Alygnn Recommended</span>' : '',
       job.urgently_hiring === true ? '<span class="pill urgent">Urgently Hiring</span>' : '',
       job.work_style === 'Remote' ? '<span class="pill remote">🌐 Remote</span>' : '',
       job.location ? `<span class="pill">📍 ${escapeHtml(job.location)}</span>` : '',
@@ -891,7 +921,12 @@
       ? `<img src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(job.company || 'Company')} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="company-logo-fallback" style="display:none;">${companyInitials}</span>`
       : `<span class="company-logo-fallback">${companyInitials}</span>`;
 
+    const recommendedStickerHTML = job.alygnn_recommended === true
+      ? '<div class="alygnn-recommended-sticker">Alygnn Recommended</div>'
+      : '';
+
     card.innerHTML = `
+      ${recommendedStickerHTML}
       <div class="stamp stamp-apply">APPLIED ✓</div>
       <div class="stamp stamp-skip">PASSED ✕</div>
       <div class="card-top">
