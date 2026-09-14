@@ -1408,6 +1408,9 @@ async function loadData(){
   focusedJobId=params.get('job');
   focusedApplicationId=params.get('application');
 
+  const requestedView=String(params.get('view')||'').toLowerCase();
+  candidateView=['accepted','passed'].includes(requestedView)?requestedView:'jobs';
+
   if(focusedJobId && focusedApplicationId){
     // Put the notification's applicant on the page that contains them.
     const jobCandidates=orderedCandidates(
@@ -1435,8 +1438,10 @@ function orderedCandidates(list,sort){
   return copy.sort((a,b)=>new Date(b.appliedAt||0)-new Date(a.appliedAt||0));
 }
 
-function goToJobCandidates(jobId){
-  window.location.href='candidates.html?job='+encodeURIComponent(jobId);
+function goToJobCandidates(jobId,view='jobs'){
+  const params=new URLSearchParams({job:jobId});
+  if(view==='accepted'||view==='passed')params.set('view',view);
+  window.location.href='candidates.html?'+params.toString();
 }
 
 function changeCandidatePage(nextPage){
@@ -1475,72 +1480,87 @@ function updateCandidateViewTabs(){
   });
 }
 
-function renderDecisionOverview(status,query,sort){
+function renderDecisionOverview(status,query){
   const box=document.getElementById('jobs-groups');
   const wanted=status==='accepted'?'accepted':'rejected';
   const label=status==='accepted'?'Accepted':'Passed';
 
-  let list=candidates.filter(c=>String(c.status||'').toLowerCase()===wanted);
+  const decided=candidates.filter(c=>String(c.status||'').toLowerCase()===wanted);
 
-  if(query){
-    list=list.filter(c=>{
-      const resumeText=candidateResumeText(c.match.resume);
-      return [
-        c.profile.full_name,
-        c.job?.title,
-        c.job?.location,
-        c.job?.job_type,
-        resumeText,
-        c.match.score,
-        scoreBand(c.match.score)
-      ].join(' ').toLowerCase().includes(query);
-    });
-  }
+  const groups=jobs.map(job=>{
+    const people=decided.filter(c=>c.job.id===job.id);
 
-  list=orderedCandidates(list,sort);
+    // Search can match the job OR someone inside that job, but the overview
+    // still stays organized one row per job.
+    if(query){
+      const jobMatches=[job.title,job.location,job.job_type,job.status]
+        .join(' ').toLowerCase().includes(query);
 
-  if(!list.length){
+      const candidateMatches=people.some(c=>{
+        const resumeText=candidateResumeText(c.match.resume);
+        return [
+          c.profile.full_name,
+          resumeText,
+          c.match.score,
+          scoreBand(c.match.score)
+        ].join(' ').toLowerCase().includes(query);
+      });
+
+      if(!jobMatches&&!candidateMatches)return null;
+    }
+
+    return {job,people};
+  })
+  .filter(group=>group&&group.people.length)
+  .sort((a,b)=>{
+    // Most active decision groups first, then newest job.
+    if(b.people.length!==a.people.length)return b.people.length-a.people.length;
+    return new Date(b.job.created_at||0)-new Date(a.job.created_at||0);
+  });
+
+  if(!groups.length){
     box.innerHTML=`
       <div class="empty">
         <div class="empty-title">No ${label.toLowerCase()} candidates${query?' found':''}</div>
-        ${query?'Try a different search.':`Candidates you ${status==='accepted'?'accept':'pass on'} will appear here.`}
+        ${query
+          ? 'Try a different search.'
+          : `Jobs with ${label.toLowerCase()} candidates will appear here.`}
       </div>`;
     return;
   }
 
-  const total=list.length;
-  const totalPages=Math.max(1,Math.ceil(total/CANDIDATES_PER_PAGE));
-  if(currentPage>totalPages)currentPage=totalPages;
-  const startIndex=(currentPage-1)*CANDIDATES_PER_PAGE;
-  const pageCandidates=list.slice(startIndex,startIndex+CANDIDATES_PER_PAGE);
-  const firstShown=startIndex+1;
-  const lastShown=Math.min(startIndex+CANDIDATES_PER_PAGE,total);
+  box.innerHTML=groups.map(({job,people})=>{
+    const rawStatus=String(job.status||'active').toLowerCase();
+    const newest=orderedCandidates(people,'newest')[0];
+    const latestText=newest?.appliedAt?` · latest ${escapeHtml(timeAgo(newest.appliedAt))}`:'';
 
-  box.innerHTML=`
-    <section class="job-group open focused">
-      <div class="job-group-body" style="display:block;border-top:0">
-        <div class="decision-list-heading">
-          <div>
-            <div class="decision-list-title">${label} candidates</div>
-            <div class="decision-list-copy">Showing ${firstShown}–${lastShown} of ${total} across all jobs.</div>
+    return `
+      <section class="job-group">
+        <div class="job-group-head" style="cursor:default">
+          <div class="job-head-left">
+            <div class="job-title-row">
+              <div class="job-title">${escapeHtml(job.title||'Untitled job')}</div>
+              <span class="job-status ${rawStatus==='active'?'active':rawStatus==='pending'?'pending':''}">
+                ${escapeHtml(rawStatus==='pending'?'Pending':rawStatus)}
+              </span>
+            </div>
+            <div class="job-meta">
+              ${escapeHtml(job.location||'')}${job.location&&job.job_type?' · ':''}${escapeHtml(job.job_type||'')}
+              · ${people.length} ${label.toLowerCase()} candidate${people.length===1?'':'s'}${latestText}
+            </div>
+          </div>
+
+          <div class="job-overview-actions">
+            <span class="count-badge">${people.length}</span>
+            <button class="view-candidates-btn" type="button"
+              onclick="goToJobCandidates('${job.id}','${status}')">
+              View ${label.toLowerCase()} →
+            </button>
           </div>
         </div>
-
-        <div class="candidate-list">
-          ${pageCandidates.map(c=>renderCandidate(c,true)).join('')}
-        </div>
-
-        ${totalPages>1?`
-          <div class="pagination">
-            <div class="pagination-copy">${CANDIDATES_PER_PAGE} candidates per page</div>
-            <div class="pagination-actions">
-              <button class="page-btn" ${currentPage<=1?'disabled':''} onclick="changeCandidatePage(${currentPage-1})">← Previous</button>
-              <div class="page-number">Page ${currentPage} of ${totalPages}</div>
-              <button class="page-btn" ${currentPage>=totalPages?'disabled':''} onclick="changeCandidatePage(${currentPage+1})">Next →</button>
-            </div>
-          </div>`:''}
-      </div>
-    </section>`;
+      </section>
+    `;
+  }).join('');
 }
 
 function renderGroups(){
@@ -1565,14 +1585,14 @@ function renderGroups(){
 
     if(candidateView==='accepted'||candidateView==='passed'){
       const isAccepted=candidateView==='accepted';
-      if(pageTitle)pageTitle.textContent=isAccepted?'Accepted candidates':'Passed candidates';
+      if(pageTitle)pageTitle.textContent=isAccepted?'Accepted candidates by job':'Passed candidates by job';
       if(pageSub)pageSub.textContent=isAccepted
-        ? 'Candidates you accepted across all of your jobs.'
-        : 'Candidates you passed on across all of your jobs.';
-      if(sortSelect)sortSelect.style.display='';
-      if(searchInput)searchInput.placeholder='Search candidates, jobs, skills, or experience…';
+        ? 'Open a job to review only the candidates you accepted for that role.'
+        : 'Open a job to review only the candidates you passed on for that role.';
+      if(sortSelect)sortSelect.style.display='none';
+      if(searchInput)searchInput.placeholder='Search jobs or candidates…';
 
-      renderDecisionOverview(candidateView,query,sort);
+      renderDecisionOverview(candidateView,query);
       return;
     }
 
@@ -1634,18 +1654,33 @@ function renderGroups(){
     return;
   }
 
-  if(pageKicker)pageKicker.textContent='Candidates for this job';
-  if(pageTitle)pageTitle.textContent=job.title||'Candidates';
+  const decisionMode=candidateView==='accepted'||candidateView==='passed';
+  const wantedStatus=candidateView==='accepted'?'accepted':candidateView==='passed'?'rejected':null;
+  const decisionLabel=candidateView==='accepted'?'Accepted':candidateView==='passed'?'Passed':null;
+
+  let jobCandidates=candidates.filter(c=>c.job.id===job.id);
+  if(wantedStatus){
+    jobCandidates=jobCandidates.filter(c=>String(c.status||'').toLowerCase()===wantedStatus);
+  }
+
+  if(pageKicker)pageKicker.textContent=decisionMode?`${decisionLabel} for this job`:'Candidates for this job';
+  if(pageTitle)pageTitle.textContent=decisionMode
+    ? `${decisionLabel} — ${job.title||'Candidates'}`
+    : (job.title||'Candidates');
   if(pageSub)pageSub.textContent=[
     job.location,
     job.job_type,
-    `${candidates.filter(c=>c.job.id===job.id).length} total applicants`
+    `${jobCandidates.length} ${decisionMode?decisionLabel.toLowerCase()+' ':''}candidate${jobCandidates.length===1?'':'s'}`
   ].filter(Boolean).join(' · ');
-  if(back)back.style.display='inline-flex';
+
+  if(back){
+    back.style.display='inline-flex';
+    back.href=decisionMode?`candidates.html?view=${candidateView}`:'candidates.html';
+    back.textContent=decisionMode?`← All ${decisionLabel.toLowerCase()}`:'← All jobs';
+  }
+
   if(sortSelect)sortSelect.style.display='';
   if(searchInput)searchInput.placeholder='Search candidates, skills, or experience…';
-
-  let jobCandidates=candidates.filter(c=>c.job.id===job.id);
 
   if(query){
     jobCandidates=jobCandidates.filter(c=>{
@@ -1681,7 +1716,7 @@ function renderGroups(){
 
         ${pageCandidates.length
           ? `<div class="candidate-list">${pageCandidates.map(c=>renderCandidate(c)).join('')}</div>`
-          : `<div class="empty"><div class="empty-title">No candidates found</div>Try changing your search.</div>`}
+          : `<div class="empty"><div class="empty-title">${decisionMode?`No ${decisionLabel.toLowerCase()} candidates found`:'No candidates found'}</div>${query?'Try changing your search.':decisionMode?`There are no ${decisionLabel.toLowerCase()} candidates for this job yet.`:'Try changing your search.'}</div>`}
 
         ${totalPages>1?`
           <div class="pagination">
