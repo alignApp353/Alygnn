@@ -417,7 +417,7 @@ const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const TEAM_INVITE_FUNCTION_URL='https://auth.alygnn.com/functions/v1/send-team-invite';
 function alygnnAuthStorageKey(){let t=sessionStorage.getItem('alygnn_auth_tab_id');if(!t){t=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;sessionStorage.setItem('alygnn_auth_tab_id',t)}return `alygnn-auth-${t}`}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:sessionStorage,storageKey:alygnnAuthStorageKey(),persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let session=null,access=null,roster=null,editingMember=null;
+let session=null,access=null,roster=null,editingMember=null,editingInvite=null;
 const $=id=>document.getElementById(id);
 const PERMS=[
  ['jobs_manage','Post & edit jobs','Create, edit, pause, close, and manage company job posts.'],
@@ -476,7 +476,7 @@ function renderRoster(){
  const members=roster?.members||[], invites=roster?.invites||[];
  $('members-list').innerHTML=members.length?members.map(m=>`<div class="person"><div class="avatar">${initials(m.name,m.email)}</div><div class="person-main"><strong>${esc(m.name||m.email)}</strong><span>${esc(m.email||'')}</span></div><span class="role">${esc(roleLabel(m.team_role))}</span>${m.team_role!=='owner'&&can('team_manage')?`<div class="person-actions"><button class="mini" onclick='editMember(${JSON.stringify(JSON.stringify(m))})'>Edit</button></div>`:''}</div>`).join(''):'<div class="empty">No team members yet.</div>';
  $('invites-wrap').style.display=can('team_manage')?'block':'none';
- $('invites-list').innerHTML=invites.length?invites.map(i=>`<div class="person"><div class="avatar">${initials(i.name,i.email)}</div><div class="person-main"><strong>${esc(i.name||i.email)}</strong><span>${esc(i.email)} · invitation pending</span></div><span class="role">${esc(roleLabel(i.team_role))}</span><div class="person-actions"><button class="mini" onclick="resendInvite('${esc(i.id)}')">Resend</button><button class="mini" onclick="revokeInvite('${esc(i.id)}')">Revoke</button></div></div>`).join(''):'<div class="empty">No pending invitations.</div>';
+ $('invites-list').innerHTML=invites.length?invites.map(i=>`<div class="person"><div class="avatar">${initials(i.name,i.email)}</div><div class="person-main"><strong>${esc(i.name||i.email)}</strong><span>${esc(i.email)} · invitation pending</span></div><span class="role">${esc(roleLabel(i.team_role))}</span><div class="person-actions"><button class="mini" onclick='editInvite(${JSON.stringify(JSON.stringify(i))})'>Edit</button><button class="mini" onclick="resendInvite('${esc(i.id)}')">Resend</button><button class="mini" onclick="revokeInvite('${esc(i.id)}')">Revoke</button></div></div>`).join(''):'<div class="empty">No pending invitations.</div>';
 }
 
 async function loadHeaderCompanyName(){
@@ -545,6 +545,7 @@ function openInvite(){
    return;
  }
  editingMember=null;
+ editingInvite=null;
  $('modal-title').textContent='Invite team member';
  $('member-name').value='';
  $('member-email').value='';
@@ -568,6 +569,7 @@ function closeInvite(){
  document.body.style.overflow='';
 }
 function editMember(encoded){
+ editingInvite=null;
  editingMember=JSON.parse(encoded);
  $('modal-title').textContent='Edit team member';
  $('member-name').value=editingMember.name||'';
@@ -578,6 +580,27 @@ function editMember(encoded){
  $('save-member').disabled=false;
  $('save-member').textContent='Save access';
  renderPermissions(editingMember.permissions);
+ clearMsg('modal-message');
+ const overlay=$('invite-overlay');
+ overlay.classList.add('show');
+ overlay.scrollTop=0;
+ const modal=overlay.querySelector('.modal');
+ if(modal)modal.scrollTop=0;
+ document.body.style.overflow='hidden';
+}
+
+function editInvite(encoded){
+ editingMember=null;
+ editingInvite=JSON.parse(encoded);
+ $('modal-title').textContent='Edit invitation';
+ $('member-name').value=editingInvite.name||'';
+ $('member-email').value=editingInvite.email||'';
+ $('member-email').readOnly=false;
+ $('member-role').value=['admin','hiring_manager','recruiter'].includes(editingInvite.team_role)?editingInvite.team_role:'recruiter';
+ $('remove-member').style.display='none';
+ $('save-member').disabled=false;
+ $('save-member').textContent='Save & resend invite';
+ renderPermissions(editingInvite.permissions);
  clearMsg('modal-message');
  const overlay=$('invite-overlay');
  overlay.classList.add('show');
@@ -660,7 +683,7 @@ async function saveMember(){
 
   button.disabled=true;
   const originalLabel=button.textContent;
-  button.textContent=editingMember?'Saving…':'Sending invite…';
+  button.textContent=editingMember?'Saving…':(editingInvite?'Saving changes…':'Sending invite…');
 
   try{
     if(editingMember){
@@ -679,55 +702,82 @@ async function saveMember(){
 
     let inviteId='';
 
-    const {data:invite,error:createError}=await sb.rpc('create_company_team_invite',{
-      p_email:email,
-      p_member_name:name,
-      p_team_role:role,
-      p_permissions:permissions
-    });
+    if(editingInvite){
+      const {data:invite,error:updateError}=await sb.rpc('update_company_team_invite',{
+        p_invite_id:editingInvite.id,
+        p_email:email,
+        p_member_name:name,
+        p_team_role:role,
+        p_permissions:permissions
+      });
+      if(updateError)throw updateError;
+      inviteId=invite?.id||editingInvite.id||'';
+    }else{
+      const {data:invite,error:createError}=await sb.rpc('create_company_team_invite',{
+        p_email:email,
+        p_member_name:name,
+        p_team_role:role,
+        p_permissions:permissions
+      });
 
-    if(createError){
-      const message=String(createError.message||'');
+      if(createError){
+        const message=String(createError.message||'');
 
-      // If a pending invite already exists, treat Send Invite as Resend.
-      // This is much friendlier than making the button appear to do nothing.
-      if(/pending invite already exists/i.test(message)){
-        const existing=(roster?.invites||[]).find(
-          item=>String(item.email||'').trim().toLowerCase()===email
-        );
+        if(/pending invite already exists/i.test(message)){
+          const existing=(roster?.invites||[]).find(
+            item=>String(item.email||'').trim().toLowerCase()===email
+          );
 
-        if(existing?.id){
-          inviteId=existing.id;
+          if(existing?.id){
+            inviteId=existing.id;
+          }else{
+            throw new Error('A pending invitation already exists for this email. Close this window and use Resend under Pending Invitations.');
+          }
         }else{
-          throw new Error('A pending invitation already exists for this email. Close this window and use Resend under Pending Invitations.');
+          throw createError;
         }
       }else{
-        throw createError;
+        inviteId=invite?.id||'';
       }
-    }else{
-      inviteId=invite?.id||'';
     }
 
     if(!inviteId){
-      throw new Error('The invitation was created but Alygnn did not receive an invitation ID. Refresh Team Members and try again.');
+      throw new Error(
+        editingInvite
+          ? 'The invitation was updated but Alygnn did not receive an invitation ID. Refresh Team Members and try again.'
+          : 'The invitation was created but Alygnn did not receive an invitation ID. Refresh Team Members and try again.'
+      );
     }
 
-    showMsg('modal-message','Invitation saved. Sending the email now… Please keep this window open.','info');
+    showMsg(
+      'modal-message',
+      editingInvite
+        ? 'Invitation updated. Resending the email now… Please keep this window open.'
+        : 'Invitation saved. Sending the email now… Please keep this window open.',
+      'info'
+    );
 
     try{
       await sendTeamInviteEmail(inviteId);
     }catch(mailError){
-      // Keep the modal open so the owner immediately sees what failed.
       await loadTeam();
       throw new Error(
         mailError?.message||
-        'The invitation was saved, but the email could not be sent. You can use Resend under Pending Invitations.'
+        (editingInvite
+          ? 'The invitation was updated, but the email could not be resent. You can use Resend under Pending Invitations.'
+          : 'The invitation was saved, but the email could not be sent. You can use Resend under Pending Invitations.')
       );
     }
 
+    const wasEditingInvite=!!editingInvite;
     closeInvite();
+    editingInvite=null;
     await loadTeam();
-    showMsg('page-message','Invitation sent successfully.','success');
+    showMsg(
+      'page-message',
+      wasEditingInvite ? 'Invitation updated and resent.' : 'Invitation sent successfully.',
+      'success'
+    );
 
   }catch(error){
     console.error('saveMember failed:',error);
@@ -751,7 +801,7 @@ async function saveMember(){
     if(modal)modal.scrollTo({top:0,behavior:'smooth'});
   }finally{
     button.disabled=false;
-    button.textContent=editingMember?'Save access':originalLabel;
+    button.textContent=editingMember?'Save access':(editingInvite?'Save & resend invite':originalLabel);
   }
 }
 async function removeMember(){if(!editingMember||!confirm(`Remove ${editingMember.name||editingMember.email} from this workspace?`))return;try{const {error}=await sb.rpc('remove_company_team_member',{p_user_id:editingMember.user_id});if(error)throw error;closeInvite();await loadTeam();showMsg('page-message','Team member removed.','success')}catch(e){showMsg('modal-message',e.message||'Could not remove team member.')}}
