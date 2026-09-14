@@ -4,6 +4,71 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#F6F8F7">
+<script id="alygnn-splash-theme-critical">
+(function(){
+  const media = window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null;
+
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='system'||value==='system-default'||value==='default') return 'auto';
+    return ['auto','light','dark'].includes(value)?value:'auto';
+  }
+
+  function readTheme(){
+    let accountType='candidate';
+    try{
+      accountType=String(localStorage.getItem('alygnn_account_type')||'candidate').toLowerCase();
+    }catch(_){ }
+
+    const primaryKey = accountType==='employer'
+      ? 'alygnnEmployerTheme'
+      : 'alygnnCandidateTheme';
+
+    let value='auto';
+    try{
+      value =
+        localStorage.getItem(primaryKey) ||
+        localStorage.getItem('alygnnTheme') ||
+        localStorage.getItem('alygnn-theme') ||
+        localStorage.getItem('alygnn_candidate_theme') ||
+        'auto';
+    }catch(_){ }
+
+    return normalize(value);
+  }
+
+  function apply(){
+    const preference=readTheme();
+    const theme = preference==='dark'
+      ? 'dark'
+      : preference==='light'
+        ? 'light'
+        : (media && media.matches ? 'dark' : 'light');
+
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.style.colorScheme=theme;
+    root.style.backgroundColor=theme==='dark'?'#071722':'#F6F8F7';
+
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta){
+      meta.setAttribute('content',theme==='dark'?'#071722':'#F6F8F7');
+    }
+  }
+
+  apply();
+
+  if(media){
+    media.addEventListener?.('change',()=>{
+      if(readTheme()==='auto') apply();
+    });
+  }
+
+  window.AlygnnSplashTheme={apply};
+})();
+</script>
 <title>Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,6 +129,13 @@ body{
   width:min(360px,88vw);
   text-align:center;
   transform:translateY(-3vh);
+  opacity:1;
+  transition:opacity .22s ease,transform .22s ease;
+}
+
+body.is-leaving .splash{
+  opacity:0;
+  transform:translateY(-3vh) scale(.985);
 }
 
 .logo{
@@ -148,54 +220,62 @@ body{
   </div>
 </main>
 <script>
-(function applySplashTheme(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
 
-  const systemDark=
-    window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-  const resolved=
-    saved==='dark'
-      ?'dark'
-      :saved==='light'
-        ?'light'
-        :(systemDark?'dark':'light');
-
-  document.documentElement.dataset.theme=resolved;
-
-  const meta=document.querySelector('meta[name="theme-color"]');
-  if(meta){
-    meta.setAttribute(
-      'content',
-      resolved==='dark'
-        ?'#071722'
-        :'#F6F8F7'
-    );
+const sb=supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:true
+    }
   }
-})();
+);
 
-const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const SPLASH_MIN_MS=1250;
+const splashStartedAt=Date.now();
+
+function wait(ms){
+  return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function leaveSplash(destination){
+  const elapsed=Date.now()-splashStartedAt;
+  const remaining=Math.max(0,SPLASH_MIN_MS-elapsed);
+
+  if(remaining){
+    await wait(remaining);
+  }
+
+  document.body.classList.add('is-leaving');
+  await wait(220);
+
+  window.location.replace(destination);
+}
+
 (async function routeApp(){
+  let destination='app-start.html';
+
   try{
     const {data,error}=await sb.auth.getSession();
-    if(error||!data.session){
-      window.location.replace('app-start.html');
-      return;
+
+    if(!error && data.session){
+      const accountType=
+        localStorage.getItem('alygnn_account_type') ||
+        'candidate';
+
+      destination=
+        accountType==='employer'
+          ?'app-employer-dashboard.html'
+          :'app-account.html';
     }
-    const accountType=localStorage.getItem('alygnn_account_type')||'candidate';
-    if(accountType==='employer'){
-      window.location.replace('app-employer-dashboard.html');
-    }else{
-      window.location.replace('app-account.html');
-    }
+
   }catch(err){
     console.error(err);
-    window.location.replace('app-start.html');
   }
+
+  await leaveSplash(destination);
 })();
 </script>
 </body>
