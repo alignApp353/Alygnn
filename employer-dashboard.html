@@ -1013,13 +1013,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(messagesLink&&!teamCan('messages_manage')) messagesLink.style.display='none';
     if(postButton&&!teamCan('jobs_manage')) postButton.style.display='none';
 
-    const canOpenAccount=
-      teamCan('company_edit')||
-      teamCan('billing_view')||
-      teamCan('billing_manage')||
-      teamCan('team_manage');
-
-    if(accountLink&&!canOpenAccount) accountLink.style.display='none';
+    // "My account" is the signed-in teammate's PERSONAL account, so it
+    // must always stay available regardless of company-workspace permissions.
+    // Do not send recruiters/hiring managers into the owner-only employer
+    // account page, which rejects their non-owner profile role.
+    if(accountLink){
+      accountLink.style.display='flex';
+      accountLink.href='account-settings.html?from=employer-team';
+    }
   }
   let editingJobId = null;
 
@@ -1974,37 +1975,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (box) box.classList.remove('show');
   }
 
-
-  function alygnnEmployerOnboardingComplete(profile){
-    const blueprint =
-      profile?.hiring_blueprint &&
-      typeof profile.hiring_blueprint === 'object'
-        ? profile.hiring_blueprint
-        : null;
-
-    if(!blueprint) return false;
-
-    if(blueprint.onboarding_complete === true) return true;
-
-    const companyId = String(blueprint.company_id || '').trim();
-    const documentPath = String(blueprint.irs_document_path || '').trim();
-    const companyPriorities = Array.isArray(blueprint.company_priorities)
-      ? blueprint.company_priorities
-      : [];
-    const candidatePriorities = Array.isArray(blueprint.candidate_priorities)
-      ? blueprint.candidate_priorities
-      : [];
-
-    // Backward compatibility for employers who finished setup before the
-    // onboarding_complete flag was introduced.
-    return !!(
-      companyId &&
-      documentPath &&
-      companyPriorities.length >= 5 &&
-      candidatePriorities.length >= 5
-    );
-  }
-
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
     const authedUser = data && data.user;
@@ -2071,7 +2041,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return;
       }
 
-      if (!alygnnEmployerOnboardingComplete(ownerProfile)) {
+      const blueprint = ownerProfile?.hiring_blueprint;
+      const hasCompletedOnboarding =
+        !!blueprint &&
+        typeof blueprint === 'object' &&
+        Object.keys(blueprint).length > 0;
+
+      if (!hasCompletedOnboarding) {
         window.location.replace('employer-onboarding.html');
         return;
       }
@@ -2098,67 +2074,28 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
     }
 
-    // Authentication + routing are now settled. Show the dashboard BEFORE
-    // non-critical jobs/candidates/billing requests. A slow API call should
-    // never trap the employer on the full-screen "Loading…" screen.
-    document.body.classList.add('auth-ready');
-
     renderSelectedChips('req');
     renderSelectedChips('benefit');
 
     updateVerificationUI();
 
-    try {
-      if (!isTeamMember || teamCan('jobs_manage')) {
-        await Promise.race([
-          activatePendingJobsIfApproved(),
-          new Promise(resolve => setTimeout(resolve, 5000))
-        ]);
-      }
-    } catch (error) {
-      console.warn('Pending-job activation skipped:', error);
+    if (!isTeamMember || teamCan('jobs_manage')) {
+      await activatePendingJobsIfApproved();
     }
 
-    try {
-      await Promise.race([
-        loadJobs(),
-        new Promise(resolve => setTimeout(resolve, 5000))
-      ]);
-    } catch (error) {
-      console.warn('Jobs load skipped:', error);
-    }
+    await loadJobs();
 
     if (!isTeamMember || teamCan('candidates_manage')) {
-      try {
-        await Promise.race([
-          loadCandidates(),
-          new Promise(resolve => setTimeout(resolve, 5000))
-        ]);
-      } catch (error) {
-        console.warn('Candidates load skipped:', error);
-      }
+      await loadCandidates();
     } else {
       candidates = [];
       candidatesLoaded = true;
     }
 
-    try {
-      await Promise.race([
-        loadBillingEntitlement(),
-        new Promise(resolve => setTimeout(resolve, 5000))
-      ]);
-    } catch (error) {
-      console.warn('Billing entitlement load skipped:', error);
-    }
-
+    await loadBillingEntitlement();
     renderJobs();
     updatePostingAccessUI();
-
-    try {
-      initNotifications();
-    } catch (error) {
-      console.warn('Notifications init skipped:', error);
-    }
+    initNotifications();
 
     const initialPanel = getPanelFromHash();
 
@@ -2179,6 +2116,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
+    document.body.classList.add('auth-ready');
     applyPanelVisual(initialPanel);
     loadPanelData(initialPanel);
 
@@ -2700,13 +2638,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   // so it doesn't create a spurious history entry.
   applyPanelVisual(getPanelFromHash());
 
-  checkAuth().catch(error => {
-    console.error('Employer dashboard initialization failed:', error);
-    document.body.classList.add('auth-ready');
-    const loader = document.getElementById('auth-loading');
-    if (loader) loader.style.display = 'none';
-    try { showToast('Some employer data could not load. Refresh the page to retry.'); } catch {}
-  });
+  checkAuth();
 
   function updateVerificationUI() {
     const lockBox = document.getElementById('verification-lock');
