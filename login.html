@@ -1049,13 +1049,6 @@ const { createClient } = supabase;
   async function handleGoogle() {
     const mode = currentAuthMode;
 
-    // Terms are required only when CREATE ACCOUNT is selected.
-    // Existing users signing in with Google are never blocked by this checkbox.
-    if (mode === 'signup' && !document.getElementById('signup-terms').checked) {
-      showMsg('Please agree to the Terms of Service and Privacy Policy to continue.');
-      return;
-    }
-
     saveOAuthContext(currentRole, mode);
 
     await sb.auth.signInWithOAuth({
@@ -1068,12 +1061,6 @@ const { createClient } = supabase;
 
   async function handleApple() {
     const mode = currentAuthMode;
-
-    // Match Google: Terms are a sign-up requirement, never a sign-in requirement.
-    if (mode === 'signup' && !document.getElementById('signup-terms').checked) {
-      showMsg('Please agree to the Terms of Service and Privacy Policy to continue.');
-      return;
-    }
 
     saveOAuthContext(currentRole, mode);
 
