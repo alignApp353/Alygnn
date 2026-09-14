@@ -4052,7 +4052,7 @@
   <div class="loading" id="loading" aria-label="Alygnn is loading">
     <div class="alygnn-loader">
       <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
-      <div class="loading-copy">Finding your fit.</div>
+      <div class="loading-copy" id="employer-loading-message">Building your team.</div>
       <div class="alygnn-loading-track" aria-hidden="true">
         <div class="alygnn-loading-bar"></div>
       </div>
@@ -5266,6 +5266,29 @@
   <div class="toast" id="toast"></div>
 
   <script>
+
+const ALYGNN_EMPLOYER_LOADING_MESSAGES=["Building your team.", "Finding your next hire.", "Connecting you with talent.", "Preparing your hiring workspace.", "Matching talent to opportunity.", "Getting your candidates ready.", "Organizing your hiring pipeline.", "Bringing your workspace together.", "Loading your hiring dashboard.", "Preparing your next move.", "Finding talent that fits.", "Getting your team in place.", "Preparing your candidate matches.", "Powering up your hiring workspace.", "Bringing the right people closer.", "Getting your hiring tools ready.", "Preparing your recruiting workspace.", "Connecting you to your next hire.", "Getting everything ready to hire.", "Helping you build what’s next."];
+
+function alygnnEmployerLoadingMessage(){
+  const storageKey='alygnnEmployerLastLoadingMessage';
+  let last='';
+  try{last=localStorage.getItem(storageKey)||'';}catch(_error){}
+
+  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
+  if(last && choices.length>1){
+    choices=choices.filter(message=>message!==last);
+  }
+
+  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
+  try{localStorage.setItem(storageKey,message);}catch(_error){}
+  return message;
+}
+
+(function setInitialEmployerLoadingMessage(){
+  const node=document.getElementById('employer-loading-message');
+  if(node)node.textContent=alygnnEmployerLoadingMessage();
+})();
+
     const sb = supabase.createClient(
       'https://auth.alygnn.com',
       'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
