@@ -119,11 +119,51 @@ nav{
 .loading.hide, .error-state.hide{ display:none; }
 
 .job-header{
+  position:relative;
+  overflow:visible;
   background:var(--card-bg);
   border:1px solid var(--border);
   border-radius:20px;
   padding:32px;
   margin-bottom:24px;
+}
+
+.alygnn-recommended-sticker{
+  display:none;
+  position:absolute;
+  top:-13px;
+  right:18px;
+  z-index:3;
+  padding:8px 14px;
+  border:1px solid rgba(93,127,163,.35);
+  border-radius:10px;
+  background:var(--brand);
+  color:#fff;
+  font-family:'DM Sans', Arial, sans-serif !important;
+  font-size:12px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:0;
+  white-space:nowrap;
+  box-shadow:0 8px 18px rgba(26,37,48,.14);
+  transform:rotate(4deg);
+  transform-origin:center;
+}
+
+.alygnn-recommended-sticker.show{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+@media(max-width:600px){
+  .alygnn-recommended-sticker{
+    top:-11px;
+    right:14px;
+    padding:7px 12px;
+    font-size:11px;
+    transform:rotate(3deg);
+  }
 }
 
 .job-heading-row{
@@ -482,6 +522,7 @@ nav{
 <div class="page" id="page">
 
   <div class="job-header">
+    <div class="alygnn-recommended-sticker" id="alygnn-recommended-sticker">Alygnn Recommended</div>
     
       <div id="swipe-return-row" class="swipe-return-row" style="display:none;">
         <a href="swipe.html" id="swipe-return-btn" class="swipe-return-btn">← Keep swiping</a>
@@ -996,16 +1037,18 @@ function renderJob(job, appInfo, interviewInfo){
   // Badges: job type + salary range (if present) as plain info badges.
   const badgesEl = document.getElementById('job-badges');
   const badges = [];
+
+  const recommendedSticker = document.getElementById('alygnn-recommended-sticker');
+  if(recommendedSticker){
+    recommendedSticker.classList.toggle('show', job.alygnn_recommended === true);
+  }
   if(getParam('from') === 'employer'){
     badges.push({ text: 'Employer preview', cls: 'plain' });
   }
   if(job.urgently_hiring === true){
     badges.push({ text: 'Urgently Hiring', cls: 'urgent' });
   }
-  if(job.alygnn_recommended === true){
-    badges.push({ text: 'Alygnn Recommended', cls: 'recommended' });
-  }
-  if(job.job_type) badges.push({ text: job.job_type, cls: 'plain' });
+if(job.job_type) badges.push({ text: job.job_type, cls: 'plain' });
   const salaryText = job.salary || fmtSalary(job.salary_min, job.salary_max);
   if(salaryText) badges.push({ text: salaryText, cls: 'plain' });
 
