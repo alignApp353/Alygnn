@@ -6,7 +6,72 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F6F8F7">
 <title>Alygnn — Messages</title>
+
+
+<script id="alygnn-shared-theme-bridge">
+(function(){
+  const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
+
+  function themeKeyFor(role){
+    return String(role||'').toLowerCase()==='employer'
+      ? 'alygnnEmployerTheme'
+      : 'alygnnCandidateTheme';
+  }
+
+  function readPreference(role){
+    try{
+      const value=localStorage.getItem(themeKeyFor(role));
+      return ['auto','light','dark'].includes(value)?value:'auto';
+    }catch(_){
+      return 'auto';
+    }
+  }
+
+  function apply(role){
+    const safeRole=String(role||'').toLowerCase();
+    const preference=readPreference(safeRole);
+    const resolved=
+      preference==='auto'
+        ? (systemDark.matches?'dark':'light')
+        : preference;
+
+    document.documentElement.dataset.theme=resolved;
+    document.documentElement.style.colorScheme=resolved;
+
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta){
+      meta.setAttribute(
+        'content',
+        resolved==='dark' ? '#0B111A' : '#F6F8F7'
+      );
+    }
+  }
+
+  const requestedRole=(
+    new URLSearchParams(location.search).get('role')||''
+  ).toLowerCase();
+
+  if(requestedRole){
+    apply(requestedRole);
+  }
+
+  window.applyAlygnnSharedTheme=apply;
+
+  systemDark.addEventListener?.('change',()=>{
+    const role=(
+      new URLSearchParams(location.search).get('role')||
+      window.__alygnnResolvedRole||
+      ''
+    ).toLowerCase();
+
+    if(role && readPreference(role)==='auto'){
+      apply(role);
+    }
+  });
+})();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -38,6 +103,40 @@
     --danger-bg:#3B1E22;
   }
 }
+
+
+html[data-theme="light"]{
+  --brand:#5D7FA3;
+  --brand-dark:#345F91;
+  --sage:#8CB69B;
+  --bg:#F6F8F7;
+  --card:#fff;
+  --text:#172333;
+  --muted:#647282;
+  --border:#DDE3E8;
+  --soft:#EAF0F6;
+  --danger:#C74747;
+  --danger-bg:#FCECEC;
+  --success:#2F9760;
+  color-scheme:light;
+}
+
+html[data-theme="dark"]{
+  --brand:#7EA5CB;
+  --brand-dark:#72A6D8;
+  --sage:#8CB69B;
+  --bg:#0B111A;
+  --card:#121B27;
+  --text:#F3F7FA;
+  --muted:#A9B5C2;
+  --border:#293545;
+  --soft:#182536;
+  --danger:#F08D8D;
+  --danger-bg:#3B1E22;
+  --success:#7BC69A;
+  color-scheme:dark;
+}
+
 
 html,body{
   margin:0;
@@ -459,8 +558,8 @@ button{
   z-index:60;
   min-height:72px;
   padding:7px 12px calc(8px + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.96);
-  border-top:1px solid rgba(221,227,232,.9);
+  background:color-mix(in srgb,var(--card) 96%,transparent);
+  border-top:1px solid var(--border);
   grid-template-columns:repeat(5,minmax(50px,62px));
   justify-content:center;
   column-gap:clamp(6px,2.5vw,16px);
@@ -494,7 +593,7 @@ button{
 
 /* Employer nav must match app-employer-dashboard exactly. */
 .bottom-nav.employer .nav{
-  color:#748190;
+  color:var(--muted);
   gap:3px;
   min-width:0;
   padding:2px 0;
@@ -508,7 +607,7 @@ button{
   overflow:visible;
 }
 .bottom-nav.employer .nav.active{
-  color:#345F91;
+  color:var(--brand-dark);
 }
 .bottom-nav.employer .nav.active:before{
   content:'';
@@ -517,7 +616,7 @@ button{
   width:28px;
   height:3px;
   border-radius:999px;
-  background:#345F91;
+  background:var(--brand-dark);
 }
 .nav{position:relative}
 .messaging-nav-badge{
@@ -1967,6 +2066,10 @@ $('back').onclick=()=>{
 
   session=data.session;
   role=await resolveRole();
+  window.__alygnnResolvedRole=role;
+  if(typeof window.applyAlygnnSharedTheme==='function'){
+    window.applyAlygnnSharedTheme(role);
+  }
 
   $('eyebrow').textContent=
     role==='employer'
