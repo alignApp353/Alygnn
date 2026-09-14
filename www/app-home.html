@@ -214,7 +214,7 @@ body.is-leaving .splash{
 <body>
 <main class="splash" aria-label="Alygnn is loading">
   <div class="logo">Alygnn<span class="logo-dot">.</span></div>
-  <div class="tagline">Finding your fit.</div>
+  <div class="tagline" id="splash-message">Finding your fit.</div>
   <div class="loading-track" aria-hidden="true">
     <div class="loading-bar"></div>
   </div>
@@ -233,8 +233,43 @@ const sb=supabase.createClient(
   }
 );
 
+
+const ALYGNN_EMPLOYER_LOADING_MESSAGES=["Building your team.", "Finding your next hire.", "Connecting you with talent.", "Preparing your hiring workspace.", "Matching talent to opportunity.", "Getting your candidates ready.", "Organizing your hiring pipeline.", "Bringing your workspace together.", "Loading your hiring dashboard.", "Preparing your next move.", "Finding talent that fits.", "Getting your team in place.", "Preparing your candidate matches.", "Powering up your hiring workspace.", "Bringing the right people closer.", "Getting your hiring tools ready.", "Preparing your recruiting workspace.", "Connecting you to your next hire.", "Getting everything ready to hire.", "Helping you build what’s next."];
+
+function alygnnEmployerLoadingMessage(){
+  const storageKey='alygnnEmployerLastLoadingMessage';
+  let last='';
+  try{last=localStorage.getItem(storageKey)||'';}catch(_error){}
+
+  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
+  if(last && choices.length>1){
+    choices=choices.filter(message=>message!==last);
+  }
+
+  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
+  try{localStorage.setItem(storageKey,message);}catch(_error){}
+  return message;
+}
+
 const SPLASH_MIN_MS=1250;
 const splashStartedAt=Date.now();
+
+
+function setSplashMessageForAccountType(accountType){
+  const node=document.getElementById('splash-message');
+  if(!node)return;
+  node.textContent=String(accountType||'').toLowerCase()==='employer'
+    ? alygnnEmployerLoadingMessage()
+    : 'Finding your fit.';
+}
+
+try{
+  setSplashMessageForAccountType(
+    localStorage.getItem('alygnn_account_type')||'candidate'
+  );
+}catch(_error){
+  setSplashMessageForAccountType('candidate');
+}
 
 function wait(ms){
   return new Promise(resolve=>setTimeout(resolve,ms));
@@ -264,6 +299,8 @@ async function leaveSplash(destination){
       const accountType=
         localStorage.getItem('alygnn_account_type') ||
         'candidate';
+
+      setSplashMessageForAccountType(accountType);
 
       destination=
         accountType==='employer'
