@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Account settings — Alygnn</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,12 +14,11 @@
     --text: #1A2530; --text-muted: #4A5968; --border: #DDE3E8;
     --mint: #6FBF8F; --rose: #D79A9A;
   }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-top: 64px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
   nav {
-    position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 1000;
-    background: rgba(246,248,247,0.95);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border); padding: 0 5%;
     display: flex; align-items: center; justify-content: space-between; height: 64px;
   }
@@ -144,11 +141,6 @@
       <span class="value">Google</span>
       <span class="pill" id="google-pill">Checking…</span>
     </div>
-
-    <div class="row" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
-      <span class="value">Apple</span>
-      <span class="pill" id="apple-pill">Checking…</span>
-    </div>
   </div>
 
   <!-- Sign out -->
@@ -174,24 +166,19 @@
 <script>
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+
   function alygnnAuthStorageKey() {
     let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
-
     if (!tabId) {
       tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
         ? window.crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-
       window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
     }
-
     return `alygnn-auth-${tabId}`;
   }
 
   const { createClient } = supabase;
-
-  // Use the same per-tab Supabase session as account.html and employer-account.html.
-  // Without this, Account Settings thinks the user is signed out and redirects to login.
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       storage: window.sessionStorage,
@@ -242,23 +229,37 @@
       .single();
     userHasPassword = !!profile?.has_password;
 
-    // Point Back at the right hub directly instead of always going through
-    // account.html (seeker) and relying on it to redirect employers onward —
-    // that round trip is what caused the seeker page to flash first.
+    // A recruiter/hiring-manager/admin is an employer TEAM MEMBER, not the
+    // company owner. Team membership takes priority over profiles.role when
+    // choosing where "Back" should go.
+    let isEmployerTeamMember = false;
+    try {
+      const teamRouteResult = await Promise.race([
+        sb.rpc('get_my_team_operational_state'),
+        new Promise(resolve => setTimeout(
+          () => resolve({ data: null, error: { message: 'team route timeout' } }),
+          2500
+        ))
+      ]);
+
+      isEmployerTeamMember =
+        !teamRouteResult?.error &&
+        teamRouteResult?.data?.has_company === true &&
+        teamRouteResult?.data?.access?.is_owner === false;
+    } catch (teamRouteError) {
+      console.warn('Could not check employer team membership:', teamRouteError);
+    }
+
     const role = String(profile?.role || session.user.user_metadata?.role || '').toLowerCase();
-    document.getElementById('back-link').href = role === 'employer' ? 'employer-account.html' : 'account.html';
+    document.getElementById('back-link').href = isEmployerTeamMember
+      ? 'employer-dashboard.html'
+      : (role === 'employer' ? 'employer-account.html' : 'account.html');
 
-    const providers = session.user.identities?.map(i => String(i.provider || '').toLowerCase()) || [];
-
+    const providers = session.user.identities?.map(i => i.provider) || [];
     const hasGoogle = providers.includes('google');
-    const googlePill = document.getElementById('google-pill');
-    googlePill.textContent = hasGoogle ? 'Connected' : 'Not connected';
-    googlePill.classList.toggle('off', !hasGoogle);
-
-    const hasApple = providers.includes('apple');
-    const applePill = document.getElementById('apple-pill');
-    applePill.textContent = hasApple ? 'Connected' : 'Not connected';
-    applePill.classList.toggle('off', !hasApple);
+    const pill = document.getElementById('google-pill');
+    pill.textContent = hasGoogle ? 'Connected' : 'Not connected';
+    pill.classList.toggle('off', !hasGoogle);
   }
 
   function generateCode() {
