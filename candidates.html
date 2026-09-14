@@ -73,6 +73,34 @@
   }
   .info-note strong{color:var(--text)}
 
+  /* Simple Candidates-page organization: By job / Accepted / Passed */
+  .candidate-view-tabs{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 18px;
+  }
+  .candidate-view-tab{
+    border:1px solid var(--border);background:white;color:var(--muted);
+    border-radius:999px;padding:8px 13px;font:600 11px 'DM Sans',sans-serif;
+    cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  }
+  .candidate-view-tab:hover{border-color:var(--brand);color:var(--brand)}
+  .candidate-view-tab.active{background:var(--brand);border-color:var(--brand);color:white}
+  .candidate-view-count{
+    min-width:20px;height:20px;padding:0 6px;border-radius:999px;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(93,127,163,.10);color:var(--brand);font-size:10px;font-weight:700;
+  }
+  .candidate-view-tab.active .candidate-view-count{
+    background:rgba(255,255,255,.20);color:white;
+  }
+  .decision-list-heading{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;
+  }
+  .decision-list-title{font-size:13px;font-weight:700;color:var(--text)}
+  .decision-list-copy{font-size:11px;color:var(--muted)}
+  .candidate-job-context{
+    font-size:10.5px;color:var(--brand);font-weight:600;margin-top:3px;
+  }
+
   .jobs-groups{display:grid;gap:16px}
   .job-group{
     background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;
@@ -494,6 +522,18 @@
       </div>
     </div>
 
+    <div class="candidate-view-tabs" id="candidate-view-tabs">
+      <button class="candidate-view-tab active" id="candidate-tab-jobs" type="button" onclick="setCandidateView('jobs')">
+        By job
+      </button>
+      <button class="candidate-view-tab" id="candidate-tab-accepted" type="button" onclick="setCandidateView('accepted')">
+        Accepted <span class="candidate-view-count" id="accepted-count">0</span>
+      </button>
+      <button class="candidate-view-tab" id="candidate-tab-passed" type="button" onclick="setCandidateView('passed')">
+        Passed <span class="candidate-view-count" id="passed-count">0</span>
+      </button>
+    </div>
+
     <div class="toolbar" id="candidate-toolbar">
       <input class="field" id="search-input" type="text" placeholder="Search jobs…" oninput="currentPage=1; renderGroups()">
       <select class="field" id="global-sort" onchange="currentPage=1; renderGroups()">
@@ -556,6 +596,7 @@ let candidates=[];
 let focusedJobId=null;
 let focusedApplicationId=null;
 let currentPage=1;
+let candidateView='jobs';
 const CANDIDATES_PER_PAGE=25;
 
 const STOP_WORDS=new Set([
@@ -1404,6 +1445,104 @@ function changeCandidatePage(nextPage){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+function setCandidateView(view){
+  candidateView=['accepted','passed'].includes(view)?view:'jobs';
+  currentPage=1;
+
+  const search=document.getElementById('search-input');
+  if(search)search.value='';
+
+  renderGroups();
+}
+
+function updateCandidateViewTabs(){
+  const tabs=document.getElementById('candidate-view-tabs');
+  if(!tabs)return;
+
+  // These top-level tabs are only for the Candidates overview.
+  tabs.style.display=focusedJobId?'none':'flex';
+
+  const acceptedCount=candidates.filter(c=>String(c.status||'').toLowerCase()==='accepted').length;
+  const passedCount=candidates.filter(c=>String(c.status||'').toLowerCase()==='rejected').length;
+
+  const accepted=document.getElementById('accepted-count');
+  const passed=document.getElementById('passed-count');
+  if(accepted)accepted.textContent=String(acceptedCount);
+  if(passed)passed.textContent=String(passedCount);
+
+  ['jobs','accepted','passed'].forEach(view=>{
+    document.getElementById('candidate-tab-'+view)?.classList.toggle('active',candidateView===view);
+  });
+}
+
+function renderDecisionOverview(status,query,sort){
+  const box=document.getElementById('jobs-groups');
+  const wanted=status==='accepted'?'accepted':'rejected';
+  const label=status==='accepted'?'Accepted':'Passed';
+
+  let list=candidates.filter(c=>String(c.status||'').toLowerCase()===wanted);
+
+  if(query){
+    list=list.filter(c=>{
+      const resumeText=candidateResumeText(c.match.resume);
+      return [
+        c.profile.full_name,
+        c.job?.title,
+        c.job?.location,
+        c.job?.job_type,
+        resumeText,
+        c.match.score,
+        scoreBand(c.match.score)
+      ].join(' ').toLowerCase().includes(query);
+    });
+  }
+
+  list=orderedCandidates(list,sort);
+
+  if(!list.length){
+    box.innerHTML=`
+      <div class="empty">
+        <div class="empty-title">No ${label.toLowerCase()} candidates${query?' found':''}</div>
+        ${query?'Try a different search.':`Candidates you ${status==='accepted'?'accept':'pass on'} will appear here.`}
+      </div>`;
+    return;
+  }
+
+  const total=list.length;
+  const totalPages=Math.max(1,Math.ceil(total/CANDIDATES_PER_PAGE));
+  if(currentPage>totalPages)currentPage=totalPages;
+  const startIndex=(currentPage-1)*CANDIDATES_PER_PAGE;
+  const pageCandidates=list.slice(startIndex,startIndex+CANDIDATES_PER_PAGE);
+  const firstShown=startIndex+1;
+  const lastShown=Math.min(startIndex+CANDIDATES_PER_PAGE,total);
+
+  box.innerHTML=`
+    <section class="job-group open focused">
+      <div class="job-group-body" style="display:block;border-top:0">
+        <div class="decision-list-heading">
+          <div>
+            <div class="decision-list-title">${label} candidates</div>
+            <div class="decision-list-copy">Showing ${firstShown}–${lastShown} of ${total} across all jobs.</div>
+          </div>
+        </div>
+
+        <div class="candidate-list">
+          ${pageCandidates.map(c=>renderCandidate(c,true)).join('')}
+        </div>
+
+        ${totalPages>1?`
+          <div class="pagination">
+            <div class="pagination-copy">${CANDIDATES_PER_PAGE} candidates per page</div>
+            <div class="pagination-actions">
+              <button class="page-btn" ${currentPage<=1?'disabled':''} onclick="changeCandidatePage(${currentPage-1})">← Previous</button>
+              <div class="page-number">Page ${currentPage} of ${totalPages}</div>
+              <button class="page-btn" ${currentPage>=totalPages?'disabled':''} onclick="changeCandidatePage(${currentPage+1})">Next →</button>
+            </div>
+          </div>`:''}
+      </div>
+    </section>`;
+}
+
 function renderGroups(){
   const box=document.getElementById('jobs-groups');
   const query=(document.getElementById('search-input')?.value||'').trim().toLowerCase();
@@ -1415,13 +1554,30 @@ function renderGroups(){
   const sortSelect=document.getElementById('global-sort');
   const searchInput=document.getElementById('search-input');
 
+  updateCandidateViewTabs();
+
   // OVERVIEW MODE:
-  // One clean row per job. Never dump hundreds of applicants onto this screen.
+  // Default remains organized by job. Accepted / Passed are compact top-level
+  // views so employers can revisit decisions without digging through each job.
   if(!focusedJobId){
     if(pageKicker)pageKicker.textContent='Applicant workspace';
+    if(back)back.style.display='none';
+
+    if(candidateView==='accepted'||candidateView==='passed'){
+      const isAccepted=candidateView==='accepted';
+      if(pageTitle)pageTitle.textContent=isAccepted?'Accepted candidates':'Passed candidates';
+      if(pageSub)pageSub.textContent=isAccepted
+        ? 'Candidates you accepted across all of your jobs.'
+        : 'Candidates you passed on across all of your jobs.';
+      if(sortSelect)sortSelect.style.display='';
+      if(searchInput)searchInput.placeholder='Search candidates, jobs, skills, or experience…';
+
+      renderDecisionOverview(candidateView,query,sort);
+      return;
+    }
+
     if(pageTitle)pageTitle.textContent='Candidates by job';
     if(pageSub)pageSub.textContent='Choose a job to review its candidates. Applicant lists stay separated by the role they applied to.';
-    if(back)back.style.display='none';
     if(sortSelect)sortSelect.style.display='none';
     if(searchInput)searchInput.placeholder='Search jobs…';
 
@@ -1541,7 +1697,7 @@ function renderGroups(){
   `;
 }
 
-function renderCandidate(c){
+function renderCandidate(c,showJobContext=false){
   const [statusText,statusClass]=statusLabel(c.status);
   const resume=c.match.resume||{};
   const skills=skillList(resume).slice(0,4);
@@ -1562,6 +1718,7 @@ function renderCandidate(c){
               ${focus?'<span class="new-label">From notification</span>':''}
             </div>
             <div class="applied-time">Applied ${escapeHtml(timeAgo(c.appliedAt))}</div>
+            ${showJobContext?`<div class="candidate-job-context">${escapeHtml(c.job?.title||'Job')}${c.job?.location?` · ${escapeHtml(c.job.location)}`:''}</div>`:''}
           </div>
         </div>
         ${snippet?`<div class="candidate-summary">${escapeHtml(snippet)}</div>`:''}
