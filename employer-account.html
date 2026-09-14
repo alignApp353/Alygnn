@@ -748,9 +748,29 @@
 
   /* Company profile update request workflow */
   .profile-update-status{ margin-top:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(176,138,62,.08); color:var(--text-muted); font-size:11px; line-height:1.45; }
-  .profile-update-overlay{ display:none; position:fixed; inset:0; z-index:500; background:rgba(26,37,48,.46); align-items:center; justify-content:center; padding:24px; }
+  .profile-update-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:500;
+    background:rgba(26,37,48,.46);
+    align-items:flex-start;
+    justify-content:center;
+    padding:92px 24px 24px;
+    overflow-y:auto;
+  }
   .profile-update-overlay.show{ display:flex; }
-  .profile-update-modal{ width:min(620px,100%); max-height:calc(100vh - 48px); overflow-y:auto; background:var(--card-bg); border:1px solid var(--border); border-radius:22px; box-shadow:0 24px 70px rgba(26,37,48,.18); padding:28px; position:relative; }
+  .profile-update-modal{
+    width:min(620px,100%);
+    max-height:calc(100vh - 116px);
+    overflow-y:auto;
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:22px;
+    box-shadow:0 24px 70px rgba(26,37,48,.18);
+    padding:28px;
+    position:relative;
+  }
   .profile-update-close{ position:absolute; top:18px; right:18px; width:34px; height:34px; border:1px solid var(--border); border-radius:50%; background:var(--card-bg); color:var(--text-muted); cursor:pointer; font-size:18px; line-height:1; }
   .profile-update-eyebrow{ color:var(--brand); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:7px; }
   .profile-update-title{ font-family:'DM Serif Display',serif; font-size:26px; letter-spacing:-.4px; padding-right:42px; }
@@ -773,6 +793,17 @@
   .profile-update-cancel,.profile-update-submit{ min-height:42px; padding:0 18px; border-radius:11px; cursor:pointer; font:600 12px 'DM Sans',sans-serif; }
   .profile-update-cancel{ border:1px solid var(--border); background:var(--card-bg); color:var(--text); }
   .profile-update-submit{ border:0; background:var(--brand); color:#fff; }
+
+  @media (max-width: 700px){
+    .profile-update-overlay{
+      padding:82px 12px 16px;
+    }
+    .profile-update-modal{
+      max-height:calc(100vh - 98px);
+      padding:22px 18px;
+      border-radius:18px;
+    }
+  }
   .profile-update-submit:disabled{ opacity:.5; cursor:not-allowed; }
 
 
@@ -2716,73 +2747,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     currentUserId = session.user.id;
 
-    // IMPORTANT:
-    // Do not make the normal owner Account page wait on the team-workspace RPC.
-    // If that RPC is missing, slow, or being updated, the old version could sit
-    // forever on "Loading…". First load the signed-in profile and determine
-    // whether this user actually OWNS a company.
-    //
-    // Owners continue immediately. Only a non-owner needs the team-runtime
-    // lookup, and even that lookup has a short timeout so this page can never
-    // be trapped behind it.
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select('role, company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name, public_website_url, linkedin_url, instagram_url, facebook_url, media_kit_url, company_logo_url')
-      .eq('id', currentUserId)
-      .single();
-
-    let ownsCompany = false;
-    try {
-      const ownershipResult = await Promise.race([
-        sb
-          .from('companies')
-          .select('id')
-          .eq('owner_user_id', currentUserId)
-          .limit(1)
-          .maybeSingle(),
-        new Promise(resolve =>
-          setTimeout(() => resolve({ data: null, error: { message: 'ownership lookup timed out' } }), 2500)
-        )
-      ]);
-
-      ownsCompany = !!ownershipResult?.data?.id;
-    } catch (ownershipError) {
-      console.warn('Could not verify company ownership:', ownershipError);
-    }
-
-    // A teammate is connected to the owner's workspace but must never see the
-    // owner's Account settings. Only perform the team lookup for users who do
-    // not own a company themselves.
-    if (!ownsCompany) {
-      try {
-        const runtimeResult = await Promise.race([
-          sb.rpc('get_my_team_operational_state'),
-          new Promise(resolve =>
-            setTimeout(() => resolve({ data: null, error: { message: 'team runtime lookup timed out' } }), 2500)
-          )
-        ]);
-
-        const teamRuntime = runtimeResult?.data;
-        const teamRuntimeError = runtimeResult?.error;
-
-        if (
-          !teamRuntimeError &&
-          teamRuntime?.has_company &&
-          teamRuntime?.access?.is_owner === false
-        ) {
-          window.location.replace('employer-dashboard.html?team_account_limited=1');
-          return;
-        }
-      } catch (teamRuntimeError) {
-        console.warn('Could not check team workspace access:', teamRuntimeError);
-      }
-    }
-
     // Old unscoped key could have leaked another employer's logo into this
     // browser's localStorage — remove it so it never gets shown again.
     try { localStorage.removeItem('companyLogo'); } catch {}
     const savedLogo = localStorage.getItem('companyLogo:' + currentUserId);
     if (savedLogo) showPhoto(savedLogo);
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('role, company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name, public_website_url, linkedin_url, instagram_url, facebook_url, media_kit_url, company_logo_url')
+      .eq('id', currentUserId)
+      .single();
 
     // A genuine load failure (network hiccup, an RLS policy issue, etc.)
     // must NEVER be treated as "this employer hasn't submitted their
@@ -2880,25 +2855,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     initNotifications();
   }
 
-  // Last-resort UI fail-safe. A JavaScript/network problem should never leave
-  // employers staring at an endless blank "Loading…" page.
-  const employerAccountLoadingFailSafe = setTimeout(() => {
-    if (!document.body.classList.contains('auth-ready')) {
-      const loadingEl = document.getElementById('auth-loading');
-      if (loadingEl && /Loading/i.test(loadingEl.textContent || '')) {
-        loadingEl.innerHTML = `
-          <div style="text-align:center;max-width:380px;padding:0 20px;">
-            <div style="font-size:14px;color:var(--text);margin-bottom:7px;">Account is taking too long to load</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Refresh the page to reconnect your Alygnn session.</div>
-            <button onclick="location.reload()" style="background:var(--brand);color:#fff;border:0;border-radius:100px;padding:9px 20px;font:600 13px 'DM Sans',sans-serif;cursor:pointer;">Refresh account</button>
-          </div>`;
-      }
-    }
-  }, 9000);
-
-  initEmployerAccountPage().finally(() => {
-    clearTimeout(employerAccountLoadingFailSafe);
-  });
+  initEmployerAccountPage();
 </script>
 
 <div class="mini-footer">
