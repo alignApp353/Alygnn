@@ -2713,15 +2713,25 @@ function resolveResumeLibrary(resumeFilePath, resumeSource, resumeData){
     saved.uploaded_file_path ||
     null;
 
+  const hasBuilderResume =
+    source === 'builder' ||
+    !!builderFilePath ||
+    !!saved.builder_updated_at;
+
   let active = String(saved.active || source || '').toLowerCase();
   if(!['uploaded','builder'].includes(active)){
-    active = uploadedFilePath ? 'uploaded' : (resumeData ? 'builder' : null);
+    active = uploadedFilePath ? 'uploaded' : (hasBuilderResume ? 'builder' : null);
+  }
+
+  if(active === 'builder' && !hasBuilderResume){
+    active = uploadedFilePath ? 'uploaded' : null;
   }
 
   return {
     ...saved,
     uploaded_file_path: uploadedFilePath,
     builder_file_path: builderFilePath,
+    has_builder_resume: hasBuilderResume,
     active
   };
 }
@@ -2732,7 +2742,7 @@ function renderResumeCardFast(resumeFilePath, resumeData, resumeSource){
   currentResumeLibrary = resolveResumeLibrary(resumeFilePath, resumeSource, resumeData);
 
   const hasUploaded = !!currentResumeLibrary.uploaded_file_path;
-  const hasBuilder = !!resumeData;
+  const hasBuilder = currentResumeLibrary.has_builder_resume === true;
   const count = Number(hasUploaded) + Number(hasBuilder);
 
   currentResumeFilePath =
@@ -2818,12 +2828,12 @@ function renderResumeChooser(){
         </div>
         <div class="resume-option-actions">
           <button type="button" onclick="openStoredResume('${escapeHtml(uploadedPath)}',this)">View</button>
-          <button type="button" class="primary" ${active === 'uploaded' ? 'disabled' : ''} onclick="selectResumeChoice('uploaded',this)">${active === 'uploaded' ? 'Selected' : 'Select'}</button>
+          <button type="button" class="primary" ${active === 'uploaded' ? 'disabled' : ''} onclick="selectResumeChoice('uploaded')">${active === 'uploaded' ? 'Selected' : 'Use this resume'}</button>
         </div>
       </div>`);
   }
 
-  if(currentResumeData){
+  if(currentResumeLibrary.has_builder_resume === true){
     const builderReady = !!builderPath;
     rows.push(`
       <div class="resume-option ${active === 'builder' ? 'selected' : ''}">
@@ -2834,9 +2844,22 @@ function renderResumeChooser(){
           ${active === 'builder' ? '<span class="resume-selected-pill">Currently selected</span>' : ''}
         </div>
         <div class="resume-option-actions">
-          <a href="resume-builder.html?preview=1&from=account">View</a>
-          <a href="resume-builder.html?from=account">Edit</a>
-          <button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder',this)">${active === 'builder' ? 'Selected' : 'Select'}</button>
+          <a href="resume-builder.html?view=1&from=account">View / edit</a>
+          ${builderReady
+            ? `<button type="button" class="primary" ${active === 'builder' ? 'disabled' : ''} onclick="selectResumeChoice('builder')">${active === 'builder' ? 'Selected' : 'Use this resume'}</button>`
+            : '<a class="primary" href="resume-builder.html?from=account&select=builder">Save once to use</a>'}
+        </div>
+      </div>`);
+  }else{
+    rows.push(`
+      <div class="resume-option">
+        ${resumeOptionIcon()}
+        <div>
+          <div class="resume-option-title">Create one with Alygnn</div>
+          <div class="resume-option-meta">Build a new resume with Alygnn's resume builder.</div>
+        </div>
+        <div class="resume-option-actions">
+          <a class="primary" href="resume-builder.html?from=account">Create resume</a>
         </div>
       </div>`);
   }
@@ -2863,90 +2886,51 @@ async function openStoredResume(path, button){
   }
 }
 
-async function selectResumeChoice(kind,button){
+async function selectResumeChoice(kind){
   if(!currentUserId) return;
 
-  const originalText = button?.textContent || 'Select';
-
   const path = kind === 'builder'
-    ? (currentResumeLibrary.builder_file_path || null)
-    : (currentResumeLibrary.uploaded_file_path || null);
+    ? currentResumeLibrary.builder_file_path
+    : currentResumeLibrary.uploaded_file_path;
 
-  // Uploaded resumes still need their stored file path.
-  if(kind === 'uploaded' && !path){
-    showToast('Could not find the uploaded resume.');
+  if(kind === 'builder' && !path){
+    window.location.href = 'resume-builder.html?from=account&select=builder';
     return;
   }
-
-  // Alygnn resumes are valid from resume_data itself. Do NOT force the user
-  // to generate/store a PDF just to choose the resume.
-  if(kind === 'builder' && !currentResumeData){
-    showToast('Could not find the Alygnn resume.');
-    return;
-  }
-
-  if(button){
-    button.disabled = true;
-    button.textContent = 'Selecting…';
-  }
-
-  const nextLibrary = {
-    ...currentResumeLibrary,
-    active: kind,
-    selected_at: new Date().toISOString()
-  };
+  if(!path) return;
 
   const nextData = {
     ...(currentResumeData || {}),
-    _alygnn_resume_library: nextLibrary
+    _alygnn_resume_library: {
+      ...currentResumeLibrary,
+      active: kind,
+      selected_at: new Date().toISOString()
+    }
   };
-
-  const payload = {
-    resume_source: kind,
-    resume_data: nextData,
-    updated_at: new Date().toISOString()
-  };
-
-  // Compatibility rule:
-  // - uploaded active => resume_file_path is that uploaded file
-  // - Alygnn active => only use a builder PDF if one already exists;
-  //   otherwise NULL is correct because resume_data is the active resume.
-  payload.resume_file_path = kind === 'uploaded'
-    ? path
-    : (currentResumeLibrary.builder_file_path || null);
 
   const { error } = await sb
     .from('profiles')
-    .update(payload)
+    .update({
+      resume_file_path: path,
+      resume_source: kind,
+      resume_data: nextData,
+      updated_at: new Date().toISOString()
+    })
     .eq('id', currentUserId);
 
   if(error){
     console.error('Could not switch resume:', error);
     showToast('Could not switch resumes — try again.');
-    if(button){
-      button.disabled = false;
-      button.textContent = originalText;
-    }
     return;
   }
 
   currentResumeData = nextData;
-  currentResumeLibrary = nextLibrary;
+  currentResumeLibrary = nextData._alygnn_resume_library;
   currentResumeSource = kind;
-  currentResumeFilePath = payload.resume_file_path || null;
-
-  renderResumeCardFast(
-    payload.resume_file_path || null,
-    nextData,
-    kind
-  );
+  currentResumeFilePath = path;
+  renderResumeCardFast(path, nextData, kind);
   renderResumeChooser();
-
-  showToast(
-    kind === 'builder'
-      ? 'Alygnn resume selected.'
-      : 'Uploaded resume selected.'
-  );
+  showToast(kind === 'builder' ? 'Alygnn resume selected.' : 'Uploaded resume selected.');
 }
 
 async function openResumeFile(e){
@@ -3107,7 +3091,7 @@ async function initAccountPage(){
       resumeStatusLink.href = '#';
       resumeStatusLink.onclick = openResumeFile;
     }else if(profile?.resume_data){
-      resumeStatusLink.href = 'resume-builder.html?preview=1&from=account';
+      resumeStatusLink.href = 'resume-builder.html?view=1&from=account';
       resumeStatusLink.onclick = null;
     }else{
       resumeStatusLink.href = 'align-upload.html';
