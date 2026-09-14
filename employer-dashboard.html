@@ -1013,13 +1013,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(messagesLink&&!teamCan('messages_manage')) messagesLink.style.display='none';
     if(postButton&&!teamCan('jobs_manage')) postButton.style.display='none';
 
-    // "My account" is the signed-in teammate's PERSONAL account, so it
-    // must always stay available regardless of company-workspace permissions.
-    // Do not send recruiters/hiring managers into the owner-only employer
-    // account page, which rejects their non-owner profile role.
+    // Company editors should open the COMPANY account page. Teammates who
+    // were not given company-edit access still use their personal settings.
     if(accountLink){
       accountLink.style.display='flex';
-      accountLink.href='account-settings.html?from=employer-team';
+      accountLink.href=teamCan('company_edit')
+        ? 'employer-account.html?team=1'
+        : 'account-settings.html?from=employer-team';
     }
   }
   let editingJobId = null;
