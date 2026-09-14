@@ -146,6 +146,28 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 .billing-field input:focus,.billing-field select:focus{border-color:var(--brand);box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 12%,transparent)}
 .billing-wide{grid-column:1/-1}
 @media(max-width:390px){.billing-grid{grid-template-columns:1fr}.billing-wide{grid-column:auto}}
+
+.address-autocomplete-wrap{position:relative}
+.address-suggestions{
+  position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:80;
+  border:1px solid var(--border);border-radius:13px;background:var(--card);
+  box-shadow:0 14px 34px rgba(26,37,48,.14);overflow:hidden
+}
+.address-suggestion{
+  width:100%;border:0;border-bottom:1px solid var(--border);background:var(--card);
+  color:var(--text);padding:11px 12px;text-align:left;display:block
+}
+.address-suggestion:last-of-type{border-bottom:0}
+.address-suggestion:active,.address-suggestion:hover{background:var(--soft)}
+.address-suggestion-main{font-size:10px;font-weight:800;line-height:1.35}
+.address-suggestion-secondary{font-size:9px;color:var(--muted);line-height:1.35;margin-top:2px}
+.address-attribution{
+  padding:7px 11px;text-align:right;font-size:9px;color:var(--muted);
+  background:var(--card);white-space:nowrap
+}
+.address-attribution span{font-weight:700}
+.address-loading{padding:10px 12px;font-size:9px;color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -206,9 +228,10 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
           <span>Country</span>
           <select id="billing-country" autocomplete="country"></select>
         </label>
-        <label class="billing-field billing-wide">
+        <label class="billing-field billing-wide address-autocomplete-wrap">
           <span>Address</span>
-          <input id="billing-line1" autocomplete="address-line1" placeholder="Street address">
+          <input id="billing-line1" autocomplete="off" placeholder="Start typing your street address" aria-autocomplete="list" aria-controls="address-suggestions" aria-expanded="false">
+          <div class="address-suggestions" id="address-suggestions" role="listbox" hidden></div>
         </label>
         <label class="billing-field">
           <span>City</span>
@@ -334,6 +357,12 @@ let boostDays=1;
 
 const COUNTRY_CODES=["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","YE","YT","ZA","ZM","ZW"];
 const BILLING_ADDRESS_KEY='alygnnBillingAddress';
+const ADDRESS_AUTOCOMPLETE_ENDPOINT='https://alygnn.com/api/address-autocomplete';
+let addressAutocompleteTimer=null;
+let addressAutocompleteController=null;
+let addressSessionToken='';
+let suppressAddressAutocomplete=false;
+
 let nativePaymentHandled=false;
 let nativePendingContext=null;
 let stripeListenersInstalled=false;
@@ -369,7 +398,217 @@ function populateBillingCountries(){
     $('billing-state').value=saved.state||'';
     $('billing-postal').value=saved.postal_code||'';
   }
+
+  installAddressAutocomplete();
 }
+
+
+function newAddressSessionToken(){
+  try{
+    if(globalThis.crypto?.randomUUID){
+      addressSessionToken=globalThis.crypto.randomUUID();
+      return addressSessionToken;
+    }
+  }catch(_error){}
+  addressSessionToken='alygnn-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
+  return addressSessionToken.slice(0,36);
+}
+
+function currentAddressSessionToken(){
+  return addressSessionToken||newAddressSessionToken();
+}
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[char]));
+}
+
+function closeAddressSuggestions(){
+  const box=$('address-suggestions');
+  const input=$('billing-line1');
+  if(box){
+    box.hidden=true;
+    box.innerHTML='';
+  }
+  if(input)input.setAttribute('aria-expanded','false');
+}
+
+function renderAddressSuggestions(items){
+  const box=$('address-suggestions');
+  const input=$('billing-line1');
+  if(!box||!input)return;
+
+  if(!Array.isArray(items)||!items.length){
+    closeAddressSuggestions();
+    return;
+  }
+
+  box.innerHTML=items.map((item,index)=>`
+    <button class="address-suggestion" type="button" role="option"
+      data-place-id="${escapeHtml(item.place_id)}"
+      data-index="${index}">
+      <div class="address-suggestion-main">${escapeHtml(item.main_text||item.text||'Address')}</div>
+      ${item.secondary_text?`<div class="address-suggestion-secondary">${escapeHtml(item.secondary_text)}</div>`:''}
+    </button>
+  `).join('')+`
+    <div class="address-attribution" translate="no">Google Maps</div>
+  `;
+
+  box.hidden=false;
+  input.setAttribute('aria-expanded','true');
+
+  box.querySelectorAll('.address-suggestion').forEach(button=>{
+    button.addEventListener('mousedown',event=>event.preventDefault());
+    button.addEventListener('click',async()=>{
+      const item=items[Number(button.dataset.index)||0];
+      if(!item?.place_id)return;
+      await chooseAddressSuggestion(item);
+    });
+  });
+}
+
+async function addressAutocompleteRequest(payload,signal){
+  const {data:{session:authSession}}=await sb.auth.getSession();
+  const token=authSession?.access_token;
+  if(!token)throw new Error('Your Alygnn session expired. Please sign in again.');
+
+  const response=await fetch(ADDRESS_AUTOCOMPLETE_ENDPOINT,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+token
+    },
+    body:JSON.stringify(payload),
+    signal
+  });
+
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    throw new Error(data?.error||'Address suggestions are temporarily unavailable.');
+  }
+  return data;
+}
+
+async function loadAddressSuggestions(){
+  const input=$('billing-line1');
+  if(!input||suppressAddressAutocomplete)return;
+
+  const query=String(input.value||'').trim();
+  if(query.length<3){
+    closeAddressSuggestions();
+    return;
+  }
+
+  if(addressAutocompleteController){
+    addressAutocompleteController.abort();
+  }
+  addressAutocompleteController=new AbortController();
+
+  const box=$('address-suggestions');
+  if(box){
+    box.hidden=false;
+    box.innerHTML='<div class="address-loading">Finding addresses…</div><div class="address-attribution" translate="no">Google Maps</div>';
+  }
+  input.setAttribute('aria-expanded','true');
+
+  try{
+    const result=await addressAutocompleteRequest({
+      action:'suggest',
+      input:query,
+      country:String($('billing-country')?.value||'').trim().toUpperCase(),
+      session_token:currentAddressSessionToken()
+    },addressAutocompleteController.signal);
+
+    renderAddressSuggestions(result?.suggestions||[]);
+  }catch(error){
+    if(error?.name==='AbortError')return;
+    console.warn('Address autocomplete:',error);
+    closeAddressSuggestions();
+  }
+}
+
+async function chooseAddressSuggestion(item){
+  const input=$('billing-line1');
+  if(!input)return;
+
+  suppressAddressAutocomplete=true;
+  input.value=item.text||item.main_text||input.value;
+  closeAddressSuggestions();
+
+  try{
+    const result=await addressAutocompleteRequest({
+      action:'details',
+      place_id:item.place_id,
+      session_token:currentAddressSessionToken()
+    });
+
+    const address=result?.address||{};
+    if(address.country && $('billing-country')){
+      $('billing-country').value=address.country;
+    }
+    if(address.line1)$('billing-line1').value=address.line1;
+    if(address.city)$('billing-city').value=address.city;
+    if(address.state)$('billing-state').value=address.state;
+    if(address.postal_code)$('billing-postal').value=address.postal_code;
+
+    try{
+      localStorage.setItem(BILLING_ADDRESS_KEY,JSON.stringify({
+        country:String($('billing-country')?.value||'').trim().toUpperCase(),
+        line1:String($('billing-line1')?.value||'').trim(),
+        city:String($('billing-city')?.value||'').trim(),
+        state:String($('billing-state')?.value||'').trim(),
+        postal_code:String($('billing-postal')?.value||'').trim()
+      }));
+    }catch(_error){}
+  }catch(error){
+    console.warn('Address details:',error);
+  }finally{
+    newAddressSessionToken();
+    setTimeout(()=>{suppressAddressAutocomplete=false;},0);
+  }
+}
+
+function installAddressAutocomplete(){
+  const input=$('billing-line1');
+  const country=$('billing-country');
+  if(!input)return;
+
+  newAddressSessionToken();
+
+  input.addEventListener('input',()=>{
+    if(suppressAddressAutocomplete)return;
+    clearTimeout(addressAutocompleteTimer);
+    addressAutocompleteTimer=setTimeout(loadAddressSuggestions,260);
+  });
+
+  input.addEventListener('focus',()=>{
+    if(String(input.value||'').trim().length>=3){
+      clearTimeout(addressAutocompleteTimer);
+      addressAutocompleteTimer=setTimeout(loadAddressSuggestions,120);
+    }
+  });
+
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Escape')closeAddressSuggestions();
+  });
+
+  country?.addEventListener('change',()=>{
+    newAddressSessionToken();
+    closeAddressSuggestions();
+    if(String(input.value||'').trim().length>=3){
+      clearTimeout(addressAutocompleteTimer);
+      addressAutocompleteTimer=setTimeout(loadAddressSuggestions,180);
+    }
+  });
+
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('.address-autocomplete-wrap')){
+      closeAddressSuggestions();
+    }
+  });
+}
+
 
 function billingAddressPayload(){
   const address={
@@ -483,7 +722,10 @@ async function presentNativePaymentSheet(data,context,address){
   await stripe.createPaymentSheet({
     paymentIntentClientSecret:data.client_secret,
     merchantDisplayName:'Alygnn',
+    enableGooglePay:true,
+    GooglePayIsTesting:false,
     countryCode:address?.country||'US',
+    currencyCode:'USD',
     paymentMethodLayout:'automatic',
     defaultBillingDetails:{
       email:session?.user?.email||'',
