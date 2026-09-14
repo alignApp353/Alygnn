@@ -1010,7 +1010,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="account-jobs-section">
     <div class="section-header">
       <h2>Posted jobs</h2>
       <a href="employer-dashboard.html#post" class="section-link" id="account-post-job-link" onclick="handleAccountPostJob(event)">Post a job →</a>
@@ -1020,7 +1020,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="account-candidates-section">
     <div class="section-header">
       <h2>Candidates</h2>
       <a href="candidates.html" class="section-link">View all →</a>
@@ -1033,7 +1033,7 @@
   <div class="section">
     <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
-      <a href="employer-dashboard.html" class="link-card">
+      <a href="employer-dashboard.html" class="link-card" id="manage-job-posts-card">
         <span class="settings-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
         </span>
@@ -1047,7 +1047,7 @@
         <div class="label">Account settings</div>
         <div class="sub">Password, linked accounts, sign out</div>
       </a>
-      <a href="employer-team.html" class="link-card">
+      <a href="employer-team.html" class="link-card" id="team-members-settings-card">
         <span class="settings-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0"/><path d="M14 15.5a4.5 4.5 0 0 1 7.5 3.5"/></svg>
         </span>
@@ -1163,7 +1163,60 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   });
 
   let currentUserId = null;
+  let authUserId = null;
+  let workspaceOwnerId = null;
+  let teamRuntime = null;
+  let teamAccess = null;
+  let teamAccountState = null;
+  let isTeamMember = false;
   let currentProfile = null;
+
+  function accountTeamCan(permission){
+    if(!isTeamMember) return true;
+    const permissions = teamAccess?.permissions && typeof teamAccess.permissions === 'object'
+      ? teamAccess.permissions
+      : {};
+    return permissions?.[permission] === true;
+  }
+
+  function applyTeamAccountPermissionUI(){
+    if(!isTeamMember) return;
+
+    // This page is only the company-account workspace for teammates who were
+    // explicitly granted Edit company profile.
+    if(!accountTeamCan('company_edit')){
+      location.replace('account-settings.html?from=employer-team');
+      return;
+    }
+
+    const jobsSection=document.getElementById('account-jobs-section');
+    const candidatesSection=document.getElementById('account-candidates-section');
+    const manageJobs=document.getElementById('manage-job-posts-card');
+    const teamCard=document.getElementById('team-members-settings-card');
+    const billingCard=document.getElementById('billing-settings-card');
+    const billingPanel=document.getElementById('billing-section');
+    const postTop=document.getElementById('account-post-job-btn');
+    const postLink=document.getElementById('account-post-job-link');
+
+    if(!accountTeamCan('jobs_manage')){
+      if(jobsSection) jobsSection.style.display='none';
+      if(manageJobs) manageJobs.style.display='none';
+      if(postTop) postTop.style.display='none';
+      if(postLink) postLink.style.display='none';
+    }
+    if(!accountTeamCan('candidates_manage') && candidatesSection) candidatesSection.style.display='none';
+    if(!accountTeamCan('team_manage') && teamCard) teamCard.style.display='none';
+    if(!accountTeamCan('billing_view') && !accountTeamCan('billing_manage')){
+      if(billingCard) billingCard.style.display='none';
+      if(billingPanel) billingPanel.style.display='none';
+    }
+
+    // Company notifications belong to the owner account. Do not show the
+    // owner's notification dropdown to a teammate. Their workspace alerts
+    // remain available on the employer dashboard.
+    const notif=document.getElementById('notif-wrap');
+    if(notif) notif.style.display='none';
+  }
   // Populated by loadEmployerJobs() — reused by loadCandidates() to look
   // up which job title an application belongs to, same as
   // employer-dashboard.html does.
@@ -1219,12 +1272,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function loadProfileUpdateRequests(){
     if(!currentUserId) return [];
-    const {data,error}=await sb
-      .from('employer_profile_update_requests')
-      .select('id,field_key,current_value,requested_value,reason,status,admin_note,created_at,reviewed_at')
-      .eq('employer_id',currentUserId)
-      .order('created_at',{ascending:false})
-      .limit(20);
+
+    let data=null;
+    let error=null;
+
+    if(isTeamMember){
+      const result=await sb.rpc('get_my_company_profile_update_requests');
+      data=Array.isArray(result.data)?result.data:[];
+      error=result.error;
+    }else{
+      const result=await sb
+        .from('employer_profile_update_requests')
+        .select('id,field_key,current_value,requested_value,reason,status,admin_note,created_at,reviewed_at')
+        .eq('employer_id',currentUserId)
+        .order('created_at',{ascending:false})
+        .limit(20);
+      data=result.data;
+      error=result.error;
+    }
 
     if(error){
       console.warn('Company profile update requests are not available yet:',error);
@@ -1334,7 +1399,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     showProfileUpdateMessage('','');
 
     try{
-      const {error}=await sb.rpc('submit_employer_profile_update_request',{
+      const rpcName=isTeamMember
+        ? 'submit_my_company_profile_update_request'
+        : 'submit_employer_profile_update_request';
+      const {error}=await sb.rpc(rpcName,{
         p_field_key:fieldKey,
         p_requested_value:requestedValue,
         p_reason:reason,
@@ -1497,6 +1565,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function saveEmployerProfile(payload){
     if (!currentUserId) return false;
+
+    if(isTeamMember){
+      const {data,error}=await sb.rpc('update_my_company_profile_fields',{p_updates:payload});
+      if(error){
+        console.error('Team company profile update failed:',error);
+        alert(error.message||'Something went wrong saving your changes.');
+        return false;
+      }
+      if(data?.profile) currentProfile={...(currentProfile||{}),...data.profile};
+      return true;
+    }
 
     const { data: updatedRows, error: updateError } = await sb
       .from('profiles')
@@ -1868,6 +1947,12 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function handleAccountPostJob(event) {
     if (event) event.preventDefault();
+
+    if(isTeamMember){
+      if(!accountTeamCan('jobs_manage')) return;
+      window.location.href='employer-dashboard.html#post';
+      return;
+    }
 
     // Re-check before navigating so the decision is fresh even if another tab
     // just posted/deleted a job or changed the employer's package.
@@ -2645,24 +2730,26 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(!currentUserId || !valueEl) return;
 
     try{
-      let companyId = '';
+      let companyId = isTeamMember ? String(teamAccountState?.company_id||'') : '';
 
-      const { data: company, error: companyError } = await sb
-        .from('companies')
-        .select('id')
-        .eq('owner_user_id', currentUserId)
-        .maybeSingle();
-
-      if(!companyError && company?.id){
-        companyId = company.id;
-      }else{
-        const { data: verification } = await sb
-          .from('employer_verifications')
-          .select('company_id')
-          .eq('user_id', currentUserId)
+      if(!companyId){
+        const { data: company, error: companyError } = await sb
+          .from('companies')
+          .select('id')
+          .eq('owner_user_id', currentUserId)
           .maybeSingle();
 
-        companyId = verification?.company_id || '';
+        if(!companyError && company?.id){
+          companyId = company.id;
+        }else{
+          const { data: verification } = await sb
+            .from('employer_verifications')
+            .select('company_id')
+            .eq('user_id', currentUserId)
+            .maybeSingle();
+
+          companyId = verification?.company_id || '';
+        }
       }
 
       currentCompanyId = companyId;
@@ -2702,43 +2789,74 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const session = await waitForSession();
     if (!session) { window.location.replace('login.html?role=employer'); return; }
 
-    currentUserId = session.user.id;
+    authUserId = session.user.id;
+    currentUserId = authUserId;
+    workspaceOwnerId = authUserId;
 
-    // Old unscoped key could have leaked another employer's logo into this
-    // browser's localStorage — remove it so it never gets shown again.
-    try { localStorage.removeItem('companyLogo'); } catch {}
-    const savedLogo = localStorage.getItem('companyLogo:' + currentUserId);
-    if (savedLogo) showPhoto(savedLogo);
-
-    const { data: profile, error } = await sb
-      .from('profiles')
-      .select('role, company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name, public_website_url, linkedin_url, instagram_url, facebook_url, media_kit_url, company_logo_url')
-      .eq('id', currentUserId)
-      .single();
-
-    // A genuine load failure (network hiccup, an RLS policy issue, etc.)
-    // must NEVER be treated as "this employer hasn't submitted their
-    // business profile yet" — that silently sent already-verified
-    // employers back through onboarding whenever this query happened to
-    // fail for any reason, which is both wrong and needlessly disruptive.
-    // Show a real error and stop here instead of guessing their status.
-    if (error && error.code !== 'PGRST116') {
-      console.error('Failed to load employer profile', error);
-      const loadingEl = document.getElementById('auth-loading');
-      loadingEl.innerHTML = `
-        <div style="text-align:center; max-width:360px; padding:0 20px;">
-          <div style="font-size:14px; color:var(--text); margin-bottom:6px;">Could not load your account</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px; word-break:break-word;">${escapeHtml(error.message || 'Unknown error.')}</div>
-          <button onclick="location.reload()" style="background:var(--brand); color:#fff; border:none; border-radius:100px; padding:9px 20px; font-size:13px; font-family:inherit; cursor:pointer;">Retry</button>
-        </div>`;
-      return;
+    // Resolve team membership BEFORE the normal employer-role gate. A recruiter,
+    // hiring manager, or admin can belong to the employer workspace without
+    // their personal profile having role='employer'.
+    const runtimeResult = await sb.rpc('get_my_team_operational_state');
+    if(!runtimeResult.error && runtimeResult.data?.has_company){
+      teamRuntime = runtimeResult.data;
+      teamAccess = runtimeResult.data.access || null;
+      isTeamMember = teamAccess?.is_owner === false;
+      workspaceOwnerId = runtimeResult.data.owner_user_id || teamAccess?.owner_user_id || authUserId;
+    }else if(runtimeResult.error){
+      console.warn('Team workspace runtime unavailable:',runtimeResult.error);
     }
 
-    // A role check happens above this fetch already, so by this point we
-    // know profile is either a real row or genuinely absent (PGRST116) —
-    // not the product of a failed query.
-    const role = String(profile?.role || session.user.user_metadata?.role || '').toLowerCase();
-    if (role !== 'employer') { window.location.replace('login.html?role=employer'); return; }
+    let profile = null;
+
+    if(isTeamMember){
+      if(!accountTeamCan('company_edit')){
+        window.location.replace('account-settings.html?from=employer-team');
+        return;
+      }
+
+      // All company-owned data on this page belongs to the workspace owner.
+      currentUserId = workspaceOwnerId;
+
+      const result = await sb.rpc('get_my_company_account_profile');
+      if(result.error || !result.data?.profile){
+        console.error('Failed to load team company account:',result.error);
+        const loadingEl=document.getElementById('auth-loading');
+        loadingEl.innerHTML=`
+          <div style="text-align:center; max-width:400px; padding:0 20px;">
+            <div style="font-size:14px; color:var(--text); margin-bottom:6px;">Could not load the company account</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">${escapeHtml(result.error?.message||'Company account access is unavailable.')}</div>
+            <button onclick="location.href='employer-dashboard.html'" style="background:var(--brand); color:#fff; border:none; border-radius:100px; padding:9px 20px; font-size:13px; font-family:inherit; cursor:pointer;">Back to dashboard</button>
+          </div>`;
+        return;
+      }
+
+      teamAccountState = result.data;
+      profile = result.data.profile;
+    }else{
+      const result = await sb
+        .from('profiles')
+        .select('role, company_name, company_headline, company_website, company_phone, business_email, business_address, verification_status, employer_verified, full_name, public_website_url, linkedin_url, instagram_url, facebook_url, media_kit_url, company_logo_url')
+        .eq('id', currentUserId)
+        .single();
+
+      const error = result.error;
+      profile = result.data;
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Failed to load employer profile', error);
+        const loadingEl = document.getElementById('auth-loading');
+        loadingEl.innerHTML = `
+          <div style="text-align:center; max-width:360px; padding:0 20px;">
+            <div style="font-size:14px; color:var(--text); margin-bottom:6px;">Could not load your account</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px; word-break:break-word;">${escapeHtml(error.message || 'Unknown error.')}</div>
+            <button onclick="location.reload()" style="background:var(--brand); color:#fff; border:none; border-radius:100px; padding:9px 20px; font-size:13px; font-family:inherit; cursor:pointer;">Retry</button>
+          </div>`;
+        return;
+      }
+
+      const role = String(profile?.role || session.user.user_metadata?.role || '').toLowerCase();
+      if (role !== 'employer') { window.location.replace('login.html?role=employer'); return; }
+    }
 
     currentProfile = profile || {
       employer_verified: false,
@@ -2749,13 +2867,16 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       currentProfile?.employer_verified === true ||
       String(currentProfile?.verification_status || '').toLowerCase() === 'approved';
 
-    // A brand-new employer (never submitted a business profile) shouldn't
-    // land on the account page at all — send them straight into guided
-    // onboarding instead of showing the half-empty account view.
-    if ((currentProfile.verification_status || 'not_submitted') === 'not_submitted') {
+    // Only the actual owner can be routed through company onboarding.
+    if (!isTeamMember && (currentProfile.verification_status || 'not_submitted') === 'not_submitted') {
       window.location.replace('employer-onboarding.html');
       return;
     }
+
+    // Old unscoped key could have leaked another employer's logo into this browser.
+    try { localStorage.removeItem('companyLogo'); } catch {}
+    const savedLogo = localStorage.getItem('companyLogo:' + currentUserId);
+    if (savedLogo) showPhoto(savedLogo);
 
     document.body.classList.add('auth-ready');
 
@@ -2786,7 +2907,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       ? 'Verified company profile changes require Alygnn review.'
       : '';
     if (profile?.company_website) websiteEl.value = profile.company_website;
-    if (profile?.company_phone)   phoneEl.value   = profile.company_phone;
+    if (profile?.company_phone) phoneEl.value = profile.company_phone;
     if (profile?.business_email) businessEmailEl.value = profile.business_email;
     if (profile?.business_address) businessAddressEl.value = profile.business_address;
 
@@ -2802,14 +2923,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     document.getElementById('nav-name').textContent = displayName;
 
+    applyTeamAccountPermissionUI();
     updateVerificationBanner();
     await loadCompanyId();
     await loadProfileUpdateRequests();
-    await loadEmployerJobs();
-    await loadAccountPostingAccess();
-    await loadBillingSummary();
-    await loadCandidates();
-    initNotifications();
+
+    if(!isTeamMember || accountTeamCan('jobs_manage')){
+      await loadEmployerJobs();
+      if(!isTeamMember) await loadAccountPostingAccess();
+    }
+
+    if(!isTeamMember || accountTeamCan('billing_view') || accountTeamCan('billing_manage')){
+      // Owner keeps the existing full billing integration. Team billing access
+      // is intentionally not changed by this company-edit routing fix.
+      if(!isTeamMember) await loadBillingSummary();
+    }
+
+    if(!isTeamMember || accountTeamCan('candidates_manage')) await loadCandidates();
+    if(!isTeamMember) initNotifications();
   }
 
   initEmployerAccountPage();
