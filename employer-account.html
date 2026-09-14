@@ -781,7 +781,6 @@
   .profile-update-select:focus,.profile-update-input:focus,.profile-update-textarea:focus{ border-color:var(--brand); }
   .profile-update-textarea{ min-height:96px; resize:vertical; }
   .profile-update-current{ padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--bg); font-size:13px; color:var(--text-muted); min-height:43px; word-break:break-word; }
-  .profile-update-file-note{ margin-top:6px; color:var(--text-muted); font-size:10px; line-height:1.45; }
   .profile-update-pending{ margin-top:18px; border-top:1px solid var(--border); padding-top:16px; }
   .profile-update-pending-title{ font-size:11px; font-weight:700; color:var(--text); margin-bottom:8px; }
   .profile-update-pending-item{ display:flex; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; background:var(--bg); font-size:11px; color:var(--text-muted); margin-top:6px; }
@@ -1108,12 +1107,6 @@
       <textarea class="profile-update-textarea" id="profile-update-reason" maxlength="1000" placeholder="Tell Alygnn why this information changed"></textarea>
     </div>
 
-    <div class="profile-update-group">
-      <label class="profile-update-label" for="profile-update-document">Supporting document <span id="profile-update-document-required"></span></label>
-      <input class="profile-update-input" id="profile-update-document" type="file" accept=".pdf,image/png,image/jpeg,application/pdf">
-      <div class="profile-update-file-note" id="profile-update-file-note">Optional for this change. PDF, JPG, or PNG up to 10 MB.</div>
-    </div>
-
     <div class="profile-update-error" id="profile-update-error"></div>
     <div class="profile-update-success" id="profile-update-success"></div>
 
@@ -1173,16 +1166,15 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let accountCandidateAccessLockReason = '';
   let accountBillingSummary = null;
 
-  const PROFILE_UPDATE_BUCKET = 'employer-profile-update-documents';
   let pendingProfileUpdateRequests = [];
 
   const PROFILE_UPDATE_FIELDS = {
-    company_name:{label:'Company name',elementId:'company-name',documentRequired:true},
-    company_headline:{label:'About the company',elementId:'company-headline',documentRequired:false},
-    company_website:{label:'Website',elementId:'company-website',documentRequired:false},
-    company_phone:{label:'Business phone',elementId:'company-phone',documentRequired:false},
-    business_email:{label:'Business email',elementId:'business-email',documentRequired:false},
-    business_address:{label:'Business address',elementId:'business-address',documentRequired:true}
+    company_name:{label:'Company name',elementId:'company-name'},
+    company_headline:{label:'About the company',elementId:'company-headline'},
+    company_website:{label:'Website',elementId:'company-website'},
+    company_phone:{label:'Business phone',elementId:'company-phone'},
+    business_email:{label:'Business email',elementId:'business-email'},
+    business_address:{label:'Business address',elementId:'business-address'}
   };
 
   function profileUpdateCurrentValue(fieldKey){
@@ -1280,8 +1272,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const config=PROFILE_UPDATE_FIELDS[fieldKey];
     const currentBox=document.getElementById('profile-update-current');
     const newValue=document.getElementById('profile-update-new-value');
-    const required=document.getElementById('profile-update-document-required');
-    const note=document.getElementById('profile-update-file-note');
     const submit=document.getElementById('profile-update-submit');
 
     if(currentBox) currentBox.textContent=profileUpdateCurrentValue(fieldKey)||'Not provided';
@@ -1290,15 +1280,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       newValue.maxLength=fieldKey==='company_headline'?200:500;
       newValue.placeholder=`Enter the new ${String(config?.label||'information').toLowerCase()}`;
     }
-
-    if(config?.documentRequired){
-      required.textContent='(required)';
-      note.textContent='Required for this identity-sensitive change. PDF, JPG, or PNG up to 10 MB.';
-    }else{
-      required.textContent='(optional)';
-      note.textContent='Optional for this change. PDF, JPG, or PNG up to 10 MB.';
-    }
-
     const alreadyPending=pendingProfileUpdateRequests.some(item=>item.field_key===fieldKey);
     if(submit){
       submit.disabled=alreadyPending;
@@ -1313,9 +1294,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     await loadProfileUpdateRequests();
 
     const reason=document.getElementById('profile-update-reason');
-    const file=document.getElementById('profile-update-document');
     if(reason) reason.value='';
-    if(file) file.value='';
 
     handleProfileUpdateFieldChange();
     renderPendingProfileUpdates();
@@ -1329,27 +1308,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     showProfileUpdateMessage('','');
   }
 
-  function safeProfileUpdateFileName(name){
-    return String(name||'document')
-      .replace(/[^a-zA-Z0-9._-]+/g,'-')
-      .replace(/^-+|-+$/g,'')
-      .slice(-120)||'document';
-  }
-
-  async function uploadProfileUpdateDocument(fieldKey,file){
-    if(!file) return null;
-    if(file.size>10*1024*1024) throw new Error('Supporting documents must be 10 MB or smaller.');
-    const allowed=['application/pdf','image/jpeg','image/png'];
-    if(!allowed.includes(file.type)) throw new Error('Upload a PDF, JPG, or PNG supporting document.');
-
-    const path=`${currentUserId}/${fieldKey}/${Date.now()}-${safeProfileUpdateFileName(file.name)}`;
-    const {error}=await sb.storage
-      .from(PROFILE_UPDATE_BUCKET)
-      .upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
-    if(error) throw error;
-    return path;
-  }
-
   async function submitProfileUpdateRequest(){
     if(!currentUserId) return;
 
@@ -1357,28 +1315,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const config=PROFILE_UPDATE_FIELDS[fieldKey];
     const requestedValue=document.getElementById('profile-update-new-value')?.value.trim()||'';
     const reason=document.getElementById('profile-update-reason')?.value.trim()||'';
-    const file=document.getElementById('profile-update-document')?.files?.[0]||null;
     const submit=document.getElementById('profile-update-submit');
 
     if(!config) return showProfileUpdateMessage('error','Choose what you want to change.');
     if(!requestedValue) return showProfileUpdateMessage('error','Enter the new information you want Alygnn to review.');
     if(requestedValue===profileUpdateCurrentValue(fieldKey)) return showProfileUpdateMessage('error','That information already matches your current company profile.');
     if(reason.length<5) return showProfileUpdateMessage('error','Add a short reason for the change.');
-    if(config.documentRequired&&!file) return showProfileUpdateMessage('error',`Upload a supporting document for the ${config.label.toLowerCase()} change.`);
 
-    let uploadedPath=null;
     submit.disabled=true;
     submit.textContent='Submitting…';
     showProfileUpdateMessage('','');
 
     try{
-      uploadedPath=await uploadProfileUpdateDocument(fieldKey,file);
-
       const {error}=await sb.rpc('submit_employer_profile_update_request',{
         p_field_key:fieldKey,
         p_requested_value:requestedValue,
         p_reason:reason,
-        p_supporting_document_path:uploadedPath
+        p_supporting_document_path:null
       });
 
       if(error) throw error;
@@ -1390,9 +1343,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       setTimeout(closeProfileUpdateModal,1200);
     }catch(error){
       console.error('Company profile update request failed:',error);
-      if(uploadedPath){
-        try{ await sb.storage.from(PROFILE_UPDATE_BUCKET).remove([uploadedPath]); }catch(_){}
-      }
       showProfileUpdateMessage('error',error.message||'Could not submit this request. Please try again.');
       submit.disabled=false;
       submit.textContent='Submit request';
