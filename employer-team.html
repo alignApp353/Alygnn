@@ -381,7 +381,7 @@ nav{
       <div class="role-guide">
         <div><strong>Recruiter</strong><span>Post and manage jobs, review candidates, and message applicants.</span></div>
         <div><strong>Hiring Manager</strong><span>Recruiter access plus the ability to edit company hiring information.</span></div>
-        <div><strong>Admin</strong><span>Hiring Manager access plus billing visibility. The owner remains the only person with full account control by default.</span></div>
+        <div><strong>Admin</strong><span>Hiring Manager access with additional permissions chosen by the owner. Billing access is not included unless the owner enables it.</span></div>
       </div>
     </aside>
   </div>
@@ -431,7 +431,7 @@ const PERMS=[
 const PRESETS={
  recruiter:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:false,billing_view:false,billing_manage:false,team_manage:false},
  hiring_manager:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:false,billing_manage:false,team_manage:false},
- admin:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:true,billing_manage:false,team_manage:false}
+ admin:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:false,billing_manage:false,team_manage:false}
 };
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function roleLabel(r){return ({owner:'Owner',admin:'Admin',hiring_manager:'Hiring Manager',recruiter:'Recruiter'})[String(r||'').toLowerCase()]||'Team Member'}
