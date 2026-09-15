@@ -524,10 +524,10 @@
     <div class="sidebar-label">Employer</div>
     <a href="employer-dashboard.html" class="side-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M3 11h18"/><path d="M10 11v2h4v-2"/></svg></span>My Jobs</a>
     <a href="candidates.html" class="side-link active"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg></span>Candidates</a>
-    <a href="messages.html" class="side-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3V5z"/><path d="m7 9 5 4 5-4"/></svg></span>Messages</a>
-    <a href="employer-dashboard.html#post" class="side-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span><span id="candidate-post-label">Post a Job</span></a>
+    <a href="messages.html" class="side-link" id="candidate-messages-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 3V5z"/><path d="m7 9 5 4 5-4"/></svg></span>Messages</a>
+    <a href="employer-dashboard.html#post" class="side-link" id="candidate-post-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span><span id="candidate-post-label">Post a Job</span></a>
     <hr>
-    <a href="employer-account.html" class="side-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg></span>My account</a>
+    <a href="employer-account.html" class="side-link" id="candidate-account-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg></span>My account</a>
   </aside>
 
   <main>
@@ -624,6 +624,40 @@ function candidateTeamCan(permission){
     ? teamAccess.permissions
     : {};
   return permissions?.[permission] === true;
+}
+
+function candidateCanMessage(){
+  return !isTeamMember || candidateTeamCan('messages_manage');
+}
+
+function applyCandidateTeamSidebarPermissions(){
+  if(!isTeamMember) return;
+
+  const messagesLink=document.getElementById('candidate-messages-link');
+  const postLink=document.getElementById('candidate-post-link');
+  const accountLink=document.getElementById('candidate-account-link');
+
+  if(messagesLink && !candidateTeamCan('messages_manage')){
+    messagesLink.style.display='none';
+  }
+
+  if(postLink && !candidateTeamCan('jobs_manage')){
+    postLink.style.display='none';
+  }
+
+  if(accountLink){
+    const canOpenAccount=
+      candidateTeamCan('company_edit') ||
+      candidateTeamCan('billing_view') ||
+      candidateTeamCan('billing_manage') ||
+      candidateTeamCan('team_manage');
+
+    if(!canOpenAccount){
+      accountLink.style.display='none';
+    }else{
+      accountLink.href='employer-account.html?team=1';
+    }
+  }
 }
 
 let candidateAccessLocked=false;
@@ -750,6 +784,7 @@ function candidatePageEmployerCandidateName(candidateId){
 
 async function fetchCandidatePageUnreadMessages(){
   if(!currentUser?.id) return [];
+  if(!candidateCanMessage()) return [];
 
   try{
     const {data:threads,error:threadsError}=await sb
@@ -816,7 +851,17 @@ async function fetchCandidatePageNotifications(){
 
   if(error) console.warn('Could not load employer notifications:',error);
 
-  return [...messageItems,...(error?[]:(data||[]))]
+  let regularItems=error?[]:(data||[]);
+  if(!candidateCanMessage()){
+    regularItems=regularItems.filter(item=>{
+      const type=String(item?.type||'').toLowerCase();
+      const link=String(item?.link||'').toLowerCase();
+      const title=String(item?.title||'').toLowerCase();
+      return !type.includes('message') && !link.includes('messages.html') && !title.includes('message');
+    });
+  }
+
+  return [...messageItems,...regularItems]
     .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))
     .slice(0,20);
 }
@@ -1395,13 +1440,9 @@ async function loadData(){
       teamAccess?.company_name||
       'Company';
 
-    const accountLink=[...document.querySelectorAll('.side-link')]
-      .find(a=>a.textContent.trim().includes('My account'));
-    if(accountLink){
-      accountLink.href=candidateTeamCan('company_edit')
-        ? 'employer-account.html?team=1'
-        : 'account-settings.html?from=employer-team';
-    }
+    // Keep every Candidates-page navigation/action aligned with the exact
+    // permissions selected by the company owner.
+    applyCandidateTeamSidebarPermissions();
 
     const entitlement=teamRuntime?.entitlement||{};
     candidateAccessLocked=entitlement?.candidate_access_locked===true;
@@ -1884,7 +1925,7 @@ function renderCandidate(c,showJobContext=false){
 
       <div class="candidate-actions">
         <button class="btn" onclick="openProfile('${c.applicationId}')">View profile</button>
-        <button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>
+        ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
         <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted')">Accept</button>
         <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected')">Pass</button>
       </div>
@@ -1976,7 +2017,7 @@ function openProfile(applicationId){
       : '<div class="profile-text" style="color:var(--muted)">No resume file uploaded.</div>'}
 
     <div class="profile-actions">
-      <button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>
+      ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
       <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted'); closeProfile();">Accept</button>
       <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected'); closeProfile();">Pass</button>
     </div>
