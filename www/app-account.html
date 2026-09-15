@@ -382,6 +382,17 @@ button{
   font-weight:900;
 }
 
+.quick-icon svg{
+  width:22px;
+  height:22px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
 .quick-icon.green{
   background:var(--sage-soft);
   color:#32935D;
@@ -678,36 +689,123 @@ button{
 }
 
 /* =====================================================
-   LOADING
+   CANDIDATE LOADING EXPERIENCE
 ===================================================== */
 
 .loading{
   position:fixed;
   inset:0;
-  z-index:100;
+  z-index:1000;
   display:grid;
   place-items:center;
-  background:rgba(245,248,248,.98);
+  padding:28px;
+  background:#F5F8F8;
+  color:#1A2530;
+  transition:opacity .18s ease, visibility .18s ease;
 }
 
-.spinner{
-  width:42px;
-  height:42px;
-  border:4px solid #E0E7EB;
-  border-top-color:var(--brand-dark);
-  border-radius:50%;
-  animation:spin .75s linear infinite;
+html[data-effective-theme="dark"] .loading,
+html[data-theme="dark"] .loading{
+  background:#071824;
+  color:#F6F8F7;
+}
+
+.loading-inner{
+  width:min(330px,86vw);
+  text-align:center;
+}
+
+.loading-logo{
+  font-family:Georgia,'Times New Roman',serif;
+  font-size:48px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:-2.2px;
+  color:#5D7FA3;
+}
+
+.loading-logo span{
+  color:#8CB69B;
 }
 
 .loading-text{
-  margin-top:10px;
-  color:var(--muted);
-  font-size:10px;
+  min-height:42px;
+  margin-top:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#65778A;
+  font-size:13px;
+  line-height:1.45;
   font-weight:800;
+  letter-spacing:.05px;
 }
 
-@keyframes spin{
-  to{transform:rotate(360deg)}
+html[data-effective-theme="dark"] .loading-text,
+html[data-theme="dark"] .loading-text{
+  color:#B6C4D1;
+}
+
+.loading-progress{
+  width:116px;
+  height:3px;
+  margin:18px auto 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(93,127,163,.16);
+}
+
+html[data-effective-theme="dark"] .loading-progress,
+html[data-theme="dark"] .loading-progress{
+  background:rgba(121,167,213,.20);
+}
+
+.loading-progress::after{
+  content:'';
+  display:block;
+  width:42%;
+  height:100%;
+  border-radius:inherit;
+  background:#5D7FA3;
+  animation:candidateLoadingTrack 1.05s ease-in-out infinite alternate;
+}
+
+html[data-effective-theme="dark"] .loading-progress::after,
+html[data-theme="dark"] .loading-progress::after{
+  background:#79A7D5;
+}
+
+@keyframes candidateLoadingTrack{
+  from{transform:translateX(-8%)}
+  to{transform:translateX(150%)}
+}
+
+.candidate-resource-icon svg{
+  width:21px;
+  height:21px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.candidate-ready-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+
+.candidate-ready-pill svg{
+  width:12px;
+  height:12px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 @media(max-width:390px){
@@ -1842,12 +1940,62 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
 
-<div class="loading" id="loading">
-  <div style="text-align:center">
-    <div class="spinner"></div>
-    <div class="loading-text">Opening your candidate workspace…</div>
+<div class="loading" id="loading" aria-live="polite" aria-label="Loading candidate workspace">
+  <div class="loading-inner">
+    <div class="loading-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
+    <div class="loading-text" id="candidate-loading-message">Finding your fit.</div>
+    <div class="loading-progress" aria-hidden="true"></div>
   </div>
 </div>
+
+<script id="alygnn-candidate-loading-messages">
+(function(){
+  const messages=[
+    'Finding roles that fit you.',
+    'Preparing your candidate workspace.',
+    'Getting your profile ready.',
+    'Bringing your best matches closer.',
+    'Checking your latest opportunities.',
+    'Setting up your job search.',
+    'Getting your applications in order.',
+    'Loading your career dashboard.',
+    'Matching your goals with opportunities.',
+    'Getting your resume ready.',
+    'Preparing your next move.',
+    'Looking for roles worth your time.',
+    'Organizing your saved opportunities.',
+    'Getting your preferences lined up.',
+    'Putting your job search in motion.',
+    'Checking what’s new for you.',
+    'Opening your personal workspace.',
+    'Getting your career tools ready.',
+    'Preparing your next opportunity.',
+    'Finding the right fit.'
+  ];
+
+  let lastIndex=-1;
+  function nextMessage(){
+    const el=document.getElementById('candidate-loading-message');
+    if(!el) return;
+    let index=Math.floor(Math.random()*messages.length);
+    if(messages.length>1 && index===lastIndex){
+      index=(index+1)%messages.length;
+    }
+    lastIndex=index;
+    el.textContent=messages[index];
+  }
+
+  window.__alygnnCandidateLoadingMessage=nextMessage;
+  nextMessage();
+
+  const loading=document.getElementById('loading');
+  if(loading && window.MutationObserver){
+    new MutationObserver(()=>{
+      if(!loading.hidden) nextMessage();
+    }).observe(loading,{attributes:true,attributeFilter:['hidden']});
+  }
+})();
+</script>
 
 <header class="app-header">
   <button
@@ -1996,28 +2144,57 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 
     <div class="quick-grid">
       <article class="quick-card" onclick="window.location.href='app-applied.html'" role="button" tabindex="0">
-        <div class="quick-icon amber">◈</div>
+        <div class="quick-icon amber" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 3.75h7l3 3V20.25H7z"></path>
+            <path d="M14 3.75v3h3"></path>
+            <path d="m9.5 14 1.7 1.7 3.5-4"></path>
+          </svg>
+        </div>
         <div class="quick-label">Applications</div>
         <div class="quick-value" id="application-count">0</div>
         <div class="quick-note" id="application-note">Applications connected to your profile.</div>
       </article>
 
       <article class="quick-card" onclick="window.location.href='app-swipe.html'" role="button" tabindex="0">
-        <div class="quick-icon green">◎</div>
+        <div class="quick-icon green" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="7"></circle>
+            <circle cx="12" cy="12" r="2.4"></circle>
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2"></path>
+          </svg>
+        </div>
         <div class="quick-label">Job Matching</div>
         <div class="quick-value" id="matching-value">On</div>
         <div class="quick-note" id="matching-note">Alygnn is ready to match jobs to your preferences.</div>
       </article>
 
       <article class="quick-card" onclick="window.location.href='app-resume-preview.html'" role="button" tabindex="0">
-        <div class="quick-icon" id="resume-icon">▤</div>
+        <div class="quick-icon" id="resume-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 3.75h7l3 3V20.25H7z"></path>
+            <path d="M14 3.75v3h3"></path>
+            <path d="M9.5 11h5"></path>
+            <path d="M9.5 14h5"></path>
+            <path d="M9.5 17h3.5"></path>
+          </svg>
+        </div>
         <div class="quick-label">Resume</div>
         <div class="quick-value" id="resume-value">Checking</div>
         <div class="quick-note" id="resume-note">Reviewing your resume status.</div>
       </article>
 
       <article class="quick-card" onclick="window.location.href='app-preferences.html?edit=1'" role="button" tabindex="0">
-        <div class="quick-icon green" id="preference-icon">◎</div>
+        <div class="quick-icon green" id="preference-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 7h10"></path>
+            <path d="M18 7h2"></path>
+            <circle cx="16" cy="7" r="2"></circle>
+            <path d="M4 17h2"></path>
+            <path d="M10 17h10"></path>
+            <circle cx="8" cy="17" r="2"></circle>
+          </svg>
+        </div>
         <div class="quick-label">Preferences</div>
         <div class="quick-value" id="preference-value">Checking</div>
         <div class="quick-note" id="preference-note">Checking your job preferences.</div>
@@ -2050,12 +2227,23 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 
     <section class="candidate-resource-card" aria-label="Resume">
       <div class="candidate-resource-head">
-        <div class="candidate-resource-icon">▤</div>
+        <div class="candidate-resource-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 3.75h7l3 3V20.25H7z"></path>
+            <path d="M14 3.75v3h3"></path>
+            <path d="M9.5 11h5"></path>
+            <path d="M9.5 14h5"></path>
+            <path d="M9.5 17h3.5"></path>
+          </svg>
+        </div>
         <div class="candidate-resource-title-wrap">
           <div class="candidate-resource-kicker">Resume</div>
           <div class="candidate-resource-title" id="profile-resume-status">Resume ready</div>
         </div>
-        <div class="candidate-ready-pill" id="profile-resume-pill">Ready ✓</div>
+        <div class="candidate-ready-pill" id="profile-resume-pill">
+          <span>Ready</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.4 3.4 7.6-8"></path></svg>
+        </div>
       </div>
 
       <p class="candidate-resource-copy" id="profile-resume-copy">
@@ -2074,7 +2262,13 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 
     <section class="candidate-resource-card" aria-label="Job preferences">
       <div class="candidate-resource-head preference-resource-head">
-        <div class="candidate-resource-icon preference-icon-clean">◎</div>
+        <div class="candidate-resource-icon preference-icon-clean" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="7"></circle>
+            <circle cx="12" cy="12" r="2.4"></circle>
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2"></path>
+          </svg>
+        </div>
         <div class="candidate-resource-title-wrap">
           <div class="candidate-resource-kicker">Job Preferences</div>
           <div class="candidate-resource-title">What you’re looking for</div>
@@ -3529,7 +3723,7 @@ async function loadCandidateWorkspace(options={}){
     if(effectiveHasResume){
       if($('profile-resume-status'))$('profile-resume-status').textContent='Resume ready';
       if($('profile-resume-pill')){
-        $('profile-resume-pill').textContent='Ready ✓';
+        $('profile-resume-pill').innerHTML='<span>Ready</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.4 3.4 7.6-8"></path></svg>';
         $('profile-resume-pill').classList.remove('missing');
       }
       if($('profile-resume-copy'))$('profile-resume-copy').textContent='Review the resume employers will see or make changes when needed.';
