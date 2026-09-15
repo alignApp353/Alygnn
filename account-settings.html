@@ -357,6 +357,36 @@
 
     currentEmail = session.user.email;
     currentUserId = session.user.id;
+
+    // Team-member account settings are permission-gated. A teammate who was
+    // given only job-posting access should not be able to open this page from
+    // an old link, browser history, or a manually typed URL.
+    try {
+      const { data: teamRuntime, error: teamRuntimeError } = await sb.rpc(
+        'get_my_team_operational_state'
+      );
+
+      if (!teamRuntimeError && teamRuntime?.has_company) {
+        const access = teamRuntime?.access || {};
+        const permissions = access?.permissions && typeof access.permissions === 'object'
+          ? access.permissions
+          : {};
+        const isRestrictedTeamMember = access?.is_owner === false;
+        const hasAccountPermission =
+          permissions.company_edit === true ||
+          permissions.billing_view === true ||
+          permissions.billing_manage === true ||
+          permissions.team_manage === true;
+
+        if (isRestrictedTeamMember && !hasAccountPermission) {
+          window.location.replace('employer-dashboard.html');
+          return;
+        }
+      }
+    } catch (teamAccessError) {
+      console.warn('Could not verify team account-settings access:', teamAccessError);
+    }
+
     document.getElementById('email-display').textContent = currentEmail || '—';
 
     const { data: profile } = await sb
