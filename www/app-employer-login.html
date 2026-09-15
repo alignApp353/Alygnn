@@ -532,13 +532,155 @@ async function signIn(){
 
   setTimeout(()=>location.replace(access.destination),300);
 }
-async function googleLogin(){showMessage('Employer Google sign-in is disabled. Sign in with your verified company email and password.','error')}
+const GOOGLE_WEB_CLIENT_ID='725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
+const SUPABASE_FUNCTIONS_URL='https://auth.alygnn.com/functions/v1';
+const SUPABASE_PUBLIC_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+let socialLoginPlugin=null;
+let socialLoginInitialized=false;
+
+function nativePlatform(){
+  try{return window.Capacitor?.getPlatform?.() || ''}catch(_){return ''}
+}
+
+function isAndroidNative(){
+  return nativePlatform()==='android';
+}
+
+function getSocialLoginPlugin(){
+  if(socialLoginPlugin)return socialLoginPlugin;
+  const cap=window.Capacitor;
+  if(!cap?.registerPlugin)throw new Error('Native Google sign-in is not available in this build.');
+  socialLoginPlugin=cap.registerPlugin('SocialLogin');
+  return socialLoginPlugin;
+}
+
+async function ensureNativeGoogleInitialized(){
+  if(socialLoginInitialized)return getSocialLoginPlugin();
+  const plugin=getSocialLoginPlugin();
+  await plugin.initialize({
+    google:{
+      webClientId:GOOGLE_WEB_CLIENT_ID,
+      mode:'online'
+    }
+  });
+  socialLoginInitialized=true;
+  return plugin;
+}
+
+async function validateGoogleIntent(session){
+  if(!session?.access_token)throw new Error('Google sign-in did not create an Alygnn session.');
+  const response=await fetch(SUPABASE_FUNCTIONS_URL+'/validate-google-login',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_PUBLIC_KEY,
+      'Authorization':'Bearer '+session.access_token
+    },
+    body:JSON.stringify({intent:'login'})
+  });
+  let payload={};
+  try{payload=await response.json()}catch(_){}
+  if(!response.ok)throw new Error(payload.error||'Could not verify this Google account.');
+  return payload;
+}
+
+async function signOutRejectedGoogle(plugin){
+  try{await sb.auth.signOut({scope:'local'})}catch(_){}
+  try{await plugin?.logout?.({provider:'google'})}catch(_){}
+}
+
+async function nativeGoogleLogin(){
+  const plugin=await ensureNativeGoogleInitialized();
+  const login=await plugin.login({
+    provider:'google',
+    options:{
+      scopes:['email','profile'],
+      filterByAuthorizedAccounts:false
+    }
+  });
+
+  const idToken=login?.result?.idToken;
+  if(!idToken)throw new Error('Google did not return a valid sign-in token.');
+
+  const {data,error}=await sb.auth.signInWithIdToken({
+    provider:'google',
+    token:idToken
+  });
+  if(error)throw error;
+
+  const session=data?.session || (await sb.auth.getSession()).data?.session;
+  const validation=await validateGoogleIntent(session);
+  if(!validation?.allowed){
+    await signOutRejectedGoogle(plugin);
+    showMessage('No Alygnn account was found for that Google account. Create an account first.','error');
+    return false;
+  }
+
+  const access=await resolveEmployerLoginAccess(data.user || session?.user);
+  if(!access.allowed){
+    await signOutRejectedGoogle(plugin);
+    const message=access.reason==='candidate'
+      ?'This account is registered as a candidate. Please use Candidate Sign In.'
+      :'We could not find an employer workspace for this Google account. Create an employer account first or contact Alygnn support.';
+    showMessage(message,'error');
+    return false;
+  }
+
+  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
+  showMessage('Welcome back. Opening your employer workspace…','success');
+  setTimeout(()=>location.replace(access.destination),250);
+  return true;
+}
+
+async function browserGoogleLogin(){
+  const {error}=await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{
+      redirectTo:'https://alygnn.com/app-employer-login.html',
+      queryParams:{prompt:'select_account'}
+    }
+  });
+  if(error)throw error;
+}
+
+async function googleLogin(){
+  const button=document.getElementById('google-btn');
+  const original=button.innerHTML;
+  button.disabled=true;
+  button.textContent='Signing in with Google…';
+  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
+
+  try{
+    if(isAndroidNative()){
+      const completed=await nativeGoogleLogin();
+      if(!completed){
+        button.disabled=false;
+        button.innerHTML=original;
+      }
+      return;
+    }
+    await browserGoogleLogin();
+  }catch(error){
+    console.error('Employer Google sign-in failed:',error);
+    const raw=String(error?.message||error||'').toLowerCase();
+    const cancelled=raw.includes('cancel')||raw.includes('user_cancelled')||raw.includes('canceled');
+    showMessage(cancelled?'Google sign-in was canceled.':friendlyError(error),'error');
+    button.disabled=false;
+    button.innerHTML=original;
+  }
+}
+
+function applyPlatformLoginUI(){
+  const apple=document.getElementById('apple-btn');
+  if(apple && isAndroidNative())apple.style.display='none';
+}
+
 document.getElementById('back-btn').addEventListener('click',()=>location.href='index.html');
 document.getElementById('show-btn').addEventListener('click',e=>{const i=document.getElementById('password');const s=i.type==='text';i.type=s?'password':'text';e.currentTarget.textContent=s?'Show':'Hide'});
 document.getElementById('forgot-btn').addEventListener('click',()=>location.href='app-forgot-password.html');
 document.getElementById('sign-in-btn').addEventListener('click',signIn);
 document.getElementById('google-btn').addEventListener('click',googleLogin);
-document.getElementById('apple-btn').addEventListener('click',()=>showMessage('Apple sign-in is not connected yet.','error'));
+document.getElementById('apple-btn')?.addEventListener('click',()=>showMessage('Apple sign-in is not connected yet.','error'));
 document.getElementById('switch-btn').addEventListener('click',()=>location.href=ACCOUNT_TYPE==='employer'?'app-login.html':'app-employer-login.html');
 document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 
@@ -583,6 +725,8 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden)applyEmployerLoginTheme();
 });
 
+applyPlatformLoginUI();
+applyEmployerLoginTheme();
 redirectIfLoggedIn();
 </script>
 </body></html>
