@@ -378,8 +378,12 @@
           permissions.billing_manage === true ||
           permissions.team_manage === true;
 
-        if (isRestrictedTeamMember && !hasAccountPermission) {
-          window.location.replace('employer-dashboard.html');
+        if (isRestrictedTeamMember) {
+          if (permissions.company_edit === true) {
+            window.location.replace('employer-account.html?team=1');
+          } else {
+            window.location.replace('employer-dashboard.html');
+          }
           return;
         }
       }
