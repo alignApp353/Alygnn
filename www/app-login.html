@@ -11,24 +11,62 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
+<script id="alygnn-theme-critical">
 (function(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
-
-  const preference=['system','light','dark'].includes(saved)?saved:'system';
-  const resolved=preference==='system'
-    ?((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light')
-    :preference;
-
-  document.documentElement.dataset.theme=resolved;
-  document.documentElement.dataset.themePreference=preference;
-
-  const meta=document.getElementById('alygnn-theme-color');
-  if(meta)meta.setAttribute('content',resolved==='dark'?'#061821':'#F6F8F7');
+  const ACCOUNT_THEME_TYPE='candidate';
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='system'||value==='system-default'||value==='default') return 'auto';
+    return ['auto','light','dark'].includes(value)?value:'';
+  }
+  function read(key){try{return localStorage.getItem(key)}catch(_error){return null}}
+  function write(key,value){try{localStorage.setItem(key,value)}catch(_error){}}
+  function preference(){
+    let pref=normalize(read('alygnnTheme'));
+    if(pref) return pref;
+    const keys=ACCOUNT_THEME_TYPE==='employer'
+      ? ['alygnnEmployerTheme','alygnn_employer_theme']
+      : ['alygnnCandidateTheme','alygnn_candidate_theme'];
+    for(const key of keys){
+      pref=normalize(read(key));
+      if(pref){write('alygnnTheme',pref);return pref;}
+    }
+    for(const key of ['alygnn_theme','alygnn-theme']){
+      pref=normalize(read(key));
+      if(pref){write('alygnnTheme',pref);return pref;}
+    }
+    return 'auto';
+  }
+  function resolved(){
+    const pref=preference();
+    if(pref==='dark'||pref==='light') return pref;
+    return media&&media.matches?'dark':'light';
+  }
+  function apply(){
+    const pref=preference();
+    const theme=resolved();
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.themePreference=pref;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    root.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+    const meta=document.getElementById('alygnn-theme-color');
+    if(meta)meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
+  }
+  apply();
+  if(media){
+    const onChange=()=>{if(preference()==='auto')apply();};
+    media.addEventListener?.('change',onChange);
+    if(!media.addEventListener)media.addListener?.(onChange);
+  }
+  window.addEventListener('pageshow',apply);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply();});
+  window.addEventListener('storage',event=>{
+    if(['alygnnTheme','alygnnEmployerTheme','alygnnCandidateTheme','alygnn_theme','alygnn-theme','alygnn_employer_theme','alygnn_candidate_theme'].includes(event.key))apply();
+  });
+  window.AlygnnTheme={apply,preference,resolved};
 })();
 </script>
 
@@ -40,7 +78,9 @@ body{min-height:100vh;background:radial-gradient(circle at 12% 8%,rgba(140,182,1
 button,input,a{font:inherit}
 .page{width:100%;max-width:520px;min-height:100vh;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .topbar{min-height:51px;display:grid;grid-template-columns:48px 1fr 48px;align-items:center}
-.back-btn{width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--text);font-size:21px;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 16px rgba(23,35,51,.06)}
+.back-btn{width:46px;height:46px;border:1px solid #D7E0E6;border-radius:50%;background:rgba(255,255,255,.88);color:#31475A;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(23,35,51,.08);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .16s ease,background .16s ease,border-color .16s ease}
+.back-btn svg{width:20px;height:20px;display:block}
+.back-btn:active{transform:scale(.94)}
 .brand{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:31px;color:var(--brand)}
 .brand span{color:var(--sage)}
 .login{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px 0 14px}
@@ -103,12 +143,7 @@ html[data-theme="dark"] body{
     #061821;
 }
 
-html[data-theme="dark"] .back-btn{
-  background:#0B1D26;
-  color:#F3F7FA;
-  border-color:#29404C;
-  box-shadow:none;
-}
+html[data-theme="dark"] .back-btn{background:rgba(15,37,48,.92);color:#EAF2F7;border-color:#2D4653;box-shadow:0 8px 22px rgba(0,0,0,.18)}
 
 html[data-theme="dark"] .identity-icon{
   color:#79A7D5;
@@ -174,7 +209,7 @@ html[data-theme="dark"] .switch-btn{
 <body data-candidate-login-build="2026-09-07-match-employer-design">
 <main class="page">
 <header class="topbar">
-<button class="back-btn" id="back-btn" type="button" aria-label="Go back">←</button>
+<button class="back-btn" id="back-btn" type="button" aria-label="Go back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
 <div class="brand">Alygnn<span>.</span></div><div></div>
 </header>
 <section class="login">
@@ -419,26 +454,6 @@ function applyPlatformLoginUI(){
   if(apple && isAndroidNative())apple.style.display='none';
 }
 
-function currentSavedTheme(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
-  return ['system','light','dark'].includes(saved)?saved:'system';
-}
-
-function applyCandidateLoginTheme(){
-  const preference=currentSavedTheme();
-  const resolved=preference==='system'
-    ?((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light')
-    :preference;
-
-  document.documentElement.dataset.theme=resolved;
-  document.documentElement.dataset.themePreference=preference;
-  const meta=document.getElementById('alygnn-theme-color');
-  if(meta)meta.setAttribute('content',resolved==='dark'?'#061821':'#F6F8F7');
-}
 
 document.getElementById('back-btn').addEventListener('click',()=>location.href='app-start.html');
 document.getElementById('show-btn').addEventListener('click',event=>{
@@ -454,16 +469,8 @@ document.getElementById('apple-btn')?.addEventListener('click',()=>showMessage('
 document.getElementById('switch-btn').addEventListener('click',()=>location.href='app-employer-login.html');
 document.getElementById('password').addEventListener('keydown',event=>{if(event.key==='Enter')signIn()});
 
-if(window.matchMedia){
-  const themeMedia=window.matchMedia('(prefers-color-scheme: dark)');
-  const syncSystemTheme=()=>{if(currentSavedTheme()==='system')applyCandidateLoginTheme()};
-  if(typeof themeMedia.addEventListener==='function')themeMedia.addEventListener('change',syncSystemTheme);
-  else if(typeof themeMedia.addListener==='function')themeMedia.addListener(syncSystemTheme);
-}
-window.addEventListener('pageshow',applyCandidateLoginTheme);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)applyCandidateLoginTheme()});
 applyPlatformLoginUI();
-applyCandidateLoginTheme();
+window.AlygnnTheme?.apply?.();
 redirectIfLoggedIn();
 </script>
 </body></html>
