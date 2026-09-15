@@ -79,6 +79,29 @@
   }
   .pill.off { background: var(--border); color: var(--text-muted); }
 
+  .linked-list { display: flex; flex-direction: column; }
+  .linked-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 12px 0; border-top: 1px solid var(--border);
+  }
+  .linked-row:first-child { border-top: 0; padding-top: 0; }
+  .linked-row:last-child { padding-bottom: 0; }
+  .linked-provider { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .linked-provider-icon {
+    width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: white; color: var(--text); font-size: 15px; font-weight: 600; flex-shrink: 0;
+  }
+  .linked-provider-name { font-size: 14px; color: var(--text); }
+  .linked-actions { display: flex; align-items: center; gap: 8px; }
+  .link-btn {
+    background: white; color: var(--brand); border: 1px solid var(--border);
+    border-radius: 9px; padding: 6px 11px; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+  }
+  .link-btn:hover { border-color: var(--brand); }
+  .link-btn:disabled { opacity: .55; cursor: not-allowed; }
+
   .msg-box {
     border-radius: 10px; padding: 10px 14px; font-size: 13px;
     margin-bottom: 14px; display: none;
@@ -146,10 +169,30 @@
   <!-- Linked accounts -->
   <div class="section">
     <h2>Linked accounts</h2>
-    <div class="desc">Sign-in methods connected to your account</div>
-    <div class="row">
-      <span class="value">Google</span>
-      <span class="pill" id="google-pill">Checking…</span>
+    <div class="desc">Connect sign-in methods to this same Alygnn account</div>
+
+    <div class="linked-list">
+      <div class="linked-row">
+        <div class="linked-provider">
+          <span class="linked-provider-icon" aria-hidden="true">G</span>
+          <span class="linked-provider-name">Google</span>
+        </div>
+        <div class="linked-actions">
+          <span class="pill" id="google-pill">Checking…</span>
+          <button type="button" class="link-btn" id="google-link-btn" onclick="linkIdentityProvider('google')" hidden>Connect</button>
+        </div>
+      </div>
+
+      <div class="linked-row">
+        <div class="linked-provider">
+          <span class="linked-provider-icon" aria-hidden="true">A</span>
+          <span class="linked-provider-name">Apple</span>
+        </div>
+        <div class="linked-actions">
+          <span class="pill" id="apple-pill">Checking…</span>
+          <button type="button" class="link-btn" id="apple-link-btn" onclick="linkIdentityProvider('apple')" hidden>Connect</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -226,6 +269,61 @@
       : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
   }
 
+  function setProviderState(provider, connected) {
+    const pill = document.getElementById(`${provider}-pill`);
+    const button = document.getElementById(`${provider}-link-btn`);
+
+    if (pill) {
+      pill.textContent = connected ? 'Connected' : 'Not connected';
+      pill.classList.toggle('off', !connected);
+    }
+
+    if (button) {
+      button.hidden = connected;
+      button.disabled = false;
+      button.textContent = 'Connect';
+    }
+  }
+
+  async function linkIdentityProvider(provider) {
+    if (!['google', 'apple'].includes(provider)) return;
+
+    const button = document.getElementById(`${provider}-link-btn`);
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Connecting…';
+    }
+
+    try {
+      const redirectUrl = new URL(window.location.href);
+      redirectUrl.searchParams.set('linked_provider', provider);
+      redirectUrl.hash = '';
+
+      const { data, error } = await sb.auth.linkIdentity({
+        provider,
+        options: { redirectTo: redirectUrl.toString() }
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.location.assign(data.url);
+        return;
+      }
+    } catch (error) {
+      console.error(`Could not connect ${provider}:`, error);
+      const message = String(error?.message || '');
+      if (/manual linking|identity linking|linking is disabled/i.test(message)) {
+        showMsg('Account linking is not enabled yet in Supabase Auth. Enable manual identity linking, then try again.');
+      } else {
+        showMsg(message || `Could not connect ${provider}. Please try again.`);
+      }
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Connect';
+      }
+    }
+  }
+
   async function init() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
@@ -264,11 +362,17 @@
       backLink.textContent = '← Back to account';
     }
 
-    const providers = session.user.identities?.map(i => i.provider) || [];
-    const hasGoogle = providers.includes('google');
-    const pill = document.getElementById('google-pill');
-    pill.textContent = hasGoogle ? 'Connected' : 'Not connected';
-    pill.classList.toggle('off', !hasGoogle);
+    const providers = session.user.identities?.map(i => String(i.provider || '').toLowerCase()) || [];
+    setProviderState('google', providers.includes('google'));
+    setProviderState('apple', providers.includes('apple'));
+
+    const linkedProvider = new URLSearchParams(window.location.search).get('linked_provider');
+    if (linkedProvider && ['google', 'apple'].includes(linkedProvider)) {
+      showMsg(`${linkedProvider === 'google' ? 'Google' : 'Apple'} connected successfully.`, 'success');
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('linked_provider');
+      history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+    }
   }
 
   function generateCode() {
