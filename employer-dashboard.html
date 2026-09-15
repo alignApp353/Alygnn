@@ -1013,15 +1013,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(messagesLink&&!teamCan('messages_manage')) messagesLink.style.display='none';
     if(postButton&&!teamCan('jobs_manage')) postButton.style.display='none';
 
-    // Employer account access is tied specifically to the company profile
-    // permission. A jobs-only teammate must not see any account link.
+    // Show My account whenever the owner gave this teammate an account-level
+    // permission. Keep it hidden for teammates who only have operational access
+    // such as posting jobs, managing applicants, or messaging candidates.
     const canEditCompany = teamCan('company_edit');
+    const canViewBilling = teamCan('billing_view');
+    const canManageBilling = teamCan('billing_manage');
+    const canManageTeam = teamCan('team_manage');
+    const canOpenAccount = canEditCompany || canViewBilling || canManageBilling || canManageTeam;
     const accountLabel = document.getElementById('sidebar-account-label');
 
     if(accountLink){
-      if(canEditCompany){
+      if(canOpenAccount){
         accountLink.style.display='flex';
-        accountLink.href='employer-account.html?team=1';
+        // If billing is the only account-level permission, land directly on
+        // Billing & plan. Otherwise open the normal employer account page.
+        accountLink.href = (!canEditCompany && (canViewBilling || canManageBilling) && !canManageTeam)
+          ? 'employer-account.html?team=1#billing-section'
+          : 'employer-account.html?team=1';
         if(accountLabel) accountLabel.textContent='My account';
       }else{
         accountLink.style.display='none';
