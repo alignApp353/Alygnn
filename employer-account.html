@@ -886,7 +886,7 @@
     </div>
   </div>
 
-  <div class="profile-card">
+  <div class="profile-card" id="company-profile-card">
     <div class="company-profile-top">
       <div class="company-avatar-wrap">
         <div class="avatar" id="avatar" onclick="document.getElementById('photo-input').click()" title="Click to add a logo">
@@ -1030,7 +1030,7 @@
     </div>
   </div>
 
-  <div class="section">
+  <div class="section" id="account-settings-section">
     <div class="section-header"><h2>Settings</h2></div>
     <div class="links-row">
       <a href="employer-dashboard.html" class="link-card" id="manage-job-posts-card">
@@ -1040,7 +1040,7 @@
         <div class="label">Manage job posts</div>
         <div class="sub">Edit or close active listings</div>
       </a>
-      <a href="account-settings.html" class="link-card">
+      <a href="account-settings.html" class="link-card" id="personal-account-settings-card">
         <span class="settings-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         </span>
@@ -1182,21 +1182,37 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function applyTeamAccountPermissionUI(){
     if(!isTeamMember) return;
 
-    // This page is only the company-account workspace for teammates who were
-    // explicitly granted Edit company profile.
-    if(!accountTeamCan('company_edit')){
-      location.replace('account-settings.html?from=employer-team');
+    const canEditCompany=accountTeamCan('company_edit');
+    const canViewBilling=accountTeamCan('billing_view');
+    const canManageBilling=accountTeamCan('billing_manage');
+    const canManageTeam=accountTeamCan('team_manage');
+    const hasAccountAccess=canEditCompany||canViewBilling||canManageBilling||canManageTeam;
+
+    // A teammate with no account-level permission should stay on the dashboard.
+    if(!hasAccountAccess){
+      location.replace('employer-dashboard.html');
       return;
     }
 
+    const profileCard=document.getElementById('company-profile-card');
+    const verifyBanner=document.getElementById('verify-banner');
     const jobsSection=document.getElementById('account-jobs-section');
     const candidatesSection=document.getElementById('account-candidates-section');
+    const settingsSection=document.getElementById('account-settings-section');
     const manageJobs=document.getElementById('manage-job-posts-card');
+    const personalAccountCard=document.getElementById('personal-account-settings-card');
     const teamCard=document.getElementById('team-members-settings-card');
     const billingCard=document.getElementById('billing-settings-card');
     const billingPanel=document.getElementById('billing-section');
     const postTop=document.getElementById('account-post-job-btn');
     const postLink=document.getElementById('account-post-job-link');
+
+    // Edit company profile is the ONLY permission that exposes company-profile
+    // editing. View billing must never expose profile/account editing controls.
+    if(!canEditCompany){
+      if(profileCard) profileCard.style.display='none';
+      if(verifyBanner) verifyBanner.style.display='none';
+    }
 
     if(!accountTeamCan('jobs_manage')){
       if(jobsSection) jobsSection.style.display='none';
@@ -1204,18 +1220,36 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(postTop) postTop.style.display='none';
       if(postLink) postLink.style.display='none';
     }
-    if(!accountTeamCan('candidates_manage') && candidatesSection) candidatesSection.style.display='none';
-    if(!accountTeamCan('team_manage') && teamCard) teamCard.style.display='none';
-    if(!accountTeamCan('billing_view') && !accountTeamCan('billing_manage')){
+
+    if(!accountTeamCan('candidates_manage') && candidatesSection){
+      candidatesSection.style.display='none';
+    }
+
+    // Personal password / Google / Apple settings are not a company permission.
+    // Do not expose that card from the employer workspace for added teammates.
+    if(personalAccountCard) personalAccountCard.style.display='none';
+
+    if(!canManageTeam && teamCard) teamCard.style.display='none';
+
+    if(!canViewBilling && !canManageBilling){
       if(billingCard) billingCard.style.display='none';
       if(billingPanel) billingPanel.style.display='none';
     }
 
-    // Company notifications belong to the owner account. Do not show the
-    // owner's notification dropdown to a teammate. Their workspace alerts
-    // remain available on the employer dashboard.
+    // If there is nothing left in Settings, remove the empty Settings section.
+    if(settingsSection && !canManageTeam && !canViewBilling && !canManageBilling && !accountTeamCan('jobs_manage')){
+      settingsSection.style.display='none';
+    }
+
+    // Company notifications belong to the owner account. The teammate keeps
+    // their own workspace notifications on the dashboard instead.
     const notif=document.getElementById('notif-wrap');
     if(notif) notif.style.display='none';
+
+    // Billing-only teammates should see the billing panel immediately.
+    if((canViewBilling||canManageBilling) && !canEditCompany && location.hash==='#billing-section'){
+      setTimeout(()=>toggleBillingPanel(true),0);
+    }
   }
   // Populated by loadEmployerJobs() — reused by loadCandidates() to look
   // up which job title an application belongs to, same as
@@ -2204,6 +2238,59 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+  function renderTeamBillingSummary(){
+    const card=document.getElementById('billing-card');
+    if(!card)return;
+
+    const ent=teamRuntime?.entitlement||{};
+    let planKey=String(
+      ent.test_mode===true && ent.test_plan ? ent.test_plan : (ent.plan||teamAccess?.plan||'free')
+    ).toLowerCase();
+    if(planKey==='business') planKey='launch';
+    if(planKey==='enterprise') planKey='growth';
+    if(!['launch','growth','scale'].includes(planKey)) planKey='free';
+
+    const status=String(ent.subscription_status||'inactive').toLowerCase();
+    const paidPlan=['launch','growth','scale'].includes(planKey) && ['active','trialing','past_due'].includes(status);
+    const displayPlan=billingPlanName(planKey);
+    const billing=String(ent.billing_period||'').toLowerCase();
+    const slots=Math.max(1,Number(teamRuntime?.effective_slot_limit||ent.slot_limit||({launch:4,growth:6,scale:9}[planKey]||1)));
+    const renewal=ent.current_period_end?billingDate(ent.current_period_end):'';
+    const amount=paidPlan ? Number(ACCOUNT_PLAN_PRICES[billing]?.[planKey]||0) : 0;
+    const lock=ent.candidate_access_locked===true || status==='past_due';
+    const statusLabel=lock ? 'Payment past due' : paidPlan ? 'Active plan' : 'Free account';
+    const statusClass=lock?'warning':paidPlan?'':'neutral';
+
+    const metaParts=[];
+    metaParts.push(`${slots} total reusable job slot${slots===1?'':'s'}`);
+    if(billing) metaParts.push(billing.charAt(0).toUpperCase()+billing.slice(1));
+    if(amount) metaParts.push(billingMoney(amount));
+    if(renewal) metaParts.push(`Next billing ${renewal}`);
+
+    const settingsBillingSub=document.getElementById('billing-settings-sub');
+    if(settingsBillingSub){
+      settingsBillingSub.textContent=`${displayPlan} · ${slots} total job slot${slots===1?'':'s'}`;
+    }
+
+    const canManage=accountTeamCan('billing_manage');
+    const compareLink=document.querySelector('#billing-section .settings-billing-head .section-link');
+    if(compareLink) compareLink.style.display=canManage?'':'none';
+
+    card.innerHTML=`
+      <div class="billing-top">
+        <div>
+          <div class="billing-eyebrow">Current access</div>
+          <div class="billing-plan">${escapeHtml(displayPlan)}</div>
+          <div class="billing-meta">${escapeHtml(metaParts.join(' · '))}</div>
+        </div>
+        <span class="billing-status ${statusClass}">${escapeHtml(statusLabel)}</span>
+      </div>
+      ${lock ? `<div class="billing-alert"><strong>Payment past due.</strong> The company owner or a teammate with Manage billing access can update the payment method.</div>` : ''}
+      <div class="billing-message">${canManage
+        ? 'You have billing management access for this company workspace.'
+        : 'View only — you can see the company plan and billing dates, but you cannot change the plan, payment method, or subscription.'}</div>`;
+  }
+
   async function loadBillingSummary(){
     const card=document.getElementById('billing-card');
     if(!card)return;
@@ -2809,29 +2896,36 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     let profile = null;
 
     if(isTeamMember){
-      if(!accountTeamCan('company_edit')){
-        window.location.replace('account-settings.html?from=employer-team');
+      const hasAccountAccess =
+        accountTeamCan('company_edit') ||
+        accountTeamCan('billing_view') ||
+        accountTeamCan('billing_manage') ||
+        accountTeamCan('team_manage');
+
+      if(!hasAccountAccess){
+        window.location.replace('employer-dashboard.html');
         return;
       }
 
       // All company-owned data on this page belongs to the workspace owner.
       currentUserId = workspaceOwnerId;
 
-      const result = await sb.rpc('get_my_company_account_profile');
-      if(result.error || !result.data?.profile){
-        console.error('Failed to load team company account:',result.error);
-        const loadingEl=document.getElementById('auth-loading');
-        loadingEl.innerHTML=`
-          <div style="text-align:center; max-width:400px; padding:0 20px;">
-            <div style="font-size:14px; color:var(--text); margin-bottom:6px;">Could not load the company account</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">${escapeHtml(result.error?.message||'Company account access is unavailable.')}</div>
-            <button onclick="location.href='employer-dashboard.html'" style="background:var(--brand); color:#fff; border:none; border-radius:100px; padding:9px 20px; font-size:13px; font-family:inherit; cursor:pointer;">Back to dashboard</button>
-          </div>`;
-        return;
+      // A billing-only teammate does not need the editable company-account RPC.
+      // The safe team runtime already includes owner profile + entitlement data.
+      if(accountTeamCan('company_edit')){
+        const result = await sb.rpc('get_my_company_account_profile');
+        if(result.error || !result.data?.profile){
+          console.warn('Editable company account RPC unavailable; using safe team runtime instead:',result.error);
+          teamAccountState = { company_id: teamAccess?.company_id || null };
+          profile = teamRuntime?.owner_profile || {};
+        }else{
+          teamAccountState = result.data;
+          profile = result.data.profile;
+        }
+      }else{
+        teamAccountState = { company_id: teamAccess?.company_id || null };
+        profile = teamRuntime?.owner_profile || {};
       }
-
-      teamAccountState = result.data;
-      profile = result.data.profile;
     }else{
       const result = await sb
         .from('profiles')
@@ -2902,8 +2996,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       headlineEl.classList.remove('headline-empty');
     }
 
-    headlineEl.contentEditable = verifiedForProfileUpdates ? 'false' : 'true';
-    headlineEl.title = verifiedForProfileUpdates
+    const teammateCanEditCompany = !isTeamMember || accountTeamCan('company_edit');
+    headlineEl.contentEditable = teammateCanEditCompany && !verifiedForProfileUpdates ? 'true' : 'false';
+    headlineEl.title = teammateCanEditCompany && verifiedForProfileUpdates
       ? 'Verified company profile changes require Alygnn review.'
       : '';
     if (profile?.company_website) websiteEl.value = profile.company_website;
@@ -2924,9 +3019,12 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('nav-name').textContent = displayName;
 
     applyTeamAccountPermissionUI();
-    updateVerificationBanner();
-    await loadCompanyId();
-    await loadProfileUpdateRequests();
+
+    if(!isTeamMember || accountTeamCan('company_edit')){
+      updateVerificationBanner();
+      await loadCompanyId();
+      await loadProfileUpdateRequests();
+    }
 
     if(!isTeamMember || accountTeamCan('jobs_manage')){
       await loadEmployerJobs();
@@ -2934,9 +3032,16 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     if(!isTeamMember || accountTeamCan('billing_view') || accountTeamCan('billing_manage')){
-      // Owner keeps the existing full billing integration. Team billing access
-      // is intentionally not changed by this company-edit routing fix.
-      if(!isTeamMember) await loadBillingSummary();
+      if(isTeamMember){
+        // Team runtime intentionally exposes safe entitlement data without
+        // Stripe/card identifiers, which is exactly what View billing needs.
+        renderTeamBillingSummary();
+        if(location.hash==='#billing-section' || (!accountTeamCan('company_edit') && !accountTeamCan('team_manage'))){
+          toggleBillingPanel(true);
+        }
+      }else{
+        await loadBillingSummary();
+      }
     }
 
     if(!isTeamMember || accountTeamCan('candidates_manage')) await loadCandidates();
