@@ -603,11 +603,11 @@
       <span id="sidebar-post-job-label">Post a Job</span>
     </button>
     <hr class="nav-divider">
-    <a href="employer-account.html" class="nav-item" id="sidebar-account-link">
+    <a href="employer-account.html?team=1" class="nav-item" id="sidebar-account-link">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
       </span>
-      My account
+      <span id="sidebar-account-label">Employer account</span>
     </a>
   </aside>
 
@@ -1013,19 +1013,16 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(messagesLink&&!teamCan('messages_manage')) messagesLink.style.display='none';
     if(postButton&&!teamCan('jobs_manage')) postButton.style.display='none';
 
-    // Keep account/settings completely out of the teammate UI unless the
-    // company owner explicitly granted an account-level permission.
-    // A jobs-only teammate should see only My Jobs + Post a Job.
-    const canOpenAccount=
-      teamCan('company_edit')||
-      teamCan('billing_view')||
-      teamCan('billing_manage')||
-      teamCan('team_manage');
+    // Employer account access is tied specifically to the company profile
+    // permission. A jobs-only teammate must not see any account link.
+    const canEditCompany = teamCan('company_edit');
+    const accountLabel = document.getElementById('sidebar-account-label');
 
     if(accountLink){
-      if(canOpenAccount){
+      if(canEditCompany){
         accountLink.style.display='flex';
-        accountLink.href='account-settings.html?from=employer-team';
+        accountLink.href='employer-account.html?team=1';
+        if(accountLabel) accountLabel.textContent='Employer account';
       }else{
         accountLink.style.display='none';
         accountLink.removeAttribute('href');
