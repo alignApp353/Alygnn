@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Account settings — Alygnn</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260915-account">
+<link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=20260915-account">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,11 +17,12 @@
     --text: #1A2530; --text-muted: #4A5968; --border: #DDE3E8;
     --mint: #6FBF8F; --rose: #D79A9A;
   }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-top: 64px; }
 
   nav {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
+    position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important; z-index: 1000 !important;
+    background: rgba(246,248,247,0.95);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border); padding: 0 5%;
     display: flex; align-items: center; justify-content: space-between; height: 64px;
   }
@@ -28,7 +32,8 @@
   .back-link:hover { color: var(--text); }
 
   .page { max-width: 640px; margin: 0 auto; padding: 56px 6% 100px; }
-  h1 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; margin-bottom: 36px; }
+  h1 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; margin-bottom: 8px; }
+  .page-intro { font-size: 13px; line-height: 1.55; color: var(--text-muted); margin-bottom: 30px; }
 
   .section {
     background: var(--card-bg); border: 1px solid var(--border);
@@ -89,6 +94,10 @@
   .mini-footer{ text-align:center; padding:24px 6% 40px; font-size:12px; color:var(--text-muted); }
   .mini-footer a{ color:var(--text-muted); text-decoration:none; }
   .mini-footer a:hover{ color:var(--brand); }
+
+  /* Keep the account header pinned while the settings page scrolls. */
+  html { scroll-padding-top: 64px; }
+  nav { transform: translateZ(0); }
 </style>
 </head>
 <body>
@@ -99,7 +108,8 @@
 </nav>
 
 <div class="page">
-  <h1>Account settings</h1>
+  <h1 id="page-title">Account settings</h1>
+  <p class="page-intro" id="page-intro">Manage the login and security settings for your Alygnn account.</p>
 
   <div class="msg-box" id="msg-box"></div>
 
@@ -166,19 +176,24 @@
 <script>
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-
   function alygnnAuthStorageKey() {
     let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+
     if (!tabId) {
       tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
         ? window.crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+
       window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
     }
+
     return `alygnn-auth-${tabId}`;
   }
 
   const { createClient } = supabase;
+
+  // Use the same per-tab Supabase session as account.html and employer-account.html.
+  // Without this, Account Settings thinks the user is signed out and redirects to login.
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       storage: window.sessionStorage,
@@ -229,31 +244,25 @@
       .single();
     userHasPassword = !!profile?.has_password;
 
-    // A recruiter/hiring-manager/admin is an employer TEAM MEMBER, not the
-    // company owner. Team membership takes priority over profiles.role when
-    // choosing where "Back" should go.
-    let isEmployerTeamMember = false;
-    try {
-      const teamRouteResult = await Promise.race([
-        sb.rpc('get_my_team_operational_state'),
-        new Promise(resolve => setTimeout(
-          () => resolve({ data: null, error: { message: 'team route timeout' } }),
-          2500
-        ))
-      ]);
-
-      isEmployerTeamMember =
-        !teamRouteResult?.error &&
-        teamRouteResult?.data?.has_company === true &&
-        teamRouteResult?.data?.access?.is_owner === false;
-    } catch (teamRouteError) {
-      console.warn('Could not check employer team membership:', teamRouteError);
-    }
-
+    // Team members use this page only for THEIR OWN login/security. Workspace
+    // permissions still come from the company owner and are not expanded here.
+    const params = new URLSearchParams(window.location.search);
+    const from = String(params.get('from') || '').toLowerCase();
     const role = String(profile?.role || session.user.user_metadata?.role || '').toLowerCase();
-    document.getElementById('back-link').href = isEmployerTeamMember
-      ? 'employer-dashboard.html'
-      : (role === 'employer' ? 'employer-account.html' : 'account.html');
+    const backLink = document.getElementById('back-link');
+    const pageTitle = document.getElementById('page-title');
+    const pageIntro = document.getElementById('page-intro');
+
+    if (from === 'employer-team') {
+      document.title = 'My account — Alygnn';
+      pageTitle.textContent = 'My account';
+      pageIntro.textContent = 'Manage your personal Alygnn login. Your company role and workspace permissions stay controlled by the company owner.';
+      backLink.href = 'employer-dashboard.html';
+      backLink.textContent = '← Back to dashboard';
+    } else {
+      backLink.href = role === 'employer' ? 'employer-account.html' : 'account.html';
+      backLink.textContent = '← Back to account';
+    }
 
     const providers = session.user.identities?.map(i => i.provider) || [];
     const hasGoogle = providers.includes('google');
