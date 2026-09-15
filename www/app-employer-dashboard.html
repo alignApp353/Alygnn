@@ -13011,6 +13011,9 @@ function alygnnEmployerLoadingMessage(){
     });
 
     $('sign-out-btn').onclick = async () => {
+      try{
+        localStorage.setItem('alygnn_account_type','employer');
+      }catch(_error){}
       await sb.auth.signOut();
       location.replace('app-employer-login.html?logout=1');
     };
