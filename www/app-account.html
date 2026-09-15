@@ -5,6 +5,39 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#F5F8F8">
 <title>Alygnn | Candidate Profile</title>
+<script id="alygnn-candidate-theme-critical">
+(function(){
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function normalize(v){
+    v=String(v||'').toLowerCase().trim();
+    if(v==='auto'||v==='system-default'||v==='default') return 'system';
+    return ['system','light','dark'].includes(v)?v:'system';
+  }
+  function pref(){
+    return normalize(
+      localStorage.getItem('alygnnTheme') ||
+      localStorage.getItem('alygnnEmployerTheme') ||
+      localStorage.getItem('alygnn_candidate_theme') ||
+      localStorage.getItem('alygnn-theme') ||
+      'system'
+    );
+  }
+  function apply(){
+    const p=pref();
+    const theme=p==='system' ? (media&&media.matches?'dark':'light') : p;
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
+    meta.setAttribute('content',theme==='dark'?'#071824':'#F5F8F8');
+  }
+  apply();
+  window.__alygnnApplyCandidateGlobalTheme=apply;
+})();
+</script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -2632,23 +2665,38 @@ function showSettingsMessage(message,type='info'){
 }
 
 function getCandidateTheme(){
-  return window.AlygnnCandidateTheme
-    ? window.AlygnnCandidateTheme.get()
-    : (localStorage.getItem('alygnn_candidate_theme') || localStorage.getItem('alygnn-theme') || 'system');
+  const normalize=value=>{
+    const v=String(value||'').toLowerCase().trim();
+    if(v==='auto'||v==='system-default'||v==='default') return 'system';
+    return ['system','light','dark'].includes(v)?v:'system';
+  };
+
+  // Alygnn uses one appearance preference across personal and employer workspaces.
+  return normalize(
+    localStorage.getItem('alygnnTheme') ||
+    localStorage.getItem('alygnnEmployerTheme') ||
+    localStorage.getItem('alygnn_candidate_theme') ||
+    localStorage.getItem('alygnn-theme') ||
+    (window.AlygnnCandidateTheme ? window.AlygnnCandidateTheme.get() : 'system')
+  );
 }
 
 function setCandidateTheme(theme){
   const allowed=new Set(['system','light','dark']);
   const next=allowed.has(theme)?theme:'system';
+  const shared=next==='system'?'auto':next;
+
+  // Keep every Alygnn surface in the same appearance mode.
+  localStorage.setItem('alygnnTheme',shared);
+  localStorage.setItem('alygnnEmployerTheme',shared);
+  localStorage.setItem('alygnn_candidate_theme',next);
+  localStorage.setItem('alygnn-theme',next);
 
   if(window.AlygnnCandidateTheme){
-    window.AlygnnCandidateTheme.set(next);
-  }else{
-    localStorage.setItem('alygnn_candidate_theme',next);
-    localStorage.setItem('alygnn-theme',next);
-    document.body.dataset.theme=next;
+    try{window.AlygnnCandidateTheme.set(next);}catch(_){}
   }
 
+  window.__alygnnApplyCandidateGlobalTheme?.();
   refreshCandidateSettingsUI();
 }
 
@@ -2660,6 +2708,13 @@ function refreshCandidateSettingsUI(){
   }
 
   document.body.dataset.theme=theme;
+  const effective=theme==='system'
+    ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light')
+    : theme;
+  document.documentElement.dataset.theme=effective;
+  document.documentElement.dataset.effectiveTheme=effective;
+  document.documentElement.style.colorScheme=effective;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',effective==='dark'?'#071824':'#F5F8F8');
 
   document.querySelectorAll('[data-theme-option]')
     .forEach(button=>{
