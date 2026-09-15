@@ -925,6 +925,79 @@
 
     .settings-link:last-child{border-bottom:none}
 
+.settings-signout-wrap{
+  margin-top:18px;
+  padding:0;
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0;
+  box-shadow:none !important;
+  overflow:visible;
+}
+.settings-signout{
+  width:100%;
+  min-height:58px;
+  padding:0 16px;
+  border:1px solid color-mix(in srgb,var(--danger) 34%,var(--border-soft));
+  border-radius:18px;
+  background:color-mix(in srgb,var(--danger) 7%,var(--card));
+  color:var(--danger);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font:inherit;
+  text-align:left;
+  -webkit-tap-highlight-color:transparent;
+}
+.settings-signout:active{
+  transform:scale(.995);
+  background:color-mix(in srgb,var(--danger) 11%,var(--card));
+}
+.settings-signout-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.settings-signout-icon{
+  width:36px;
+  height:36px;
+  border-radius:11px;
+  background:color-mix(in srgb,var(--danger) 12%,transparent);
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+}
+.settings-signout-icon svg{
+  width:18px;
+  height:18px;
+  display:block;
+}
+.settings-signout-copy strong{
+  display:block;
+  font-size:12px;
+  font-weight:900;
+  color:var(--danger);
+}
+.settings-signout-copy small{
+  display:block;
+  margin-top:3px;
+  font-size:9px;
+  font-weight:700;
+  color:var(--muted);
+}
+.settings-signout-arrow{
+  color:var(--danger);
+  opacity:.78;
+  font-size:20px;
+  line-height:1;
+}
+html[data-theme="dark"] .settings-signout{
+  background:color-mix(in srgb,var(--danger) 9%,var(--card));
+}
+
+
     .settings-group-title{
       font-size:12px;
       font-weight:900;
@@ -4822,8 +4895,23 @@
           </button>
         </section>
 
-        <section class="section">
-          <button class="settings-link" id="sign-out-btn" type="button" style="color:var(--danger)">Sign out <span>›</span></button>
+        <section class="settings-signout-wrap">
+          <button class="settings-signout" id="sign-out-btn" type="button" aria-label="Sign out of Alygnn">
+            <span class="settings-signout-left">
+              <span class="settings-signout-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 17l5-5-5-5"></path>
+                  <path d="M15 12H3"></path>
+                  <path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                </svg>
+              </span>
+              <span class="settings-signout-copy">
+                <strong>Sign out</strong>
+                <small>Sign out of this Alygnn account</small>
+              </span>
+            </span>
+            <span class="settings-signout-arrow" aria-hidden="true">›</span>
+          </button>
         </section>
       </section>
     </main>
