@@ -4,8 +4,84 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F6F8F7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#071722" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F6F8F7">
+<script id="alygnn-entry-theme-critical">
+(function(){
+  const media=window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null;
+
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='system'||value==='system-default'||value==='default') return 'auto';
+    return ['auto','light','dark'].includes(value)?value:'auto';
+  }
+
+  function accountType(){
+    try{
+      return String(localStorage.getItem('alygnn_account_type')||'candidate').toLowerCase()==='employer'
+        ? 'employer'
+        : 'candidate';
+    }catch(_error){
+      return 'candidate';
+    }
+  }
+
+  function preference(){
+    const type=accountType();
+    try{
+      if(type==='employer'){
+        return normalize(
+          localStorage.getItem('alygnnEmployerTheme') ||
+          localStorage.getItem('alygnnTheme') ||
+          localStorage.getItem('alygnn-theme') ||
+          'auto'
+        );
+      }
+
+      return normalize(
+        localStorage.getItem('alygnnCandidateTheme') ||
+        localStorage.getItem('alygnn_candidate_theme') ||
+        localStorage.getItem('alygnnTheme') ||
+        localStorage.getItem('alygnn-theme') ||
+        'auto'
+      );
+    }catch(_error){
+      return 'auto';
+    }
+  }
+
+  function resolved(){
+    const pref=preference();
+    if(pref==='dark') return 'dark';
+    if(pref==='light') return 'light';
+    return media&&media.matches?'dark':'light';
+  }
+
+  function apply(){
+    const theme=resolved();
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.style.colorScheme=theme;
+    root.style.backgroundColor=theme==='dark'?'#071722':'#F6F8F7';
+
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta){
+      meta.setAttribute('content',theme==='dark'?'#071722':'#F6F8F7');
+    }
+  }
+
+  apply();
+
+  if(media){
+    const onChange=()=>{ if(preference()==='auto') apply(); };
+    media.addEventListener?.('change',onChange);
+    if(!media.addEventListener) media.addListener?.(onChange);
+  }
+
+  window.AlygnnEntryTheme={apply,accountType,preference,resolved};
+})();
+</script>
 <title>Alygnn</title>
 <!-- ALYGNN CAPACITOR ENTRYPOINT V71 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -148,46 +224,68 @@ body.is-leaving .splash{
   }
 }
 
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#071722;
-    --text:#F6F8FA;
-    --muted:#9EACB9;
-    --track:#213342;
-    --glow:rgba(93,127,163,.18);
-  }
-
-  html,
-  body{
-    background:#071722;
-  }
-}
-
 </style>
 </head>
 <body>
 <main class="splash" aria-label="Alygnn is loading">
   <div class="logo">Alygnn<span class="logo-dot">.</span></div>
-  <div class="tagline">Finding your fit.</div>
+  <div class="tagline" id="splash-message">Finding your fit.</div>
   <div class="loading-track" aria-hidden="true">
     <div class="loading-bar"></div>
   </div>
 </main>
 <script>
-(function applySplashTheme(){
-  const media=
-    window.matchMedia('(prefers-color-scheme: dark)');
+window.AlygnnEntryTheme?.apply?.();
 
-  function apply(){
-    const dark=media.matches;
+const ALYGNN_EMPLOYER_LOADING_MESSAGES=[
+  "Building your team.",
+  "Finding your next hire.",
+  "Connecting you with talent.",
+  "Preparing your hiring workspace.",
+  "Matching talent to opportunity.",
+  "Getting your candidates ready.",
+  "Organizing your hiring pipeline.",
+  "Bringing your workspace together.",
+  "Loading your hiring dashboard.",
+  "Preparing your next move.",
+  "Finding talent that fits.",
+  "Getting your team in place.",
+  "Preparing your candidate matches.",
+  "Powering up your hiring workspace.",
+  "Bringing the right people closer.",
+  "Getting your hiring tools ready.",
+  "Preparing your recruiting workspace.",
+  "Connecting you to your next hire.",
+  "Getting everything ready to hire.",
+  "Helping you build what’s next."
+];
 
-    document.documentElement.dataset.theme=
-      dark ? 'dark' : 'light';
+function alygnnEmployerLoadingMessage(){
+  const storageKey='alygnnEmployerLastLoadingMessage';
+  let last='';
+  try{ last=localStorage.getItem(storageKey)||''; }catch(_error){}
+
+  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
+  if(last && choices.length>1){
+    choices=choices.filter(message=>message!==last);
   }
 
-  apply();
-  media.addEventListener?.('change',apply);
-})();
+  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
+  try{ localStorage.setItem(storageKey,message); }catch(_error){}
+  return message;
+}
+
+function setSplashMessage(){
+  const node=document.getElementById('splash-message');
+  if(!node) return;
+
+  const type=window.AlygnnEntryTheme?.accountType?.() || 'candidate';
+  node.textContent=type==='employer'
+    ? alygnnEmployerLoadingMessage()
+    : 'Finding your fit.';
+}
+
+setSplashMessage();
 
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
@@ -200,108 +298,6 @@ const sb=supabase.createClient(
     }
   }
 );
-
-
-const ALYGNN_NATIVE_OAUTH_REDIRECT='alygnn://auth/callback';
-
-function isNativeCapacitor(){
-  try{
-    return !!(
-      window.Capacitor &&
-      typeof window.Capacitor.isNativePlatform==='function' &&
-      window.Capacitor.isNativePlatform()
-    );
-  }catch(_error){
-    return false;
-  }
-}
-
-function nativePlugin(name){
-  return window.Capacitor?.Plugins?.[name] || null;
-}
-
-function callbackParams(url){
-  const parsed=new URL(url);
-  const query=parsed.searchParams;
-  const hash=new URLSearchParams((parsed.hash||'').replace(/^#/,''));
-
-  return {
-    accessToken:hash.get('access_token')||query.get('access_token'),
-    refreshToken:hash.get('refresh_token')||query.get('refresh_token'),
-    code:query.get('code')||hash.get('code'),
-    error:query.get('error_description')||hash.get('error_description')||
-      query.get('error')||hash.get('error')
-  };
-}
-
-async function consumeNativeOAuthCallback(url){
-  if(!url || !url.startsWith(ALYGNN_NATIVE_OAUTH_REDIRECT)) return false;
-
-  const params=callbackParams(url);
-
-  if(params.error){
-    throw new Error(decodeURIComponent(params.error.replace(/\+/g,' ')));
-  }
-
-  if(params.accessToken && params.refreshToken){
-    const {error}=await sb.auth.setSession({
-      access_token:params.accessToken,
-      refresh_token:params.refreshToken
-    });
-    if(error) throw error;
-  }else if(params.code){
-    const {error}=await sb.auth.exchangeCodeForSession(params.code);
-    if(error) throw error;
-  }else{
-    throw new Error('Google sign-in returned to Alygnn without a session.');
-  }
-
-  try{
-    const Browser=nativePlugin('Browser');
-    if(Browser?.close) await Browser.close();
-  }catch(_error){}
-
-  return true;
-}
-
-function oauthShow(text,type='error'){
-  console[type==='error'?'error':'log'](text);
-}
-
-
-
-function isGoogleOnlyAccount(user){
-  if(!user) return false;
-
-  const primary=String(user.app_metadata?.provider||'').toLowerCase();
-  const providers=Array.isArray(user.app_metadata?.providers)
-    ? user.app_metadata.providers.map(v=>String(v).toLowerCase())
-    : [];
-
-  return primary==='google' ||
-    (providers.length===1 && providers[0]==='google');
-}
-
-function hasAlygnnPassword(user){
-  return user?.user_metadata?.alygnn_password_set===true;
-}
-
-function destinationAfterGoogle(session, fallback){
-  const user=session?.user;
-  const mode=localStorage.getItem('alygnn_google_auth_mode');
-
-  // Only Google SIGN-UP should be forced through password creation.
-  // Normal "Continue with Google" sign-in must go straight to the account.
-  if(
-    mode==='signup' &&
-    isGoogleOnlyAccount(user) &&
-    !hasAlygnnPassword(user)
-  ){
-    return 'app-google-set-password.html';
-  }
-
-  return fallback;
-}
 
 const SPLASH_MIN_MS=1250;
 const splashStartedAt=Date.now();
@@ -324,58 +320,13 @@ async function leaveSplash(destination){
   window.location.replace(destination);
 }
 
-let oauthLaunchReady=Promise.resolve();
-
-if(isNativeCapacitor()){
-  const App=nativePlugin('App');
-
-  if(App){
-    oauthLaunchReady=(async()=>{
-      try{
-        await App.addListener('appUrlOpen',async({url})=>{
-          try{
-            const handled=await consumeNativeOAuthCallback(url);
-            if(!handled)return;
-
-            const accountType=
-              localStorage.getItem('alygnn_account_type')||
-              'candidate';
-
-            const {data:sessionData}=await sb.auth.getSession();
-
-            const fallback=
-              accountType==='employer'
-                ?'app-employer-dashboard.html'
-                :'app-account.html';
-
-            window.location.replace(
-              accountType==='candidate'
-                ?destinationAfterGoogle(sessionData.session,fallback)
-                :fallback
-            );
-          }catch(error){
-            console.error('OAuth callback error:',error);
-            window.location.replace('app-login.html');
-          }
-        });
-
-        const launch=await App.getLaunchUrl();
-        if(launch?.url){
-          await consumeNativeOAuthCallback(launch.url);
-        }
-      }catch(error){
-        console.error('Native OAuth launch handling failed:',error);
-      }
-    })();
-  }
-}
-
 (async function routeApp(){
+  window.AlygnnEntryTheme?.apply?.();
+  setSplashMessage();
+
   let destination='app-start.html';
 
   try{
-    await oauthLaunchReady;
-
     const {data,error}=await sb.auth.getSession();
 
     if(!error && data.session){
@@ -383,15 +334,10 @@ if(isNativeCapacitor()){
         localStorage.getItem('alygnn_account_type') ||
         'candidate';
 
-      const fallback=
+      destination=
         accountType==='employer'
           ?'app-employer-dashboard.html'
           :'app-account.html';
-
-      destination=
-        accountType==='candidate'
-          ?destinationAfterGoogle(data.session,fallback)
-          :fallback;
     }
 
   }catch(err){
