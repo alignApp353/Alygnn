@@ -1,36 +1,43 @@
 package com.alygnn.app;
 
-import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.splashscreen.SplashScreen;
+import android.content.Intent;
+import android.util.Log;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginHandle;
 
-public class MainActivity extends BridgeActivity {
+import ee.forgr.capacitor.social.login.GoogleProvider;
+import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
+import ee.forgr.capacitor.social.login.SocialLoginPlugin;
+
+public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
 
-        // Follow the phone's current Light / Dark appearance.
-        AppCompatDelegate.setDefaultNightMode(
-            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-        );
+        if (requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN
+                && requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
 
-        /*
-         * IMPORTANT:
-         * AndroidManifest.xml starts MainActivity with
-         * AppTheme.NoActionBarLaunch, whose parent is Theme.SplashScreen.
-         *
-         * Calling installSplashScreen() here is what tells AndroidX to
-         * replace that temporary launch theme with postSplashScreenTheme
-         * (AppTheme.NoActionBar) before Capacitor creates the WebView.
-         *
-         * Without this call, the first WebView page can inherit the
-         * light SplashScreen theme on a cold start.
-         */
-        SplashScreen.installSplashScreen(this);
+            PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
+            if (pluginHandle == null) {
+                Log.i("Google Activity Result", "SocialLogin login handle is null");
+                return;
+            }
 
-        super.onCreate(savedInstanceState);
+            Plugin plugin = pluginHandle.getInstance();
+            if (!(plugin instanceof SocialLoginPlugin)) {
+                Log.i("Google Activity Result", "SocialLogin plugin instance is not SocialLoginPlugin");
+                return;
+            }
+
+            ((SocialLoginPlugin) plugin).handleGoogleLoginIntent(requestCode, data);
+        }
+    }
+
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {
+        // Required marker method for @capgo/capacitor-social-login.
     }
 }
