@@ -21,6 +21,7 @@ h1{font-size:34px;line-height:1.05;margin:10px 0}.lead{margin:0;color:var(--mute
 .section-title{margin:26px 2px 10px;color:#68788B;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase}
 .card{background:var(--card);border:1px solid var(--border);border-radius:21px;padding:18px;margin-top:10px;box-shadow:0 18px 44px rgba(34,56,76,.08)}
 .card-top{display:flex;gap:13px}.icon{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#EAF1F7;color:#356699;font-weight:900;flex:none}
+.personal-card .icon{border-radius:16px;background:#EAF1F7;color:#356699;letter-spacing:.3px}
 .card-copy{flex:1;min-width:0}.card-copy strong{display:block;font-size:16px;font-weight:900}.card-copy span{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:4px}
 .badge{display:inline-block!important;width:max-content;margin-top:8px!important;padding:5px 8px;border-radius:999px;background:#EDF6F1;color:#26734F!important;font-size:9px!important;font-weight:900;text-transform:uppercase}
 .invite-note{margin-top:12px;padding:11px 12px;border-radius:13px;background:#EEF4F8;color:#48667F;font-size:11px;line-height:1.55}
@@ -50,6 +51,8 @@ const params=new URLSearchParams(location.search);
 const manual=params.get('manual')==='1';
 const preferred=String(params.get('preferred')||'').toLowerCase();
 let context=null;
+let currentUser=null;
+let candidateIdentity={name:'Your profile',email:''};
 
 function esc(v){return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;")}
 function initials(v){const p=String(v||'').trim().split(/\s+/).filter(Boolean);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():(p[0]?.slice(0,2).toUpperCase()||'A')}
@@ -59,6 +62,58 @@ function employerDestination(w){return String(w?.verification_status||'pending_r
 function rememberWorkspace(type,companyId=''){const v=type==='candidate'?'candidate':`employer:${companyId}`;localStorage.setItem('alygnn_last_workspace',v);localStorage.setItem('alygnn_account_type',type==='candidate'?'candidate':'employer');if(companyId){localStorage.setItem('alygnn_company_id',companyId);if(context?.user_id)localStorage.setItem(`alygnn_company_id_${context.user_id}`,companyId)}}
 function openCandidate(){rememberWorkspace('candidate');location.replace('app-account.html')}
 function openEmployer(w){rememberWorkspace('employer',String(w.company_id||''));location.replace(employerDestination(w))}
+
+function titleCaseEmailName(email){
+  const local=String(email||'').split('@')[0]||'';
+  return local
+    .replace(/[._-]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim()
+    .replace(/\b[a-z]/g,c=>c.toUpperCase());
+}
+
+async function loadCandidateIdentity(){
+  const user=currentUser;
+  const metadata=user?.user_metadata||{};
+  let profile=null;
+
+  if(user?.id){
+    try{
+      const {data,error}=await sb
+        .from('profiles')
+        .select('full_name')
+        .eq('id',user.id)
+        .maybeSingle();
+
+      if(!error)profile=data||null;
+      else console.warn('Could not load candidate name for workspace picker:',error);
+    }catch(error){
+      console.warn('Could not load candidate name for workspace picker:',error);
+    }
+  }
+
+  const metadataName=[
+    metadata.first_name,
+    metadata.last_name
+  ].filter(Boolean).join(' ').trim();
+
+  const email=String(
+    user?.email||
+    context?.email||
+    ''
+  ).trim();
+
+  const name=String(
+    profile?.full_name||
+    metadata.full_name||
+    metadata.name||
+    metadataName||
+    titleCaseEmailName(email)||
+    'Your profile'
+  ).trim();
+
+  candidateIdentity={name,email};
+}
 
 function renderInvites(){
   const invites=Array.isArray(context?.pending_invites)?context.pending_invites:[];
@@ -75,7 +130,9 @@ function renderWorkspaces(){
   const employers=Array.isArray(context?.employer_workspaces)?context.employer_workspaces:[];
   const cards=[];
   if(context?.has_candidate===true){
-    cards.push(`<article class="card"><div class="card-top"><div class="icon">C</div><div class="card-copy"><strong>Candidate</strong><span>Resume, preferences, saved jobs, applications, and job matching.</span><span class="badge">Personal workspace</span></div></div><div class="actions"><button class="btn primary" id="open-candidate" type="button">Continue as Candidate</button></div></article>`);
+    const personalName=candidateIdentity?.name||'Your profile';
+    const personalEmail=candidateIdentity?.email||'';
+    cards.push(`<article class="card personal-card"><div class="card-top"><div class="icon" aria-hidden="true">${esc(initials(personalName||personalEmail))}</div><div class="card-copy"><strong>${esc(personalName)}</strong>${personalEmail?`<span>${esc(personalEmail)}</span>`:''}<span class="badge">Personal workspace</span></div></div><div class="actions"><button class="btn primary" id="open-candidate" type="button">Continue to Personal Workspace</button></div></article>`);
   }
   for(const w of employers){
     cards.push(`<article class="card"><div class="card-top"><div class="icon">${esc(initials(w.company_name))}</div><div class="card-copy"><strong>${esc(w.company_name||'Employer workspace')}</strong><span>${esc(roleLabel(w.team_role))} · Employer workspace</span><span class="badge">${w.verification_status==='approved'?'Active':'Verification pending'}</span></div></div><div class="actions"><button class="btn primary" type="button" data-open-employer="${esc(w.company_id)}">Continue to Company</button></div></article>`);
@@ -90,6 +147,7 @@ async function refreshContext(autoRoute=false){
   const {data,error}=await sb.rpc('get_my_workspace_context');
   if(error)throw error;
   context=data||{};
+  if(context?.has_candidate===true)await loadCandidateIdentity();
   const invites=Array.isArray(context.pending_invites)?context.pending_invites:[];
   const employers=Array.isArray(context.employer_workspaces)?context.employer_workspaces:[];
 
@@ -128,7 +186,21 @@ async function declineInvite(id,button){
 $('invites').addEventListener('click',e=>{const a=e.target.closest('[data-accept]');if(a){acceptInvite(a.dataset.accept,a);return}const d=e.target.closest('[data-decline]');if(d)declineInvite(d.dataset.decline,d)});
 $('sign-out').onclick=async()=>{await sb.auth.signOut();location.replace('app-login.html?logout=1')};
 
-(async()=>{try{const {data,error}=await sb.auth.getSession();if(error||!data?.session){location.replace('app-login.html');return}await refreshContext(true)}catch(e){$('loading').hidden=true;$('content').hidden=false;showMessage(e?.message||'Could not load your Alygnn workspaces.','error')}})();
+(async()=>{
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error||!data?.session){
+      location.replace('app-login.html');
+      return;
+    }
+    currentUser=data.session.user;
+    await refreshContext(true);
+  }catch(e){
+    $('loading').hidden=true;
+    $('content').hidden=false;
+    showMessage(e?.message||'Could not load your Alygnn workspaces.','error');
+  }
+})();
 </script>
 </body>
 </html>
