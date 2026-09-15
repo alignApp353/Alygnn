@@ -607,7 +607,7 @@
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
       </span>
-      <span id="sidebar-account-label">Employer account</span>
+      <span id="sidebar-account-label">My account</span>
     </a>
   </aside>
 
@@ -1022,7 +1022,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(canEditCompany){
         accountLink.style.display='flex';
         accountLink.href='employer-account.html?team=1';
-        if(accountLabel) accountLabel.textContent='Employer account';
+        if(accountLabel) accountLabel.textContent='My account';
       }else{
         accountLink.style.display='none';
         accountLink.removeAttribute('href');
