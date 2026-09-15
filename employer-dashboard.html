@@ -1013,13 +1013,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(messagesLink&&!teamCan('messages_manage')) messagesLink.style.display='none';
     if(postButton&&!teamCan('jobs_manage')) postButton.style.display='none';
 
-    // Company editors should open the COMPANY account page. Teammates who
-    // were not given company-edit access still use their personal settings.
+    // Keep account/settings completely out of the teammate UI unless the
+    // company owner explicitly granted an account-level permission.
+    // A jobs-only teammate should see only My Jobs + Post a Job.
+    const canOpenAccount=
+      teamCan('company_edit')||
+      teamCan('billing_view')||
+      teamCan('billing_manage')||
+      teamCan('team_manage');
+
     if(accountLink){
-      accountLink.style.display='flex';
-      accountLink.href=teamCan('company_edit')
-        ? 'employer-account.html?team=1'
-        : 'account-settings.html?from=employer-team';
+      if(canOpenAccount){
+        accountLink.style.display='flex';
+        accountLink.href='account-settings.html?from=employer-team';
+      }else{
+        accountLink.style.display='none';
+        accountLink.removeAttribute('href');
+      }
     }
   }
   let editingJobId = null;
