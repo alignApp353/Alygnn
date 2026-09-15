@@ -584,6 +584,13 @@ function nativePlatform(){
   try{return window.Capacitor?.getPlatform?.() || ''}catch(_){return ''}
 }
 
+function isNativeAlygnnApp(){
+  try{
+    if(window.Capacitor?.isNativePlatform?.())return true;
+    return nativePlatform()==='android' || nativePlatform()==='ios';
+  }catch(_){return false}
+}
+
 function isAndroidNative(){
   return nativePlatform()==='android';
 }
@@ -699,17 +706,6 @@ async function nativeGoogleLogin(){
   return true;
 }
 
-async function browserGoogleLogin(){
-  const {error}=await sb.auth.signInWithOAuth({
-    provider:'google',
-    options:{
-      redirectTo:'https://alygnn.com/app-employer-login.html',
-      queryParams:{prompt:'select_account'}
-    }
-  });
-  if(error)throw error;
-}
-
 async function googleLogin(){
   const button=document.getElementById('google-btn');
   const original=button.innerHTML;
@@ -718,15 +714,17 @@ async function googleLogin(){
   localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
 
   try{
-    if(isAndroidNative()){
-      const completed=await nativeGoogleLogin();
-      if(!completed){
-        button.disabled=false;
-        button.innerHTML=original;
-      }
-      return;
+    // app-employer-login.html is a native-app page. Never fall back to web OAuth here.
+    // This prevents Google sign-in from opening alygnn.com/Chrome.
+    if(!isNativeAlygnnApp()){
+      throw new Error('Google sign-in is available inside the Alygnn mobile app.');
     }
-    await browserGoogleLogin();
+    const completed=await nativeGoogleLogin();
+    if(!completed){
+      button.disabled=false;
+      button.innerHTML=original;
+    }
+    return;
   }catch(error){
     console.error('Employer Google sign-in failed:',error);
     const raw=String(error?.message||error||'').toLowerCase();
