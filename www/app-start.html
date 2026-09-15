@@ -7,50 +7,47 @@
 <title>Welcome to Alygnn</title>
 <script id="alygnn-start-theme-critical">
 (function(){
-  const media=window.matchMedia
-    ? window.matchMedia('(prefers-color-scheme: dark)')
-    : null;
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
 
   function normalize(value){
     value=String(value||'').toLowerCase().trim();
     if(value==='system'||value==='system-default'||value==='default') return 'auto';
-    return ['auto','light','dark'].includes(value)?value:'auto';
+    return ['auto','light','dark'].includes(value)?value:'';
   }
 
+  function read(key){try{return localStorage.getItem(key)}catch(_error){return null}}
+  function write(key,value){try{localStorage.setItem(key,value)}catch(_error){}}
+
   function lastExperience(){
-    try{
-      return localStorage.getItem('alygnn_account_type')==='employer'
-        ? 'employer'
-        : 'candidate';
-    }catch(_error){
-      return 'candidate';
-    }
+    return read('alygnn_account_type')==='employer'?'employer':'candidate';
   }
 
   function preference(){
+    // Global app theme wins everywhere so navigation never flips themes.
+    let pref=normalize(read('alygnnTheme'));
+    if(pref) return pref;
+
     const type=lastExperience();
-    try{
-      if(type==='employer'){
-        return normalize(
-          localStorage.getItem('alygnnEmployerTheme')||
-          localStorage.getItem('alygnnTheme')||
-          'auto'
-        );
-      }
-      return normalize(
-        localStorage.getItem('alygnnCandidateTheme')||
-        localStorage.getItem('alygnnTheme')||
-        'auto'
-      );
-    }catch(_error){
-      return 'auto';
+    const keys=type==='employer'
+      ? ['alygnnEmployerTheme','alygnn_employer_theme']
+      : ['alygnnCandidateTheme','alygnn_candidate_theme'];
+
+    for(const key of keys){
+      pref=normalize(read(key));
+      if(pref){ write('alygnnTheme',pref); return pref; }
     }
+
+    for(const key of ['alygnn_theme','alygnn-theme']){
+      pref=normalize(read(key));
+      if(pref){ write('alygnnTheme',pref); return pref; }
+    }
+
+    return 'auto';
   }
 
   function resolved(){
     const pref=preference();
-    if(pref==='dark') return 'dark';
-    if(pref==='light') return 'light';
+    if(pref==='dark'||pref==='light') return pref;
     return media&&media.matches?'dark':'light';
   }
 
@@ -58,36 +55,25 @@
     const theme=resolved();
     const root=document.documentElement;
     root.dataset.theme=theme;
+    root.dataset.effectiveTheme=theme;
     root.style.colorScheme=theme;
     root.style.backgroundColor=theme==='dark'?'#071722':'#F6F8F7';
 
     let meta=document.querySelector('meta[name="theme-color"]');
-    if(!meta){
-      meta=document.createElement('meta');
-      meta.name='theme-color';
-      document.head.appendChild(meta);
-    }
+    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta)}
     meta.setAttribute('content',theme==='dark'?'#071722':'#F6F8F7');
   }
 
   apply();
-
   if(media){
-    const onChange=()=>{ if(preference()==='auto') apply(); };
+    const onChange=()=>{if(preference()==='auto')apply()};
     media.addEventListener?.('change',onChange);
-    if(!media.addEventListener) media.addListener?.(onChange);
+    if(!media.addEventListener)media.addListener?.(onChange);
   }
-
   window.addEventListener('pageshow',apply);
   window.addEventListener('storage',event=>{
-    if([
-      'alygnn_account_type',
-      'alygnnEmployerTheme',
-      'alygnnCandidateTheme',
-      'alygnnTheme'
-    ].includes(event.key)) apply();
+    if(['alygnn_account_type','alygnnTheme','alygnnEmployerTheme','alygnnCandidateTheme','alygnn_theme','alygnn-theme','alygnn_employer_theme','alygnn_candidate_theme'].includes(event.key))apply();
   });
-
   window.AlygnnStartTheme={apply,preference,resolved,lastExperience};
 })();
 </script>
@@ -254,6 +240,8 @@ function chooseExperience(type){
   const other=type==='candidate'?employerChoice:candidateChoice;
   selected.classList.add('selected');
   other.classList.add('faded');
+  const currentTheme=window.AlygnnStartTheme?.preference?.()||'auto';
+  localStorage.setItem('alygnnTheme',currentTheme);
   localStorage.setItem('alygnn_account_type',type);
   window.AlygnnStartTheme?.apply?.();
 
