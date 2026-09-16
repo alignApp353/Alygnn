@@ -1968,6 +1968,61 @@ body[data-theme="light"] .bottom-nav {
   background:#F6F8F7 !important;
 }
 </style>
+
+<style id="alygnn-candidate-settings-surface-final">
+/* Final candidate shell rule: Settings/Profile/Header/Nav are one exact canvas.
+   Target html[data-effective-theme] because that is the actual global theme source. */
+html[data-effective-theme="light"],
+html[data-effective-theme="light"] body,
+html[data-effective-theme="light"] .app-header,
+html[data-effective-theme="light"] .page,
+html[data-effective-theme="light"] .settings-view,
+html[data-effective-theme="light"] .bottom-nav{
+  --bg:#F6F8F7!important;
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="dark"],
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] .app-header,
+html[data-effective-theme="dark"] .page,
+html[data-effective-theme="dark"] .settings-view,
+html[data-effective-theme="dark"] .bottom-nav{
+  --bg:#061821!important;
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+
+/* Settings typography is the candidate-page standard. */
+.settings-view .eyebrow{
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:1.35px!important;
+  text-transform:uppercase!important;
+}
+.settings-title{
+  margin-top:10px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:34px!important;
+  line-height:1.08!important;
+  letter-spacing:-.75px!important;
+  font-weight:900!important;
+}
+.settings-subtitle{
+  margin-top:9px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:14px!important;
+  line-height:1.6!important;
+  font-weight:400!important;
+}
+html[data-effective-theme="light"] .settings-view .eyebrow{color:#345F91!important}
+html[data-effective-theme="dark"] .settings-view .eyebrow{color:#79A7D5!important}
+</style>
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
