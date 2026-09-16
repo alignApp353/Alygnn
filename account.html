@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Account — Alygnn</title>
 
@@ -653,22 +653,92 @@ select.form-input{
 }
 #resume-replace-link:hover{ color:var(--brand); }
 
+/* Mobile navigation: keep the desktop nav unchanged, but stop squeezing
+   every account action into one iPhone-sized row. */
+.mobile-menu-btn{
+  display:none;
+  width:40px;
+  height:40px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--card-bg);
+  color:var(--text);
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.mobile-menu-btn svg{ width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+.mobile-nav-backdrop{
+  display:none;
+  position:fixed;
+  inset:64px 0 0;
+  background:rgba(26,37,48,.18);
+  z-index:198;
+}
+.mobile-nav-menu{
+  display:none;
+  position:fixed;
+  top:72px;
+  left:12px;
+  right:12px;
+  z-index:199;
+  background:rgba(252,252,250,.98);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:8px;
+  box-shadow:0 18px 46px rgba(26,37,48,.16);
+}
+.mobile-nav-menu.open,
+.mobile-nav-backdrop.open{ display:block; }
+.mobile-nav-menu a,
+.mobile-nav-menu button{
+  width:100%;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  color:var(--text);
+  text-decoration:none;
+  font:500 14px 'DM Sans',sans-serif;
+  text-align:left;
+}
+.mobile-nav-menu a.active{ background:var(--brand-tint); color:var(--brand); }
+.mobile-nav-menu button{ color:#9d4f4f; cursor:pointer; }
+.mobile-nav-divider{ height:1px; background:var(--border); margin:6px 8px; }
+
 @media(max-width:640px){
+  html,body{ max-width:100%; overflow-x:hidden; }
   nav{
-    padding:0 18px;
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right));
+    gap:12px;
   }
 
-  .nav-links{
-    gap:14px;
+  .nav-links,
+  nav > .nav-signout{
+    display:none !important;
   }
 
-  .nav-links a{
-    font-size:13px;
+  .mobile-menu-btn{
+    display:inline-flex;
+    margin-left:auto;
   }
 
   .profile-card{
-    padding:24px;
+    padding:20px;
+    gap:16px;
     align-items:flex-start;
+    border-radius:18px;
+  }
+
+  .profile-info h1{
+    font-size:1.45rem;
   }
 
   .setup-banner{
@@ -688,7 +758,20 @@ select.form-input{
   }
 
   .page{
-    padding-top:36px;
+    padding:28px 16px 84px;
+  }
+
+  .setup-banner{
+    padding:20px;
+    border-radius:18px;
+  }
+
+  .link-card{
+    padding:15px 16px;
+  }
+
+  .mobile-nav-menu{
+    padding-bottom:max(8px, env(safe-area-inset-bottom));
   }
 }
 
@@ -707,8 +790,20 @@ select.form-input{
     <a href="my-jobs.html">My jobs</a>
     <a href="swipe.html" id="nav-swipe-link" style="display:none;">Swipe</a>
   </div>
+  <button class="mobile-menu-btn" id="candidate-mobile-menu-btn" type="button" aria-label="Open menu" aria-expanded="false" onclick="toggleCandidateMobileMenu()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
   <button class="nav-signout" onclick="signOutFromNav()">Sign out</button>
 </nav>
+
+<div class="mobile-nav-backdrop" id="candidate-mobile-nav-backdrop" onclick="closeCandidateMobileMenu()"></div>
+<div class="mobile-nav-menu" id="candidate-mobile-nav-menu" aria-hidden="true">
+  <a href="account.html" class="active">Account</a>
+  <a href="my-jobs.html">My jobs</a>
+  <a href="swipe.html" id="mobile-nav-swipe-link" style="display:none;">Swipe</a>
+  <div class="mobile-nav-divider"></div>
+  <button type="button" onclick="signOutFromNav()">Sign out</button>
+</div>
 
 <div class="loading" id="loading">Loading your account...</div>
 
@@ -1493,6 +1588,8 @@ async function initAccountPage(){
 
   if (hasResume && profile?.preferences) {
     if (swipeLink) swipeLink.style.display = '';
+    const mobileSwipeLink = document.getElementById('mobile-nav-swipe-link');
+    if (mobileSwipeLink) mobileSwipeLink.style.display = '';
   } else if (!hasResume) {
     setupBanner.style.display = 'flex';
     setupTitle.textContent = 'Upload your resume to start swiping';
@@ -1519,6 +1616,27 @@ initAccountPage();
 <div class="mini-footer">
   <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
 </div>
+
+
+<script>
+function toggleCandidateMobileMenu(){
+  const menu=document.getElementById('candidate-mobile-nav-menu');
+  const backdrop=document.getElementById('candidate-mobile-nav-backdrop');
+  const btn=document.getElementById('candidate-mobile-menu-btn');
+  const next=!menu?.classList.contains('open');
+  menu?.classList.toggle('open',next);
+  backdrop?.classList.toggle('open',next);
+  menu?.setAttribute('aria-hidden',next?'false':'true');
+  btn?.setAttribute('aria-expanded',next?'true':'false');
+}
+function closeCandidateMobileMenu(){
+  document.getElementById('candidate-mobile-nav-menu')?.classList.remove('open');
+  document.getElementById('candidate-mobile-nav-backdrop')?.classList.remove('open');
+  document.getElementById('candidate-mobile-nav-menu')?.setAttribute('aria-hidden','true');
+  document.getElementById('candidate-mobile-menu-btn')?.setAttribute('aria-expanded','false');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeCandidateMobileMenu(); });
+</script>
 
 </body>
 </html>
