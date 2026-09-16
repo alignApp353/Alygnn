@@ -621,6 +621,54 @@ html[data-effective-theme="dark"] .bottom-nav.candidate .nav{color:#8293A2}
 html[data-effective-theme="dark"] .bottom-nav.candidate .nav.active{color:#73A4CE}
 html[data-effective-theme="dark"] .bottom-nav.candidate .nav.active::before{background:#73A4CE}
 </style>
+
+<style id="alygnn-candidate-type-consistency-messages">
+/* Match candidate headings exactly to My Jobs + Settings. */
+body.candidate-mode .eyebrow{
+  margin-top:28px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:1.35px!important;
+  text-transform:uppercase!important;
+}
+body.candidate-mode .title{
+  margin-top:10px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:34px!important;
+  line-height:1.08!important;
+  letter-spacing:-.75px!important;
+  font-weight:900!important;
+}
+body.candidate-mode .sub{
+  margin-top:9px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:14px!important;
+  line-height:1.6!important;
+  font-weight:400!important;
+}
+html[data-effective-theme="light"] body.candidate-mode .eyebrow{color:#345F91!important}
+html[data-effective-theme="dark"] body.candidate-mode .eyebrow{color:#79A7D5!important}
+
+/* One continuous candidate canvas. */
+html[data-effective-theme="light"] body.candidate-mode,
+html[data-effective-theme="light"] body.candidate-mode .shell,
+html[data-effective-theme="light"] body.candidate-mode .top,
+html[data-effective-theme="light"] .bottom-nav.candidate{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+html[data-effective-theme="dark"] body.candidate-mode,
+html[data-effective-theme="dark"] body.candidate-mode .shell,
+html[data-effective-theme="dark"] body.candidate-mode .top,
+html[data-effective-theme="dark"] .bottom-nav.candidate{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+</style>
 </head>
 
 <body>
