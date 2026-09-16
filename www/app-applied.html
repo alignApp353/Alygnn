@@ -591,9 +591,28 @@ html[data-effective-theme="dark"] .my-jobs-header{
   border-bottom:1px solid #29404C!important;
 }
 </style>
+
+<style id="alygnn-my-jobs-full-width-header-fix">
+/* My Jobs header must be a full-width app bar, never an inset card/box. */
+.my-jobs-header{
+  width:100%!important;
+  max-width:520px!important;
+  margin:0 auto!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.app{
+  padding-top:18px!important;
+}
+</style>
 </head>
-<body data-candidate-nav-build="2026-08-26-isolated-header">
-<div class="app">
+<body data-candidate-nav-build="2026-09-15-full-width-header">
 <header class="my-jobs-header">
   <div class="my-jobs-header-spacer" aria-hidden="true"></div>
 
@@ -608,6 +627,7 @@ html[data-effective-theme="dark"] .my-jobs-header{
     aria-label="Open my profile"
   >A</button>
 </header>
+<div class="app">
 <div class="title">My Jobs</div><div class="subtitle">Track applications and revisit jobs you passed on.</div>
 <div class="stats">
   <div class="stat"><div id="appliedCount" class="stat-number">0</div><div class="stat-label">Applied</div></div>
