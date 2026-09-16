@@ -1651,6 +1651,60 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
 </style>
 
+
+<style id="discover-profile-header-alignment-fix">
+/* Keep Discover's top shell visually identical to My Profile. */
+.top-header{
+  min-height:86px!important;
+  height:auto!important;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+}
+.top-header .brand-block{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:0!important;
+}
+.top-header .logo{
+  font-size:31px!important;
+  line-height:1!important;
+  letter-spacing:-.7px!important;
+}
+/* Match the content breathing room used directly below the My Profile header. */
+.progress-shell{
+  padding:28px 18px 0!important;
+}
+
+/* When there are no more matches, center the message in the usable content area
+   (between the progress card and bottom nav), not the whole viewport. */
+.empty-screen{
+  height:auto!important;
+  min-height:calc(100dvh - 86px - 118px - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+  padding:12px 30px calc(44px + env(safe-area-inset-bottom))!important;
+  align-items:center!important;
+  justify-content:center!important;
+  transform:translateY(-5vh)!important;
+}
+.empty-title{
+  margin-bottom:12px!important;
+}
+.empty-sub{
+  max-width:340px!important;
+}
+@media (max-height:760px){
+  .top-header{
+    min-height:86px!important;
+    padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  }
+  .progress-shell{padding-top:20px!important}
+  .empty-screen{
+    min-height:calc(100dvh - 86px - 104px - 82px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    transform:translateY(-3vh)!important;
+  }
+}
+</style>
+
 </head>
 
 <body data-swipe-build="2026-08-26-theme-sync">
