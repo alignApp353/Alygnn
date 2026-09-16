@@ -2197,6 +2197,106 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
 </style>
 
+
+<style id="alygnn-profile-one-canvas-final">
+/* My Profile must use the exact same candidate canvas as Discover/Messages. */
+body[data-theme="dark"],
+body[data-theme="dark"] .app-header,
+body[data-theme="dark"] #profile-view,
+body[data-theme="dark"] .page,
+body[data-theme="dark"] .bottom-nav,
+body[data-theme="dark"] #candidate-bottom-nav {
+  --bg:#061821 !important;
+  background:#061821 !important;
+  background-color:#061821 !important;
+  background-image:none !important;
+}
+
+body[data-theme="light"],
+body[data-theme="light"] .app-header,
+body[data-theme="light"] #profile-view,
+body[data-theme="light"] .page,
+body[data-theme="light"] .bottom-nav,
+body[data-theme="light"] #candidate-bottom-nav {
+  --bg:#F6F8F7 !important;
+  background:#F6F8F7 !important;
+  background-color:#F6F8F7 !important;
+  background-image:none !important;
+}
+
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] .app-header,
+html[data-effective-theme="dark"] #profile-view,
+html[data-effective-theme="dark"] .page,
+html[data-effective-theme="dark"] .bottom-nav,
+html[data-effective-theme="dark"] #candidate-bottom-nav {
+  --bg:#061821 !important;
+  background:#061821 !important;
+  background-color:#061821 !important;
+  background-image:none !important;
+}
+
+html[data-effective-theme="light"] body,
+html[data-effective-theme="light"] .app-header,
+html[data-effective-theme="light"] #profile-view,
+html[data-effective-theme="light"] .page,
+html[data-effective-theme="light"] .bottom-nav,
+html[data-effective-theme="light"] #candidate-bottom-nav {
+  --bg:#F6F8F7 !important;
+  background:#F6F8F7 !important;
+  background-color:#F6F8F7 !important;
+  background-image:none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body[data-theme="system"],
+  body[data-theme="system"] .app-header,
+  body[data-theme="system"] #profile-view,
+  body[data-theme="system"] .page,
+  body[data-theme="system"] .bottom-nav,
+  body[data-theme="system"] #candidate-bottom-nav {
+    --bg:#061821 !important;
+    background:#061821 !important;
+    background-color:#061821 !important;
+    background-image:none !important;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  body[data-theme="system"],
+  body[data-theme="system"] .app-header,
+  body[data-theme="system"] #profile-view,
+  body[data-theme="system"] .page,
+  body[data-theme="system"] .bottom-nav,
+  body[data-theme="system"] #candidate-bottom-nav {
+    --bg:#F6F8F7 !important;
+    background:#F6F8F7 !important;
+    background-color:#F6F8F7 !important;
+    background-image:none !important;
+  }
+}
+</style>
+<script id="alygnn-profile-theme-color-final">
+(function(){
+  function syncProfileChrome(){
+    const root=document.documentElement;
+    const body=document.body;
+    const effective=(root.dataset.effectiveTheme||root.dataset.theme||body?.dataset?.theme||'').toLowerCase();
+    let dark=effective==='dark';
+    if(effective==='system'||!effective){
+      dark=!!(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){ meta=document.createElement('meta'); meta.name='theme-color'; document.head.appendChild(meta); }
+    meta.setAttribute('content',dark?'#061821':'#F6F8F7');
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',syncProfileChrome,{once:true});
+  else syncProfileChrome();
+  window.addEventListener('pageshow',syncProfileChrome);
+  window.addEventListener('focus',syncProfileChrome);
+})();
+</script>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
