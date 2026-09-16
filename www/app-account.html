@@ -31,7 +31,7 @@
     root.style.colorScheme=theme;
     let meta=document.querySelector('meta[name="theme-color"]');
     if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
-    meta.setAttribute('content',theme==='dark'?'#071824':'#F5F8F8');
+    meta.setAttribute('content',theme==='dark'?'#061821':'#F5F8F8');
   }
   apply();
   window.__alygnnApplyCandidateGlobalTheme=apply;
@@ -706,7 +706,7 @@ button{
 
 html[data-effective-theme="dark"] .loading,
 html[data-theme="dark"] .loading{
-  background:#071824;
+  background:#061821;
   color:#F6F8F7;
 }
 
@@ -1060,7 +1060,7 @@ body[data-theme="dark"]{
   --text:#F3F7FA;
   --muted:#A9B8C5;
   --border:#29404C;
-  --soft:#0B1D26;
+  --soft:#061821;
   background:radial-gradient(circle at top,rgba(93,127,163,.12),transparent 31%),var(--bg);
 }
 
@@ -1100,7 +1100,7 @@ body[data-theme="dark"] .settings-choice.active{
     --text:#F3F7FA;
     --muted:#A9B8C5;
     --border:#29404C;
-    --soft:#0B1D26;
+    --soft:#061821;
     background:radial-gradient(circle at top,rgba(93,127,163,.12),transparent 31%),var(--bg);
   }
 
@@ -1646,7 +1646,7 @@ html[data-effective-theme="dark"] body{
   --muted:#A9B8C5;
   --text-muted:#A9B8C5;
   --border:#29404C;
-  --soft:#0B1D26;
+  --soft:#061821;
   --rose:#E58C96;
   --rose-soft:rgba(229,140,150,.13);
   --shadow:0 18px 46px rgba(0,0,0,.22);
@@ -1747,7 +1747,7 @@ html[data-effective-theme="dark"] :is(
   .setup-item,
   .onboarding-step
 ){
-  background:#0B1D26!important;
+  background:#061821!important;
   border-color:#29404C!important;
   color:#F3F7FA!important;
 }
@@ -1888,7 +1888,7 @@ html[data-effective-theme="dark"] :is(
   .settings-input,
   .profile-edit-field input
 ){
-  background:#0B1D26!important;
+  background:#061821!important;
   border-color:#29404C!important;
   color:#F3F7FA!important;
 }
@@ -1941,22 +1941,22 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 /* Keep the candidate shell one continuous canvas instead of a separate
    header/content/nav shade. Cards still retain their own contrast. */
 body[data-theme="dark"] {
-  --bg:#071824;
-  background:#071824 !important;
+  --bg:#061821;
+  background:#061821 !important;
 }
 body[data-theme="dark"] .app-header,
 body[data-theme="dark"] .bottom-nav {
-  background:#071824 !important;
+  background:#061821 !important;
 }
 
 @media (prefers-color-scheme: dark) {
   body[data-theme="system"] {
-    --bg:#071824;
-    background:#071824 !important;
+    --bg:#061821;
+    background:#061821 !important;
   }
   body[data-theme="system"] .app-header,
   body[data-theme="system"] .bottom-nav {
-    background:#071824 !important;
+    background:#061821 !important;
   }
 }
 
@@ -2303,7 +2303,7 @@ html[data-effective-theme="light"] #candidate-bottom-nav {
 /* FINAL OVERRIDE — the circled My Profile header/status-bar area must be the
    exact same surface as the candidate page below it. No separate dark band. */
 :root{
-  --alygnn-candidate-dark-canvas:#0B1D26;
+  --alygnn-candidate-dark-canvas:#061821;
 }
 
 html[data-effective-theme="dark"],
@@ -2353,7 +2353,7 @@ body[data-theme="dark"] .app-header{
 </style>
 <script id="alygnn-profile-header-exact-theme-color-fix">
 (function(){
-  const DARK='#0B1D26';
+  const DARK='#061821';
   const LIGHT='#F6F8F7';
   function syncExactCandidateChrome(){
     const root=document.documentElement;
@@ -3356,7 +3356,7 @@ function refreshCandidateSettingsUI(){
   document.documentElement.dataset.theme=effective;
   document.documentElement.dataset.effectiveTheme=effective;
   document.documentElement.style.colorScheme=effective;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',effective==='dark'?'#071824':'#F5F8F8');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',effective==='dark'?'#061821':'#F5F8F8');
 
   document.querySelectorAll('[data-theme-option]')
     .forEach(button=>{
