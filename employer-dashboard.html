@@ -206,6 +206,41 @@
   .wizard-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 22px; line-height: 1.5; }
 
   .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 32px; }
+
+  /* Company logo gate for new job postings. */
+  .posting-logo-card {
+    display:flex; align-items:center; gap:16px; padding:16px;
+    border:1.5px solid var(--border); border-radius:14px; background:var(--bg);
+    transition:border-color .2s, background .2s;
+  }
+  .posting-logo-card.ready { border-color:rgba(111,191,143,.55); background:rgba(111,191,143,.07); }
+  .posting-logo-card.needs-logo { border-color:rgba(231,184,109,.55); background:rgba(231,184,109,.07); }
+  .posting-logo-preview {
+    width:64px; height:64px; flex:0 0 64px; border-radius:15px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--brand-light); border:1px solid rgba(93,127,163,.18);
+    color:var(--brand); font-family:'DM Serif Display',serif; font-size:20px;
+  }
+  .posting-logo-preview img { width:100%; height:100%; object-fit:cover; display:block; }
+  .posting-logo-copy { flex:1; min-width:0; }
+  .posting-logo-copy strong { display:block; color:var(--text); font-size:14px; margin-bottom:4px; }
+  .posting-logo-copy p { color:var(--text-muted); font-size:12px; line-height:1.5; margin:0 0 10px; }
+  .posting-logo-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .posting-logo-input { display:none; }
+  .posting-logo-upload-btn {
+    border:1px solid var(--brand); background:white; color:var(--brand);
+    border-radius:100px; padding:8px 14px; cursor:pointer;
+    font:500 12px 'DM Sans',sans-serif; transition:.2s ease;
+  }
+  .posting-logo-upload-btn:hover { background:var(--brand); color:white; }
+  .posting-logo-upload-btn:disabled { opacity:.45; cursor:not-allowed; background:white; color:var(--text-muted); border-color:var(--border); }
+  .posting-logo-status { font-size:11px; color:var(--text-muted); line-height:1.4; }
+  .posting-logo-status.success { color:#2d8a57; }
+  .posting-logo-status.error { color:#a05858; }
+  @media (max-width:640px){
+    .posting-logo-card { align-items:flex-start; }
+    .posting-logo-preview { width:56px; height:56px; flex-basis:56px; border-radius:13px; }
+  }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .form-group.full { grid-column: 1 / -1; }
@@ -995,6 +1030,22 @@
               <input type="text" class="form-input" id="f-company" placeholder="Your company" oninput="updatePreview()" readonly style="background: var(--bg); color: var(--text-muted); cursor: not-allowed;">
               <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Matches your verified company profile. <a href="employer-account.html" style="color: var(--brand);">Edit in account settings</a>.</p>
             </div>
+
+            <div class="form-group full" id="posting-logo-group">
+              <label class="form-label">Company logo <span style="text-transform:none; font-weight:400;">(required)</span></label>
+              <div class="posting-logo-card needs-logo" id="posting-logo-card">
+                <div class="posting-logo-preview" id="posting-logo-preview">CO</div>
+                <div class="posting-logo-copy">
+                  <strong id="posting-logo-title">Add your company logo</strong>
+                  <p id="posting-logo-copy">Candidates will see this logo on your job listings. You cannot continue until a company logo is saved.</p>
+                  <div class="posting-logo-actions">
+                    <input class="posting-logo-input" id="posting-logo-input" type="file" accept="image/png,image/jpeg,image/webp" onchange="handlePostingCompanyLogoUpload(event)">
+                    <button class="posting-logo-upload-btn" id="posting-logo-upload-btn" type="button" onclick="document.getElementById('posting-logo-input').click()">Upload logo</button>
+                    <span class="posting-logo-status" id="posting-logo-status">PNG, JPG, or WEBP · max 5 MB</span>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Job type</label>
@@ -1261,6 +1312,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let employerVerified = false;
   let currentProfile = null;
   let currentUser = null;
+  let companyLogoUploading = false;
   let teamAccess = null;
   let teamRuntime = null;
   let isTeamMember = false;
@@ -2379,7 +2431,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     } else {
       const { data: ownerProfile, error: profileError } = await sb
         .from('profiles')
-        .select('role, company_name, full_name, employer_verified, verification_status, hiring_blueprint')
+        .select('role, company_name, full_name, employer_verified, verification_status, hiring_blueprint, company_logo_url')
         .eq('id', authedUser.id)
         .maybeSingle();
 
@@ -2425,6 +2477,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         companyInput.value = profile.company_name;
       }
     }
+
+    await hydratePostingCompanyLogo();
+    renderPostingCompanyLogo(currentProfile?.company_logo_url || '');
 
     renderSelectedChips('req');
     renderSelectedChips('benefit');
@@ -3031,6 +3086,188 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (typeof renderWizardStep === 'function') renderWizardStep();
   }
 
+  function postingLogoInitials(name) {
+    const clean = String(name || '').trim();
+    if (!clean) return 'CO';
+    return clean.split(/\s+/).filter(Boolean).slice(0,2).map(part => part[0]).join('').toUpperCase() || 'CO';
+  }
+
+  async function hydratePostingCompanyLogo() {
+    if (String(currentProfile?.company_logo_url || '').trim()) return;
+    if (!isTeamMember || !workspaceOwnerId) return;
+
+    // A Hiring Manager/Admin with company_edit can read the canonical owner profile.
+    if (teamCan('company_edit')) {
+      try {
+        const { data, error } = await sb.rpc('get_my_company_account_profile');
+        if (!error && data?.profile) {
+          currentProfile = { ...(currentProfile || {}), ...data.profile };
+          if (String(currentProfile?.company_logo_url || '').trim()) return;
+        }
+      } catch (error) {
+        console.warn('Could not load company logo from company account profile:', error);
+      }
+    }
+
+    // Recruiters may not have company_edit. The public company profile is read-only
+    // and safe for retrieving the logo already chosen by the company owner.
+    try {
+      const { data, error } = await sb.rpc('get_public_company_profile', {
+        target_employer: workspaceOwnerId
+      });
+      if (!error) {
+        const row = Array.isArray(data) ? data[0] : data;
+        const logoUrl = String(row?.company_logo_url || '').trim();
+        if (logoUrl) currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+      }
+    } catch (error) {
+      console.warn('Could not load public company logo:', error);
+    }
+  }
+
+  function renderPostingCompanyLogo(logoUrl) {
+    const group = document.getElementById('posting-logo-group');
+    const card = document.getElementById('posting-logo-card');
+    const preview = document.getElementById('posting-logo-preview');
+    const title = document.getElementById('posting-logo-title');
+    const copy = document.getElementById('posting-logo-copy');
+    const status = document.getElementById('posting-logo-status');
+    const uploadBtn = document.getElementById('posting-logo-upload-btn');
+    const fileInput = document.getElementById('posting-logo-input');
+    if (!group || !card || !preview || !title || !copy || !status || !uploadBtn || !fileInput) return;
+
+    // Logo is a creation requirement, not an edit requirement.
+    group.style.display = editingJobId ? 'none' : 'flex';
+    if (editingJobId) return;
+
+    const logo = String(logoUrl || '').trim();
+    const canChangeLogo = !isTeamMember || teamCan('company_edit');
+    uploadBtn.disabled = companyLogoUploading || !canChangeLogo;
+    fileInput.disabled = companyLogoUploading || !canChangeLogo;
+
+    if (logo) {
+      card.classList.add('ready');
+      card.classList.remove('needs-logo');
+      preview.innerHTML = `<img src="${escapeHtml(logo)}" alt="Company logo">`;
+      title.textContent = 'Company logo ready';
+      copy.textContent = 'This logo will appear with your job listing and company profile.';
+      uploadBtn.textContent = canChangeLogo ? 'Replace logo' : 'Logo added';
+      status.textContent = companyLogoUploading ? 'Uploading…' : 'Required logo is saved';
+      status.className = 'posting-logo-status success';
+    } else {
+      card.classList.remove('ready');
+      card.classList.add('needs-logo');
+      preview.textContent = postingLogoInitials(currentProfile?.company_name || document.getElementById('f-company')?.value);
+      title.textContent = 'Add your company logo';
+      copy.textContent = canChangeLogo
+        ? 'Candidates will see this logo on your job listings. You cannot continue until a company logo is saved.'
+        : 'A company logo is required before this job can be posted. Ask the company owner or a teammate with Edit company profile access to add it.';
+      uploadBtn.textContent = 'Upload logo';
+      status.textContent = canChangeLogo ? 'PNG, JPG, or WEBP · max 5 MB' : 'Logo required before continuing';
+      status.className = canChangeLogo ? 'posting-logo-status' : 'posting-logo-status error';
+    }
+  }
+
+  async function savePostingCompanyLogoUrl(logoUrl) {
+    if (isTeamMember) {
+      if (!teamCan('company_edit')) {
+        throw new Error('Your team role does not include company profile editing.');
+      }
+      const { data, error } = await sb.rpc('update_my_company_profile_fields', {
+        p_updates: { company_logo_url: logoUrl }
+      });
+      if (error) throw error;
+      if (data?.profile) currentProfile = { ...(currentProfile || {}), ...data.profile };
+      else currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+      return;
+    }
+
+    const { error } = await sb
+      .from('profiles')
+      .update({ company_logo_url: logoUrl })
+      .eq('id', workspaceOwnerId || currentUser?.id);
+    if (error) throw error;
+    currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+  }
+
+  async function handlePostingCompanyLogoUpload(event) {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    const status = document.getElementById('posting-logo-status');
+    if (!file || !currentUser) return;
+
+    if (isTeamMember && !teamCan('company_edit')) {
+      showToast('Ask the company owner or a teammate with Edit company profile access to add the company logo.');
+      if (input) input.value = '';
+      return;
+    }
+
+    const allowed = ['image/png','image/jpeg','image/webp'];
+    if (!allowed.includes(file.type)) {
+      if (status) {
+        status.textContent = 'Use a PNG, JPG, or WEBP company logo.';
+        status.className = 'posting-logo-status error';
+      }
+      if (input) input.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      if (status) {
+        status.textContent = 'Company logo must be 5 MB or smaller.';
+        status.className = 'posting-logo-status error';
+      }
+      if (input) input.value = '';
+      return;
+    }
+
+    companyLogoUploading = true;
+    renderPostingCompanyLogo(currentProfile?.company_logo_url || '');
+    if (status) {
+      status.textContent = 'Uploading logo…';
+      status.className = 'posting-logo-status';
+    }
+    renderWizardStep();
+
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      // Keep the storage object under the authenticated user's folder so existing
+      // Storage RLS continues to work. The saved public URL belongs to the company.
+      const storagePath = `${currentUser.id}/company-logo-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('company-logos')
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = sb.storage
+        .from('company-logos')
+        .getPublicUrl(storagePath);
+      const logoUrl = String(publicData?.publicUrl || '').trim();
+      if (!logoUrl) throw new Error('Could not create the company logo URL.');
+
+      await savePostingCompanyLogoUrl(logoUrl);
+      currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+      showToast('Company logo saved. You can continue.');
+    } catch (error) {
+      console.error('Company logo upload failed:', error);
+      if (status) {
+        status.textContent = error?.message || 'Could not save the logo. Please try again.';
+        status.className = 'posting-logo-status error';
+      }
+      showToast('Could not save your company logo.');
+    } finally {
+      companyLogoUploading = false;
+      if (input) input.value = '';
+      renderPostingCompanyLogo(currentProfile?.company_logo_url || '');
+      renderWizardStep();
+    }
+  }
+
   // ---- Post Job wizard (5 steps, matches the mobile app's step-by-step
   // flow) — Basics, Location, Pay, Description, Requirements & Benefits.
   const TOTAL_WIZARD_STEPS = 5;
@@ -3060,9 +3297,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       continueBtn.disabled = locked;
     } else {
       continueBtn.textContent = 'Continue';
-      continueBtn.classList.remove('locked');
-      continueBtn.disabled = false;
+      const logoRequiredNow = currentWizardStep === 1 && !editingJobId;
+      const logoReady = !!String(currentProfile?.company_logo_url || '').trim() && !companyLogoUploading;
+      const lockedForLogo = logoRequiredNow && !logoReady;
+      continueBtn.classList.toggle('locked', lockedForLogo);
+      continueBtn.disabled = lockedForLogo;
     }
+
+    renderPostingCompanyLogo(currentProfile?.company_logo_url || '');
   }
 
   function resetWizardToStep1() {
@@ -3080,6 +3322,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const company = document.getElementById('f-company').value.trim();
       if (!isValidJobTitle(title)) return 'Enter a real job title, like "Customer Service Representative" or "Sales Account Manager".';
       if (!isValidCompanyName(company)) return 'Enter a real company name.';
+      if (!editingJobId) {
+        if (companyLogoUploading) return 'Wait for your company logo to finish uploading.';
+        if (!String(currentProfile?.company_logo_url || '').trim()) {
+          return isTeamMember && !teamCan('company_edit')
+            ? 'A company logo is required. Ask the company owner or a teammate with Edit company profile access to add it.'
+            : 'Upload your company logo before continuing.';
+        }
+      }
       return '';
     }
     if (step === 2) {
@@ -4657,6 +4907,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       showToast('Your team role does not include job posting access.');
       return;
     }
+
+    // Company branding is required for every NEW listing. Editing an existing
+    // listing does not consume another slot and does not force a logo change.
+    if (!editingJobId) {
+      if (companyLogoUploading) {
+        showToast('Wait for your company logo to finish uploading.');
+        return;
+      }
+      if (!String(currentProfile?.company_logo_url || '').trim()) {
+        currentWizardStep = 1;
+        renderWizardStep();
+        showToast(isTeamMember && !teamCan('company_edit')
+          ? 'A company logo is required. Ask the company owner or a teammate with Edit company profile access to add it.'
+          : 'Upload your company logo before posting a new job.');
+        return;
+      }
+    }
+
     // Verification determines whether a NEW listing is active or pending.
     // It no longer sends the employer back through onboarding.
 
