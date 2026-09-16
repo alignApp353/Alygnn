@@ -358,7 +358,20 @@
     currentEmail = session.user.email;
     currentUserId = session.user.id;
 
-    // Team-member account settings are permission-gated. A teammate who was
+    const initialParams = new URLSearchParams(window.location.search);
+    let preferredMode = String(initialParams.get('mode') || '').toLowerCase();
+    if (!preferredMode) {
+      try {
+        preferredMode = String(
+          sessionStorage.getItem('alygnn_active_mode') ||
+          localStorage.getItem('alygnn_active_mode') ||
+          ''
+        ).toLowerCase();
+      } catch (_) {}
+    }
+    const candidateModeActive = preferredMode === 'candidate';
+
+    // Team-member account settings are permission-gated while they are using
     // given only job-posting access should not be able to open this page from
     // an old link, browser history, or a manually typed URL.
     try {
@@ -378,7 +391,7 @@
           permissions.billing_manage === true ||
           permissions.team_manage === true;
 
-        if (isRestrictedTeamMember) {
+        if (isRestrictedTeamMember && !candidateModeActive) {
           if (permissions.company_edit === true) {
             window.location.replace('employer-account.html?team=1');
           } else {
@@ -402,14 +415,20 @@
 
     // Team members use this page only for THEIR OWN login/security. Workspace
     // permissions still come from the company owner and are not expanded here.
-    const params = new URLSearchParams(window.location.search);
+    const params = initialParams;
     const from = String(params.get('from') || '').toLowerCase();
     const role = String(profile?.role || session.user.user_metadata?.role || '').toLowerCase();
     const backLink = document.getElementById('back-link');
     const pageTitle = document.getElementById('page-title');
     const pageIntro = document.getElementById('page-intro');
 
-    if (from === 'employer-team') {
+    if (candidateModeActive) {
+      document.title = 'Account settings — Alygnn';
+      pageTitle.textContent = 'Account settings';
+      pageIntro.textContent = 'Manage your personal Alygnn login and sign-in methods.';
+      backLink.href = 'account.html?mode=candidate';
+      backLink.textContent = '← Back to account';
+    } else if (from === 'employer-team') {
       document.title = 'My account — Alygnn';
       pageTitle.textContent = 'My account';
       pageIntro.textContent = 'Manage your personal Alygnn login. Your company role and workspace permissions stay controlled by the company owner.';
