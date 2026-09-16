@@ -33,11 +33,44 @@
   .nav-home:hover{ color:var(--brand); }
   .nav-right{ display:flex; align-items:center; gap:16px; }
   .nav-name{ font-size:14px; color:var(--text-muted); }
-  .nav-role-badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:rgba(93,127,163,.10);border:1px solid rgba(93,127,163,.22);color:var(--brand);font-size:11px;font-weight:700;line-height:1;white-space:nowrap;}
-  .team-role-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 22px;padding:12px 16px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg);color:var(--text-muted);font-size:13px;}
+  .nav-role-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:rgba(93,127,163,.10);border:1px solid rgba(93,127,163,.22);color:var(--brand);font-size:11px;font-weight:700;line-height:1;white-space:nowrap;}
+
+  /* Team-member account identity — clear without repeating the same sentence twice. */
+  .team-role-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:28px;
+    margin:0 0 30px;padding:22px 24px;
+    border:1px solid rgba(93,127,163,.16);border-radius:20px;
+    background:linear-gradient(135deg,rgba(252,252,250,.98),rgba(93,127,163,.055));
+    box-shadow:0 12px 34px rgba(38,54,70,.045);
+  }
   .team-role-banner[hidden]{display:none!important;}
-  .team-role-banner .team-role-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--brand);}
-  .team-role-banner strong{font-size:13px;color:var(--text);font-weight:700;}
+  .team-workspace-main{min-width:0;flex:1;}
+  .team-role-banner .team-role-label{
+    display:block;margin-bottom:6px;font-size:10px;font-weight:700;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--brand);
+  }
+  .team-workspace-company{
+    font-family:'DM Serif Display',serif;font-size:25px;line-height:1.08;letter-spacing:-.45px;
+    color:var(--text);overflow-wrap:anywhere;
+  }
+  .team-workspace-sub{margin-top:7px;font-size:12.5px;color:var(--text-muted);line-height:1.45;}
+  .team-workspace-side{flex:0 0 auto;min-width:250px;max-width:360px;}
+  .team-workspace-role{
+    display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;
+    background:var(--brand);color:white;font-size:12px;font-weight:700;line-height:1;
+    box-shadow:0 7px 18px rgba(93,127,163,.16);
+  }
+  .team-access-title{margin:11px 0 7px;font-size:9px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#7F8B97;}
+  .team-access-list{display:flex;gap:6px;flex-wrap:wrap;}
+  .team-access-chip{
+    display:inline-flex;align-items:center;padding:5px 8px;border:1px solid var(--border);
+    border-radius:999px;background:rgba(255,255,255,.78);font-size:10.5px;color:var(--text-muted);white-space:nowrap;
+  }
+  @media(max-width:700px){
+    .team-role-banner{align-items:flex-start;flex-direction:column;gap:18px;padding:19px 18px;border-radius:18px;}
+    .team-workspace-company{font-size:22px;}
+    .team-workspace-side{min-width:0;max-width:none;width:100%;}
+  }
   .nav-signout{ font-size:13px; color:var(--text-muted); background:none; border:1px solid var(--border); border-radius:100px; padding:6px 14px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; }
 
   .notif-wrap{ position:relative; }
@@ -883,9 +916,16 @@
 <div class="page">
 
   <div class="team-role-banner" id="team-role-banner" hidden>
-    <span class="team-role-label">Workspace access</span>
-    <strong id="team-role-banner-role">Team Member</strong>
-    <span id="team-role-banner-company"></span>
+    <div class="team-workspace-main">
+      <span class="team-role-label">Employer account</span>
+      <div class="team-workspace-company" id="team-role-banner-company">Company workspace</div>
+      <div class="team-workspace-sub">Signed in to this company workspace</div>
+    </div>
+    <div class="team-workspace-side">
+      <span class="team-workspace-role" id="team-role-banner-role">Team Member</span>
+      <div class="team-access-title">Your access</div>
+      <div class="team-access-list" id="team-role-banner-access"></div>
+    </div>
   </div>
 
   <!-- Verification status banner: only shown while NOT yet approved -->
@@ -1198,6 +1238,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const banner=document.getElementById('team-role-banner');
     const bannerRole=document.getElementById('team-role-banner-role');
     const bannerCompany=document.getElementById('team-role-banner-company');
+    const accessList=document.getElementById('team-role-banner-access');
 
     if(!isTeamMember){
       if(badge) badge.hidden=true;
@@ -1213,8 +1254,27 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(bannerRole) bannerRole.textContent=role;
     if(bannerCompany){
       const company=String(companyName||'').trim();
-      bannerCompany.textContent=company?`Access to ${company}`:'Employer workspace access';
+      bannerCompany.textContent=company||'Employer workspace';
     }
+
+    if(accessList){
+      const permissionLabels=[
+        ['jobs_manage','Manage jobs'],
+        ['candidates_manage','Review candidates'],
+        ['messages_manage','Messages'],
+        ['company_edit','Company profile'],
+        ['billing_view','View billing'],
+        ['billing_manage','Manage billing'],
+        ['team_manage','Manage team']
+      ];
+      const enabled=permissionLabels
+        .filter(([permission])=>accountTeamCan(permission))
+        .map(([,label])=>`<span class="team-access-chip">${label}</span>`);
+      accessList.innerHTML=enabled.length
+        ? enabled.join('')
+        : '<span class="team-access-chip">Limited workspace access</span>';
+    }
+
     if(banner) banner.hidden=false;
   }
 
