@@ -648,6 +648,37 @@ html[data-effective-theme="dark"] .my-jobs-header,
 html[data-effective-theme="dark"] .bottom-nav{border-color:#29404C!important}
 </style>
 
+
+<style id="alygnn-candidate-type-consistency-myjobs">
+/* Candidate primary-page typography: same scale as Messages + Settings. */
+.candidate-page-eyebrow{
+  margin-top:28px!important;
+  color:var(--brand-dark)!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:1.35px!important;
+  text-transform:uppercase!important;
+}
+.title{
+  margin-top:10px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:34px!important;
+  line-height:1.08!important;
+  letter-spacing:-.75px!important;
+  font-weight:900!important;
+}
+.subtitle{
+  margin-top:9px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:14px!important;
+  line-height:1.6!important;
+  font-weight:400!important;
+}
+html[data-effective-theme="light"] .candidate-page-eyebrow{color:#345F91!important}
+html[data-effective-theme="dark"] .candidate-page-eyebrow{color:#79A7D5!important}
+</style>
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
 <header class="my-jobs-header">
@@ -665,7 +696,9 @@ html[data-effective-theme="dark"] .bottom-nav{border-color:#29404C!important}
   >A</button>
 </header>
 <div class="app">
-<div class="title">My Jobs</div><div class="subtitle">Track applications and revisit jobs you passed on.</div>
+<div class="candidate-page-eyebrow">Candidate workspace</div>
+<div class="title">My Jobs</div>
+<div class="subtitle">Track applications and revisit jobs you passed on.</div>
 <div class="stats">
   <div class="stat"><div id="appliedCount" class="stat-number">0</div><div class="stat-label">Applied</div></div>
   <div class="stat"><div id="acceptedCount" class="stat-number">0</div><div class="stat-label">Accepted</div></div>
