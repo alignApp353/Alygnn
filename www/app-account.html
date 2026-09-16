@@ -1936,6 +1936,38 @@ body[data-profile-complete="true"] #snapshot-section{display:none!important}
 .messaging-nav-badge[hidden]{display:none!important}
 </style>
 
+
+<style id="alygnn-candidate-unified-background-fix">
+/* Keep the candidate shell one continuous canvas instead of a separate
+   header/content/nav shade. Cards still retain their own contrast. */
+body[data-theme="dark"] {
+  --bg:#071824;
+  background:#071824 !important;
+}
+body[data-theme="dark"] .app-header,
+body[data-theme="dark"] .bottom-nav {
+  background:#071824 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body[data-theme="system"] {
+    --bg:#071824;
+    background:#071824 !important;
+  }
+  body[data-theme="system"] .app-header,
+  body[data-theme="system"] .bottom-nav {
+    background:#071824 !important;
+  }
+}
+
+body[data-theme="light"] {
+  background:#F6F8F7 !important;
+}
+body[data-theme="light"] .app-header,
+body[data-theme="light"] .bottom-nav {
+  background:#F6F8F7 !important;
+}
+</style>
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
