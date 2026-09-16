@@ -17,14 +17,6 @@ nav{height:70px;position:fixed;top:0;left:0;right:0;z-index:20;background:rgba(2
 .nav-links{display:flex;align-items:center;gap:24px;margin-left:auto}.nav-links a{color:var(--muted);text-decoration:none;font-size:14px}.nav-links a.active{color:var(--text);font-weight:600}
 .nav-cta,.nav-signout,.primary,.secondary{border-radius:12px;padding:11px 18px;font:600 13px 'DM Sans';cursor:pointer}
 .nav-cta,.primary{background:var(--brand);border:1px solid var(--brand);color:white}.nav-signout,.secondary{background:white;border:1px solid var(--border);color:var(--text)}
-
-.employer-actions{gap:14px}
-.notification-btn{width:39px;height:39px;border:1px solid var(--border);background:white;border-radius:11px;display:grid;place-items:center;cursor:pointer;color:#4A5968;padding:0}
-.notification-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.company-name{font-size:14px;font-weight:500;color:var(--muted);max-width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.add-slot-btn{height:40px;border-radius:999px;border:1.5px solid var(--brand);background:white;color:var(--brand);padding:0 20px;font:600 13px 'DM Sans';cursor:pointer}
-.add-slot-btn:hover{background:#F1F5F8}
-
 .page{max-width:1080px;margin:0 auto;padding:120px 24px 70px}.eyebrow{text-transform:uppercase;letter-spacing:2px;color:var(--brand);font-size:11px;font-weight:700}
 h1{font-family:'DM Serif Display';font-size:42px;font-weight:400;margin:8px 0 10px}.lead{color:var(--muted);max-width:670px;line-height:1.65;margin:0 0 30px}
 .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:22px}.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px}
@@ -39,311 +31,22 @@ h1{font-family:'DM Serif Display';font-size:42px;font-weight:400;margin:8px 0 10
 .role{padding:5px 8px;border-radius:999px;background:#F2F5F6;color:#4A5968;font-size:10px;font-weight:700}.person-actions{display:flex;gap:7px}.mini{border:1px solid var(--border);background:white;color:var(--text);padding:7px 9px;border-radius:9px;font:600 11px 'DM Sans';cursor:pointer}
 .empty{padding:22px;border:1px dashed var(--border);border-radius:14px;color:var(--muted);text-align:center;font-size:13px}
 .role-guide{display:flex;flex-direction:column;gap:10px;margin-top:16px}.role-guide div{padding:13px;border:1px solid var(--border);border-radius:12px;background:white}.role-guide strong{font-size:13px}.role-guide span{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:4px}
-.overlay{
-  position:fixed;
-  left:0;
-  right:0;
-  top:64px;
-  bottom:0;
-  background:rgba(25,37,48,.35);
-  display:none;
-  align-items:flex-start;
-  justify-content:center;
-  padding:24px 20px;
-  overflow-y:auto;
-  z-index:900;
-}
-.overlay.show{display:flex}
-.modal{
-  width:min(100%,660px);
-  max-height:calc(100vh - 64px - 48px);
-  overflow:auto;
-  overscroll-behavior:contain;
-  background:#FCFCFA;
-  border-radius:22px;
-  border:1px solid var(--border);
-  padding:0 24px;
-  box-shadow:0 28px 90px rgba(26,37,48,.18);
-}
-.modal-head{
-  position:sticky;
-  top:0;
-  z-index:4;
-  display:flex;
-  justify-content:space-between;
-  gap:16px;
-  align-items:flex-start;
-  background:#FCFCFA;
-  padding:22px 0 16px;
-  border-bottom:1px solid rgba(221,227,232,.75);
-}
-.modal h2{font-family:'DM Serif Display';font-weight:400;font-size:28px;margin:0}
-.close{border:0;background:transparent;font-size:26px;color:var(--muted);cursor:pointer}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
-.field{display:flex;flex-direction:column;gap:7px}
-.field.full{grid-column:1/-1}
-.field label{font-size:12px;font-weight:600}
-.field input,.field select{height:48px;border:1px solid var(--border);border-radius:11px;background:white;padding:0 12px;font:14px 'DM Sans';outline:none}
-.field input:focus,.field select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(93,127,163,.1)}
-.permission{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--border);padding:12px;border-radius:11px;background:white}
-.permission input{margin-top:3px}
-.permission strong{font-size:12px}
-.permission span{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:2px}
-#modal-message{
-  position:sticky;
-  top:91px;
-  z-index:3;
-  margin:12px 0 0;
-}
-.modal-actions{
-  position:sticky;
-  bottom:0;
-  z-index:4;
-  display:flex;
-  justify-content:flex-end;
-  gap:10px;
-  margin:20px -24px 0;
-  padding:16px 24px 20px;
-  background:linear-gradient(to bottom,rgba(252,252,250,.94),#FCFCFA 28%);
-  border-top:1px solid var(--border);
-}
-.message{display:none;margin-top:14px;padding:11px 12px;border-radius:11px;font-size:12px;line-height:1.45}
-.message.show{display:block}
-.message.error{background:#FAEEEE;color:#9B4A4A}
-.message.success{background:#EAF6EE;color:#356B49}
-.message.info{background:#EEF4F8;color:#45647F}
-#save-member:disabled{opacity:.58;cursor:not-allowed}
-@media(max-width:680px){
-  .overlay{padding:12px 10px}
-  .modal{max-height:calc(100vh - 64px - 24px);padding:0 16px;border-radius:18px}
-  .modal-actions{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
-}
+.overlay{position:fixed;inset:0;background:rgba(25,37,48,.35);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.overlay.show{display:flex}
+.modal{width:min(100%,620px);max-height:90vh;overflow:auto;background:#FCFCFA;border-radius:22px;border:1px solid var(--border);padding:24px;box-shadow:0 28px 90px rgba(26,37,48,.18)}
+.modal-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.modal h2{font-family:'DM Serif Display';font-weight:400;font-size:28px;margin:0}.close{border:0;background:transparent;font-size:26px;color:var(--muted);cursor:pointer}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:600}.field input,.field select{height:48px;border:1px solid var(--border);border-radius:11px;background:white;padding:0 12px;font:14px 'DM Sans';outline:none}.field input:focus,.field select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(93,127,163,.1)}
+.permission{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--border);padding:12px;border-radius:11px;background:white}.permission input{margin-top:3px}.permission strong{font-size:12px}.permission span{display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:2px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.message{display:none;margin-top:14px;padding:11px 12px;border-radius:11px;font-size:12px}.message.show{display:block}.message.error{background:#FAEEEE;color:#9B4A4A}.message.success{background:#EAF6EE;color:#356B49}
 @media(max-width:800px){.grid{grid-template-columns:1fr}.nav-links a:nth-child(1){display:none}.page{padding-top:100px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.person{align-items:flex-start;flex-wrap:wrap}.person-actions{width:100%}}
-
-/* Match employer-account.html navigation exactly */
-nav{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  width:100%;
-  z-index:1000;
-  height:64px;
-  padding:0 5%;
-  background:rgba(246,248,247,.92);
-  backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:0;
-}
-.logo{
-  font-family:'DM Serif Display',serif;
-  font-size:22px;
-  color:var(--brand);
-  letter-spacing:-.5px;
-  text-decoration:none;
-  flex:0 0 auto;
-}
-.logo span{color:var(--sage)}
-
-.account-nav-links{
-  display:flex;
-  gap:24px;
-  align-items:center;
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-}
-.account-nav-links a{
-  text-decoration:none;
-  color:var(--muted);
-  font-size:14px;
-  padding:6px 0;
-  border-bottom:2px solid transparent;
-  transition:color .2s,border-color .2s;
-  white-space:nowrap;
-}
-.account-nav-links a.active{
-  color:var(--text);
-  border-bottom-color:var(--brand);
-}
-.account-nav-links a:hover{color:var(--text)}
-.account-nav-links .nav-home:hover{color:var(--brand)}
-
-.nav-right{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  margin-left:auto;
-}
-.nav-name{
-  font-size:14px;
-  color:var(--muted);
-  max-width:170px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.notif-bell{
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:36px;
-  height:36px;
-  padding:0;
-  border-radius:10px;
-  border:1px solid var(--border);
-  background:var(--card);
-  color:var(--muted);
-  cursor:pointer;
-}
-.notif-bell:hover{
-  color:var(--brand);
-  border-color:var(--brand);
-}
-.notif-bell svg{
-  width:18px;
-  height:18px;
-}
-.nav-post-job{
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  background:transparent;
-  color:var(--brand);
-  border:1.5px solid var(--brand);
-  border-radius:100px;
-  padding:8px 18px;
-  font-size:14px;
-  font-weight:500;
-  text-decoration:none;
-  white-space:nowrap;
-  transition:background .2s,color .2s;
-}
-.nav-post-job:hover{
-  background:var(--brand);
-  color:#fff;
-}
-.nav-cta{
-  background:var(--brand);
-  color:#fff;
-  border:none;
-  border-radius:100px;
-  padding:9px 22px;
-  font-size:14px;
-  font-family:'DM Sans',sans-serif;
-  font-weight:500;
-  cursor:pointer;
-  transition:opacity .2s;
-  text-decoration:none;
-}
-.nav-cta:hover{opacity:.88}
-.nav-signout{
-  font-size:13px;
-  color:var(--muted);
-  background:none;
-  border:1px solid var(--border);
-  border-radius:100px;
-  padding:6px 14px;
-  cursor:pointer;
-  font-family:'DM Sans',sans-serif;
-  transition:all .2s;
-}
-.nav-signout:hover{
-  color:var(--text);
-  border-color:#bcc8d2;
-}
-
-/* Team page begins directly below the same 64px employer header */
-.page{padding-top:112px}
-
-@media(max-width:900px){
-  .account-nav-links{display:none}
-  .nav-right{gap:8px}
-  .nav-post-job{display:none}
-  .nav-name{max-width:110px}
-}
-
-
-
-  .notif-wrap{ position:relative; }
-  .notif-bell{
-    position:relative; display:flex; align-items:center; justify-content:center;
-    width:36px; height:36px; border-radius:10px; border:1px solid var(--border);
-    background:var(--card); color:var(--muted); cursor:pointer;
-  }
-  .notif-bell:hover{ color:var(--brand); border-color:var(--brand); }
-  .notif-bell svg{ width:18px; height:18px; }
-  .notif-badge{
-    position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px;
-    background:var(--rose); color:white; font-size:10px; font-weight:700;
-    border-radius:999px; display:flex; align-items:center; justify-content:center; line-height:1;
-  }
-  .notif-dropdown{
-    position:absolute; top:calc(100% + 10px); right:0; width:340px; max-height:420px;
-    overflow-y:auto; background:var(--card); border:1px solid var(--border);
-    border-radius:14px; box-shadow:0 12px 32px rgba(0,0,0,0.12); z-index:50;
-  }
-  .notif-dropdown-header{
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
-    font-size:13px; font-weight:600; color:var(--text); padding:14px 16px 8px;
-  }
-  .notif-mark-all{
-    border:0; background:transparent; color:var(--brand);
-    font-family:'DM Sans',sans-serif; font-size:11px; font-weight:500;
-    cursor:pointer; padding:0; white-space:nowrap;
-  }
-  .notif-mark-all:hover{ opacity:.8; }
-  .notif-mark-all:disabled{ opacity:.5; cursor:default; }
-  .notif-empty{ font-size:13px; color:var(--muted); padding:20px 16px; text-align:center; }
-  .notif-item{ display:block; padding:10px 16px; border-top:1px solid var(--border); text-decoration:none; color:inherit; }
-  .notif-item:hover{ background:#EEF3F7; }
-  .notif-item.unread{ background:#EEF3F7; }
-  .notif-item-title{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
-  .notif-item-body{ font-size:12px; color:var(--muted); line-height:1.4; }
-  .notif-item-time{ font-size:11px; color:var(--muted); margin-top:4px; }
-  .notif-view-all{
-    display:block; text-align:center; font-size:12px; color:var(--brand); font-weight:600;
-    padding:10px; border-top:1px solid var(--border); text-decoration:none;
-  }
-  .notif-view-all:hover{ opacity:.8; }
 </style>
 </head>
 <body>
 <nav>
-  <a href="employers.html" class="logo">Alygnn<span>.</span></a>
-
-  <div class="account-nav-links">
-    <a href="employers.html" class="nav-home">← Home</a>
+  <a class="logo" href="employers.html">Alygnn<span>.</span></a>
+  <div class="nav-links">
     <a href="employer-account.html" class="active">Account</a>
-  </div>
-
-  <div class="nav-right">
-    <div class="notif-wrap" id="notif-wrap">
-      <button class="notif-bell" id="notif-bell" type="button" aria-label="Notifications">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span class="notif-badge" id="notif-badge" style="display:none">0</span>
-      </button>
-      <div class="notif-dropdown" id="notif-dropdown" style="display:none">
-        <div class="notif-dropdown-header">
-          <span>Notifications</span>
-          <button class="notif-mark-all" id="notif-mark-all-btn" type="button" onclick="markAllEmployerNotificationsRead(event)">Mark all read</button>
-        </div>
-        <div id="notif-list"><div class="notif-empty">No notifications yet.</div></div>
-      </div>
-    </div>
-
-    <span class="nav-name" id="header-company-name">Employer</span>
-
-    <a href="employer-dashboard.html#post"
-       class="nav-post-job">+ Add a job slot</a>
-
-    <button class="nav-cta" type="button"
-      onclick="location.href='employer-dashboard.html'">Dashboard</button>
-
+    <a href="pricing.html">Pricing</a>
+    <a href="employer-dashboard.html" class="nav-cta">Dashboard</a>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
@@ -381,7 +84,7 @@ nav{
       <div class="role-guide">
         <div><strong>Recruiter</strong><span>Post and manage jobs, review candidates, and message applicants.</span></div>
         <div><strong>Hiring Manager</strong><span>Recruiter access plus the ability to edit company hiring information.</span></div>
-        <div><strong>Admin</strong><span>Hiring Manager access with additional permissions chosen by the owner. Billing access is not included unless the owner enables it.</span></div>
+        <div><strong>Admin</strong><span>Hiring Manager access plus billing visibility. The owner remains the only person with full account control by default.</span></div>
       </div>
     </aside>
   </div>
@@ -390,7 +93,6 @@ nav{
 <div class="overlay" id="invite-overlay" onclick="if(event.target===this)closeInvite()">
   <div class="modal">
     <div class="modal-head"><div><div class="eyebrow">Team access</div><h2 id="modal-title">Invite team member</h2></div><button class="close" onclick="closeInvite()">×</button></div>
-    <div id="modal-message" class="message"></div>
     <div class="form-grid">
       <div class="field"><label>Name</label><input id="member-name" maxlength="120" placeholder="Team member name"></div>
       <div class="field"><label>Email</label><input id="member-email" type="email" maxlength="254" placeholder="name@example.com"></div>
@@ -403,6 +105,7 @@ nav{
       </div>
       <div class="field full"><label>Access</label><div id="permissions"></div></div>
     </div>
+    <div id="modal-message" class="message"></div>
     <div class="modal-actions">
       <button class="secondary" id="remove-member" style="display:none;margin-right:auto" onclick="removeMember()">Remove member</button>
       <button class="secondary" onclick="closeInvite()">Cancel</button>
@@ -414,10 +117,9 @@ nav{
 <script>
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-const TEAM_INVITE_FUNCTION_URL='https://auth.alygnn.com/functions/v1/send-team-invite';
 function alygnnAuthStorageKey(){let t=sessionStorage.getItem('alygnn_auth_tab_id');if(!t){t=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;sessionStorage.setItem('alygnn_auth_tab_id',t)}return `alygnn-auth-${t}`}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:sessionStorage,storageKey:alygnnAuthStorageKey(),persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let session=null,access=null,roster=null,editingMember=null,editingInvite=null;
+let session=null,access=null,roster=null,editingMember=null;
 const $=id=>document.getElementById(id);
 const PERMS=[
  ['jobs_manage','Post & edit jobs','Create, edit, pause, close, and manage company job posts.'],
@@ -431,7 +133,7 @@ const PERMS=[
 const PRESETS={
  recruiter:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:false,billing_view:false,billing_manage:false,team_manage:false},
  hiring_manager:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:false,billing_manage:false,team_manage:false},
- admin:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:false,billing_manage:false,team_manage:false}
+ admin:{jobs_manage:true,candidates_manage:true,messages_manage:true,company_edit:true,billing_view:true,billing_manage:false,team_manage:false}
 };
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function roleLabel(r){return ({owner:'Owner',admin:'Admin',hiring_manager:'Hiring Manager',recruiter:'Recruiter'})[String(r||'').toLowerCase()]||'Team Member'}
@@ -446,25 +148,18 @@ function applyRolePreset(){renderPermissions(PRESETS[$('member-role').value]||PR
 function currentPerms(){const v={};document.querySelectorAll('[data-perm]').forEach(x=>v[x.dataset.perm]=x.checked);return v}
 function renderAccess(){
  const p=String(access?.plan||'free').toLowerCase(), used=Number(access?.used_seats||0), max=Number(access?.max_teammates||0), inc=Number(access?.included_seats||0), paid=Number(access?.paid_seats||0), avail=Number(access?.available_seats||0), price=Number(access?.seat_price_cents||0);
+ // Show seats the company actually has right now, not the plan's hard ceiling.
+ // Example: Scale starts with 2 included seats, so it should say 2 of 2 used — not 2 of 8.
+ const purchasedCapacity=Math.max(0,inc+paid);
+ const currentCapacity=max>0?Math.min(max,purchasedCapacity):purchasedCapacity;
  $('plan-title').textContent=`${planLabel(p)} team access`;
  $('plan-badge').textContent=planLabel(p);
-
- // Replace the loading copy as soon as the team-access RPC returns.
- if(p==='free'){
-   $('plan-sub').textContent='Free employer account · no teammate seats included';
- }else if(p==='launch'){
-   $('plan-sub').textContent='Launch plan · add 1 teammate for $99/month';
- }else if(p==='growth'){
-   $('plan-sub').textContent='Growth plan · 1 teammate included';
- }else if(p==='scale'){
-   $('plan-sub').textContent='Scale plan · 2 teammates included';
- }else{
-   $('plan-sub').textContent=`${planLabel(p)} employer plan`;
- }
-
- $('seat-count').textContent=p==='free'?'No team seats':`${used} of ${max} used`;
- $('seat-detail').textContent=p==='free'?'Upgrade to a paid plan to add teammates.':`${inc} included · ${paid} paid seat${paid===1?'':'s'} · owner does not count`;
- $('seat-progress').style.width=max?Math.min(100,Math.round(used/max*100))+'%':'0%';$('plan-note').textContent=teamRule(access);
+ $('seat-count').textContent=p==='free'?'No team seats':`${used} of ${currentCapacity} teammate seat${currentCapacity===1?'':'s'} used`;
+ $('seat-detail').textContent=p==='free'
+   ?'Upgrade to a paid plan to add teammates.'
+   :`${inc} included${paid?` · ${paid} additional paid seat${paid===1?'':'s'}`:''} · owner does not count`;
+ $('seat-progress').style.width=currentCapacity?Math.min(100,Math.round(used/currentCapacity*100))+'%':'0%';
+ $('plan-note').textContent=teamRule(access);
  const b=$('primary-action');b.disabled=false;
  if(!can('team_manage')){b.textContent='Team access is view only';b.dataset.action='';b.disabled=true}
  else if(p==='free'){b.textContent='Upgrade to Launch';b.dataset.action='upgrade'}
@@ -476,705 +171,49 @@ function renderRoster(){
  const members=roster?.members||[], invites=roster?.invites||[];
  $('members-list').innerHTML=members.length?members.map(m=>`<div class="person"><div class="avatar">${initials(m.name,m.email)}</div><div class="person-main"><strong>${esc(m.name||m.email)}</strong><span>${esc(m.email||'')}</span></div><span class="role">${esc(roleLabel(m.team_role))}</span>${m.team_role!=='owner'&&can('team_manage')?`<div class="person-actions"><button class="mini" onclick='editMember(${JSON.stringify(JSON.stringify(m))})'>Edit</button></div>`:''}</div>`).join(''):'<div class="empty">No team members yet.</div>';
  $('invites-wrap').style.display=can('team_manage')?'block':'none';
- $('invites-list').innerHTML=invites.length?invites.map(i=>`<div class="person"><div class="avatar">${initials(i.name,i.email)}</div><div class="person-main"><strong>${esc(i.name||i.email)}</strong><span>${esc(i.email)} · invitation pending</span></div><span class="role">${esc(roleLabel(i.team_role))}</span><div class="person-actions"><button class="mini" onclick='editInvite(${JSON.stringify(JSON.stringify(i))})'>Edit</button><button class="mini" onclick="resendInvite('${esc(i.id)}')">Resend</button><button class="mini" onclick="revokeInvite('${esc(i.id)}')">Revoke</button></div></div>`).join(''):'<div class="empty">No pending invitations.</div>';
+ $('invites-list').innerHTML=invites.length?invites.map(i=>`<div class="person"><div class="avatar">${initials(i.name,i.email)}</div><div class="person-main"><strong>${esc(i.name||i.email)}</strong><span>${esc(i.email)} · invitation pending</span></div><span class="role">${esc(roleLabel(i.team_role))}</span><div class="person-actions"><button class="mini" onclick="resendInvite('${esc(i.id)}')">Resend</button><button class="mini" onclick="revokeInvite('${esc(i.id)}')">Revoke</button></div></div>`).join(''):'<div class="empty">No pending invitations.</div>';
 }
-
-async function loadHeaderCompanyName(){
-  try{
-    let name='';
-    const ownerId=String(access?.owner_user_id||session?.user?.id||'');
-
-    // Employer Account reads company_name from the employer profile.
-    // Use the same source first so this header matches it exactly.
-    if(ownerId){
-      const {data:profile}=await sb
-        .from('profiles')
-        .select('company_name,full_name')
-        .eq('id',ownerId)
-        .maybeSingle();
-
-      name=
-        profile?.company_name||
-        '';
-    }
-
-    // Fallback to the company record when available.
-    if(!name){
-      const companyId=String(access?.company_id||'');
-
-      if(companyId){
-        const {data:company}=await sb
-          .from('companies')
-          .select('company_name,name,legal_name')
-          .eq('id',companyId)
-          .maybeSingle();
-
-        name=
-          company?.company_name||
-          company?.name||
-          company?.legal_name||
-          '';
-      }
-    }
-
-    if(!name){
-      name=
-        session?.user?.user_metadata?.company_name||
-        'Employer';
-    }
-
-    $('header-company-name').textContent=name;
-  }catch(_){
-    $('header-company-name').textContent=
-      session?.user?.user_metadata?.company_name||
-      'Employer';
-  }
-}
-
 async function loadTeam(){
  clearMsg('page-message');
  try{
   const {data:a,error:e1}=await sb.rpc('get_my_team_access');if(e1)throw e1;access=a||{};
   const {data:r,error:e2}=await sb.rpc('get_my_team_roster');if(e2)throw e2;roster=r||{members:[],invites:[],access};if(r?.access)access=r.access;
-  renderAccess();renderRoster();await loadHeaderCompanyName();
+  renderAccess();renderRoster();
  }catch(e){console.error(e);showMsg('page-message',e.message||'Could not load team access. Make sure the Alygnn team SQL has been installed.')}
 }
-function openInvite(){
- if(!can('team_manage')){
-   showMsg('page-message','You do not have permission to invite team members.','error');
-   return;
- }
- editingMember=null;
- editingInvite=null;
- $('modal-title').textContent='Invite team member';
- $('member-name').value='';
- $('member-email').value='';
- $('member-email').readOnly=false;
- $('member-role').value='recruiter';
- $('remove-member').style.display='none';
- $('save-member').disabled=false;
- $('save-member').textContent='Send invite';
- applyRolePreset();
- clearMsg('modal-message');
- const overlay=$('invite-overlay');
- overlay.classList.add('show');
- overlay.scrollTop=0;
- const modal=overlay.querySelector('.modal');
- if(modal)modal.scrollTop=0;
- document.body.style.overflow='hidden';
- setTimeout(()=>$('member-name')?.focus(),60);
-}
-function closeInvite(){
- $('invite-overlay').classList.remove('show');
- document.body.style.overflow='';
-}
-function editMember(encoded){
- editingInvite=null;
- editingMember=JSON.parse(encoded);
- $('modal-title').textContent='Edit team member';
- $('member-name').value=editingMember.name||'';
- $('member-email').value=editingMember.email||'';
- $('member-email').readOnly=true;
- $('member-role').value=['admin','hiring_manager','recruiter'].includes(editingMember.team_role)?editingMember.team_role:'recruiter';
- $('remove-member').style.display='inline-block';
- $('save-member').disabled=false;
- $('save-member').textContent='Save access';
- renderPermissions(editingMember.permissions);
- clearMsg('modal-message');
- const overlay=$('invite-overlay');
- overlay.classList.add('show');
- overlay.scrollTop=0;
- const modal=overlay.querySelector('.modal');
- if(modal)modal.scrollTop=0;
- document.body.style.overflow='hidden';
-}
-
-function editInvite(encoded){
- editingMember=null;
- editingInvite=JSON.parse(encoded);
- $('modal-title').textContent='Edit invitation';
- $('member-name').value=editingInvite.name||'';
- $('member-email').value=editingInvite.email||'';
- $('member-email').readOnly=false;
- $('member-role').value=['admin','hiring_manager','recruiter'].includes(editingInvite.team_role)?editingInvite.team_role:'recruiter';
- $('remove-member').style.display='none';
- $('save-member').disabled=false;
- $('save-member').textContent='Save & resend invite';
- renderPermissions(editingInvite.permissions);
- clearMsg('modal-message');
- const overlay=$('invite-overlay');
- overlay.classList.add('show');
- overlay.scrollTop=0;
- const modal=overlay.querySelector('.modal');
- if(modal)modal.scrollTop=0;
- document.body.style.overflow='hidden';
-}
-
-async function sendTeamInviteEmail(inviteId){
-  if(!session?.access_token){
-    throw new Error('Your Alygnn session expired. Please sign in again.');
-  }
-
-  const controller=new AbortController();
-  const timeoutId=setTimeout(()=>controller.abort(),15000);
-
-  try{
-    const response=await fetch(TEAM_INVITE_FUNCTION_URL,{
-      method:'POST',
-      signal:controller.signal,
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':`Bearer ${session.access_token}`,
-        'apikey':SUPABASE_ANON_KEY
-      },
-      body:JSON.stringify({
-        invite_id:String(inviteId||'')
-      })
-    });
-
-    let data={};
-    try{
-      data=await response.json();
-    }catch(_){}
-
-    if(!response.ok||data?.success!==true){
-      throw new Error(
-        data?.error||
-        `Invitation email service returned ${response.status}.`
-      );
-    }
-
-    return data;
-  }catch(error){
-    if(error?.name==='AbortError'){
-      throw new Error('The invitation email service took too long to respond. Please try Resend again.');
-    }
-    throw error;
-  }finally{
-    clearTimeout(timeoutId);
-  }
-}
-
+function openInvite(){if(!can('team_manage'))return;editingMember=null;$('modal-title').textContent='Invite team member';$('member-name').value='';$('member-email').value='';$('member-email').readOnly=false;$('member-role').value='recruiter';$('remove-member').style.display='none';$('save-member').textContent='Send invite';applyRolePreset();clearMsg('modal-message');$('invite-overlay').classList.add('show')}
+function closeInvite(){$('invite-overlay').classList.remove('show')}
+function editMember(encoded){editingMember=JSON.parse(encoded);$('modal-title').textContent='Edit team member';$('member-name').value=editingMember.name||'';$('member-email').value=editingMember.email||'';$('member-email').readOnly=true;$('member-role').value=['admin','hiring_manager','recruiter'].includes(editingMember.team_role)?editingMember.team_role:'recruiter';$('remove-member').style.display='inline-block';$('save-member').textContent='Save access';renderPermissions(editingMember.permissions);clearMsg('modal-message');$('invite-overlay').classList.add('show')}
 async function saveMember(){
-  if(!can('team_manage')){
-    showMsg('modal-message','You do not have permission to manage team members.','error');
-    return;
+ if(!can('team_manage'))return;const b=$('save-member');const name=$('member-name').value.trim(),email=$('member-email').value.trim().toLowerCase(),role=$('member-role').value,permissions=currentPerms();
+ if(name.length<2)return showMsg('modal-message','Enter the team member’s name.');
+ if(!editingMember&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return showMsg('modal-message','Enter a valid email address.');
+ b.disabled=true;
+ try{
+  if(editingMember){const {error}=await sb.rpc('update_company_team_member',{p_user_id:editingMember.user_id,p_team_role:role,p_permissions:permissions});if(error)throw error;showMsg('page-message','Team member access updated.','success')}
+  else{
+   const {data:invite,error}=await sb.rpc('create_company_team_invite',{p_email:email,p_member_name:name,p_team_role:role,p_permissions:permissions});if(error)throw error;
+   try{const result=await sb.functions.invoke('send-team-invite',{body:{invite_id:invite?.id}});if(result.error)throw result.error;showMsg('page-message','Invitation sent.','success')}catch(mail){console.warn(mail);showMsg('page-message','Invitation saved, but the email could not be sent.','error')}
   }
-
-  const button=$('save-member');
-  const name=$('member-name').value.trim();
-  const email=$('member-email').value.trim().toLowerCase();
-  const role=$('member-role').value;
-  const permissions=currentPerms();
-
-  clearMsg('modal-message');
-
-  if(name.length<2){
-    showMsg('modal-message','Enter the team member’s name.','error');
-    $('member-name').focus();
-    return;
-  }
-
-  if(!editingMember&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    showMsg('modal-message','Enter a valid email address.','error');
-    $('member-email').focus();
-    return;
-  }
-
-  button.disabled=true;
-  const originalLabel=button.textContent;
-  button.textContent=editingMember?'Saving…':(editingInvite?'Saving changes…':'Sending invite…');
-
-  try{
-    if(editingMember){
-      const {error}=await sb.rpc('update_company_team_member',{
-        p_user_id:editingMember.user_id,
-        p_team_role:role,
-        p_permissions:permissions
-      });
-      if(error)throw error;
-
-      closeInvite();
-      await loadTeam();
-      showMsg('page-message','Team member access updated.','success');
-      return;
-    }
-
-    let inviteId='';
-
-    if(editingInvite){
-      const {data:invite,error:updateError}=await sb.rpc('update_company_team_invite',{
-        p_invite_id:editingInvite.id,
-        p_email:email,
-        p_member_name:name,
-        p_team_role:role,
-        p_permissions:permissions
-      });
-      if(updateError)throw updateError;
-      inviteId=invite?.id||editingInvite.id||'';
-    }else{
-      const {data:invite,error:createError}=await sb.rpc('create_company_team_invite',{
-        p_email:email,
-        p_member_name:name,
-        p_team_role:role,
-        p_permissions:permissions
-      });
-
-      if(createError){
-        const message=String(createError.message||'');
-
-        if(/pending invite already exists/i.test(message)){
-          const existing=(roster?.invites||[]).find(
-            item=>String(item.email||'').trim().toLowerCase()===email
-          );
-
-          if(existing?.id){
-            inviteId=existing.id;
-          }else{
-            throw new Error('A pending invitation already exists for this email. Close this window and use Resend under Pending Invitations.');
-          }
-        }else{
-          throw createError;
-        }
-      }else{
-        inviteId=invite?.id||'';
-      }
-    }
-
-    if(!inviteId){
-      throw new Error(
-        editingInvite
-          ? 'The invitation was updated but Alygnn did not receive an invitation ID. Refresh Team Members and try again.'
-          : 'The invitation was created but Alygnn did not receive an invitation ID. Refresh Team Members and try again.'
-      );
-    }
-
-    showMsg(
-      'modal-message',
-      editingInvite
-        ? 'Invitation updated. Resending the email now… Please keep this window open.'
-        : 'Invitation saved. Sending the email now… Please keep this window open.',
-      'info'
-    );
-
-    try{
-      await sendTeamInviteEmail(inviteId);
-    }catch(mailError){
-      await loadTeam();
-      throw new Error(
-        mailError?.message||
-        (editingInvite
-          ? 'The invitation was updated, but the email could not be resent. You can use Resend under Pending Invitations.'
-          : 'The invitation was saved, but the email could not be sent. You can use Resend under Pending Invitations.')
-      );
-    }
-
-    const wasEditingInvite=!!editingInvite;
-    closeInvite();
-    editingInvite=null;
-    await loadTeam();
-    showMsg(
-      'page-message',
-      wasEditingInvite ? 'Invitation updated and resent.' : 'Invitation sent successfully.',
-      'success'
-    );
-
-  }catch(error){
-    console.error('saveMember failed:',error);
-
-    let message=String(
-      error?.message||
-      'Could not send the invitation.'
-    );
-
-    if(/already connected to another employer workspace/i.test(message)){
-      message='This Alygnn login is already connected to another employer workspace. Use a different email or remove that account from its existing employer workspace first.';
-    }else if(/already on this company team/i.test(message)){
-      message='This person is already on your company team.';
-    }else if(/no team seat is available/i.test(message)){
-      message='There is no available team seat for this plan.';
-    }
-
-    showMsg('modal-message',message,'error');
-
-    const modal=$('invite-overlay')?.querySelector('.modal');
-    if(modal)modal.scrollTo({top:0,behavior:'smooth'});
-  }finally{
-    button.disabled=false;
-    button.textContent=editingMember?'Save access':(editingInvite?'Save & resend invite':originalLabel);
-  }
+  closeInvite();await loadTeam();
+ }catch(e){showMsg('modal-message',e.message||'Could not save the team member.')}finally{b.disabled=false}
 }
 async function removeMember(){if(!editingMember||!confirm(`Remove ${editingMember.name||editingMember.email} from this workspace?`))return;try{const {error}=await sb.rpc('remove_company_team_member',{p_user_id:editingMember.user_id});if(error)throw error;closeInvite();await loadTeam();showMsg('page-message','Team member removed.','success')}catch(e){showMsg('modal-message',e.message||'Could not remove team member.')}}
 async function revokeInvite(id){if(!confirm('Revoke this pending invitation?'))return;try{const {error}=await sb.rpc('revoke_company_team_invite',{p_invite_id:id});if(error)throw error;await loadTeam();showMsg('page-message','Invitation revoked.','success')}catch(e){showMsg('page-message',e.message||'Could not revoke invitation.')}}
-async function resendInvite(id){
-  try{
-    await sendTeamInviteEmail(id);
-    showMsg('page-message','Invitation email sent again.','success');
-  }catch(e){
-    console.error('Team invite resend failed:',e);
-    showMsg(
-      'page-message',
-      e?.message||'Could not resend the invitation email.',
-      'error'
-    );
-  }
-}
-function buySeat(){
-  location.href='employer-team-payment.html';
+async function resendInvite(id){try{const result=await sb.functions.invoke('send-team-invite',{body:{invite_id:id}});if(result.error)throw result.error;showMsg('page-message','Invitation email sent again.','success')}catch(e){showMsg('page-message',e.message||'Could not resend invitation.')}}
+async function buySeat(){
+ const price=Number(access?.seat_price_cents||0);if(!price)return;
+ if(!confirm(`Add one team seat for $${Math.round(price/100)}/month? It renews monthly until canceled.`))return;
+ const b=$('primary-action'),old=b.textContent;b.disabled=true;b.textContent='Opening checkout…';
+ try{
+  const res=await fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({product:'team_seat',billing:'monthly',purchase_type:'subscription',terms_accepted:true,terms_version:'team-seat-v1',source:'employer_web_team',success_url:'https://alygnn.com/employer-team.html?team_seat=success',cancel_url:'https://alygnn.com/employer-team.html?team_seat=cancelled'})});
+  const data=await res.json().catch(()=>({}));if(!res.ok||!data.url)throw new Error(data.error||'Could not open team-seat checkout.');location.href=data.url;
+ }catch(e){showMsg('page-message',e.message||'Could not start checkout.');b.disabled=false;b.textContent=old}
 }
 function handlePrimary(){const a=$('primary-action').dataset.action;if(a==='invite')openInvite();else if(a==='buy')buySeat();else if(a==='upgrade')location.href='pricing.html?reason=team_members'}
-
-let currentUserId = '';
-const escapeHtml = esc;
-
-
-
-  // ---- Notifications: same behavior as My Jobs ----
-
-  function timeAgo(iso) {
-    const diffMs = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return new Date(iso).toLocaleDateString();
-  }
-
-  let notificationItemsCache = [];
-  let accountMessageNotificationChannel = null;
-  let accountMessageNotificationPollTimer = null;
-  let accountMessageNotificationRefreshBusy = false;
-
-  function accountCandidateName(profile){
-    const direct=String(profile?.full_name||'').trim();
-    if(direct)return direct;
-
-    let resume=profile?.resume_data;
-    if(typeof resume==='string'){
-      try{resume=JSON.parse(resume)}catch(_){resume={}}
-    }
-    if(!resume||typeof resume!=='object')resume={};
-    const personal=resume.personal&&typeof resume.personal==='object'?resume.personal:{};
-
-    return String(
-      resume.name||
-      resume.full_name||
-      [personal.first_name,personal.last_name].filter(Boolean).join(' ')||
-      'Candidate'
-    ).trim();
-  }
-
-  async function fetchEmployerUnreadMessageNotifications(){
-    if(!currentUserId)return [];
-
-    try{
-      const {data:threads,error:threadsError}=await sb
-        .from('message_threads')
-        .select('id,job_id,candidate_id,employer_id')
-        .eq('employer_id',currentUserId);
-
-      if(threadsError)throw threadsError;
-
-      const employerThreads=threads||[];
-      const threadIds=employerThreads.map(t=>t.id).filter(Boolean);
-      if(!threadIds.length)return [];
-
-      const {data:messageRows,error:messagesError}=await sb
-        .from('messages')
-        .select('id,thread_id,sender_id,body,created_at,read_at')
-        .in('thread_id',threadIds)
-        .neq('sender_id',currentUserId)
-        .is('read_at',null)
-        .order('created_at',{ascending:false})
-        .limit(20);
-
-      if(messagesError)throw messagesError;
-      if(!(messageRows||[]).length)return [];
-
-      const jobIds=[...new Set(employerThreads.map(t=>t.job_id).filter(Boolean))];
-      const candidateIds=[...new Set(employerThreads.map(t=>t.candidate_id).filter(Boolean))];
-
-      const [jobsResult,profilesResult]=await Promise.all([
-        jobIds.length
-          ? sb.from('jobs').select('id,title').in('id',jobIds)
-          : Promise.resolve({data:[],error:null}),
-        candidateIds.length
-          ? sb.from('profiles').select('id,full_name,resume_data').in('id',candidateIds)
-          : Promise.resolve({data:[],error:null})
-      ]);
-
-      if(jobsResult.error)console.warn('Could not load notification job names:',jobsResult.error);
-      if(profilesResult.error)console.warn('Could not load notification candidate names:',profilesResult.error);
-
-      const threadMap=new Map(employerThreads.map(t=>[String(t.id),t]));
-      const jobMap=new Map((jobsResult.data||[]).map(job=>[String(job.id),job]));
-      const profileMap=new Map((profilesResult.data||[]).map(profile=>[String(profile.id),profile]));
-
-      return (messageRows||[]).map(message=>{
-        const thread=threadMap.get(String(message.thread_id))||{};
-        const job=jobMap.get(String(thread.job_id))||{};
-        const profile=profileMap.get(String(thread.candidate_id))||{};
-        const candidateName=accountCandidateName(profile);
-        const jobTitle=String(job.title||'your job').trim();
-        const preview=String(message.body||'').trim().replace(/\s+/g,' ');
-        const shortPreview=preview.length>90?preview.slice(0,87)+'…':preview;
-
-        return{
-          id:`message-${message.id}`,
-          source:'message',
-          message_id:message.id,
-          thread_id:message.thread_id,
-          type:'message',
-          title:`New message from ${candidateName}`,
-          body:shortPreview?`${jobTitle}: ${shortPreview}`:`New reply about ${jobTitle}.`,
-          link:`messages.html?thread=${encodeURIComponent(message.thread_id)}`,
-          read_at:null,
-          created_at:message.created_at
-        };
-      });
-    }catch(error){
-      console.warn('Could not load employer message notifications:',error);
-      return [];
-    }
-  }
-
-  async function fetchNotifications() {
-    if (!currentUserId) return [];
-
-    const [{data,error},messageItems]=await Promise.all([
-      sb
-        .from('notifications')
-        .select('id,type,title,body,link,read_at,created_at')
-        .eq('recipient_id',currentUserId)
-        .order('created_at',{ascending:false})
-        .limit(20),
-      fetchEmployerUnreadMessageNotifications()
-    ]);
-
-    if(error)console.error('Failed to load notifications:',error);
-
-    return [...messageItems,...(error?[]:(data||[]))]
-      .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))
-      .slice(0,20);
-  }
-
-  function normalizedEmployerNotificationTitle(n){
-    const title=String(n?.title||'').trim();
-    const match=title.match(/^new applicant for\s+(.+)$/i);
-    if(match)return `${match[1]} — New applicant`;
-    return title||'Notification';
-  }
-
-  function renderNotifDropdown(items) {
-    notificationItemsCache=items||[];
-
-    const badge=document.getElementById('notif-badge');
-    const list=document.getElementById('notif-list');
-    if(!badge||!list)return;
-
-    const unreadCount=notificationItemsCache.filter(n=>!n.read_at).length;
-
-    if(unreadCount>0){
-      badge.style.display='flex';
-      badge.textContent=unreadCount>9?'9+':String(unreadCount);
-    }else{
-      badge.style.display='none';
-    }
-
-    if(!notificationItemsCache.length){
-      list.innerHTML='<div class="notif-empty">No notifications yet.</div>';
-      return;
-    }
-
-    list.innerHTML=notificationItemsCache.slice(0,6).map(n=>{
-      if(n.source==='message'){
-        return `
-          <a class="notif-item unread" href="${escapeHtml(n.link||'#')}"
-             onclick="handleEmployerMessageNotification(event,'${n.id}')">
-            <div class="notif-item-title">${escapeHtml(n.title)}</div>
-            ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
-            <div class="notif-item-time">${timeAgo(n.created_at)}</div>
-          </a>`;
-      }
-
-      return `
-        <a class="notif-item ${n.read_at?'':'unread'}" href="${n.link?escapeHtml(n.link):'#'}"
-           onclick="handleEmployerRegularNotification(event,'${n.id}')">
-          <div class="notif-item-title">${escapeHtml(normalizedEmployerNotificationTitle(n))}</div>
-          ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
-          <div class="notif-item-time">${timeAgo(n.created_at)}</div>
-        </a>`;
-    }).join('');
-  }
-
-  async function handleEmployerRegularNotification(event,id){
-    if(event)event.preventDefault();
-    const n=notificationItemsCache.find(item=>item.id===id);
-    if(!n)return;
-
-    await sb
-      .from('notifications')
-      .update({read_at:new Date().toISOString()})
-      .eq('id',id)
-      .eq('recipient_id',currentUserId);
-
-    const dropdown=document.getElementById('notif-dropdown');
-    if(dropdown)dropdown.style.display='none';
-
-    const destination=String(n.link||'').trim();
-    if(destination){
-      location.href=destination;
-    }else if(String(n.title||'').toLowerCase().includes('applicant')||String(n.body||'').toLowerCase().includes('applied')){
-      location.href='candidates.html';
-    }else{
-      await refreshNotifications();
-    }
-  }
-
-  async function handleEmployerMessageNotification(event,id){
-    if(event)event.preventDefault();
-    const n=notificationItemsCache.find(item=>item.id===id);
-    if(!n)return;
-
-    if(n.message_id){
-      const {error}=await sb
-        .from('messages')
-        .update({read_at:new Date().toISOString()})
-        .eq('id',n.message_id)
-        .neq('sender_id',currentUserId)
-        .is('read_at',null);
-      if(error)console.warn('Could not mark employer message notification read:',error);
-    }
-
-    const dropdown=document.getElementById('notif-dropdown');
-    if(dropdown)dropdown.style.display='none';
-    location.href=n.link||'messages.html';
-  }
-
-  async function markAllEmployerNotificationsRead(event){
-    if(event){
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
-    const btn=document.getElementById('notif-mark-all-btn');
-    if(btn){
-      btn.disabled=true;
-      btn.textContent='Marking…';
-    }
-
-    const now=new Date().toISOString();
-    const regularIds=notificationItemsCache
-      .filter(item=>item.source!=='message'&&!item.read_at&&item.id)
-      .map(item=>item.id);
-    const messageIds=notificationItemsCache
-      .filter(item=>item.source==='message'&&item.message_id)
-      .map(item=>item.message_id);
-
-    try{
-      if(regularIds.length){
-        const {error}=await sb
-          .from('notifications')
-          .update({read_at:now})
-          .in('id',regularIds)
-          .eq('recipient_id',currentUserId);
-        if(error)console.warn('Could not mark employer notifications read:',error);
-      }
-
-      if(messageIds.length){
-        const {error}=await sb
-          .from('messages')
-          .update({read_at:now})
-          .in('id',messageIds)
-          .neq('sender_id',currentUserId)
-          .is('read_at',null);
-        if(error)console.warn('Could not mark employer message notifications read:',error);
-      }
-
-      await refreshNotifications();
-    }finally{
-      if(btn){
-        btn.disabled=false;
-        btn.textContent='Mark all read';
-      }
-    }
-  }
-
-  async function refreshNotifications(){
-    const items=await fetchNotifications();
-    renderNotifDropdown(items);
-  }
-
-  function initNotifications(){
-    refreshNotifications();
-
-    const bell=document.getElementById('notif-bell');
-    const dropdown=document.getElementById('notif-dropdown');
-    const wrap=document.getElementById('notif-wrap');
-    if(!bell||!dropdown||!wrap)return;
-
-    bell.addEventListener('click',event=>{
-      event.stopPropagation();
-      const isOpen=dropdown.style.display!=='none';
-      dropdown.style.display=isOpen?'none':'block';
-      if(!isOpen)refreshNotifications();
-    });
-
-    document.addEventListener('click',event=>{
-      if(!wrap.contains(event.target))dropdown.style.display='none';
-    });
-
-    sb.channel('account-employer-notifications-'+currentUserId)
-      .on('postgres_changes',{
-        event:'INSERT',schema:'public',table:'notifications',
-        filter:`recipient_id=eq.${currentUserId}`
-      },()=>refreshNotifications())
-      .subscribe();
-
-    if(!accountMessageNotificationChannel){
-      accountMessageNotificationChannel=sb
-        .channel('account-employer-message-notifications-'+currentUserId)
-        .on('postgres_changes',{
-          event:'INSERT',schema:'public',table:'messages'
-        },async payload=>{
-          if(payload?.new?.sender_id===currentUserId)return;
-          if(accountMessageNotificationRefreshBusy)return;
-          accountMessageNotificationRefreshBusy=true;
-          try{
-            await refreshNotifications();
-          }finally{
-            accountMessageNotificationRefreshBusy=false;
-          }
-        })
-        .subscribe();
-    }
-
-    if(!accountMessageNotificationPollTimer){
-      accountMessageNotificationPollTimer=window.setInterval(()=>{
-        if(document.visibilityState==='visible')refreshNotifications();
-      },5000);
-    }
-
-    document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible')refreshNotifications();
-    });
-    window.addEventListener('focus',()=>refreshNotifications());
-  }
-
 async function signOut(){await sb.auth.signOut();location.href='login.html?role=employer'}
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&$('invite-overlay')?.classList.contains('show')){
-    closeInvite();
-  }
-});
-
 (async()=>{
  const {data:{session:s}}=await sb.auth.getSession();if(!s){location.replace('login.html?role=employer');return}session=s;
- currentUserId=s.user.id;
- initNotifications();
  try{await sb.rpc('accept_my_pending_team_invite')}catch(_){}
  await loadTeam();
  const q=new URLSearchParams(location.search);if(q.get('team_seat')==='success')showMsg('page-message','Team seat activated. You can invite another teammate now.','success');
