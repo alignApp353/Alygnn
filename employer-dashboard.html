@@ -893,6 +893,12 @@
       </span>
       <span id="sidebar-account-label">My account</span>
     </a>
+    <button class="nav-item" id="sidebar-candidate-mode-btn" type="button" style="display:none;" onclick="switchToCandidateMode()">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg>
+      </span>
+      <span>Switch to Candidate Mode</span>
+    </button>
     <button class="nav-item mobile-sidebar-signout" type="button" onclick="logout()">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M10 5H5v14h5"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg>
@@ -1259,6 +1265,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let teamRuntime = null;
   let isTeamMember = false;
   let workspaceOwnerId = null;
+  let hasCandidateWorkspace = false;
 
   function blankTeamPermissions(){
     return {
@@ -1286,6 +1293,44 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       hiring_manager:'Hiring Manager',
       admin:'Admin'
     })[String(role||'').toLowerCase()] || 'Team member';
+  }
+
+
+  function rememberDashboardWorkspaceMode(mode){
+    const normalized=mode==='candidate'?'candidate':'employer';
+    try{
+      localStorage.setItem('alygnn_active_mode',normalized);
+      sessionStorage.setItem('alygnn_active_mode',normalized);
+      localStorage.setItem('alygnn_last_workspace',normalized);
+      localStorage.setItem('alygnn_account_type',normalized==='candidate'?'candidate':'employer');
+    }catch(_){}
+  }
+
+  async function configureCandidateModeSwitch(){
+    const button=document.getElementById('sidebar-candidate-mode-btn');
+    if(!button) return;
+    button.style.display='none';
+    hasCandidateWorkspace=false;
+
+    if(!isTeamMember || teamAccess?.is_owner!==false) return;
+
+    try{
+      const {data,error}=await sb.rpc('get_my_workspace_context');
+      if(error) throw error;
+      hasCandidateWorkspace=data?.has_candidate===true;
+      button.style.display=hasCandidateWorkspace?'flex':'none';
+    }catch(error){
+      console.warn('Candidate workspace switch unavailable:',error);
+    }
+  }
+
+  function switchToCandidateMode(){
+    if(!isTeamMember || !hasCandidateWorkspace){
+      showToast('No personal candidate workspace is connected to this login.');
+      return;
+    }
+    rememberDashboardWorkspaceMode('candidate');
+    window.location.href='account.html?mode=candidate';
   }
 
   function applyTeamPermissionUI(){
@@ -2330,6 +2375,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
 
       applyTeamPermissionUI();
+      await configureCandidateModeSwitch();
     } else {
       const { data: ownerProfile, error: profileError } = await sb
         .from('profiles')
@@ -4824,6 +4870,12 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   async function logout() {
+    try{
+      localStorage.removeItem('alygnn_active_mode');
+      localStorage.removeItem('alygnn_last_workspace');
+      localStorage.removeItem('alygnn_account_type');
+      sessionStorage.removeItem('alygnn_active_mode');
+    }catch(_){}
     await sb.auth.signOut({ scope: 'local' });
     window.location.href = 'index.html';
   }
