@@ -1,77 +1,43 @@
 <!DOCTYPE html>
-<!-- ALYGNN EMPLOYER MESSAGES NAV: 5-TAB FINAL 2026-09-10 -->
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F6F8F7">
 <title>Alygnn — Messages</title>
-
-
-<script id="alygnn-shared-theme-bridge">
+<script id="alygnn-candidate-theme-critical">
 (function(){
-  const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
-
-  function themeKeyFor(role){
-    return String(role||'').toLowerCase()==='employer'
-      ? 'alygnnEmployerTheme'
-      : 'alygnnCandidateTheme';
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function normalize(v){
+    v=String(v||'').toLowerCase().trim();
+    if(v==='auto'||v==='system-default'||v==='default') return 'system';
+    return ['system','light','dark'].includes(v)?v:'system';
   }
-
-  function readPreference(role){
-    try{
-      const value=localStorage.getItem(themeKeyFor(role));
-      return ['auto','light','dark'].includes(value)?value:'auto';
-    }catch(_){
-      return 'auto';
-    }
+  function pref(){
+    return normalize(
+      localStorage.getItem('alygnnTheme') ||
+      localStorage.getItem('alygnnEmployerTheme') ||
+      localStorage.getItem('alygnn_candidate_theme') ||
+      localStorage.getItem('alygnn-theme') ||
+      'system'
+    );
   }
-
-  function apply(role){
-    const safeRole=String(role||'').toLowerCase();
-    const preference=readPreference(safeRole);
-    const resolved=
-      preference==='auto'
-        ? (systemDark.matches?'dark':'light')
-        : preference;
-
-    document.documentElement.dataset.theme=resolved;
-    document.documentElement.style.colorScheme=resolved;
-
-    const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta){
-      meta.setAttribute(
-        'content',
-        resolved==='dark' ? '#0B111A' : '#F6F8F7'
-      );
-    }
+  function apply(){
+    const p=pref();
+    const theme=p==='system' ? (media&&media.matches?'dark':'light') : p;
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
+    meta.setAttribute('content',theme==='dark'?'#071824':'#F5F8F8');
   }
-
-  const requestedRole=(
-    new URLSearchParams(location.search).get('role')||''
-  ).toLowerCase();
-
-  if(requestedRole){
-    apply(requestedRole);
-  }
-
-  window.applyAlygnnSharedTheme=apply;
-
-  systemDark.addEventListener?.('change',()=>{
-    const role=(
-      new URLSearchParams(location.search).get('role')||
-      window.__alygnnResolvedRole||
-      ''
-    ).toLowerCase();
-
-    if(role && readPreference(role)==='auto'){
-      apply(role);
-    }
-  });
+  apply();
+  window.__alygnnApplyCandidateGlobalTheme=apply;
 })();
 </script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -103,40 +69,6 @@
     --danger-bg:#3B1E22;
   }
 }
-
-
-html[data-theme="light"]{
-  --brand:#5D7FA3;
-  --brand-dark:#345F91;
-  --sage:#8CB69B;
-  --bg:#F6F8F7;
-  --card:#fff;
-  --text:#172333;
-  --muted:#647282;
-  --border:#DDE3E8;
-  --soft:#EAF0F6;
-  --danger:#C74747;
-  --danger-bg:#FCECEC;
-  --success:#2F9760;
-  color-scheme:light;
-}
-
-html[data-theme="dark"]{
-  --brand:#7EA5CB;
-  --brand-dark:#72A6D8;
-  --sage:#8CB69B;
-  --bg:#0B111A;
-  --card:#121B27;
-  --text:#F3F7FA;
-  --muted:#A9B5C2;
-  --border:#293545;
-  --soft:#182536;
-  --danger:#F08D8D;
-  --danger-bg:#3B1E22;
-  --success:#7BC69A;
-  color-scheme:dark;
-}
-
 
 html,body{
   margin:0;
@@ -555,16 +487,7 @@ button{
   grid-template-columns:repeat(5,1fr);
 }
 .bottom-nav.employer{
-  z-index:60;
-  min-height:72px;
-  padding:7px 12px calc(8px + env(safe-area-inset-bottom));
-  background:color-mix(in srgb,var(--card) 96%,transparent);
-  border-top:1px solid var(--border);
-  grid-template-columns:repeat(5,minmax(50px,62px));
-  justify-content:center;
-  column-gap:clamp(6px,2.5vw,16px);
-  backdrop-filter:blur(22px);
-  -webkit-backdrop-filter:blur(22px);
+  grid-template-columns:repeat(6,1fr);
 }
 .nav{
   border:0;
@@ -590,34 +513,6 @@ button{
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-
-/* Employer nav must match app-employer-dashboard exactly. */
-.bottom-nav.employer .nav{
-  color:var(--muted);
-  gap:3px;
-  min-width:0;
-  padding:2px 0;
-  position:relative;
-}
-.bottom-nav.employer .nav svg{
-  width:21px;
-  height:21px;
-  stroke-width:2;
-  display:block;
-  overflow:visible;
-}
-.bottom-nav.employer .nav.active{
-  color:var(--brand-dark);
-}
-.bottom-nav.employer .nav.active:before{
-  content:'';
-  position:absolute;
-  top:-7px;
-  width:28px;
-  height:3px;
-  border-radius:999px;
-  background:var(--brand-dark);
-}
 .nav{position:relative}
 .messaging-nav-badge{
   position:absolute;
@@ -637,6 +532,94 @@ button{
   line-height:1;
 }
 .messaging-nav-badge[hidden]{display:none!important}
+</style>
+
+<style id="alygnn-candidate-messages-consistency">
+/* Explicit app preference beats the phone/browser color scheme. */
+html[data-effective-theme="light"]{
+  --brand:#5D7FA3;
+  --brand-dark:#345F91;
+  --sage:#8CB69B;
+  --bg:#F6F8F7;
+  --card:#FFFFFF;
+  --text:#172333;
+  --muted:#647282;
+  --border:#DDE3E8;
+  --soft:#EAF0F6;
+  --danger-bg:#FCECEC;
+  color-scheme:light;
+}
+html[data-effective-theme="dark"]{
+  --brand:#5D86B1;
+  --brand-dark:#79A7D5;
+  --sage:#8FC6A2;
+  --bg:#061821;
+  --card:#10232D;
+  --text:#F3F7FA;
+  --muted:#A9B8C5;
+  --border:#29404C;
+  --soft:#0B1D26;
+  --danger-bg:#3B1E22;
+  color-scheme:dark;
+}
+html[data-effective-theme="light"] body{background:#F6F8F7!important;color:#172333!important}
+html[data-effective-theme="dark"] body{background:#061821!important;color:#F3F7FA!important}
+
+/* Candidate Messages uses the exact primary-tab header treatment. */
+body.candidate-mode .shell{padding-top:0!important}
+body.candidate-mode .top{
+  position:sticky;
+  top:0;
+  z-index:40;
+  min-height:86px;
+  grid-template-columns:46px minmax(0,1fr) 46px;
+  margin:0 -18px;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+html[data-effective-theme="light"] body.candidate-mode .top{background:rgba(246,248,247,.96)}
+html[data-effective-theme="dark"] body.candidate-mode .top{background:rgba(5,24,33,.96)}
+body.candidate-mode .top .logo{font-size:31px;line-height:1}
+body.candidate-mode .top .back{visibility:hidden;pointer-events:none;width:42px;height:42px}
+body.candidate-mode .eyebrow{margin-top:28px}
+
+/* Candidate bottom navigation matches My Profile / Discover / My Jobs exactly. */
+.bottom-nav.candidate{
+  left:0!important;
+  right:0!important;
+  max-width:560px!important;
+  margin:0 auto!important;
+  min-height:72px!important;
+  padding:8px 12px calc(10px + env(safe-area-inset-bottom))!important;
+  grid-template-columns:repeat(5,1fr)!important;
+  border-top:1px solid var(--border)!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+html[data-effective-theme="light"] .bottom-nav.candidate{background:rgba(255,255,255,.97)!important}
+html[data-effective-theme="dark"] .bottom-nav.candidate{background:rgba(5,24,33,.96)!important}
+.bottom-nav.candidate .nav{
+  position:relative;
+  min-height:54px;
+  gap:4px;
+  padding:0;
+  font-size:9px;
+  font-weight:800;
+}
+.bottom-nav.candidate .nav.active::before{
+  content:'';
+  position:absolute;
+  top:-9px;
+  width:34px;
+  height:3px;
+  border-radius:999px;
+  background:#35679A;
+}
+html[data-effective-theme="dark"] .bottom-nav.candidate .nav{color:#8293A2}
+html[data-effective-theme="dark"] .bottom-nav.candidate .nav.active{color:#73A4CE}
+html[data-effective-theme="dark"] .bottom-nav.candidate .nav.active::before{background:#73A4CE}
 </style>
 </head>
 
@@ -737,7 +720,8 @@ const icon={
   messages:'<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>',
   settings:'<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>',
   dashboard:'<rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>',
-  company:'<path d="M3 21h18"></path><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path><path d="M9 7h2"></path><path d="M13 7h2"></path><path d="M9 11h2"></path><path d="M13 11h2"></path><path d="M9 15h2"></path><path d="M13 15h2"></path>'
+  applicants:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>',
+  company:'<path d="M3 21h18"></path><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path>'
 };
 
 function navButton(name,label,url,active=false){
@@ -765,6 +749,7 @@ function renderNav(){
     nav.innerHTML=
       navButton('dashboard','Dashboard','app-employer-dashboard.html?view=dashboard')+
       navButton('jobs','Jobs','app-employer-dashboard.html?view=jobs')+
+      navButton('applicants','Applicants','app-employer-dashboard.html?view=applicants')+
       navButton('messages','Messages','app-messages.html?role=employer',true)+
       navButton('company','Company','app-employer-dashboard.html?view=company')+
       navButton('settings','Settings','app-employer-dashboard.html?view=settings');
@@ -2044,7 +2029,7 @@ document.addEventListener(
 $('back').onclick=()=>{
   location.href=
     role==='employer'
-      ?'app-employer-dashboard.html?view=dashboard'
+      ?'app-employer-dashboard.html?view=applicants'
       :'app-applied.html';
 };
 
@@ -2066,10 +2051,7 @@ $('back').onclick=()=>{
 
   session=data.session;
   role=await resolveRole();
-  window.__alygnnResolvedRole=role;
-  if(typeof window.applyAlygnnSharedTheme==='function'){
-    window.applyAlygnnSharedTheme(role);
-  }
+  document.body.classList.toggle('candidate-mode',role==='candidate');
 
   $('eyebrow').textContent=
     role==='employer'
