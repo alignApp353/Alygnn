@@ -611,6 +611,43 @@ html[data-effective-theme="dark"] .my-jobs-header{
   padding-top:18px!important;
 }
 </style>
+
+<style id="alygnn-my-jobs-unified-page-surface">
+/* Keep the My Jobs page on one continuous candidate workspace surface.
+   Cards still use their card color; only the page/header/nav canvas is unified. */
+html[data-effective-theme="light"],
+html[data-effective-theme="light"] body,
+html[data-effective-theme="light"] .app,
+html[data-effective-theme="light"] .my-jobs-header,
+html[data-effective-theme="light"] .bottom-nav{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="dark"],
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] .app,
+html[data-effective-theme="dark"] .my-jobs-header,
+html[data-effective-theme="dark"] .bottom-nav{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+
+/* Prevent shared theme rules from painting an extra panel behind the content. */
+.app{
+  box-shadow:none!important;
+  border:0!important;
+}
+
+/* Keep only the intentional separators, not a second colored band. */
+html[data-effective-theme="light"] .my-jobs-header,
+html[data-effective-theme="light"] .bottom-nav{border-color:#DDE3E8!important}
+html[data-effective-theme="dark"] .my-jobs-header,
+html[data-effective-theme="dark"] .bottom-nav{border-color:#29404C!important}
+</style>
+
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
 <header class="my-jobs-header">
