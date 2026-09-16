@@ -548,6 +548,285 @@
     }
   }
 
+
+  /* =============================================
+     Mobile employer dashboard
+     Keep the desktop dashboard unchanged, but turn the fixed desktop
+     sidebar into an off-canvas menu and stack each job into a real
+     mobile card instead of squeezing the desktop row onto the phone.
+     ============================================= */
+  .mobile-menu-btn,
+  .mobile-sidebar-close,
+  .mobile-sidebar-signout,
+  .mobile-sidebar-overlay { display:none; }
+
+  @media (max-width: 860px) {
+    body { overflow-x:hidden; }
+
+    nav {
+      height:64px;
+      padding:0 16px;
+      gap:12px;
+    }
+    .logo { font-size:24px; flex-shrink:0; }
+    .nav-right { gap:10px; min-width:0; }
+    .nav-user {
+      max-width:145px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:12px;
+    }
+    .btn-logout { display:none; }
+
+    .mobile-menu-btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:40px;
+      height:40px;
+      flex:0 0 40px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--card-bg);
+      color:var(--text-muted);
+      cursor:pointer;
+      font-family:'DM Sans',sans-serif;
+    }
+    .mobile-menu-btn svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+
+    .notif-bell { width:40px; height:40px; border-radius:12px; flex:0 0 40px; }
+    .notif-dropdown {
+      position:fixed;
+      top:72px;
+      left:16px;
+      right:16px;
+      width:auto;
+      max-height:min(70vh,520px);
+    }
+
+    .layout { padding-top:64px; }
+    .main {
+      margin-left:0 !important;
+      padding:30px 18px 52px;
+      width:100%;
+      min-width:0;
+    }
+
+    .sidebar {
+      display:block !important;
+      position:fixed;
+      top:64px;
+      left:0;
+      z-index:1200;
+      width:min(84vw,320px);
+      height:calc(100dvh - 64px);
+      padding:20px 16px calc(24px + env(safe-area-inset-bottom));
+      overflow-y:auto !important;
+      background:var(--card-bg);
+      border-right:1px solid var(--border);
+      box-shadow:16px 0 40px rgba(26,37,48,.14);
+      transform:translateX(-105%);
+      transition:transform .24s ease;
+      overscroll-behavior:contain;
+    }
+    .sidebar.mobile-open { transform:translateX(0); }
+    .mobile-sidebar-overlay {
+      display:block;
+      position:fixed;
+      inset:64px 0 0;
+      z-index:1150;
+      background:rgba(26,37,48,.34);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      transition:opacity .2s ease, visibility .2s ease;
+    }
+    .mobile-sidebar-overlay.show {
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+    }
+    body.mobile-nav-open { overflow:hidden; }
+
+    .mobile-sidebar-close {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:36px;
+      height:36px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:var(--bg);
+      color:var(--text-muted);
+      cursor:pointer;
+      margin:0 0 16px auto;
+      font-size:22px;
+      line-height:1;
+    }
+    .sidebar-label { margin-bottom:12px; padding:0 10px; }
+    .nav-item {
+      min-height:46px;
+      padding:12px 12px;
+      border-radius:12px;
+      font-size:15px;
+    }
+    .mobile-sidebar-signout {
+      display:flex;
+      margin-top:14px;
+      color:#a05858;
+    }
+
+    .page-header { margin-bottom:24px; }
+    .page-title { font-size:32px; line-height:1.05; }
+    .page-sub { font-size:14px; line-height:1.5; }
+
+    .test-entitlement-banner,
+    .payment-access-banner {
+      margin-top:16px;
+      padding:14px 15px;
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .section-header {
+      gap:12px;
+      margin-bottom:14px;
+      flex-wrap:wrap;
+    }
+    .section-title { font-size:17px; }
+    .section-title #job-slot-usage,
+    #job-slot-usage { display:inline; line-height:1.4; }
+    .btn-primary {
+      min-height:42px;
+      padding:10px 18px;
+      font-size:13px;
+      white-space:nowrap;
+    }
+
+    #jobs-search-input,
+    #candidates-search-input,
+    .form-input {
+      min-width:0;
+      max-width:100%;
+      font-size:16px; /* prevents iOS auto-zoom */
+    }
+
+    .job-row {
+      display:grid;
+      grid-template-columns:10px minmax(0,1fr);
+      align-items:start;
+      column-gap:10px;
+      row-gap:16px;
+      padding:18px;
+      border-radius:18px;
+      overflow:hidden;
+    }
+    .job-status {
+      grid-column:1;
+      grid-row:1;
+      margin-top:7px;
+    }
+    .job-info {
+      grid-column:2;
+      grid-row:1;
+      min-width:0;
+    }
+    .job-title-text {
+      font-size:17px;
+      line-height:1.35;
+      margin-bottom:6px;
+      overflow-wrap:anywhere;
+    }
+    .job-status-badge,
+    .boosted-pill,
+    .urgent-pill,
+    .boost-until {
+      margin-top:5px;
+      margin-left:5px;
+      vertical-align:middle;
+    }
+    .job-meta {
+      font-size:13px;
+      line-height:1.55;
+      overflow-wrap:anywhere;
+    }
+    .job-stats {
+      grid-column:1 / -1;
+      grid-row:2;
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:0;
+      width:100%;
+      padding:12px 8px;
+      border:1px solid var(--border);
+      border-radius:13px;
+      background:rgba(246,248,247,.72);
+      text-align:center;
+    }
+    .job-stats > div + div { border-left:1px solid var(--border); }
+    .js-val { font-size:18px; }
+    .js-label { margin-top:3px; font-size:10px; }
+
+    .job-actions {
+      grid-column:1 / -1;
+      grid-row:3;
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      width:100%;
+      align-items:stretch;
+    }
+    .job-actions .btn-view,
+    .job-actions .btn-danger {
+      width:100%;
+      min-width:0;
+      min-height:42px;
+      padding:9px 8px;
+      border-radius:11px;
+      font-size:12px;
+      line-height:1.25;
+      white-space:normal;
+    }
+
+    .stats-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .stat-card { padding:16px; border-radius:14px; }
+    .stat-val { font-size:30px; }
+
+    .candidates-grid { grid-template-columns:1fr; }
+    .candidate-card { padding:18px; }
+
+    .modal-overlay {
+      align-items:flex-end;
+      padding:12px;
+    }
+    .modal-box {
+      max-height:calc(100dvh - 88px);
+      padding:24px 18px calc(22px + env(safe-area-inset-bottom));
+      border-radius:22px 22px 16px 16px;
+    }
+    .modal-actions { flex-wrap:wrap; }
+
+    .mini-footer {
+      padding:18px 18px calc(34px + env(safe-area-inset-bottom));
+    }
+  }
+
+  @media (max-width: 520px) {
+    .nav-user { display:none; }
+    .main { padding-left:16px; padding-right:16px; }
+    .page-title { font-size:30px; }
+    .section-header { align-items:center; }
+    .section-title { flex:1 1 150px; }
+    .btn-primary { padding:10px 16px; }
+  }
+
+  @media (max-width: 360px) {
+    .job-actions { grid-template-columns:1fr; }
+    .section-header { align-items:stretch; }
+    .section-header .btn-primary { width:100%; }
+  }
+
 </style>
 </head>
 <body>
@@ -572,11 +851,16 @@
     </div>
     <span class="nav-user" id="nav-user-name"></span>
     <button class="btn-logout" onclick="logout()">Sign out</button>
+    <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open dashboard menu" aria-expanded="false" onclick="toggleMobileSidebar()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
   </div>
 </nav>
+<div class="mobile-sidebar-overlay" id="mobile-sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
 <div class="layout">
-  <aside class="sidebar">
+  <aside class="sidebar" id="dashboard-sidebar">
+    <button class="mobile-sidebar-close" type="button" aria-label="Close dashboard menu" onclick="closeMobileSidebar()">×</button>
     <div class="sidebar-label" id="sidebar-role-label">Employer</div>
     <button class="nav-item active" onclick="showPanel('jobs', this)">
       <span class="nav-icon" aria-hidden="true">
@@ -609,6 +893,12 @@
       </span>
       <span id="sidebar-account-label">My account</span>
     </a>
+    <button class="nav-item mobile-sidebar-signout" type="button" onclick="logout()">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M10 5H5v14h5"/><path d="M14 8l4 4-4 4"/><path d="M8 12h10"/></svg>
+      </span>
+      Sign out
+    </button>
   </aside>
 
   <main class="main">
@@ -4551,5 +4841,47 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 <!-- Google Places Autocomplete removed — location suggestions now come
      from the local KNOWN_CITIES list instead (see script above). -->
+
+<script>
+  function openMobileSidebar(){
+    if(window.innerWidth>860) return;
+    const sidebar=document.getElementById('dashboard-sidebar');
+    const overlay=document.getElementById('mobile-sidebar-overlay');
+    const button=document.getElementById('mobile-menu-btn');
+    sidebar?.classList.add('mobile-open');
+    overlay?.classList.add('show');
+    document.body.classList.add('mobile-nav-open');
+    button?.setAttribute('aria-expanded','true');
+  }
+
+  function closeMobileSidebar(){
+    const sidebar=document.getElementById('dashboard-sidebar');
+    const overlay=document.getElementById('mobile-sidebar-overlay');
+    const button=document.getElementById('mobile-menu-btn');
+    sidebar?.classList.remove('mobile-open');
+    overlay?.classList.remove('show');
+    document.body.classList.remove('mobile-nav-open');
+    button?.setAttribute('aria-expanded','false');
+  }
+
+  function toggleMobileSidebar(){
+    const sidebar=document.getElementById('dashboard-sidebar');
+    if(sidebar?.classList.contains('mobile-open')) closeMobileSidebar();
+    else openMobileSidebar();
+  }
+
+  document.addEventListener('click',event=>{
+    if(window.innerWidth>860) return;
+    const navItem=event.target.closest('#dashboard-sidebar .nav-item');
+    if(navItem && !navItem.classList.contains('mobile-sidebar-signout')){
+      setTimeout(closeMobileSidebar,0);
+    }
+  });
+
+  window.addEventListener('resize',()=>{
+    if(window.innerWidth>860) closeMobileSidebar();
+  });
+</script>
+
 </body>
 </html>
