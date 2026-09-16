@@ -186,14 +186,6 @@
     </div>
 
     <div class="msg-box" id="msg-box"></div>
-    <button
-      type="button"
-      id="resend-confirm-btn"
-      onclick="resendConfirmationEmail()"
-      style="display:none;width:100%;margin:-10px 0 16px;border:1px solid #DDE3E8;background:#fff;color:#5D7FA3;border-radius:12px;padding:12px 16px;font:600 13px 'DM Sans',sans-serif;cursor:pointer;"
-    >
-      Resend confirmation email
-    </button>
 
     <!-- LOGIN FORM -->
     <div id="login-form">
@@ -314,10 +306,6 @@
   return `alygnn-auth-${tabId}`;
 }
 
-const confirmationReturnParams = new URLSearchParams(window.location.search);
-  const isEmployerConfirmationReturn =
-    confirmationReturnParams.get('confirmed') === '1';
-
 const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -325,12 +313,7 @@ const { createClient } = supabase;
       storageKey: alygnnAuthStorageKey(),
       persistSession: true,
       autoRefreshToken: true,
-
-      // The Supabase /verify endpoint confirms the email BEFORE it redirects
-      // back to Alygnn. On this one confirmation-return URL, do not consume
-      // the returned auth session. We want the user to sign in manually.
-      // OAuth continues using normal detectSessionInUrl behavior.
-      detectSessionInUrl: !isEmployerConfirmationReturn
+      detectSessionInUrl: true
     }
   });
 
@@ -350,157 +333,49 @@ const { createClient } = supabase;
   // because profiles.verification_status has a default/premature value.
   const redirectFor = r => window.location.origin + (r === 'employer' ? '/employer-onboarding.html' : '/account.html');
 
-  async function resolveSignedInDestination(user, roleHint='seeker'){
-    const requestedRole = normalizeRole(roleHint);
-
-    // Read the canonical Alygnn profile when available. App accounts may use
-    // auth.user_metadata.account_type instead of user_metadata.role, so the
-    // website must understand BOTH formats.
-    let profile = null;
-    try {
-      const { data, error } = await sb
-        .from('profiles')
-        .select('role,is_admin,employer_verified,verification_status,hiring_blueprint,company_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (error && error.code !== 'PGRST116') {
-        console.warn('Could not read login profile:', error);
-      } else {
-        profile = data || null;
-      }
-    } catch (error) {
-      console.warn('Login profile lookup failed:', error);
-    }
-
-    // Admin accounts never fall through to the normal candidate/employer UI.
-    if (profile?.is_admin === true) {
-      return window.location.origin + '/employer-verification-admin.html';
-    }
-
-    const rawAccountRole = String(
-      profile?.role ||
-      user?.user_metadata?.role ||
-      user?.user_metadata?.account_type ||
-      user?.user_metadata?.user_type ||
-      user?.app_metadata?.account_type ||
-      user?.app_metadata?.role ||
-      ''
-    ).trim().toLowerCase();
-
-    const primaryEmployerAccount = ['employer','business','company'].includes(rawAccountRole);
-
-    const blueprint =
-      profile?.hiring_blueprint && typeof profile.hiring_blueprint === 'object'
-        ? profile.hiring_blueprint
-        : null;
-    const status = String(profile?.verification_status || '').trim().toLowerCase();
-    const blueprintCompanyId = String(blueprint?.company_id || '').trim();
-    const blueprintDocumentPath = String(blueprint?.irs_document_path || '').trim();
-    const blueprintLooksComplete = !!blueprint && (
-      blueprint.onboarding_complete === true ||
-      (
-        !!blueprintCompanyId &&
-        !!blueprintDocumentPath &&
-        Array.isArray(blueprint.company_priorities) && blueprint.company_priorities.length >= 5 &&
-        Array.isArray(blueprint.candidate_priorities) && blueprint.candidate_priorities.length >= 5
-      )
-    );
-    const employerSetupComplete =
-      profile?.employer_verified === true ||
-      status === 'approved' ||
-      blueprintLooksComplete;
-
-    async function hasEmployerWorkspaceAccess(){
-      // Modern app/workspace model. This is what allows a candidate account
-      // that was added as an employer Admin/Recruiter to use the Employer side
-      // with the SAME Alygnn login.
-      try {
-        const result = await Promise.race([
-          sb.rpc('get_my_workspace_context'),
+  async function resolveTeamAccessForRouting(){
+    // Mobile connections can take longer than a couple seconds on the first
+    // authenticated request. Do not fall back to the candidate account just
+    // because a team lookup is still warming up.
+    for(const timeoutMs of [8000,8000]){
+      try{
+        const teamResult = await Promise.race([
+          sb.rpc('get_my_team_access'),
           new Promise(resolve => setTimeout(
-            () => resolve({ data:null, error:{ message:'workspace route timeout' } }),
-            2500
+            () => resolve({data:null,error:{message:'team route timeout'},timedOut:true}),
+            timeoutMs
           ))
         ]);
-        const context = result?.data || {};
-        const workspaces = Array.isArray(context.employer_workspaces)
-          ? context.employer_workspaces
-          : [];
-        if (!result?.error && (workspaces.length > 0 || context.active_company_id)) {
-          return true;
+
+        if(!teamResult?.error && teamResult?.data?.authenticated === true){
+          return teamResult.data;
         }
-      } catch (error) {
-        console.warn('Workspace context unavailable during sign in:', error);
-      }
 
-      // Backward-compatible operational-state RPC used by the website.
-      try {
-        const result = await Promise.race([
-          sb.rpc('get_my_team_operational_state'),
-          new Promise(resolve => setTimeout(
-            () => resolve({ data:null, error:{ message:'team route timeout' } }),
-            2500
-          ))
-        ]);
-        if (!result?.error && result?.data?.has_company === true) {
-          return true;
-        }
-      } catch (error) {
-        console.warn('Team workspace check unavailable during sign in:', error);
+        // Retry once only when the request timed out. A real RPC error is not
+        // helped by immediately repeating the same request.
+        if(!teamResult?.timedOut) break;
+      }catch(error){
+        console.warn('Could not resolve employer team access:',error);
+        break;
       }
-
-      // Direct membership fallback in case one of the RPCs is unavailable.
-      try {
-        const { data, error } = await sb
-          .from('company_members')
-          .select('company_id,membership_status')
-          .eq('user_id', user.id)
-          .in('membership_status', ['active','pending'])
-          .limit(1)
-          .maybeSingle();
-        if (!error && data?.company_id) return true;
-      } catch (error) {
-        console.warn('Company membership check unavailable during sign in:', error);
-      }
-
-      return false;
     }
 
-    // JOB SEEKER selected:
-    // - real candidate / dual-mode Admin accounts go to Candidate mode;
-    // - a primary employer owner is kept on the employer side so the default
-    //   Job Seeker tab cannot accidentally dump an employer into candidate UI.
-    if (requestedRole !== 'employer') {
-      if (primaryEmployerAccount) {
-        return window.location.origin + (
-          employerSetupComplete
-            ? '/employer-dashboard.html'
-            : '/employer-onboarding.html'
-        );
-      }
-      return window.location.origin + '/account.html';
-    }
-
-    // EMPLOYER selected:
-    // First honor any real company/team workspace assignment. This is the key
-    // fix for candidate accounts that can switch into an employer workspace.
-    if (await hasEmployerWorkspaceAccess()) {
-      return window.location.origin + '/employer-dashboard.html';
-    }
-
-    // A true employer owner with no workspace yet is a brand-new employer and
-    // still needs guided setup. Existing completed owners go straight in.
-    if (primaryEmployerAccount) {
-      return window.location.origin + (
-        employerSetupComplete
-          ? '/employer-dashboard.html'
-          : '/employer-onboarding.html'
-      );
-    }
-
-    // Candidate-only account with no employer workspace. Returning null lets
-    // the login form show a useful message instead of silently misrouting.
     return null;
+  }
+
+  async function resolveSignedInDestination(user, roleHint='seeker'){
+    // Team membership is a workspace assignment, not company ownership.
+    // It must take priority over an old candidate/seeker profile role.
+    const teamAccess = await resolveTeamAccessForRouting();
+
+    if(
+      teamAccess?.has_company === true &&
+      teamAccess?.is_owner === false
+    ){
+      return window.location.origin + '/employer-dashboard.html?team_member=1';
+    }
+
+    return redirectFor(normalizeRole(roleHint));
   }
 
   function normalizeRole(value) {
@@ -680,137 +555,15 @@ const { createClient } = supabase;
     }
 
     await savePendingPreferences(user, fullName);
-
-    // On SIGN IN, honor the role toggle selected before OAuth. On SIGN UP,
-    // continue using the newly-created account role. This keeps Google/Apple
-    // consistent with email/password for dual-mode users.
-    const destinationRole = storedMode === 'login'
-      ? normalizeRole(storedRole)
-      : role;
-    const destination = await resolveSignedInDestination(user, destinationRole);
-
-    if (!destination) {
-      await sb.auth.signOut();
-      clearOAuthContext();
-      history.replaceState({}, '', 'login.html?role=employer');
-      switchRole('employer');
-      switchTab('login');
-      showMsg('This account does not have access to an employer workspace. Choose Job Seeker, or ask the company owner to add this account to their employer team.');
-      return;
-    }
-
     clearOAuthContext();
 
     // Password setup is intentionally optional. Google/Apple users continue
     // directly into Alygnn and can add a password later in Account settings.
-    window.location.replace(destination);
+    window.location.replace(await resolveSignedInDestination(user, role));
   }
 
-  async function finishEmployerEmailConfirmationReturn() {
+  document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('confirmed') !== '1') return false;
-
-    switchRole('employer');
-    switchTab('login');
-
-    // Supabase redirects to this URL even when verification fails. Errors are
-    // usually returned in the URL fragment, so check those FIRST.
-    const hashParams = new URLSearchParams(
-      window.location.hash.startsWith('#')
-        ? window.location.hash.slice(1)
-        : window.location.hash
-    );
-
-    const errorCode =
-      hashParams.get('error_code') ||
-      params.get('error_code') ||
-      hashParams.get('error');
-
-    const errorDescription =
-      hashParams.get('error_description') ||
-      params.get('error_description');
-
-    if (errorCode || errorDescription) {
-      showMsg(
-        errorDescription
-          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
-          : 'This confirmation link could not be used. Please resend the confirmation email.'
-      );
-
-      const resendBtn = document.getElementById('resend-confirm-btn');
-      if (resendBtn) resendBtn.style.display = 'block';
-      return true;
-    }
-
-    // At this point the user has already passed through Supabase's
-    // /auth/v1/verify endpoint. That endpoint is what marks email_confirmed_at.
-    // We intentionally do NOT call getSession(), signOut(), or modify the auth
-    // callback before verification finishes.
-    const pendingEmail = localStorage.getItem('alygnn_pending_employer_email') || '';
-    if (pendingEmail) {
-      const emailInput = document.getElementById('email');
-      if (emailInput) emailInput.value = pendingEmail;
-    }
-
-    history.replaceState({}, '', '/login.html?role=employer');
-
-    showMsg(
-      'Email confirmed successfully. Sign in to continue to Employer Setup.',
-      'success'
-    );
-
-    return true;
-  }
-
-  async function resendConfirmationEmail() {
-    const email =
-      document.getElementById('email')?.value?.trim() ||
-      localStorage.getItem('alygnn_pending_employer_email') ||
-      '';
-
-    if (!email) {
-      showMsg('Enter your email address first.');
-      return;
-    }
-
-    const button = document.getElementById('resend-confirm-btn');
-    if (button) {
-      button.disabled = true;
-      button.textContent = 'Sending confirmation…';
-    }
-
-    const redirectTo =
-      window.location.origin + '/login.html?role=employer&confirmed=1';
-
-    const { error } = await sb.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: redirectTo
-      }
-    });
-
-    if (button) {
-      button.disabled = false;
-      button.textContent = 'Resend confirmation email';
-    }
-
-    if (error) {
-      showMsg(error.message || 'Could not resend the confirmation email.');
-      return;
-    }
-
-    localStorage.setItem('alygnn_pending_employer_email', email);
-    showMsg('A new confirmation email was sent. Use the newest email in your inbox.', 'success');
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    const params = new URLSearchParams(window.location.search);
-
-    const handledConfirmation =
-      await finishEmployerEmailConfirmationReturn();
-
-    if (handledConfirmation) return;
 
     // Returning from account deletion should always land on SIGN IN, not
     // accidentally leave the user on the Create account tab.
@@ -896,44 +649,10 @@ const { createClient } = supabase;
     const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Signing in…';
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     btn.disabled = false; btn.textContent = orig;
-    if (error) {
-      const message = String(error.message || '');
-
-      if (/email not confirmed/i.test(message)) {
-        localStorage.setItem('alygnn_pending_employer_email', email);
-
-        showMsg(
-          'This email is still marked unconfirmed in Alygnn. Click below to send a fresh confirmation email.'
-        );
-
-        const resendBtn = document.getElementById('resend-confirm-btn');
-        if (resendBtn) resendBtn.style.display = 'block';
-      } else {
-        showMsg(message);
-      }
-
-      return;
-    }
-
-    localStorage.removeItem('alygnn_pending_employer_email');
-    const resendBtn = document.getElementById('resend-confirm-btn');
-    if (resendBtn) resendBtn.style.display = 'none';
-
+    if (error) { showMsg(error.message); return; }
     await savePendingPreferences(data.user);
-
-    // The role toggle the user actually selected controls this login. Do not
-    // blindly route from user_metadata.role: app accounts may store
-    // account_type instead, and dual-mode candidate/employer users need to
-    // choose which workspace they are entering.
-    const destination = await resolveSignedInDestination(data.user, currentRole);
-
-    if (!destination) {
-      await sb.auth.signOut();
-      showMsg('This account does not have access to an employer workspace. Choose Job Seeker, or ask the company owner to add this account to their employer team.');
-      return;
-    }
-
-    window.location.href = destination;
+    const r = data.user?.user_metadata?.role || 'seeker';
+    window.location.href = await resolveSignedInDestination(data.user, r);
   }
 
   async function doSignup() {
@@ -952,23 +671,15 @@ const { createClient } = supabase;
     const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Creating account…';
     const meta = { full_name: name, role: currentRole };
     if (company) meta.company = company;
-
-    if (currentRole === 'employer') {
-      localStorage.setItem('alygnn_pending_employer_email', email);
-    }
-
     const { data, error } = await sb.auth.signUp({
       email,
       password,
       options: {
         data: meta,
-        // Employer email confirmation returns to SIGN IN first.
-        // The required flow is:
-        // create account -> confirm email -> sign in -> onboarding -> dashboard.
-        // Candidate confirmation keeps its normal account destination.
-        emailRedirectTo: currentRole === 'employer'
-          ? window.location.origin + '/login.html?role=employer&confirmed=1'
-          : redirectFor(currentRole)
+        // New accounts must continue into the correct onboarding flow after
+        // email confirmation instead of falling back to Supabase's Site URL
+        // (which sends them to index.html).
+        emailRedirectTo: redirectFor(currentRole)
       }
     });
     if (error) {
@@ -1037,17 +748,19 @@ const { createClient } = supabase;
       return;
     }
 
-    showMsg(
-      currentRole === 'employer'
-        ? 'Account created! Check your email to confirm. After confirmation, return here and sign in to continue to Employer Setup.'
-        : 'Account created! Check your email to confirm. After confirmation, you’ll continue to your Alygnn account.',
-      'success'
-    );
+    showMsg(currentRole === 'employer' ? 'Account created! Check your email to confirm. After confirmation, you’ll continue to Employer Setup.' : 'Account created! Check your email to confirm. After confirmation, you’ll continue to your Alygnn account.', 'success');
     setTimeout(() => switchTab('login'), 3000);
   }
 
   async function handleGoogle() {
     const mode = currentAuthMode;
+
+    // Terms are required only when CREATE ACCOUNT is selected.
+    // Existing users signing in with Google are never blocked by this checkbox.
+    if (mode === 'signup' && !document.getElementById('signup-terms').checked) {
+      showMsg('Please agree to the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
 
     saveOAuthContext(currentRole, mode);
 
@@ -1061,6 +774,12 @@ const { createClient } = supabase;
 
   async function handleApple() {
     const mode = currentAuthMode;
+
+    // Match Google: Terms are a sign-up requirement, never a sign-in requirement.
+    if (mode === 'signup' && !document.getElementById('signup-terms').checked) {
+      showMsg('Please agree to the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
 
     saveOAuthContext(currentRole, mode);
 
