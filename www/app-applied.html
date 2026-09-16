@@ -4,6 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<script id="alygnn-candidate-theme-critical">
+(function(){
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function normalize(v){
+    v=String(v||'').toLowerCase().trim();
+    if(v==='auto'||v==='system-default'||v==='default') return 'system';
+    return ['system','light','dark'].includes(v)?v:'system';
+  }
+  function pref(){
+    return normalize(
+      localStorage.getItem('alygnnTheme') ||
+      localStorage.getItem('alygnnEmployerTheme') ||
+      localStorage.getItem('alygnn_candidate_theme') ||
+      localStorage.getItem('alygnn-theme') ||
+      'system'
+    );
+  }
+  function apply(){
+    const p=pref();
+    const theme=p==='system' ? (media&&media.matches?'dark':'light') : p;
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
+    meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
+    if(document.body){
+      document.body.dataset.theme=theme;
+      document.body.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+    }
+  }
+  apply();
+  window.__alygnnApplyCandidateGlobalTheme=apply;
+  window.addEventListener('pageshow',apply);
+  window.addEventListener('storage',apply);
+  if(media){
+    if(typeof media.addEventListener==='function') media.addEventListener('change',()=>{ if(pref()==='system') apply(); });
+    else if(typeof media.addListener==='function') media.addListener(()=>{ if(pref()==='system') apply(); });
+  }
+})();
+</script>
 <title>Alygnn — My Jobs</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -679,6 +721,48 @@ html[data-effective-theme="dark"] .bottom-nav{border-color:#29404C!important}
 html[data-effective-theme="light"] .candidate-page-eyebrow{color:#345F91!important}
 html[data-effective-theme="dark"] .candidate-page-eyebrow{color:#79A7D5!important}
 </style>
+
+<style id="alygnn-native-surface-match-messages">
+/* Keep Android system-bar edges and the page canvas on the same surface as Messages. */
+html,
+body{
+  min-height:100%;
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+}
+body{min-height:100dvh}
+html[data-effective-theme="light"],
+html[data-effective-theme="light"] body,
+body[data-theme="light"]{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+}
+html[data-effective-theme="dark"],
+html[data-effective-theme="dark"] body,
+body[data-theme="dark"]{
+  background:#061821!important;
+  background-color:#061821!important;
+}
+/* Never expose a contrasting white strip behind the fixed navigation. */
+html[data-effective-theme="dark"] .bottom-nav,
+body[data-theme="dark"] .bottom-nav{
+  background:rgba(5,24,33,.96)!important;
+}
+html[data-effective-theme="light"] .bottom-nav,
+body[data-theme="light"] .bottom-nav{
+  background:rgba(246,248,247,.96)!important;
+}
+</style>
+
+
+<style id="alygnn-my-jobs-system-edge-fix">
+html[data-effective-theme="dark"] .my-jobs-header,
+html[data-effective-theme="dark"] .bottom-nav{background:rgba(5,24,33,.96)!important}
+html[data-effective-theme="light"] .my-jobs-header,
+html[data-effective-theme="light"] .bottom-nav{background:rgba(246,248,247,.96)!important}
+.app{min-height:calc(100dvh - 86px);background:transparent!important}
+</style>
+
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
 <header class="my-jobs-header">
