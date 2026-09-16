@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Account — Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -76,6 +76,63 @@
   }
   .nav-post-job:hover{ background:var(--brand); color:white; }
   .nav-cta:hover{ opacity:0.88; }
+
+  .mobile-menu-btn{
+    display:none;
+    width:40px;
+    height:40px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:var(--card-bg);
+    color:var(--text);
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .mobile-menu-btn svg{ width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+  .mobile-nav-backdrop{
+    display:none;
+    position:fixed;
+    inset:64px 0 0;
+    z-index:998;
+    background:rgba(26,37,48,.18);
+  }
+  .mobile-nav-menu{
+    display:none;
+    position:fixed;
+    top:72px;
+    left:12px;
+    right:12px;
+    z-index:999;
+    background:rgba(252,252,250,.98);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:8px;
+    box-shadow:0 18px 46px rgba(26,37,48,.16);
+  }
+  .mobile-nav-menu.open,
+  .mobile-nav-backdrop.open{ display:block; }
+  .mobile-nav-menu a,
+  .mobile-nav-menu button{
+    width:100%;
+    min-height:48px;
+    display:flex;
+    align-items:center;
+    padding:0 14px;
+    border:0;
+    border-radius:12px;
+    background:transparent;
+    color:var(--text);
+    text-decoration:none;
+    font:500 14px 'DM Sans',sans-serif;
+    text-align:left;
+  }
+  .mobile-nav-menu a.active{ background:var(--brand-tint); color:var(--brand); }
+  .mobile-nav-menu button{ color:#9d4f4f; cursor:pointer; }
+  .mobile-nav-divider{ height:1px; background:var(--border); margin:6px 8px; }
 
   .page{ max-width:880px; margin:0 auto; padding:56px 6% 100px; }
 
@@ -836,6 +893,56 @@
   }
   .company-id-copy:hover{ border-color:rgba(93,127,163,.45); }
 
+
+  @media (max-width:760px){
+    html,body{ max-width:100%; overflow-x:hidden; }
+    body{ padding-top:64px; }
+    nav{
+      padding-left:max(16px, env(safe-area-inset-left));
+      padding-right:max(16px, env(safe-area-inset-right));
+      gap:10px;
+    }
+    .logo{ font-size:22px; flex-shrink:0; }
+    .nav-links,
+    .nav-name,
+    .nav-post-job,
+    .nav-cta,
+    .nav-signout{ display:none !important; }
+    .nav-right{ margin-left:auto; gap:8px; min-width:0; }
+    .mobile-menu-btn{ display:inline-flex; }
+    .notif-bell{ width:40px; height:40px; border-radius:12px; }
+    .notif-dropdown{
+      position:fixed;
+      top:70px;
+      left:12px;
+      right:12px;
+      width:auto;
+      max-height:min(60vh,420px);
+    }
+    .page{ padding:28px 16px 84px; }
+    .profile-card{ border-radius:20px; margin-bottom:24px; }
+    .company-profile-top{
+      padding:20px 16px 18px;
+      gap:14px;
+      flex-direction:column;
+    }
+    .company-avatar-wrap{ align-self:flex-start; }
+    .avatar{ width:72px; height:72px; border-radius:18px; font-size:1.7rem; }
+    .profile-info{ width:100%; }
+    .company-eyebrow{ align-items:flex-start; }
+    .profile-info h1{ font-size:1.75rem; line-height:1.08; }
+    .company-description-wrap{ margin-top:10px; }
+    .company-details-zone{ padding:18px 16px 20px; }
+    .company-fields{ grid-template-columns:1fr; }
+    .field-card{ min-width:0; }
+    .field-value,
+    .company-public-link-input{ overflow-wrap:anywhere; word-break:break-word; }
+    .section{ margin-bottom:28px; }
+    .section-header{ align-items:flex-start; gap:8px; flex-direction:column; }
+    .account-job-row{ align-items:flex-start; padding:16px; }
+    .mobile-nav-menu{ padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+  }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
   window.addEventListener('hashchange',()=>{
@@ -867,12 +974,25 @@
         <a href="notifications.html" class="notif-view-all">View all</a>
       </div>
     </div>
+    <button class="mobile-menu-btn" id="employer-mobile-menu-btn" type="button" aria-label="Open menu" aria-expanded="false" onclick="toggleEmployerMobileMenu()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
     <span class="nav-name" id="nav-name"></span>
     <a href="employer-dashboard.html#post" class="nav-post-job" id="account-post-job-btn" onclick="handleAccountPostJob(event)">+ Post a job</a>
     <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
 </nav>
+
+<div class="mobile-nav-backdrop" id="employer-mobile-nav-backdrop" onclick="closeEmployerMobileMenu()"></div>
+<div class="mobile-nav-menu" id="employer-mobile-nav-menu" aria-hidden="true">
+  <a href="employers.html">Home</a>
+  <a href="employer-account.html" class="active">Account</a>
+  <a href="employer-dashboard.html#post" id="mobile-account-post-job-btn" onclick="handleAccountPostJob(event)">Post a job</a>
+  <a href="employer-dashboard.html">Dashboard</a>
+  <div class="mobile-nav-divider"></div>
+  <button type="button" onclick="signOut()">Sign out</button>
+</div>
 
 <div class="page">
 
@@ -1205,6 +1325,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const billingCard=document.getElementById('billing-settings-card');
     const billingPanel=document.getElementById('billing-section');
     const postTop=document.getElementById('account-post-job-btn');
+    const mobilePostTop=document.getElementById('mobile-account-post-job-btn');
     const postLink=document.getElementById('account-post-job-link');
 
     // Edit company profile is the ONLY permission that exposes company-profile
@@ -1218,6 +1339,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(jobsSection) jobsSection.style.display='none';
       if(manageJobs) manageJobs.style.display='none';
       if(postTop) postTop.style.display='none';
+      if(mobilePostTop) mobilePostTop.style.display='none';
       if(postLink) postLink.style.display='none';
     }
 
@@ -1959,6 +2081,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     const full = !accountPostingAccess.allowed;
     const top = document.getElementById('account-post-job-btn');
+    const mobileTop = document.getElementById('mobile-account-post-job-btn');
     const section = document.getElementById('account-post-job-link');
 
     if (top) {
@@ -1967,6 +2090,16 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         ? 'pricing.html?reason=slot-limit'
         : 'employer-dashboard.html#post';
       top.title = full
+        ? `All ${accountPostingAccess.limit} job ${accountPostingAccess.limit === 1 ? 'slot is' : 'slots are'} in use.`
+        : `${accountPostingAccess.limit - accountPostingAccess.used} job slot${accountPostingAccess.limit - accountPostingAccess.used === 1 ? '' : 's'} available.`;
+    }
+
+    if (mobileTop) {
+      mobileTop.textContent = full ? 'Add a job slot' : 'Post a job';
+      mobileTop.href = full
+        ? 'pricing.html?reason=slot-limit'
+        : 'employer-dashboard.html#post';
+      mobileTop.title = full
         ? `All ${accountPostingAccess.limit} job ${accountPostingAccess.limit === 1 ? 'slot is' : 'slots are'} in use.`
         : `${accountPostingAccess.limit - accountPostingAccess.used} job slot${accountPostingAccess.limit - accountPostingAccess.used === 1 ? '' : 's'} available.`;
     }
@@ -3054,6 +3187,27 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 <div class="mini-footer">
   <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
 </div>
+
+
+<script>
+function toggleEmployerMobileMenu(){
+  const menu=document.getElementById('employer-mobile-nav-menu');
+  const backdrop=document.getElementById('employer-mobile-nav-backdrop');
+  const btn=document.getElementById('employer-mobile-menu-btn');
+  const next=!menu?.classList.contains('open');
+  menu?.classList.toggle('open',next);
+  backdrop?.classList.toggle('open',next);
+  menu?.setAttribute('aria-hidden',next?'false':'true');
+  btn?.setAttribute('aria-expanded',next?'true':'false');
+}
+function closeEmployerMobileMenu(){
+  document.getElementById('employer-mobile-nav-menu')?.classList.remove('open');
+  document.getElementById('employer-mobile-nav-backdrop')?.classList.remove('open');
+  document.getElementById('employer-mobile-nav-menu')?.setAttribute('aria-hidden','true');
+  document.getElementById('employer-mobile-menu-btn')?.setAttribute('aria-expanded','false');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeEmployerMobileMenu(); });
+</script>
 
 </body>
 </html>
