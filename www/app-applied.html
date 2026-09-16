@@ -558,6 +558,39 @@ html[data-effective-theme="dark"] .bottom-nav .nav-item.active::before{
 .messaging-nav-badge[hidden]{display:none!important}
 </style>
 
+
+<style id="alygnn-candidate-primary-header-consistency">
+/* Match My Profile / Discover: one centered Alygnn wordmark, no changing avatar. */
+.my-jobs-header{
+  position:sticky!important;
+  top:0!important;
+  z-index:40!important;
+  min-height:86px!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  margin-left:calc(-1 * var(--candidate-page-gutter,0px))!important;
+  margin-right:calc(-1 * var(--candidate-page-gutter,0px))!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+.my-jobs-header-spacer{width:42px!important;height:42px!important}
+.my-jobs-wordmark{font-size:31px!important;line-height:1!important}
+.my-jobs-profile-button{
+  visibility:hidden!important;
+  pointer-events:none!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+}
+html[data-effective-theme="light"] .my-jobs-header{
+  background:rgba(246,248,247,.96)!important;
+  border-bottom:1px solid #DDE3E8!important;
+}
+html[data-effective-theme="dark"] .my-jobs-header{
+  background:rgba(5,24,33,.96)!important;
+  border-bottom:1px solid #29404C!important;
+}
+</style>
 </head>
 <body data-candidate-nav-build="2026-08-26-isolated-header">
 <div class="app">
