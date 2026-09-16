@@ -365,14 +365,35 @@ const { createClient } = supabase;
 
   async function resolveSignedInDestination(user, roleHint='seeker'){
     // Team membership is a workspace assignment, not company ownership.
-    // It must take priority over an old candidate/seeker profile role.
+    // It must take priority over an old candidate/seeker profile role, while
+    // still respecting an explicit Candidate Mode selection on this device.
     const teamAccess = await resolveTeamAccessForRouting();
 
     if(
       teamAccess?.has_company === true &&
       teamAccess?.is_owner === false
     ){
-      return window.location.origin + '/employer-dashboard.html?team_member=1';
+      let preferredMode='';
+      try{
+        preferredMode=String(
+          sessionStorage.getItem('alygnn_active_mode') ||
+          localStorage.getItem('alygnn_active_mode') ||
+          ''
+        ).toLowerCase();
+      }catch(_){}
+
+      if(preferredMode==='candidate'){
+        try{
+          const {data,error}=await sb.rpc('get_my_workspace_context');
+          if(!error && data?.has_candidate===true){
+            return window.location.origin + '/account.html?mode=candidate';
+          }
+        }catch(error){
+          console.warn('Candidate workspace route check unavailable:',error);
+        }
+      }
+
+      return window.location.origin + '/employer-dashboard.html?team_member=1&mode=employer';
     }
 
     return redirectFor(normalizeRole(roleHint));
