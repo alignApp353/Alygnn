@@ -1348,6 +1348,46 @@ body[data-theme="light"]{
 .messaging-nav-badge[hidden]{display:none!important}
 </style>
 
+
+<style id="alygnn-candidate-primary-header-consistency">
+/* Primary candidate tabs all use the same Alygnn header as My Profile. */
+.top-header{
+  position:sticky!important;
+  top:0!important;
+  z-index:40!important;
+  min-height:86px!important;
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  align-items:center!important;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+.top-header .logo{
+  font-size:31px!important;
+  line-height:1!important;
+}
+.top-header .tagline{display:none!important}
+.top-header .back-btn,
+.top-header .profile-chip{
+  visibility:hidden!important;
+  pointer-events:none!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  padding:0!important;
+}
+html[data-effective-theme="light"] .top-header,
+body[data-theme="light"] .top-header{
+  background:rgba(246,248,247,.96)!important;
+  border-bottom-color:#DDE3E8!important;
+}
+html[data-effective-theme="dark"] .top-header,
+body[data-theme="dark"] .top-header{
+  background:rgba(5,24,33,.96)!important;
+  border-bottom-color:#29404C!important;
+}
+</style>
 </head>
 
 <body data-swipe-build="2026-08-26-theme-sync">
