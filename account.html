@@ -645,6 +645,34 @@ select.form-input{
   flex:1;
   min-width:0;
 }
+
+.workspace-mode-card{
+  width:100%;
+  border-color:rgba(93,127,163,.28);
+  background:linear-gradient(135deg, rgba(93,127,163,.08), rgba(140,182,155,.10));
+  text-align:left;
+  font-family:'DM Sans', Arial, sans-serif;
+  cursor:pointer;
+}
+.workspace-mode-card .icon{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--brand-light, rgba(93,127,163,.10));
+  color:var(--brand);
+  font-size:14px;
+  font-weight:600;
+}
+.workspace-mode-card .workspace-company{
+  display:block;
+  margin-top:6px;
+  color:var(--brand);
+  font-size:12px;
+  font-weight:500;
+}
 #resume-replace-link{
   font-size:12px;
   color:var(--text-muted);
@@ -860,6 +888,20 @@ select.form-input{
     </div>
   </div>
 
+  <div class="section" id="candidate-workspace-mode-section" style="display:none;">
+    <div class="section-header">
+      <h2>Workspace mode</h2>
+    </div>
+    <div class="links-row">
+      <button class="link-card workspace-mode-card" id="switch-recruiter-mode-btn" type="button" onclick="switchToRecruiterMode()">
+        <span class="icon">R</span>
+        <div class="label">Switch to Recruiter Mode</div>
+        <div class="sub" id="switch-recruiter-mode-copy">Manage jobs, candidates, messages, and hiring activity.</div>
+        <span class="workspace-company" id="switch-recruiter-company"></span>
+      </button>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-header">
       <h2>Settings</h2>
@@ -899,7 +941,7 @@ select.form-input{
         <div class="sub">Optional — lets you sign in with email too, not just Google/Apple</div>
       </a>
 
-      <a href="account-settings.html" class="link-card">
+      <a href="account-settings.html?mode=candidate" class="link-card">
         <span class="icon">🔒</span>
         <div class="label">Account settings</div>
         <div class="sub">Password, linked accounts, sign out</div>
@@ -919,6 +961,12 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function signOutFromNav() {
+  try{
+    localStorage.removeItem('alygnn_active_mode');
+    localStorage.removeItem('alygnn_last_workspace');
+    localStorage.removeItem('alygnn_account_type');
+    sessionStorage.removeItem('alygnn_active_mode');
+  }catch(_){}
   await sb.auth.signOut();
   window.location.href = 'index.html';
 }
@@ -1455,6 +1503,84 @@ function escapeHtml(value){
 }
 
 
+
+function preferredWorkspaceMode(){
+  const params=new URLSearchParams(window.location.search);
+  const explicit=String(params.get('mode')||'').toLowerCase();
+  if(explicit==='candidate' || explicit==='employer') return explicit;
+  try{
+    return String(
+      sessionStorage.getItem('alygnn_active_mode') ||
+      localStorage.getItem('alygnn_active_mode') ||
+      ''
+    ).toLowerCase();
+  }catch(_){
+    return '';
+  }
+}
+
+function rememberWorkspaceMode(mode){
+  const normalized=mode==='candidate'?'candidate':'employer';
+  try{
+    localStorage.setItem('alygnn_active_mode',normalized);
+    sessionStorage.setItem('alygnn_active_mode',normalized);
+    localStorage.setItem('alygnn_last_workspace',normalized);
+    localStorage.setItem('alygnn_account_type',normalized==='candidate'?'candidate':'employer');
+  }catch(_){}
+}
+
+function switchToRecruiterMode(){
+  rememberWorkspaceMode('employer');
+  window.location.href='employer-dashboard.html?team_member=1&mode=employer';
+}
+
+async function configureWebsiteWorkspaceModeSwitch(teamAccessForRoute){
+  const section=document.getElementById('candidate-workspace-mode-section');
+  if(!section) return;
+  section.style.display='none';
+
+  // The primary employer owner remains employer-only. This switch is for an
+  // added Recruiter / Hiring Manager / Admin who also has a candidate workspace.
+  if(
+    teamAccessForRoute?.has_company!==true ||
+    teamAccessForRoute?.is_owner!==false
+  ) return;
+
+  try{
+    const {data,error}=await sb.rpc('get_my_workspace_context');
+    if(error) throw error;
+    const context=data||{};
+    if(context.has_candidate!==true) return;
+
+    const workspaces=Array.isArray(context.employer_workspaces)
+      ? context.employer_workspaces
+      : [];
+    if(!workspaces.length) return;
+
+    const activeId=String(context.active_company_id||teamAccessForRoute?.company_id||'');
+    const active=workspaces.find(w=>String(w?.company_id||'')===activeId)
+      || workspaces.find(w=>w?.is_active===true)
+      || workspaces[0];
+
+    const companyName=String(active?.company_name||'').trim();
+    const role=String(active?.team_role||teamAccessForRoute?.team_role||teamAccessForRoute?.role||'recruiter')
+      .replaceAll('_',' ')
+      .replace(/\b\w/g,c=>c.toUpperCase());
+
+    const copy=document.getElementById('switch-recruiter-mode-copy');
+    const company=document.getElementById('switch-recruiter-company');
+    if(copy){
+      copy.textContent=`Open your ${role} workspace without signing out.`;
+    }
+    if(company){
+      company.textContent=companyName?companyName:'';
+    }
+    section.style.display='block';
+  }catch(error){
+    console.warn('Could not configure website workspace mode switch:',error);
+  }
+}
+
 async function initAccountPage(){
   const {
     data: { session }
@@ -1496,12 +1622,21 @@ async function initAccountPage(){
     }
   }
 
+  const requestedWorkspaceMode = preferredWorkspaceMode();
+  const stayInCandidateMode = requestedWorkspaceMode === 'candidate';
+
   if(
     teamAccessForRoute?.has_company === true &&
-    teamAccessForRoute?.is_owner === false
+    teamAccessForRoute?.is_owner === false &&
+    !stayInCandidateMode
   ){
-    window.location.replace('employer-dashboard.html?team_member=1');
+    rememberWorkspaceMode('employer');
+    window.location.replace('employer-dashboard.html?team_member=1&mode=employer');
     return;
+  }
+
+  if(stayInCandidateMode){
+    rememberWorkspaceMode('candidate');
   }
 
   // This is a real candidate/owner account (or the team lookup returned a real
@@ -1604,6 +1739,7 @@ async function initAccountPage(){
     setupCta.href = 'preferences.html';
   }
 
+  await configureWebsiteWorkspaceModeSwitch(teamAccessForRoute);
   await loadAppliedJobs();
   await loadSkippedJobs();
 
