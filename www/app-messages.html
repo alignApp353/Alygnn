@@ -487,7 +487,7 @@ button{
   grid-template-columns:repeat(5,1fr);
 }
 .bottom-nav.employer{
-  grid-template-columns:repeat(6,1fr);
+  grid-template-columns:repeat(5,1fr);
 }
 .nav{
   border:0;
@@ -669,6 +669,177 @@ html[data-effective-theme="dark"] .bottom-nav.candidate{
   background-image:none!important;
 }
 </style>
+
+<style id="alygnn-candidate-shell-consistency-final">
+body.candidate-mode,
+body.candidate-mode .shell,
+body.candidate-mode .top{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+body.candidate-mode .top{
+  position:sticky!important;
+  top:0!important;
+  z-index:40!important;
+  width:auto!important;
+  min-height:86px!important;
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  align-items:center!important;
+  margin:0 -18px!important;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  border-bottom:1px solid #29404C!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+body.candidate-mode .top .logo{
+  margin:0!important;
+  padding:0!important;
+  text-align:center!important;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  font-size:31px!important;
+  font-weight:400!important;
+  line-height:1!important;
+  letter-spacing:-.7px!important;
+  color:#6F96BE!important;
+  white-space:nowrap!important;
+}
+body.candidate-mode .top .logo span{color:#8FC6A2!important}
+body.candidate-mode .top .back{
+  visibility:hidden!important;
+  pointer-events:none!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  padding:0!important;
+}
+html[data-effective-theme='light'] body.candidate-mode,
+html[data-effective-theme='light'] body.candidate-mode .shell,
+html[data-effective-theme='light'] body.candidate-mode .top{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+html[data-effective-theme='light'] body.candidate-mode .top{border-bottom-color:#DDE3E8!important}
+html[data-effective-theme='light'] body.candidate-mode .top .logo{color:#5D7FA3!important}
+html[data-effective-theme='light'] body.candidate-mode .top .logo span{color:#8CB69B!important}
+
+/* Candidate bottom nav source of truth: same dimensions/icons on every tab. */
+#candidate-bottom-nav,
+.bottom-nav.candidate{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  z-index:50!important;
+  width:100%!important;
+  max-width:560px!important;
+  margin:0 auto!important;
+  min-height:72px!important;
+  padding:8px 12px calc(10px + env(safe-area-inset-bottom))!important;
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  border-top:1px solid #29404C!important;
+  background:#061821!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(18px)!important;
+  -webkit-backdrop-filter:blur(18px)!important;
+}
+
+#candidate-bottom-nav .nav-item,
+.bottom-nav.candidate .nav{
+  position:relative!important;
+  min-width:0!important;
+  min-height:54px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#8293A2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:9px!important;
+  line-height:1.1!important;
+  font-weight:800!important;
+}
+
+#candidate-bottom-nav .nav-icon,
+.bottom-nav.candidate .nav svg{
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  min-height:20px!important;
+}
+
+#candidate-bottom-nav .nav-icon svg,
+.bottom-nav.candidate .nav svg{
+  width:20px!important;
+  height:20px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:1.8!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+
+#candidate-bottom-nav .nav-item.active,
+.bottom-nav.candidate .nav.active{
+  color:#73A4CE!important;
+}
+
+#candidate-bottom-nav .nav-item.active::before,
+.bottom-nav.candidate .nav.active::before{
+  content:''!important;
+  position:absolute!important;
+  top:-9px!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:34px!important;
+  height:3px!important;
+  border-radius:999px!important;
+  background:#73A4CE!important;
+}
+
+#candidate-bottom-nav .nav-label,
+.bottom-nav.candidate .nav > span:not(.messaging-nav-badge){
+  font-family:'DM Sans',Arial,sans-serif!important;
+  font-size:9px!important;
+  line-height:1.1!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+}
+
+html[data-effective-theme='light'] #candidate-bottom-nav,
+body[data-theme='light'] #candidate-bottom-nav,
+html[data-effective-theme='light'] .bottom-nav.candidate{
+  background:#F6F8F7!important;
+  border-top-color:#DDE3E8!important;
+}
+html[data-effective-theme='light'] #candidate-bottom-nav .nav-item,
+body[data-theme='light'] #candidate-bottom-nav .nav-item,
+html[data-effective-theme='light'] .bottom-nav.candidate .nav{
+  color:#738394!important;
+}
+html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active,
+body[data-theme='light'] #candidate-bottom-nav .nav-item.active,
+html[data-effective-theme='light'] .bottom-nav.candidate .nav.active{
+  color:#35679A!important;
+}
+html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active::before,
+body[data-theme='light'] #candidate-bottom-nav .nav-item.active::before,
+html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
+  background:#35679A!important;
+}
+
+</style>
+
 </head>
 
 <body>
@@ -797,7 +968,6 @@ function renderNav(){
     nav.innerHTML=
       navButton('dashboard','Dashboard','app-employer-dashboard.html?view=dashboard')+
       navButton('jobs','Jobs','app-employer-dashboard.html?view=jobs')+
-      navButton('applicants','Applicants','app-employer-dashboard.html?view=applicants')+
       navButton('messages','Messages','app-messages.html?role=employer',true)+
       navButton('company','Company','app-employer-dashboard.html?view=company')+
       navButton('settings','Settings','app-employer-dashboard.html?view=settings');
