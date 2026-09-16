@@ -2297,6 +2297,87 @@ html[data-effective-theme="light"] #candidate-bottom-nav {
 })();
 </script>
 
+
+
+<style id="alygnn-profile-header-exact-surface-fix">
+/* FINAL OVERRIDE — the circled My Profile header/status-bar area must be the
+   exact same surface as the candidate page below it. No separate dark band. */
+:root{
+  --alygnn-candidate-dark-canvas:#0B1D26;
+}
+
+html[data-effective-theme="dark"],
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] #profile-view,
+html[data-effective-theme="dark"] .page,
+html[data-effective-theme="dark"] .app-header,
+html[data-effective-theme="dark"] #candidate-bottom-nav,
+html[data-effective-theme="dark"] .bottom-nav,
+body[data-theme="dark"],
+body[data-theme="dark"] #profile-view,
+body[data-theme="dark"] .page,
+body[data-theme="dark"] .app-header,
+body[data-theme="dark"] #candidate-bottom-nav,
+body[data-theme="dark"] .bottom-nav{
+  --bg:var(--alygnn-candidate-dark-canvas)!important;
+  background:var(--alygnn-candidate-dark-canvas)!important;
+  background-color:var(--alygnn-candidate-dark-canvas)!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="dark"] .app-header,
+body[data-theme="dark"] .app-header{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+
+@media (prefers-color-scheme: dark){
+  body[data-theme="system"],
+  body[data-theme="system"] #profile-view,
+  body[data-theme="system"] .page,
+  body[data-theme="system"] .app-header,
+  body[data-theme="system"] #candidate-bottom-nav,
+  body[data-theme="system"] .bottom-nav{
+    --bg:var(--alygnn-candidate-dark-canvas)!important;
+    background:var(--alygnn-candidate-dark-canvas)!important;
+    background-color:var(--alygnn-candidate-dark-canvas)!important;
+    background-image:none!important;
+  }
+  body[data-theme="system"] .app-header{
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    box-shadow:none!important;
+  }
+}
+</style>
+<script id="alygnn-profile-header-exact-theme-color-fix">
+(function(){
+  const DARK='#0B1D26';
+  const LIGHT='#F6F8F7';
+  function syncExactCandidateChrome(){
+    const root=document.documentElement;
+    const body=document.body;
+    const raw=(root.dataset.effectiveTheme||body?.dataset?.theme||'system').toLowerCase();
+    const dark=raw==='dark'||(raw==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+    let meta=document.querySelector('meta[name="theme-color"]');
+    if(!meta){
+      meta=document.createElement('meta');
+      meta.name='theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content',dark?DARK:LIGHT);
+    document.documentElement.style.backgroundColor=dark?DARK:LIGHT;
+    if(body) body.style.backgroundColor=dark?DARK:LIGHT;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',syncExactCandidateChrome,{once:true});
+  else syncExactCandidateChrome();
+  window.addEventListener('pageshow',syncExactCandidateChrome);
+  window.addEventListener('focus',syncExactCandidateChrome);
+  window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener?.('change',syncExactCandidateChrome);
+})();
+</script>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
