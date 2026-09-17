@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account management — Alygnn Admin</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--card:#FCFCFA;--text:#1A2530;--muted:#4A5968;--border:#DDE3E8;--rose:#D79A9A;--rose-bg:#FAEEEE;--mint:#6FBF8F;--mint-bg:#EAF6EE}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-top:68px}
+nav{position:fixed;inset:0 0 auto 0;height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 5%;background:rgba(246,248,247,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:100}
+.logo{font-family:'DM Serif Display',serif;font-size:24px;color:var(--brand);text-decoration:none}.logo span{color:var(--sage)}
+.nav-right{display:flex;align-items:center;gap:10px}.admin-pill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:7px 11px;border:1px solid var(--border);border-radius:999px}.signout{border:1px solid var(--border);background:var(--card);border-radius:11px;padding:9px 13px;cursor:pointer;color:var(--text)}
+main{max-width:1100px;margin:0 auto;padding:42px 6% 90px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--brand);margin-bottom:8px}h1{font-family:'DM Serif Display',serif;font-size:36px;margin:0 0 8px}.intro{margin:0 0 26px;color:var(--muted);line-height:1.6;max-width:760px;font-size:14px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:18px}.search{flex:1;min-width:0;border:1px solid var(--border);background:#fff;border-radius:13px;padding:13px 15px;font-size:14px;outline:none}.search:focus{border-color:var(--brand)}.btn{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:12px 15px;font-weight:600;cursor:pointer;color:var(--text)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.danger{background:var(--rose-bg);border-color:rgba(215,154,154,.65);color:#9a4e4e}.btn:disabled{opacity:.45;cursor:not-allowed}
+.message{display:none;margin:0 0 16px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:13px;color:var(--muted)}.message.show{display:block}.message.error{background:var(--rose-bg);border-color:var(--rose);color:#8a4444}.message.success{background:var(--mint-bg);border-color:var(--mint);color:#2d6b45}
+.list{display:grid;gap:12px}.account{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}.name{font-weight:700;font-size:15px}.email{font-size:13px;color:var(--muted);margin-top:3px;word-break:break-word}.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}.chip{font-size:10px;font-weight:700;padding:5px 9px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--muted)}.chip.role{background:#EEF4FB;color:#4e7195;border-color:#d7e4f1}.chip.protected{background:#FFF4DF;color:#89631e;border-color:#ead7ab}.sub{font-size:11px;color:var(--muted);margin-top:9px}.empty{padding:38px 20px;text-align:center;border:1px dashed var(--border);border-radius:18px;background:var(--card);color:var(--muted)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,31,43,.38);display:none;align-items:center;justify-content:center;padding:20px;z-index:500}.modal-backdrop.show{display:flex}.modal{width:min(520px,100%);background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(20,31,43,.18)}.modal h2{font-family:'DM Serif Display',serif;margin:0 0 8px;font-size:25px}.modal p{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 14px}.warning{padding:12px 13px;background:var(--rose-bg);border:1px solid rgba(215,154,154,.55);border-radius:12px;color:#8a4444;font-size:12px;line-height:1.5;margin-bottom:14px}.field{margin-top:11px}.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px}.field input{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font:inherit}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.gate{max-width:460px;margin:90px auto;padding:30px;border:1px solid var(--border);border-radius:18px;background:var(--card);text-align:center}
+@media(max-width:680px){nav{padding:0 16px}.admin-pill{display:none}main{padding:30px 16px 70px}h1{font-size:31px}.toolbar{align-items:stretch;flex-direction:column}.account{grid-template-columns:1fr}.account-actions{display:flex}.account-actions .btn{width:100%}.modal-actions{flex-direction:column-reverse}.modal-actions .btn{width:100%}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="index.html">Alygnn<span>.</span></a>
+  <div class="nav-right"><span class="admin-pill">Admin · Account management</span><button class="signout" id="signout" type="button">Sign out</button></div>
+</nav>
+<main>
+  <div id="gate" class="gate" hidden><h1 style="font-size:26px">Admins only</h1><p class="intro" style="margin:10px auto 0">This page is restricted to Alygnn administrators.</p></div>
+  <section id="app" hidden>
+    <div class="eyebrow">Administration</div>
+    <h1>Account management</h1>
+    <p class="intro">Search Alygnn accounts and permanently delete candidate or team-member logins when necessary. Removing a person from a company workspace is still a separate action.</p>
+    <div class="toolbar">
+      <input id="search" class="search" type="search" placeholder="Search email, name, role, or company…" autocomplete="off">
+      <button id="search-btn" class="btn primary" type="button">Search</button>
+      <button id="refresh" class="btn" type="button">Refresh</button>
+    </div>
+    <div id="message" class="message"></div>
+    <div id="list" class="list"><div class="empty">Loading accounts…</div></div>
+  </section>
+</main>
+<div class="modal-backdrop" id="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+    <h2 id="delete-title">Permanently delete account?</h2>
+    <p id="delete-copy"></p>
+    <div class="warning">This removes the Alygnn login and associated candidate/team-member data. This cannot be undone.</div>
+    <div class="field"><label>Type the account email exactly</label><input id="confirm-email" type="text" autocomplete="off"></div>
+    <div class="field"><label>Type DELETE</label><input id="confirm-word" type="text" autocomplete="off"></div>
+    <div class="modal-actions"><button class="btn" id="cancel-delete" type="button">Cancel</button><button class="btn danger" id="confirm-delete" type="button">Delete account</button></div>
+  </div>
+</div>
+<script>
+const SUPABASE_URL='https://auth.alygnn.com';
+const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const API='/api/admin/accounts';
+let session=null, rows=[], pendingDelete=null;
+const $=id=>document.getElementById(id);
+function esc(v){const d=document.createElement('div');d.textContent=String(v??'');return d.innerHTML}
+function roleLabel(row){
+  if(row.is_admin)return'Admin';
+  if(row.team_roles?.length)return row.team_roles.map(v=>v==='hiring_manager'?'Hiring Manager':v==='recruiter'?'Recruiter':v==='admin'?'Admin':v).join(', ');
+  const r=String(row.role||'candidate').toLowerCase();
+  if(r==='seeker'||r==='candidate'||r==='employee')return'Candidate';
+  if(r==='employer')return'Employer';
+  return r.replaceAll('_',' ');
+}
+function showMessage(text,type=''){const el=$('message');el.textContent=text;el.className='message show'+(type?' '+type:'')}
+function clearMessage(){$('message').className='message';$('message').textContent=''}
+async function api(path='',options={}){
+  if(!session?.access_token)throw new Error('Your admin session expired.');
+  const response=await fetch(API+path,{...options,headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,...(options.headers||{})}});
+  const body=await response.json().catch(()=>({}));
+  if(response.status===401||response.status===403){await sb.auth.signOut().catch(()=>{});location.replace('admin-login.html?next=admin-accounts.html');throw new Error(body.error||'Admin authorization required.')}
+  if(!response.ok)throw new Error(body.error||`Request failed (${response.status})`);
+  return body;
+}
+function render(){
+  const list=$('list');
+  if(!rows.length){list.innerHTML='<div class="empty">No matching accounts found.</div>';return}
+  list.innerHTML=rows.map(row=>{
+    const protectedReason=row.protected_reason||'';
+    const teams=(row.companies||[]).filter(Boolean).join(', ');
+    return `<article class="account">
+      <div>
+        <div class="name">${esc(row.full_name||row.email||'Alygnn account')}</div>
+        <div class="email">${esc(row.email||'No email')}</div>
+        <div class="meta">
+          <span class="chip role">${esc(roleLabel(row))}</span>
+          ${teams?`<span class="chip">${esc(teams)}</span>`:''}
+          ${protectedReason?`<span class="chip protected">Protected</span>`:''}
+        </div>
+        <div class="sub">Created ${esc(row.created_at?new Date(row.created_at).toLocaleString():'Unknown')} · User ID ${esc(row.id)}</div>
+        ${protectedReason?`<div class="sub">${esc(protectedReason)}</div>`:''}
+      </div>
+      <div class="account-actions"><button class="btn danger" type="button" data-delete="${esc(row.id)}" ${protectedReason?'disabled':''}>Delete account</button></div>
+    </article>`;
+  }).join('');
+}
+async function load(){
+  clearMessage(); $('list').innerHTML='<div class="empty">Loading accounts…</div>';
+  try{
+    const q=$('search').value.trim();
+    const result=await api('?q='+encodeURIComponent(q));
+    rows=result.accounts||[]; render();
+  }catch(error){$('list').innerHTML='';showMessage(error.message||'Could not load accounts.','error')}
+}
+function openDelete(id){
+  const row=rows.find(x=>String(x.id)===String(id)); if(!row||row.protected_reason)return;
+  pendingDelete=row; $('confirm-email').value='';$('confirm-word').value='';
+  $('delete-copy').textContent=`Delete ${row.full_name||row.email||'this account'} (${row.email}) permanently?`;
+  $('modal').classList.add('show'); setTimeout(()=>$('confirm-email').focus(),50);
+}
+function closeDelete(){pendingDelete=null;$('modal').classList.remove('show')}
+async function deleteAccount(){
+  if(!pendingDelete)return;
+  const email=$('confirm-email').value.trim().toLowerCase();
+  const word=$('confirm-word').value.trim();
+  if(email!==String(pendingDelete.email||'').toLowerCase())return showMessage('The confirmation email does not match.','error');
+  if(word!=='DELETE')return showMessage('Type DELETE exactly to confirm.','error');
+  const button=$('confirm-delete');button.disabled=true;button.textContent='Deleting…';
+  try{
+    await api('',{method:'DELETE',body:JSON.stringify({user_id:pendingDelete.id,confirm_email:email,confirm_word:word})});
+    closeDelete();showMessage('Account permanently deleted.','success');await load();
+  }catch(error){showMessage(error.message||'Could not delete this account.','error')}
+  finally{button.disabled=false;button.textContent='Delete account'}
+}
+$('list').addEventListener('click',e=>{const btn=e.target.closest('[data-delete]');if(btn)openDelete(btn.dataset.delete)});
+$('search-btn').onclick=load;$('refresh').onclick=load;$('search').addEventListener('keydown',e=>{if(e.key==='Enter')load()});
+$('cancel-delete').onclick=closeDelete;$('confirm-delete').onclick=deleteAccount;$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeDelete()});
+$('signout').onclick=async()=>{await sb.auth.signOut().catch(()=>{});location.replace('admin-login.html?next=admin-accounts.html')};
+(async()=>{
+  const {data:{session:current}}=await sb.auth.getSession();session=current;
+  if(!session){location.replace('admin-login.html?next=admin-accounts.html');return}
+  const {data:profile,error}=await sb.from('profiles').select('is_admin').eq('id',session.user.id).maybeSingle();
+  if(error||profile?.is_admin!==true){$('gate').hidden=false;return}
+  $('app').hidden=false;await load();
+})();
+</script>
+</body>
+</html>
