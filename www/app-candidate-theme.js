@@ -28,7 +28,7 @@
   function palette(effective){
     return effective==='dark'
       ? {
-          '--bg':'#0E151D',
+          '--bg':'#061821',
           '--card':'#15202B',
           '--card-bg':'#15202B',
           '--text':'#F4F7F9',
@@ -58,7 +58,7 @@
       meta.name='theme-color';
       document.head.appendChild(meta);
     }
-    meta.content=effective==='dark' ? '#0E151D' : '#F5F8F8';
+    meta.content=effective==='dark' ? '#061821' : '#F5F8F8';
   }
 
   function apply(preference=getPreference()){
