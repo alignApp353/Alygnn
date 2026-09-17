@@ -193,17 +193,29 @@
     font-weight: 700;
   }
 
+  /* Alygnn Recommended — intentionally more premium than a normal card,
+     while staying inside the website brand color (#5D7FA3). */
+  .job-card.alygnn-recommended-card:first-child {
+    border-left: 5px solid var(--brand);
+    border-right: 5px solid var(--brand);
+    box-shadow:
+      0 12px 34px rgba(93,127,163,0.22),
+      -10px 0 28px -18px rgba(93,127,163,0.95),
+      10px 0 28px -18px rgba(93,127,163,0.95);
+  }
+
   .alygnn-recommended-sticker {
     position: absolute;
-    top: -12px;
+    top: -14px;
     right: 18px;
     z-index: 6;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 14px;
-    border: 1px solid rgba(93,127,163,0.35);
-    border-radius: 10px;
+    min-height: 38px;
+    padding: 9px 16px 9px 32px;
+    border: 1px solid rgba(93,127,163,0.48);
+    border-radius: 12px;
     background: var(--brand);
     color: #fff;
     font-family: 'DM Sans', sans-serif;
@@ -211,10 +223,32 @@
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
-    box-shadow: 0 8px 18px rgba(26,37,48,0.14);
+    box-shadow: 0 10px 24px rgba(93,127,163,0.34);
     transform: rotate(4deg);
     transform-origin: center;
     pointer-events: none;
+  }
+
+  /* Star sits partly outside the sticker so the recommendation reads like
+     a special Alygnn seal instead of a normal status pill. */
+  .alygnn-recommended-sticker::before {
+    content: '★';
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    width: 34px;
+    height: 34px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 3px solid var(--card-bg);
+    background: var(--brand);
+    color: #fff;
+    font-size: 17px;
+    line-height: 1;
+    box-shadow: 0 6px 16px rgba(93,127,163,0.32);
   }
 
   .job-card:not(:first-child) .alygnn-recommended-sticker {
@@ -222,12 +256,25 @@
   }
 
   @media (max-width: 640px) {
+    .job-card.alygnn-recommended-card:first-child {
+      border-left-width: 4px;
+      border-right-width: 4px;
+    }
+
     .alygnn-recommended-sticker {
-      top: -10px;
+      top: -11px;
       right: 14px;
-      padding: 7px 12px;
+      min-height: 34px;
+      padding: 8px 13px 8px 28px;
       font-size: 11px;
       transform: rotate(3deg);
+    }
+
+    .alygnn-recommended-sticker::before {
+      left: -13px;
+      width: 30px;
+      height: 30px;
+      font-size: 15px;
     }
   }
 
@@ -881,6 +928,9 @@
   function buildCard(job, index) {
     const card = document.createElement('div');
     card.className = 'job-card';
+    if (job.alygnn_recommended === true) {
+      card.classList.add('alygnn-recommended-card');
+    }
     card.dataset.index = index;
 
     const pillsHTML = [
@@ -1221,27 +1271,69 @@
   // tried to bump jobs.applied directly, which is blocked by RLS for
   // anyone who isn't the job's employer, and so silently failed every time.
   async function recordApplication(job) {
-    if (!currentUserId || !job?.id) return;
-    try {
-      const { error } = await sb
-        .from('applications')
-        .insert({
-          candidate_id: currentUserId,
-          job_id: job.id,
-          status: 'applied'
-        });
-
-      if (error) {
-        // Duplicate application (already applied to this job) isn't a
-        // real failure from the person's perspective — everything else is
-        // worth surfacing in the console for debugging.
-        if (error.code !== '23505') {
-          console.warn('Could not record application:', error);
-        }
-      }
-    } catch (err) {
-      console.warn('Could not record application server-side:', err);
+    if (!currentUserId) {
+      throw new Error('Please sign in before applying.');
     }
+    if (!job?.id) {
+      throw new Error('This job is missing its Alygnn job ID.');
+    }
+
+    // Check first so a second click / another open tab cannot create a
+    // duplicate application. More importantly, do not move the swipe card
+    // forward until Supabase confirms the application exists.
+    const { data: existing, error: existingError } = await sb
+      .from('applications')
+      .select('id,status')
+      .eq('candidate_id', currentUserId)
+      .eq('job_id', job.id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existing) return { created: false, application: existing };
+
+    const score = Number(matchScores[job.id]?.score);
+    const payload = {
+      candidate_id: currentUserId,
+      job_id: job.id,
+      status: 'applied',
+      applied_at: new Date().toISOString()
+    };
+
+    if (Number.isFinite(score)) {
+      payload.match_score = score;
+    }
+
+    let result = await sb
+      .from('applications')
+      .insert(payload)
+      .select('id,status')
+      .single();
+
+    // Older databases may not have match_score exposed in the schema cache.
+    // Retry once without that optional field, while keeping applied_at.
+    if (
+      result.error &&
+      Object.prototype.hasOwnProperty.call(payload, 'match_score') &&
+      /match_score|schema cache|column/i.test(String(result.error.message || ''))
+    ) {
+      delete payload.match_score;
+      result = await sb
+        .from('applications')
+        .insert(payload)
+        .select('id,status')
+        .single();
+    }
+
+    if (result.error) {
+      // If another tab won the race after our pre-check, treat the unique
+      // constraint as success because the application is already there.
+      if (result.error.code === '23505') {
+        return { created: false, application: null };
+      }
+      throw result.error;
+    }
+
+    return { created: true, application: result.data || null };
   }
 
   // Mirrors recordApplication() for a left-swipe. Previously a skip only
@@ -1271,7 +1363,7 @@
     }
   }
 
-  function animateSwipe(direction) {
+  async function animateSwipe(direction) {
     // A swipe lasts 350ms. Without a lock, a fast double-click, held arrow
     // key, or pointer-up + button click can advance currentIndex multiple
     // times before renderCards() replaces the card.
@@ -1293,24 +1385,52 @@
     clearTimeout(snapBackTimer);
     snapBackTimer = null;
 
-    // Make sure no leftover drag listeners/pointer state survive into the
-    // exit animation.
     detachDragListeners(cardToSwipe);
     isDragging = false;
     activePointerId = null;
     currentX = 0;
-    cardToSwipe.style.transition = '';
     cardToSwipe.style.pointerEvents = 'none';
 
-    const historyIndex = currentIndex;
+    let applicationResult = null;
+
+    // Applying is different from passing: we must have a real application
+    // row before showing success or advancing to the next card. The old code
+    // fired the insert in the background and moved on even when Supabase
+    // rejected it, which is why a right swipe could look successful without
+    // appearing under Applications.
+    if (direction === 'right') {
+      cardToSwipe.style.transition = 'transform .18s ease';
+      cardToSwipe.style.transform = '';
+      showToast('Sending application…');
+
+      try {
+        applicationResult = await recordApplication(job);
+      } catch (error) {
+        console.error('Application failed:', error);
+        cardToSwipe.style.pointerEvents = '';
+        cardToSwipe.style.transition = '';
+        swipeLocked = false;
+        setSwipeControlsLocked(false);
+        resetCardToCenter(cardToSwipe);
+        showToast(error?.message || 'Could not send application. Please try again.');
+        return;
+      }
+    }
+
+    cardToSwipe.style.transition = '';
     cardToSwipe.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
 
-    history.push({ job, direction, index: historyIndex });
+    const historyIndex = currentIndex;
+    history.push({
+      job,
+      direction,
+      index: historyIndex,
+      persistedCreated: direction === 'right' ? applicationResult?.created !== false : true
+    });
 
     if (direction === 'right') {
       applied++;
-      showToast('✓ Added to applications!');
-      recordApplication(job);
+      showToast('✓ Application sent!');
     } else {
       skipped++;
       showToast('Skipped');
@@ -1331,9 +1451,6 @@
       renderCards();
     };
 
-    // Prefer the real CSS animation completion. The timeout is a safety net
-    // for browsers that drop animationend during tab switches / interrupted
-    // pointer sequences.
     cardToSwipe.addEventListener('animationend', finishSwipe);
     swipeFinishTimer = setTimeout(() => finishSwipe(null), 500);
   }
@@ -1358,8 +1475,12 @@
     if (!currentUserId || !last.job?.id) return;
     try {
       if (last.direction === 'right') {
-        await sb.from('applications').delete()
-          .eq('candidate_id', currentUserId).eq('job_id', last.job.id);
+        // If the application already existed (for example another tab won
+        // the race), Undo must not delete that pre-existing application.
+        if (last.persistedCreated !== false) {
+          await sb.from('applications').delete()
+            .eq('candidate_id', currentUserId).eq('job_id', last.job.id);
+        }
       } else {
         await sb.from('skipped_jobs').delete()
           .eq('candidate_id', currentUserId).eq('job_id', last.job.id);
