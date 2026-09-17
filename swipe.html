@@ -193,8 +193,7 @@
     font-weight: 700;
   }
 
-  /* Alygnn Recommended — intentionally more premium than a normal card,
-     while staying inside the website brand color (#5D7FA3). */
+  /* Alygnn Recommended — blue side accents only, using the website brand color. */
   .job-card.alygnn-recommended-card:first-child {
     border-left: 5px solid var(--brand);
     border-right: 5px solid var(--brand);
@@ -204,56 +203,6 @@
       10px 0 28px -18px rgba(93,127,163,0.95);
   }
 
-  .alygnn-recommended-sticker {
-    position: absolute;
-    top: -14px;
-    right: 18px;
-    z-index: 6;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 38px;
-    padding: 9px 16px 9px 32px;
-    border: 1px solid rgba(93,127,163,0.48);
-    border-radius: 12px;
-    background: var(--brand);
-    color: #fff;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-    box-shadow: 0 10px 24px rgba(93,127,163,0.34);
-    transform: rotate(4deg);
-    transform-origin: center;
-    pointer-events: none;
-  }
-
-  /* Star sits partly outside the sticker so the recommendation reads like
-     a special Alygnn seal instead of a normal status pill. */
-  .alygnn-recommended-sticker::before {
-    content: '★';
-    position: absolute;
-    left: -15px;
-    top: 50%;
-    width: 34px;
-    height: 34px;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    border: 3px solid var(--card-bg);
-    background: var(--brand);
-    color: #fff;
-    font-size: 17px;
-    line-height: 1;
-    box-shadow: 0 6px 16px rgba(93,127,163,0.32);
-  }
-
-  .job-card:not(:first-child) .alygnn-recommended-sticker {
-    display: none;
-  }
 
   @media (max-width: 640px) {
     .job-card.alygnn-recommended-card:first-child {
@@ -261,21 +210,6 @@
       border-right-width: 4px;
     }
 
-    .alygnn-recommended-sticker {
-      top: -11px;
-      right: 14px;
-      min-height: 34px;
-      padding: 8px 13px 8px 28px;
-      font-size: 11px;
-      transform: rotate(3deg);
-    }
-
-    .alygnn-recommended-sticker::before {
-      left: -13px;
-      width: 30px;
-      height: 30px;
-      font-size: 15px;
-    }
   }
 
   .match-badge {
@@ -971,12 +905,8 @@
       ? `<img src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(job.company || 'Company')} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="company-logo-fallback" style="display:none;">${companyInitials}</span>`
       : `<span class="company-logo-fallback">${companyInitials}</span>`;
 
-    const recommendedStickerHTML = job.alygnn_recommended === true
-      ? '<div class="alygnn-recommended-sticker">Alygnn Recommended</div>'
-      : '';
 
     card.innerHTML = `
-      ${recommendedStickerHTML}
       <div class="stamp stamp-apply">APPLIED ✓</div>
       <div class="stamp stamp-skip">PASSED ✕</div>
       <div class="card-top">
