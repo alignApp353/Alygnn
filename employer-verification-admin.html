@@ -211,6 +211,7 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const ADMIN_API='https://alygnn.com/api/admin/employer-verifications';
+const ACCOUNT_API='https://alygnn.com/api/delete-account';
 
 const sb=supabase.createClient(
   SUPABASE_URL,
@@ -278,6 +279,30 @@ async function api(path='',options={}){
   if(response.status===401||response.status===403){
     await sb.auth.signOut().catch(()=>{});
     location.replace('admin-login.html');
+    throw new Error(result.error||'Admin authorization required.');
+  }
+
+  if(!response.ok)throw new Error(result.error||`Request failed (${response.status})`);
+  return result;
+}
+
+async function accountApi(path='',options={}){
+  if(!session?.access_token)throw new Error('Your admin session expired. Sign in again.');
+
+  const response=await fetch(ACCOUNT_API+path,{
+    ...options,
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+session.access_token,
+      ...(options.headers||{})
+    }
+  });
+
+  const result=await response.json().catch(()=>({}));
+
+  if(response.status===401||response.status===403){
+    await sb.auth.signOut().catch(()=>{});
+    location.replace('admin-login.html?next=employer-verification-admin.html');
     throw new Error(result.error||'Admin authorization required.');
   }
 
@@ -517,34 +542,54 @@ async function reviewProfileUpdateRequest(requestId,decision,button){
   }
 }
 
+function teamRoleLabel(value){
+  const role=String(value||'').toLowerCase();
+  if(role==='hiring_manager')return'Hiring Manager';
+  if(role==='recruiter')return'Recruiter';
+  if(role==='admin')return'Team Admin';
+  return role.replaceAll('_',' ').replace(/\b\w/g,ch=>ch.toUpperCase())||'Team member';
+}
+
 function accountRoleLabel(row){
-  if(row.is_admin)return 'Admin';
-  if(row.owns_company)return 'Employer owner';
-  if(row.team_role){
-    const role=String(row.team_role).replaceAll('_',' ');
-    return role.replace(/\b\w/g,ch=>ch.toUpperCase());
-  }
-  const raw=String(row.role||row.account_type||'candidate').toLowerCase();
-  if(raw==='seeker'||raw==='employee')return 'Candidate';
-  if(raw==='employer_team'||raw==='team_member')return 'Team member';
+  if(row.is_admin)return'Admin';
+  if(row.owns_company)return'Employer owner';
+  const raw=String(row.role||'candidate').toLowerCase();
+  if(raw==='seeker'||raw==='employee'||raw==='candidate')return'Candidate';
+  if(raw==='employer_team'||raw==='team_member')return'Team member';
+  if(raw==='employer')return'Employer';
   return raw.replaceAll('_',' ').replace(/\b\w/g,ch=>ch.toUpperCase())||'Account';
 }
 
 function renderAccountRow(row){
-  const label=accountRoleLabel(row);
   const chips=[];
-  chips.push(`<span class="account-chip ${row.is_admin?'admin':row.owns_company?'owner':row.team_role?'team':''}">${esc(label)}</span>`);
-  if(row.company_name)chips.push(`<span class="account-chip">${esc(row.company_name)}</span>`);
-  if(row.membership_status)chips.push(`<span class="account-chip">${esc(String(row.membership_status).replaceAll('_',' '))}</span>`);
-  const protectedAccount=row.is_admin||String(row.user_id)===String(session?.user?.id||'');
+  const teamRoles=(row.team_roles||[]).filter(Boolean);
+  const companies=(row.companies||[]).filter(Boolean);
+
+  if(row.has_candidate_account){
+    chips.push('<span class="account-chip">Candidate</span>');
+  }else{
+    chips.push(`<span class="account-chip ${row.is_admin?'admin':row.owns_company?'owner':''}">${esc(accountRoleLabel(row))}</span>`);
+  }
+
+  if(row.owns_company)chips.push('<span class="account-chip owner">Employer owner</span>');
+  teamRoles.forEach(role=>chips.push(`<span class="account-chip team">${esc(teamRoleLabel(role))}</span>`));
+  companies.forEach(company=>chips.push(`<span class="account-chip">${esc(company)}</span>`));
+  if(row.dual_workspace===true)chips.push('<span class="account-chip">Dual account</span>');
+
+  const protectedReason=String(row.protected_reason||'');
+  const dual=row.dual_workspace===true;
+  const actionLabel=dual?'Delete employer access':'Delete account';
+
   return `<div class="account-row">
     <div class="account-main">
       <div class="account-name">${esc(row.full_name||row.email||'Alygnn account')}</div>
       <div class="account-email">${esc(row.email||'No email')}</div>
-      <div class="account-id">${esc(row.user_id||'')}</div>
+      <div class="account-id">User ID: ${esc(row.id||'')}</div>
       <div class="account-meta">${chips.join('')}</div>
+      ${dual?'<div class="account-help" style="margin-top:8px">Candidate account will be preserved. This action removes employer workspace roles and permissions only.</div>':''}
+      ${protectedReason?`<div class="account-help" style="margin-top:8px">${esc(protectedReason)}</div>`:''}
     </div>
-    <button class="delete-account-btn" type="button" ${protectedAccount?'disabled':''} onclick="openDeleteAccount('${esc(row.user_id)}')">${row.is_admin?'Protected admin':String(row.user_id)===String(session?.user?.id||'')?'Current admin':'Delete account'}</button>
+    <button class="delete-account-btn" type="button" ${protectedReason?'disabled':''} onclick="openDeleteAccount('${esc(row.id)}')">${protectedReason?'Protected':actionLabel}</button>
   </div>`;
 }
 
@@ -553,46 +598,76 @@ function renderAccountManagement(){
   queue.innerHTML=`<div class="account-tools">
     <div class="account-search-card">
       <div class="account-search-row">
-        <input id="account-search" type="search" placeholder="Search by email, name, user ID, company, or role" autocomplete="off">
-        <button class="refresh" id="account-search-btn" type="button">Search accounts</button>
+        <input id="account-search" type="search" placeholder="Paste company ID" autocomplete="off" spellcheck="false">
+        <button class="refresh" id="account-search-btn" type="button">Look up company</button>
       </div>
-      <div class="account-help">Use this when an account cannot reach Account Settings. Removing someone from a company workspace does not delete their login; this admin action permanently deletes the Alygnn account.</div>
+      <div class="account-help">No Alygnn accounts are loaded automatically. When a company contacts support, paste its Company ID here. Alygnn will show only the owner and team accounts connected to that company so you can work on the specific request.</div>
     </div>
-    <div class="account-list" id="account-list"><div class="loading-state">Loading accounts…</div></div>
+    <div class="account-list" id="account-list"><div class="account-empty">Enter a Company ID to look up that company’s accounts.</div></div>
   </div>`;
   $('account-search-btn').addEventListener('click',()=>loadAccounts($('account-search').value));
   $('account-search').addEventListener('keydown',event=>{if(event.key==='Enter')loadAccounts(event.currentTarget.value)});
+  setTimeout(()=>$('account-search')?.focus(),50);
+}
+
+function looksLikeCompanyId(value){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||'').trim());
 }
 
 async function loadAccounts(query=''){
   currentStatus='accounts';
   if(!$('account-list'))renderAccountManagement();
+
   const list=$('account-list');
   const input=$('account-search');
-  if(input&&query!==input.value)input.value=query;
-  list.innerHTML='<div class="loading-state">Loading accounts…</div>';
+  const companyId=String(query||'').trim();
+  if(input&&companyId!==input.value)input.value=companyId;
+
+  accountRows=[];
+
+  if(!companyId){
+    list.innerHTML='<div class="account-empty">Enter a Company ID to look up that company’s accounts.</div>';
+    return;
+  }
+
+  if(!looksLikeCompanyId(companyId)){
+    list.innerHTML='<div class="account-empty">Enter the full Company ID exactly as provided by the company.</div>';
+    return;
+  }
+
+  list.innerHTML='<div class="loading-state">Looking up company…</div>';
+
   try{
-    const result=await api('?resource=accounts&q='+encodeURIComponent(String(query||'').trim()));
+    const result=await accountApi('?scope=admin&q='+encodeURIComponent(companyId));
     accountRows=result.accounts||[];
     list.innerHTML=accountRows.length
       ? accountRows.map(renderAccountRow).join('')
-      : '<div class="account-empty">No Alygnn accounts matched this search.</div>';
+      : '<div class="account-empty">No company was found for that Company ID, or no Alygnn accounts are currently connected to it.</div>';
   }catch(error){
     accountRows=[];
-    list.innerHTML='<div class="account-empty">'+esc(error.message||'Could not load accounts.')+'</div>';
+    list.innerHTML='<div class="account-empty">'+esc(error.message||'Could not look up this company.')+'</div>';
   }
 }
 
 function openDeleteAccount(userId){
-  const row=accountRows.find(item=>String(item.user_id)===String(userId));
-  if(!row||row.is_admin||String(row.user_id)===String(session?.user?.id||''))return;
+  const row=accountRows.find(item=>String(item.id)===String(userId));
+  if(!row||row.protected_reason)return;
+
   selectedDeleteAccount=row;
-  $('delete-account-copy').textContent=`You are about to permanently delete ${row.full_name||row.email||'this account'} (${row.email||row.user_id}).`;
-  $('delete-account-warning').textContent=row.owns_company
-    ? 'This is an employer owner account. Deleting it will also remove its Alygnn company workspace data, jobs, team memberships, and related account data. This cannot be undone.'
-    : row.team_role
-      ? 'This team member will lose the Alygnn login and all workspace memberships. The employer company itself will remain.'
-      : 'The login, profile, candidate activity, stored resume, and other Alygnn account data will be removed. This cannot be undone.';
+  const dual=row.dual_workspace===true;
+
+  $('delete-account-title').textContent=dual?'Delete employer access':'Delete Alygnn account';
+  $('delete-account-copy').textContent=dual
+    ? `Remove employer workspace access for ${row.full_name||row.email||'this account'} (${row.email||row.id})?`
+    : `You are about to permanently delete ${row.full_name||row.email||'this account'} (${row.email||row.id}).`;
+
+  $('delete-account-warning').textContent=dual
+    ? 'This removes Recruiter, Hiring Manager, or team Admin access only. The Candidate login, resume, applications, saved jobs, and candidate history stay intact.'
+    : row.owns_company
+      ? 'This is an employer owner account. Deleting it will also remove its Alygnn company workspace data, jobs, team memberships, and related account data. This cannot be undone.'
+      : 'The Alygnn login and associated account data will be permanently removed. This cannot be undone.';
+
+  $('delete-confirm').textContent=dual?'Delete employer access':'Delete account permanently';
   $('delete-confirm-email').value='';
   $('delete-confirm-word').value='';
   updateDeleteConfirmState();
@@ -617,26 +692,39 @@ function updateDeleteConfirmState(){
 async function deleteSelectedAccount(){
   const row=selectedDeleteAccount;
   if(!row)return;
+
   updateDeleteConfirmState();
   if($('delete-confirm').disabled)return;
+
+  const dual=row.dual_workspace===true;
+  const deletionMode=dual?'employer_only':'full';
   const button=$('delete-confirm');
   const old=button.textContent;
   button.disabled=true;
-  button.textContent='Deleting…';
+  button.textContent=dual?'Removing employer access…':'Deleting…';
+
   try{
-    await api('?resource=accounts',{
+    await accountApi('',{
       method:'DELETE',
       body:JSON.stringify({
-        user_id:row.user_id,
-        confirmation_email:String($('delete-confirm-email').value||'').trim(),
-        confirmation_text:String($('delete-confirm-word').value||'').trim()
+        scope:'admin',
+        deletion_mode:deletionMode,
+        user_id:row.id,
+        confirm_email:String($('delete-confirm-email').value||'').trim(),
+        confirm_word:String($('delete-confirm-word').value||'').trim()
       })
     });
+
     closeDeleteAccount();
-    showMessage('Alygnn account permanently deleted.','success');
+    showMessage(
+      dual
+        ? 'Employer workspace access deleted. Candidate account preserved.'
+        : 'Alygnn account permanently deleted.',
+      'success'
+    );
     await loadAccounts($('account-search')?.value||'');
   }catch(error){
-    showMessage(error.message||'Could not delete this account.','error');
+    showMessage(error.message||'Could not complete this account action.','error');
     button.disabled=false;
     button.textContent=old;
   }
@@ -873,8 +961,8 @@ document.querySelectorAll('.tab').forEach(button=>{
     if(button.dataset.status==='profile_updates'){
       loadProfileUpdateRequests();
     }else if(button.dataset.status==='accounts'){
+      currentStatus='accounts';
       renderAccountManagement();
-      loadAccounts('');
     }else{
       loadStatus(button.dataset.status);
     }
@@ -886,7 +974,8 @@ $('refresh').addEventListener('click',()=>{
     return Promise.all([loadProfileUpdateRequests(),loadCounts()]);
   }
   if(currentStatus==='accounts'){
-    return loadAccounts($('account-search')?.value||'');
+    const companyId=String($('account-search')?.value||'').trim();
+    return companyId ? loadAccounts(companyId) : renderAccountManagement();
   }
   return Promise.all([loadStatus(currentStatus),loadCounts()]);
 });
