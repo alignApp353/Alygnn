@@ -21,7 +21,7 @@ function applyCors(req, res) {
   }
 
   res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   res.setHeader('Access-Control-Max-Age', '86400');
 }
@@ -144,6 +144,393 @@ async function addSignedUrls(supabase, rows) {
   );
 }
 
+
+function isMissingSchemaError(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    code === '42P01' || code === '42703' || code === 'PGRST204' || code === 'PGRST205' ||
+    message.includes('does not exist') || message.includes('could not find the') || message.includes('schema cache')
+  );
+}
+
+async function safeDeleteBy(supabase, table, column, value) {
+  const { error } = await supabase.from(table).delete().eq(column, value);
+  if (error && !isMissingSchemaError(error)) {
+    throw new Error(`${table}.${column} cleanup failed: ${error.message}`);
+  }
+}
+
+async function safeNullBy(supabase, table, column, value) {
+  const { error } = await supabase.from(table).update({ [column]: null }).eq(column, value);
+  if (error && !isMissingSchemaError(error)) {
+    console.warn(`Could not clear ${table}.${column}:`, error.message);
+  }
+}
+
+async function safeSelectIds(supabase, table, select, column, value) {
+  const { data, error } = await supabase.from(table).select(select).eq(column, value);
+  if (error) {
+    if (isMissingSchemaError(error)) return [];
+    throw new Error(`${table}.${column} lookup failed: ${error.message}`);
+  }
+  return data || [];
+}
+
+async function fetchInChunks(supabase, table, select, column, values, chunkSize = 100) {
+  const unique = [...new Set((values || []).filter(Boolean))];
+  const result = [];
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const batch = unique.slice(i, i + chunkSize);
+    const { data, error } = await supabase.from(table).select(select).in(column, batch);
+    if (error) {
+      if (isMissingSchemaError(error)) return [];
+      throw error;
+    }
+    result.push(...(data || []));
+  }
+  return result;
+}
+
+async function listAllAuthUsers(supabase, maxUsers = 5000) {
+  const users = [];
+  const perPage = 1000;
+  for (let page = 1; users.length < maxUsers; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const pageUsers = data?.users || [];
+    users.push(...pageUsers);
+    if (pageUsers.length < perPage) break;
+  }
+  return users.slice(0, maxUsers);
+}
+
+async function buildAccountRows(supabase, queryText = '') {
+  const authUsers = await listAllAuthUsers(supabase);
+  const userIds = authUsers.map(user => user.id).filter(Boolean);
+
+  const [profiles, memberships, ownedCompanies] = await Promise.all([
+    fetchInChunks(supabase, 'profiles', 'id,full_name,role,is_admin,company_name,created_at', 'id', userIds),
+    fetchInChunks(supabase, 'company_members', 'user_id,company_id,team_role,role,membership_status,member_name,member_email', 'user_id', userIds),
+    fetchInChunks(supabase, 'companies', 'id,owner_user_id,company_name,account_status,verification_status', 'owner_user_id', userIds)
+  ]);
+
+  const profileMap = new Map((profiles || []).map(row => [String(row.id), row]));
+  const membershipMap = new Map();
+  for (const row of memberships || []) {
+    const key = String(row.user_id || '');
+    if (!membershipMap.has(key)) membershipMap.set(key, []);
+    membershipMap.get(key).push(row);
+  }
+
+  const ownedMap = new Map();
+  for (const row of ownedCompanies || []) {
+    const key = String(row.owner_user_id || '');
+    if (!ownedMap.has(key)) ownedMap.set(key, []);
+    ownedMap.get(key).push(row);
+  }
+
+  const companyIds = [...new Set([
+    ...(memberships || []).map(row => row.company_id),
+    ...(ownedCompanies || []).map(row => row.id)
+  ].filter(Boolean))];
+  const companies = await fetchInChunks(
+    supabase,
+    'companies',
+    'id,company_name,owner_user_id,account_status,verification_status',
+    'id',
+    companyIds
+  );
+  const companyMap = new Map((companies || []).map(row => [String(row.id), row]));
+
+  let rows = authUsers.map(user => {
+    const id = String(user.id || '');
+    const profile = profileMap.get(id) || {};
+    const memberRows = membershipMap.get(id) || [];
+    const activeMembership = memberRows.find(row => String(row.membership_status || 'active').toLowerCase() === 'active') || memberRows[0] || null;
+    const ownerCompanies = ownedMap.get(id) || [];
+    const owned = ownerCompanies[0] || null;
+    const memberCompany = activeMembership ? companyMap.get(String(activeMembership.company_id || '')) : null;
+    const company = owned || memberCompany || null;
+
+    return {
+      user_id: user.id,
+      email: user.email || activeMembership?.member_email || '',
+      full_name: profile.full_name || activeMembership?.member_name || user.user_metadata?.full_name || user.user_metadata?.name || '',
+      role: profile.role || user.user_metadata?.role || user.user_metadata?.account_type || '',
+      account_type: user.user_metadata?.account_type || '',
+      is_admin: profile.is_admin === true,
+      owns_company: !!owned,
+      company_id: company?.id || activeMembership?.company_id || null,
+      company_name: company?.company_name || profile.company_name || '',
+      company_status: company?.account_status || '',
+      team_role: activeMembership?.team_role || activeMembership?.role || '',
+      membership_status: activeMembership?.membership_status || '',
+      created_at: user.created_at || profile.created_at || null,
+      last_sign_in_at: user.last_sign_in_at || null,
+      email_confirmed_at: user.email_confirmed_at || null
+    };
+  });
+
+  const q = String(queryText || '').trim().toLowerCase();
+  if (q) {
+    rows = rows.filter(row => [
+      row.user_id,
+      row.email,
+      row.full_name,
+      row.role,
+      row.account_type,
+      row.team_role,
+      row.company_name
+    ].some(value => String(value || '').toLowerCase().includes(q)));
+  }
+
+  rows.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  return rows.slice(0, q ? 100 : 50);
+}
+
+async function listAllFiles(storageBucket, rootPrefix) {
+  const files = [];
+  const folders = [String(rootPrefix || '').replace(/^\/+|\/+$/g, '')];
+  let safetyCount = 0;
+
+  while (folders.length && safetyCount < 10000) {
+    const folder = folders.shift();
+    let offset = 0;
+    while (safetyCount < 10000) {
+      const { data, error } = await storageBucket.list(folder, {
+        limit: 100,
+        offset,
+        sortBy: { column: 'name', order: 'asc' }
+      });
+      if (error) {
+        console.warn(`Could not list storage folder "${folder}":`, error.message);
+        break;
+      }
+      const rows = data || [];
+      if (!rows.length) break;
+      for (const item of rows) {
+        safetyCount += 1;
+        const path = folder ? `${folder}/${item.name}` : item.name;
+        if (item.id || item.metadata) files.push(path);
+        else folders.push(path);
+      }
+      if (rows.length < 100) break;
+      offset += rows.length;
+    }
+  }
+  return files;
+}
+
+async function removePaths(storageBucket, paths) {
+  const unique = [...new Set((paths || []).filter(Boolean))];
+  for (let i = 0; i < unique.length; i += 100) {
+    const { error } = await storageBucket.remove(unique.slice(i, i + 100));
+    if (error) throw new Error(`Could not remove stored account files: ${error.message}`);
+  }
+}
+
+async function cleanupStorage(supabase, userId, profile, ownedCompanyIds) {
+  const resumeBucket = supabase.storage.from('resumes');
+  const resumePaths = await listAllFiles(resumeBucket, userId);
+  if (profile?.resume_file_path) resumePaths.push(profile.resume_file_path);
+  if (resumePaths.length) await removePaths(resumeBucket, resumePaths);
+
+  const employerBucket = supabase.storage.from('employer-verification-documents');
+  const employerPaths = [];
+  if (profile?.hiring_blueprint?.irs_document_path) employerPaths.push(profile.hiring_blueprint.irs_document_path);
+  const verificationDocs = await safeSelectIds(
+    supabase,
+    'employer_verification_documents',
+    'storage_path',
+    'uploaded_by',
+    userId
+  );
+  for (const row of verificationDocs) if (row.storage_path) employerPaths.push(row.storage_path);
+  employerPaths.push(...(await listAllFiles(employerBucket, userId)));
+  for (const companyId of ownedCompanyIds) {
+    employerPaths.push(...(await listAllFiles(employerBucket, companyId)));
+  }
+  if (employerPaths.length) await removePaths(employerBucket, employerPaths);
+}
+
+async function cleanupMessagingData(supabase, userId) {
+  const conversationIds = new Set();
+  for (const column of ['candidate_id', 'employer_id']) {
+    const rows = await safeSelectIds(supabase, 'application_conversations', 'id', column, userId);
+    rows.forEach(row => row?.id && conversationIds.add(row.id));
+  }
+  for (const id of conversationIds) {
+    await safeDeleteBy(supabase, 'application_messages', 'conversation_id', id);
+    await safeDeleteBy(supabase, 'application_conversations', 'id', id);
+  }
+  await safeDeleteBy(supabase, 'application_messages', 'sender_id', userId);
+
+  const threadIds = new Set();
+  for (const column of ['candidate_id', 'employer_id']) {
+    const rows = await safeSelectIds(supabase, 'message_threads', 'id', column, userId);
+    rows.forEach(row => row?.id && threadIds.add(row.id));
+  }
+  for (const id of threadIds) {
+    await safeDeleteBy(supabase, 'messages', 'thread_id', id);
+    await safeDeleteBy(supabase, 'message_threads', 'id', id);
+  }
+  await safeDeleteBy(supabase, 'messages', 'sender_id', userId);
+}
+
+async function cleanupCandidateData(supabase, userId) {
+  await cleanupMessagingData(supabase, userId);
+  const candidateTables = [
+    ['applications', 'candidate_id'],
+    ['skipped_jobs', 'candidate_id'],
+    ['saved_jobs', 'candidate_id'],
+    ['liked_jobs', 'candidate_id'],
+    ['job_likes', 'candidate_id'],
+    ['swipes', 'candidate_id'],
+    ['swipe_actions', 'candidate_id'],
+    ['job_views', 'candidate_id'],
+    ['password_change_codes', 'user_id']
+  ];
+  for (const [table, column] of candidateTables) await safeDeleteBy(supabase, table, column, userId);
+}
+
+async function deleteJobDependents(supabase, jobIds) {
+  for (const jobId of jobIds) {
+    const apps = await safeSelectIds(supabase, 'applications', 'id', 'job_id', jobId);
+    for (const app of apps) {
+      await safeDeleteBy(supabase, 'application_messages', 'application_id', app.id);
+      await safeDeleteBy(supabase, 'application_conversations', 'application_id', app.id);
+      await safeDeleteBy(supabase, 'message_threads', 'application_id', app.id);
+    }
+    await safeDeleteBy(supabase, 'application_conversations', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'message_threads', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'applications', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'skipped_jobs', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'saved_jobs', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'liked_jobs', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'job_likes', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'swipes', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'swipe_actions', 'job_id', jobId);
+    await safeDeleteBy(supabase, 'job_views', 'job_id', jobId);
+  }
+}
+
+async function cleanupJobsOwnedByUser(supabase, userId) {
+  const ownershipColumns = ['employer_id', 'created_by', 'user_id', 'owner_id'];
+  const jobIds = new Set();
+  for (const column of ownershipColumns) {
+    const rows = await safeSelectIds(supabase, 'jobs', 'id', column, userId);
+    rows.forEach(row => row?.id && jobIds.add(row.id));
+  }
+  await deleteJobDependents(supabase, [...jobIds]);
+  for (const column of ownershipColumns) await safeDeleteBy(supabase, 'jobs', column, userId);
+}
+
+async function cleanupCompanyData(supabase, userId) {
+  const ownedCompanies = await safeSelectIds(supabase, 'companies', 'id', 'owner_user_id', userId);
+  const ownedCompanyIds = ownedCompanies.map(row => row?.id).filter(Boolean);
+
+  await safeNullBy(supabase, 'company_members', 'approved_by', userId);
+  await safeNullBy(supabase, 'employer_verifications', 'reviewed_by', userId);
+  await safeNullBy(supabase, 'employer_verification_documents', 'reviewed_by', userId);
+  await safeNullBy(supabase, 'company_team_invites', 'invited_by', userId);
+
+  await safeDeleteBy(supabase, 'company_activity_log', 'actor_user_id', userId);
+  await safeDeleteBy(supabase, 'company_activity_log', 'target_user_id', userId);
+  await safeDeleteBy(supabase, 'company_members', 'user_id', userId);
+  await safeDeleteBy(supabase, 'company_team_invites', 'accepted_user_id', userId);
+  await safeDeleteBy(supabase, 'company_team_invites', 'user_id', userId);
+
+  for (const companyId of ownedCompanyIds) {
+    const companyJobs = await safeSelectIds(supabase, 'jobs', 'id', 'company_id', companyId);
+    await deleteJobDependents(supabase, companyJobs.map(row => row?.id).filter(Boolean));
+    await safeDeleteBy(supabase, 'jobs', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'employer_verification_documents', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'employer_verifications', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'company_activity_log', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'company_blueprints', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'company_team_invites', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'company_members', 'company_id', companyId);
+    await safeDeleteBy(supabase, 'companies', 'id', companyId);
+  }
+  return ownedCompanyIds;
+}
+
+async function permanentlyDeleteAccount(supabase, admin, body) {
+  const targetUserId = String(body.user_id || '').trim();
+  const confirmationEmail = String(body.confirmation_email || '').trim().toLowerCase();
+  const confirmationText = String(body.confirmation_text || '').trim();
+
+  if (!targetUserId) {
+    const error = new Error('Choose an Alygnn account to delete.');
+    error.status = 400;
+    throw error;
+  }
+  if (targetUserId === admin.id) {
+    const error = new Error('You cannot delete the admin account you are currently using.');
+    error.status = 400;
+    throw error;
+  }
+
+  const { data: targetData, error: targetError } = await supabase.auth.admin.getUserById(targetUserId);
+  const targetUser = targetData?.user;
+  if (targetError || !targetUser) {
+    const error = new Error('That Alygnn account could not be found.');
+    error.status = 404;
+    throw error;
+  }
+
+  const targetEmail = String(targetUser.email || '').trim().toLowerCase();
+  if (!targetEmail || confirmationEmail !== targetEmail || confirmationText !== 'DELETE') {
+    const error = new Error('Account deletion confirmation did not match.');
+    error.status = 400;
+    throw error;
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', targetUserId)
+    .maybeSingle();
+  if (profileError && !isMissingSchemaError(profileError)) throw profileError;
+
+  const protectedAdminEmail = adminEmails().has(targetEmail);
+  if (profile?.is_admin === true || protectedAdminEmail) {
+    const error = new Error('Admin accounts are protected and cannot be deleted from Account Management.');
+    error.status = 403;
+    throw error;
+  }
+
+  const ownedCompanies = await safeSelectIds(supabase, 'companies', 'id', 'owner_user_id', targetUserId);
+  const ownedCompanyIds = ownedCompanies.map(row => row?.id).filter(Boolean);
+
+  await cleanupStorage(supabase, targetUserId, profile || null, ownedCompanyIds);
+  await cleanupCandidateData(supabase, targetUserId);
+  await cleanupJobsOwnedByUser(supabase, targetUserId);
+  await cleanupCompanyData(supabase, targetUserId);
+  await safeDeleteBy(supabase, 'employer_verification_documents', 'uploaded_by', targetUserId);
+  await safeDeleteBy(supabase, 'employer_verifications', 'user_id', targetUserId);
+  await safeDeleteBy(supabase, 'employer_entitlements', 'employer_id', targetUserId);
+  await safeDeleteBy(supabase, 'profiles', 'id', targetUserId);
+
+  const { error: deleteUserError } = await supabase.auth.admin.deleteUser(targetUserId, false);
+  if (deleteUserError) {
+    throw new Error(
+      'The Alygnn profile data was cleaned up, but Supabase could not remove the login because another database reference still exists. Check the Vercel log for the exact constraint: ' + deleteUserError.message
+    );
+  }
+
+  console.log('ADMIN_ACCOUNT_DELETED', {
+    admin_user_id: admin.id,
+    admin_email: admin.email,
+    target_user_id: targetUserId,
+    target_email: targetEmail,
+    deleted_at: new Date().toISOString()
+  });
+
+  return { success: true, user_id: targetUserId, email: targetEmail };
+}
+
 module.exports = async function handler(req, res) {
   applyCors(req, res);
 
@@ -152,6 +539,19 @@ module.exports = async function handler(req, res) {
   try {
     const supabase = serviceClient();
     const admin = await requireAdmin(req, supabase);
+    const resource = String(req.query?.resource || '').trim().toLowerCase();
+
+    if (req.method === 'GET' && resource === 'accounts') {
+      const q = String(req.query?.q || '').trim();
+      const accounts = await buildAccountRows(supabase, q);
+      return sendJson(res, 200, { success: true, accounts });
+    }
+
+    if (req.method === 'DELETE' && resource === 'accounts') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const result = await permanentlyDeleteAccount(supabase, admin, body);
+      return sendJson(res, 200, result);
+    }
 
     if (req.method === 'GET') {
       const requestedStatus = String(req.query.status || 'pending_review').trim();
@@ -302,7 +702,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    res.setHeader('Allow','GET, PATCH, OPTIONS');
+    res.setHeader('Allow','GET, PATCH, DELETE, OPTIONS');
     return sendJson(res,405,{success:false,error:'Method not allowed.'});
   } catch (error) {
     console.error('Employer verification admin error:',error);
