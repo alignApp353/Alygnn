@@ -659,198 +659,107 @@ async function listAllAuthUsers(supabase) {
 async function adminAccountList(supabase, requester, query) {
   await requireAdmin(supabase, requester);
 
-  const users = await listAllAuthUsers(supabase);
-  const ids = users.map(user => user.id);
+  // Privacy + support workflow rule:
+  // never enumerate all Alygnn accounts from the admin page. The admin must
+  // provide the exact Company ID supplied by the customer, and only accounts
+  // connected to that one company are returned.
+  const companyId = String(query || '').trim();
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!companyId || !uuidPattern.test(companyId)) return [];
 
-  const profiles = ids.length
-    ? await (async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id,full_name,role,account_type,is_admin')
-          .in('id', ids);
-        if (error) {
-          if (schemaMissing(error)) return [];
-          throw error;
-        }
-        return data || [];
-      })()
-    : [];
+  const { data: company, error: companyError } = await supabase
+    .from('companies')
+    .select('id,company_name,owner_user_id,account_status,verification_status')
+    .eq('id', companyId)
+    .maybeSingle();
 
-  const memberships = ids.length
-    ? await (async () => {
-        const { data, error } = await supabase
-          .from('company_members')
-          .select('user_id,company_id,team_role,membership_status')
-          .in('user_id', ids);
-        if (error) {
-          if (schemaMissing(error)) return [];
-          throw error;
-        }
-        return data || [];
-      })()
-    : [];
-
-  const ownedCompanies = ids.length
-    ? await (async () => {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id,company_name,owner_user_id')
-          .in('owner_user_id', ids);
-        if (error) {
-          if (schemaMissing(error)) return [];
-          throw error;
-        }
-        return data || [];
-      })()
-    : [];
-
-  const companyIds = [...new Set([
-    ...memberships.map(row => row.company_id),
-    ...ownedCompanies.map(row => row.id)
-  ].filter(Boolean))];
-
-  const companies = companyIds.length
-    ? await (async () => {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id,company_name')
-          .in('id', companyIds);
-        if (error) {
-          if (schemaMissing(error)) return [];
-          throw error;
-        }
-        return data || [];
-      })()
-    : [];
-
-  // Detect candidate activity in batches so dual Candidate + Team accounts are
-  // labeled correctly without running many queries per user.
-  const candidateActivityIds = new Set();
-  const candidatePresenceChecks = [
-    ['applications', 'candidate_id'],
-    ['saved_jobs', 'candidate_id'],
-    ['liked_jobs', 'candidate_id'],
-    ['skipped_jobs', 'candidate_id'],
-    ['swipes', 'candidate_id'],
-    ['swipe_actions', 'candidate_id'],
-    ['job_views', 'candidate_id'],
-    ['preferences', 'user_id'],
-    ['preferences', 'candidate_id'],
-    ['resumes', 'user_id'],
-    ['resumes', 'candidate_id']
-  ];
-
-  for (const [table, column] of candidatePresenceChecks) {
-    if (!ids.length) break;
-    const { data, error } = await supabase
-      .from(table)
-      .select(column)
-      .in(column, ids);
-
-    if (error) {
-      if (schemaMissing(error)) continue;
-      throw error;
-    }
-
-    for (const row of (data || [])) {
-      const value = row?.[column];
-      if (value) candidateActivityIds.add(String(value));
-    }
+  if (companyError) {
+    if (schemaMissing(companyError)) return [];
+    throw companyError;
   }
+  if (!company) return [];
 
-  const profileMap = new Map(profiles.map(row => [String(row.id), row]));
-  const companyMap = new Map(companies.map(row => [String(row.id), row.company_name || 'Company']));
+  const { data: membershipRows, error: membershipError } = await supabase
+    .from('company_members')
+    .select('user_id,company_id,team_role,membership_status')
+    .eq('company_id', companyId);
 
-  const membershipMap = new Map();
+  if (membershipError && !schemaMissing(membershipError)) throw membershipError;
+
+  const memberships = (membershipRows || []).filter(
+    row => String(row.membership_status || 'active').toLowerCase() === 'active'
+  );
+
+  const userIds = [...new Set([
+    company.owner_user_id,
+    ...memberships.map(row => row.user_id)
+  ].filter(Boolean).map(String))];
+
+  if (!userIds.length) return [];
+
+  const { data: profilesData, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id,full_name,role,account_type,is_admin')
+    .in('id', userIds);
+
+  if (profilesError && !schemaMissing(profilesError)) throw profilesError;
+  const profileMap = new Map((profilesData || []).map(row => [String(row.id), row]));
+
+  const membershipsByUser = new Map();
   for (const row of memberships) {
-    if (String(row.membership_status || 'active').toLowerCase() !== 'active') continue;
-    const key = String(row.user_id);
-    if (!membershipMap.has(key)) membershipMap.set(key, []);
-    membershipMap.get(key).push(row);
+    const key = String(row.user_id || '');
+    if (!membershipsByUser.has(key)) membershipsByUser.set(key, []);
+    membershipsByUser.get(key).push(row);
   }
 
-  const ownerMap = new Map();
-  for (const row of ownedCompanies) {
-    const key = String(row.owner_user_id);
-    if (!ownerMap.has(key)) ownerMap.set(key, []);
-    ownerMap.get(key).push(row);
+  const rows = [];
+
+  for (const userId of userIds) {
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+    const user = authData?.user;
+    if (authError || !user) continue;
+
+    const profile = profileMap.get(String(userId)) || {};
+    const memberRows = membershipsByUser.get(String(userId)) || [];
+    const isOwner = String(company.owner_user_id || '') === String(userId);
+    const isAdmin = profile.is_admin === true;
+    const candidate = await candidateState(supabase, user, profile);
+    const hasTeamAccess = memberRows.length > 0;
+    const dualWorkspace = hasTeamAccess && candidate.has_candidate;
+    const teamRoles = [...new Set(
+      memberRows.map(row => String(row.team_role || '').toLowerCase()).filter(Boolean)
+    )];
+
+    let protectedReason = '';
+    if (isAdmin) protectedReason = 'Admin accounts are protected from deletion here.';
+    else if (String(user.id) === String(requester.id)) protectedReason = 'You cannot delete the admin account you are currently signed in with.';
+
+    rows.push({
+      id: user.id,
+      email: user.email || '',
+      full_name: profile.full_name || user.user_metadata?.full_name || '',
+      role: profile.role || profile.account_type || user.user_metadata?.role || user.user_metadata?.account_type || '',
+      is_admin: isAdmin,
+      team_roles: teamRoles,
+      companies: [company.company_name || 'Company'],
+      company_ids: [company.id],
+      company_id: company.id,
+      company_name: company.company_name || '',
+      owns_company: isOwner,
+      has_candidate_account: candidate.has_candidate,
+      has_team_access: hasTeamAccess,
+      dual_workspace: dualWorkspace,
+      created_at: user.created_at || null,
+      protected_reason: protectedReason
+    });
   }
 
-  const normalizedQuery = String(query || '').trim().toLowerCase();
+  rows.sort((a, b) => {
+    if (a.owns_company !== b.owns_company) return a.owns_company ? -1 : 1;
+    return String(a.full_name || a.email || '').localeCompare(String(b.full_name || b.email || ''));
+  });
 
-  return users
-    .map(user => {
-      const profile = profileMap.get(String(user.id)) || {};
-      const memberRows = membershipMap.get(String(user.id)) || [];
-      const ownerRows = ownerMap.get(String(user.id)) || [];
-      const teamRoles = [...new Set(memberRows.map(row => String(row.team_role || '').toLowerCase()).filter(Boolean))];
-      const companyNames = [...new Set([
-        ...memberRows.map(row => companyMap.get(String(row.company_id))).filter(Boolean),
-        ...ownerRows.map(row => row.company_name || companyMap.get(String(row.id))).filter(Boolean)
-      ])];
-      const isAdmin = profile.is_admin === true;
-      const rawRole = String(
-        profile.role ||
-        profile.account_type ||
-        user.user_metadata?.role ||
-        user.user_metadata?.account_type ||
-        ''
-      ).toLowerCase();
-
-      const authRole = String(user.user_metadata?.role || '').toLowerCase();
-      const authAccountType = String(user.user_metadata?.account_type || '').toLowerCase();
-      const profileRole = String(profile.role || '').toLowerCase();
-      const profileAccountType = String(profile.account_type || '').toLowerCase();
-
-      const hasCandidateMarker = [
-        rawRole,
-        authRole,
-        authAccountType,
-        profileRole,
-        profileAccountType
-      ].some(value => ['candidate', 'seeker', 'employee'].includes(value));
-
-      const hasCandidateAccount =
-        hasCandidateMarker ||
-        candidateActivityIds.has(String(user.id));
-
-      const hasTeamAccess = memberRows.length > 0;
-      const dualWorkspace = hasTeamAccess && hasCandidateAccount;
-
-      let protectedReason = '';
-      if (isAdmin) protectedReason = 'Admin accounts are protected from deletion here.';
-      else if (String(user.id) === String(requester.id)) protectedReason = 'You cannot delete the admin account you are currently signed in with.';
-
-      return {
-        id: user.id,
-        email: user.email || '',
-        full_name: profile.full_name || user.user_metadata?.full_name || '',
-        role: rawRole,
-        is_admin: isAdmin,
-        team_roles: teamRoles,
-        companies: companyNames,
-        owns_company: ownerRows.length > 0,
-        has_candidate_account: hasCandidateAccount,
-        has_team_access: hasTeamAccess,
-        dual_workspace: dualWorkspace,
-        created_at: user.created_at || null,
-        protected_reason: protectedReason
-      };
-    })
-    .filter(row => {
-      if (!normalizedQuery) return true;
-      const haystack = [
-        row.email,
-        row.full_name,
-        row.role,
-        row.id,
-        ...(row.team_roles || []),
-        ...(row.companies || [])
-      ].join(' ').toLowerCase();
-      return haystack.includes(normalizedQuery);
-    })
-    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    .slice(0, 250);
+  return rows;
 }
 
 module.exports = async function handler(req, res) {
