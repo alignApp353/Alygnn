@@ -34,7 +34,7 @@ main{max-width:1100px;margin:0 auto;padding:42px 6% 90px}.eyebrow{font-size:11px
   <section id="app" hidden>
     <div class="eyebrow">Administration</div>
     <h1>Account management</h1>
-    <p class="intro">Search Alygnn accounts and permanently delete candidate or team-member logins when necessary. Removing a person from a company workspace is still a separate action.</p>
+    <p class="intro">Search Alygnn accounts and manage deletion safely. If one login has both a personal Candidate account and Recruiter, Hiring Manager, or team Admin access, deleting the employer side removes only company workspace access and keeps the Candidate account intact.</p>
     <div class="toolbar">
       <input id="search" class="search" type="search" placeholder="Search email, name, role, or company…" autocomplete="off">
       <button id="search-btn" class="btn primary" type="button">Search</button>
@@ -48,7 +48,7 @@ main{max-width:1100px;margin:0 auto;padding:42px 6% 90px}.eyebrow{font-size:11px
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
     <h2 id="delete-title">Permanently delete account?</h2>
     <p id="delete-copy"></p>
-    <div class="warning">This removes the Alygnn login and associated candidate/team-member data. This cannot be undone.</div>
+    <div class="warning" id="delete-warning">This removes the Alygnn login and associated data. This cannot be undone.</div>
     <div class="field"><label>Type the account email exactly</label><input id="confirm-email" type="text" autocomplete="off"></div>
     <div class="field"><label>Type DELETE</label><input id="confirm-word" type="text" autocomplete="off"></div>
     <div class="modal-actions"><button class="btn" id="cancel-delete" type="button">Cancel</button><button class="btn danger" id="confirm-delete" type="button">Delete account</button></div>
@@ -58,16 +58,19 @@ main{max-width:1100px;margin:0 auto;padding:42px 6% 90px}.eyebrow{font-size:11px
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-const API='/api/admin/accounts';
-let session=null, rows=[], pendingDelete=null;
+const API='/api/delete-account';
+let session=null, rows=[], pendingDelete=null, pendingDeleteMode='full';
 const $=id=>document.getElementById(id);
 function esc(v){const d=document.createElement('div');d.textContent=String(v??'');return d.innerHTML}
+function teamRoleLabel(v){
+  return v==='hiring_manager'?'Hiring Manager':v==='recruiter'?'Recruiter':v==='admin'?'Team Admin':String(v||'').replaceAll('_',' ');
+}
 function roleLabel(row){
   if(row.is_admin)return'Admin';
-  if(row.team_roles?.length)return row.team_roles.map(v=>v==='hiring_manager'?'Hiring Manager':v==='recruiter'?'Recruiter':v==='admin'?'Admin':v).join(', ');
   const r=String(row.role||'candidate').toLowerCase();
   if(r==='seeker'||r==='candidate'||r==='employee')return'Candidate';
   if(r==='employer')return'Employer';
+  if(r==='team_member'||r==='employer_team')return'Team member';
   return r.replaceAll('_',' ');
 }
 function showMessage(text,type=''){const el=$('message');el.textContent=text;el.className='message show'+(type?' '+type:'')}
@@ -86,19 +89,25 @@ function render(){
   list.innerHTML=rows.map(row=>{
     const protectedReason=row.protected_reason||'';
     const teams=(row.companies||[]).filter(Boolean).join(', ');
+    const dual=row.dual_workspace===true;
+    const teamRoles=(row.team_roles||[]).filter(Boolean);
+    const actionLabel=dual?'Delete employer access':'Delete account';
     return `<article class="account">
       <div>
         <div class="name">${esc(row.full_name||row.email||'Alygnn account')}</div>
         <div class="email">${esc(row.email||'No email')}</div>
         <div class="meta">
-          <span class="chip role">${esc(roleLabel(row))}</span>
+          ${row.has_candidate_account?`<span class="chip role">Candidate</span>`:`<span class="chip role">${esc(roleLabel(row))}</span>`}
+          ${teamRoles.map(role=>`<span class="chip">${esc(teamRoleLabel(role))}</span>`).join('')}
           ${teams?`<span class="chip">${esc(teams)}</span>`:''}
+          ${dual?`<span class="chip protected">Dual account</span>`:''}
           ${protectedReason?`<span class="chip protected">Protected</span>`:''}
         </div>
         <div class="sub">Created ${esc(row.created_at?new Date(row.created_at).toLocaleString():'Unknown')} · User ID ${esc(row.id)}</div>
+        ${dual?`<div class="sub">Candidate account will be preserved. This action removes employer workspace roles and permissions only.</div>`:''}
         ${protectedReason?`<div class="sub">${esc(protectedReason)}</div>`:''}
       </div>
-      <div class="account-actions"><button class="btn danger" type="button" data-delete="${esc(row.id)}" ${protectedReason?'disabled':''}>Delete account</button></div>
+      <div class="account-actions"><button class="btn danger" type="button" data-delete="${esc(row.id)}" ${protectedReason?'disabled':''}>${actionLabel}</button></div>
     </article>`;
   }).join('');
 }
@@ -106,29 +115,63 @@ async function load(){
   clearMessage(); $('list').innerHTML='<div class="empty">Loading accounts…</div>';
   try{
     const q=$('search').value.trim();
-    const result=await api('?q='+encodeURIComponent(q));
+    const result=await api('?scope=admin&q='+encodeURIComponent(q));
     rows=result.accounts||[]; render();
   }catch(error){$('list').innerHTML='';showMessage(error.message||'Could not load accounts.','error')}
 }
 function openDelete(id){
   const row=rows.find(x=>String(x.id)===String(id)); if(!row||row.protected_reason)return;
-  pendingDelete=row; $('confirm-email').value='';$('confirm-word').value='';
-  $('delete-copy').textContent=`Delete ${row.full_name||row.email||'this account'} (${row.email}) permanently?`;
+  pendingDelete=row;
+  pendingDeleteMode=row.dual_workspace===true?'employer_only':'full';
+  $('confirm-email').value='';$('confirm-word').value='';
+
+  if(pendingDeleteMode==='employer_only'){
+    $('delete-title').textContent='Delete employer access?';
+    $('delete-copy').textContent=`Remove all employer workspace access for ${row.full_name||row.email||'this account'} (${row.email})? Their Candidate account, login, resume, applications, saved jobs, and candidate history will remain.`;
+    $('delete-warning').textContent='This removes Recruiter, Hiring Manager, or team Admin workspace access only. The personal Candidate account is preserved.';
+    $('confirm-delete').textContent='Delete employer access';
+  }else{
+    $('delete-title').textContent='Permanently delete account?';
+    $('delete-copy').textContent=`Delete ${row.full_name||row.email||'this account'} (${row.email}) permanently?`;
+    $('delete-warning').textContent='This removes the Alygnn login and associated account data. This cannot be undone.';
+    $('confirm-delete').textContent='Delete account';
+  }
+
   $('modal').classList.add('show'); setTimeout(()=>$('confirm-email').focus(),50);
 }
-function closeDelete(){pendingDelete=null;$('modal').classList.remove('show')}
+function closeDelete(){pendingDelete=null;pendingDeleteMode='full';$('modal').classList.remove('show')}
 async function deleteAccount(){
   if(!pendingDelete)return;
   const email=$('confirm-email').value.trim().toLowerCase();
   const word=$('confirm-word').value.trim();
+  const mode=pendingDeleteMode;
   if(email!==String(pendingDelete.email||'').toLowerCase())return showMessage('The confirmation email does not match.','error');
   if(word!=='DELETE')return showMessage('Type DELETE exactly to confirm.','error');
-  const button=$('confirm-delete');button.disabled=true;button.textContent='Deleting…';
+  const button=$('confirm-delete');button.disabled=true;button.textContent=mode==='employer_only'?'Removing employer access…':'Deleting…';
   try{
-    await api('',{method:'DELETE',body:JSON.stringify({user_id:pendingDelete.id,confirm_email:email,confirm_word:word})});
-    closeDelete();showMessage('Account permanently deleted.','success');await load();
-  }catch(error){showMessage(error.message||'Could not delete this account.','error')}
-  finally{button.disabled=false;button.textContent='Delete account'}
+    await api('',{
+      method:'DELETE',
+      body:JSON.stringify({
+        scope:'admin',
+        deletion_mode:mode,
+        user_id:pendingDelete.id,
+        confirm_email:email,
+        confirm_word:word
+      })
+    });
+    closeDelete();
+    showMessage(
+      mode==='employer_only'
+        ?'Employer workspace access deleted. Candidate account preserved.'
+        :'Account permanently deleted.',
+      'success'
+    );
+    await load();
+  }catch(error){showMessage(error.message||'Could not complete this deletion.','error')}
+  finally{
+    button.disabled=false;
+    button.textContent=mode==='employer_only'?'Delete employer access':'Delete account';
+  }
 }
 $('list').addEventListener('click',e=>{const btn=e.target.closest('[data-delete]');if(btn)openDelete(btn.dataset.delete)});
 $('search-btn').onclick=load;$('refresh').onclick=load;$('search').addEventListener('keydown',e=>{if(e.key==='Enter')load()});
