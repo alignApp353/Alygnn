@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin sign in — Alygnn</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -173,6 +172,7 @@
     line-height:1.55;
     text-align:center;
   }
+
 </style>
 </head>
 
@@ -182,10 +182,10 @@
   <div class="pill">ADMIN ACCESS</div>
 
   <h1>Admin sign in</h1>
-  <p class="sub">Sign in with an Alygnn administrator account to review and manually verify employer businesses.</p>
+  <p class="sub">Sign in with an Alygnn administrator account to access Alygnn administration tools.</p>
 
   <label for="email">Admin email</label>
-  <input id="email" type="email" autocomplete="username" placeholder="Enter admin email">
+  <input id="email" type="email" autocomplete="off" placeholder="Enter admin email" data-lpignore="true" data-1p-ignore="true">
 
   <label for="password">Password</label>
   <div class="password-wrap">
@@ -206,7 +206,10 @@
 <script>
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-const DESTINATION='employer-verification-admin.html';
+const params=new URLSearchParams(location.search);
+const requestedNext=String(params.get('next')||'').trim();
+const SAFE_DESTINATIONS=new Set(['employer-verification-admin.html','admin-accounts.html']);
+const DESTINATION=SAFE_DESTINATIONS.has(requestedNext)?requestedNext:'employer-verification-admin.html';
 
 const sb=supabase.createClient(
   SUPABASE_URL,
@@ -278,7 +281,7 @@ async function signIn(){
       throw new Error('This account is not authorized as an Alygnn administrator.');
     }
 
-    showMessage('Admin access confirmed. Opening employer verification…','success');
+    showMessage('Admin access confirmed. Opening admin tools…','success');
     setTimeout(()=>location.replace(DESTINATION),350);
 
   }catch(error){
@@ -287,19 +290,16 @@ async function signIn(){
   }
 }
 
-async function redirectIfAlreadyAdmin(){
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session) return;
-
+async function prepareAdminLogin(){
+  // Always show the admin sign-in form. Never auto-enter the admin area from
+  // a previously stored Alygnn session. This keeps admin access intentional.
   try{
-    const isAdmin=await checkAdmin(session.user.id);
-    if(isAdmin){
-      location.replace(DESTINATION);
-      return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(session?.user?.email){
+      email.value=String(session.user.email||'');
     }
-    await sb.auth.signOut();
   }catch(error){
-    console.error('Admin session check failed:',error);
+    console.warn('Could not read existing Alygnn session:',error);
   }
 }
 
@@ -314,7 +314,7 @@ password.addEventListener('keydown',event=>{
   if(event.key==='Enter') signIn();
 });
 
-redirectIfAlreadyAdmin();
+prepareAdminLogin();
 </script>
 </body>
 </html>
