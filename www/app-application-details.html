@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061821">
+<title>Alygnn — Application Details</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="app-candidate-theme.js"></script>
+<link rel="stylesheet" href="app-candidate-theme.css">
+<style>
+:root{
+  --brand:#5D7FA3;
+  --sage:#8CB69B;
+  --mint:#6FBF8F;
+  --rose:#D79A9A;
+  --amber:#E7B86E;
+  --bg:#061821;
+  --card:#102733;
+  --text:#F4F7F9;
+  --muted:#A7B2BD;
+  --border:#29404D;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:'DM Sans',Arial,sans-serif;background:var(--bg);color:var(--text)}
+body{padding-bottom:calc(92px + env(safe-area-inset-bottom));}
+button{font:inherit}
+.header{
+  position:sticky;top:0;z-index:30;
+  min-height:96px;
+  padding:calc(12px + env(safe-area-inset-top)) 18px 12px;
+  display:grid;grid-template-columns:48px 1fr 48px;align-items:center;
+  background:#061821!important;border-bottom:1px solid rgba(115,164,206,.20);
+}
+.back{
+  width:44px;height:44px;border-radius:50%;border:1px solid var(--border);
+  background:rgba(255,255,255,.02);color:var(--text);font-size:22px;line-height:1;
+  display:grid;place-items:center;cursor:pointer;
+}
+.logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:32px;color:#6E98BE;line-height:1}
+.logo span{color:var(--sage)}
+.page{max-width:520px;margin:0 auto;padding:26px 20px 28px}
+.kicker{font-size:13px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#73A4CE}
+h1{font-size:38px;line-height:1.05;margin:8px 0 8px;font-weight:900;letter-spacing:-.8px}
+.sub{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 22px}
+.card{background:#102733!important;border:1px solid var(--border)!important;border-radius:26px;padding:21px;margin-top:14px;color:var(--text)!important}
+.job-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.job-title{font-size:24px;font-weight:900;line-height:1.15}
+.company{margin-top:6px;color:var(--muted);font-size:15px}
+.status{white-space:nowrap;padding:8px 11px;border-radius:999px;font-size:11px;font-weight:900}
+.status.applied{color:#8CB7DD;background:rgba(93,127,163,.20)}
+.status.accepted{color:#77D6A0;background:rgba(111,191,143,.14)}
+.status.not-selected{color:#E5A9A9;background:rgba(215,154,154,.14)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.detail{border:1px solid var(--border);border-radius:17px;padding:14px;background:#071F29}
+.label{font-size:10px;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;color:#91A2B2}
+.value{margin-top:5px;font-size:15px;font-weight:800;color:var(--text)}
+.match{margin-top:14px;border-radius:18px;padding:15px 16px;background:rgba(111,191,143,.10);color:#76D59D;font-weight:900}
+.section-title{font-size:19px;font-weight:900;margin-bottom:14px}
+.timeline{display:grid;gap:16px}
+.step{display:grid;grid-template-columns:18px 1fr;gap:12px;align-items:flex-start}
+.dot{width:12px;height:12px;border-radius:50%;margin-top:4px;background:#73A4CE;box-shadow:0 0 0 4px rgba(115,164,206,.12)}
+.dot.final.accepted{background:#6FBF8F;box-shadow:0 0 0 4px rgba(111,191,143,.12)}
+.dot.final.not-selected{background:#D79A9A;box-shadow:0 0 0 4px rgba(215,154,154,.12)}
+.step-title{font-size:15px;font-weight:900}
+.step-copy{margin-top:3px;color:var(--muted);font-size:13px;line-height:1.45}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.btn{min-height:52px;border-radius:17px;font-weight:900;font-size:14px;cursor:pointer}
+.btn.primary{background:#5F91C2;border:1px solid #5F91C2;color:#fff}
+.btn.secondary{background:#071F29;border:1px solid var(--border);color:var(--text)}
+.loading,.error{text-align:center;padding:42px 20px;color:var(--muted)}
+.error{color:#E5A9A9}
+.bottom-nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:520px;margin:0 auto;
+  min-height:78px;padding:10px 12px calc(13px + env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(5,1fr);
+  background:#061821!important;border-top:1px solid rgba(115,164,206,.20);
+}
+.nav-item{position:relative;border:0;background:transparent;color:#8293A2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;font-size:10px;font-weight:800;cursor:pointer}
+.nav-icon{width:21px;height:21px;display:grid;place-items:center}.nav-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{color:#73A4CE}.nav-item.active::before{content:'';position:absolute;top:-10px;width:34px;height:3px;border-radius:999px;background:#73A4CE}
+@media(max-width:390px){h1{font-size:34px}.detail-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="header">
+  <button class="back" type="button" aria-label="Back" onclick="location.href='app-applied.html'">←</button>
+  <div class="logo">Alygnn<span>.</span></div>
+  <div></div>
+</header>
+<main class="page">
+  <div class="kicker">Candidate Workspace</div>
+  <h1>Application details</h1>
+  <p class="sub">See the latest status of this application and the job you applied to.</p>
+  <div id="content" class="loading">Loading your application...</div>
+</main>
+
+<nav class="bottom-nav" aria-label="Candidate navigation">
+  <button class="nav-item" type="button" onclick="location.href='app-account.html'">
+    <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.5"></circle><path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path></svg></span><span>My Profile</span>
+  </button>
+  <button class="nav-item" type="button" onclick="location.href='app-swipe.html'">
+    <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="m15 15 4.5 4.5"></path></svg></span><span>Discover</span>
+  </button>
+  <button class="nav-item active" type="button" onclick="location.href='app-applied.html'">
+    <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"></rect><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path><path d="M4 11h16"></path></svg></span><span>My Jobs</span>
+  </button>
+  <button class="nav-item" type="button" onclick="location.href='app-messages.html'">
+    <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M5 5.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"></path><path d="M7.5 9.5h9M7.5 13h6"></path></svg></span><span>Messages</span>
+  </button>
+  <button class="nav-item" type="button" onclick="location.href='app-settings.html'">
+    <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg></span><span>Settings</span>
+  </button>
+</nav>
+
+<script>
+const sb=supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const fmt=value=>{const d=new Date(value);return isNaN(d)?'Recently':d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});};
+const norm=value=>String(value||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+function canonicalStatus(row){
+  const values=[row?.decision,row?.outcome,row?.candidate_status,row?.application_status,row?.status].map(norm).filter(Boolean);
+  const accepted=new Set(['accepted','accept','selected','hired','hire','offer','offered']);
+  const rejected=new Set(['not_selected','notselected','rejected','reject','declined','decline','unsuccessful']);
+  if(values.some(v=>accepted.has(v))) return 'accepted';
+  if(values.some(v=>rejected.has(v))) return 'not_selected';
+  return 'applied';
+}
+function statusLabel(s){return s==='accepted'?'Accepted':s==='not_selected'?'Not Selected':'Applied';}
+function statusClass(s){return s==='accepted'?'accepted':s==='not_selected'?'not-selected':'applied';}
+async function load(){
+  const content=document.getElementById('content');
+  const id=new URLSearchParams(location.search).get('id');
+  if(!id){content.className='error';content.textContent='This application could not be opened.';return;}
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  const user=sessionData?.session?.user;
+  if(sessionError||!user){location.replace('app-login.html');return;}
+
+  let row=null;
+  let result=await sb.from('applications').select('*,jobs(*)').eq('id',id).eq('candidate_id',user.id).maybeSingle();
+  if(result.error){
+    const fallback=await sb.from('applications').select('*').eq('id',id).eq('candidate_id',user.id).maybeSingle();
+    if(fallback.error){content.className='error';content.textContent='We could not load this application.';return;}
+    row=fallback.data;
+    if(row?.job_id){
+      const jobResult=await sb.from('jobs').select('*').eq('id',row.job_id).maybeSingle();
+      if(!jobResult.error) row={...row,jobs:jobResult.data};
+    }
+  }else row=result.data;
+
+  if(!row){content.className='error';content.textContent='Application not found.';return;}
+  const job=row.jobs||{};
+  const company=job.company||job.company_name||job.employer_name||job.company_title||'Employer';
+  const locationText=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Not listed';
+  const status=canonicalStatus(row);
+  const finalCopy=status==='accepted'
+    ?'The employer marked this application as accepted.'
+    :status==='not_selected'
+      ?'The employer marked this application as not selected.'
+      :'Your application is still active. Employer workflow steps stay under Applied until a final decision is made.';
+
+  content.className='';
+  content.innerHTML=`
+    <section class="card">
+      <div class="job-top">
+        <div>
+          <div class="job-title">${esc(job.title||'Job Application')}</div>
+          <div class="company">${esc(company)}</div>
+        </div>
+        <div class="status ${statusClass(status)}">${esc(statusLabel(status))}</div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail"><div class="label">Applied</div><div class="value">${esc(fmt(row.applied_at||row.created_at))}</div></div>
+        <div class="detail"><div class="label">Location</div><div class="value">${esc(locationText)}</div></div>
+      </div>
+      ${row.match_score!=null?`<div class="match">${esc(row.match_score)}% Match</div>`:''}
+    </section>
+
+    <section class="card">
+      <div class="section-title">Application timeline</div>
+      <div class="timeline">
+        <div class="step">
+          <div class="dot"></div>
+          <div><div class="step-title">Application submitted</div><div class="step-copy">You applied ${esc(fmt(row.applied_at||row.created_at))}.</div></div>
+        </div>
+        <div class="step">
+          <div class="dot final ${statusClass(status)}"></div>
+          <div><div class="step-title">${esc(statusLabel(status))}</div><div class="step-copy">${esc(finalCopy)}</div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button class="btn primary" type="button" onclick="location.href='app-job-details.html?id=${encodeURIComponent(job.id||row.job_id)}&from=my-jobs'">View Job</button>
+      <button class="btn secondary" type="button" onclick="location.href='app-applied.html'">Back to My Jobs</button>
+    </div>
+  `;
+}
+load();
+</script>
+</body>
+</html>
