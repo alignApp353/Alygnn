@@ -2378,6 +2378,28 @@ body[data-theme="dark"] .app-header{
 })();
 </script>
 
+
+<style id="alygnn-profile-header-match-discover-final">
+/* My Profile header literally uses the same shell surface as Discover. */
+html[data-effective-theme="dark"] .app-header.top-header,
+body[data-effective-theme="dark"] .app-header.top-header,
+body[data-theme="dark"] .app-header.top-header{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+  border-bottom:1px solid #29404C!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
+}
+html[data-effective-theme="dark"] body,
+body[data-effective-theme="dark"],
+body[data-theme="dark"]{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+</style>
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -2439,7 +2461,7 @@ body[data-theme="dark"] .app-header{
 })();
 </script>
 
-<header class="app-header">
+<header class="app-header top-header">
   <button
     class="header-back-inline"
     id="settings-back"
