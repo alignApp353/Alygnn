@@ -310,6 +310,15 @@ nav{
     padding:10px; border-top:1px solid var(--border); text-decoration:none;
   }
   .notif-view-all:hover{ opacity:.8; }
+
+/* Team-only account deletion: owner-only danger zone inside Edit Team Member. */
+.account-danger-zone{display:none;margin-top:18px;padding-top:16px;border-top:1px solid rgba(215,154,154,.45)}
+.account-danger-zone.show{display:block}
+.account-danger-title{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#9a4e4e;margin-bottom:6px}
+.account-danger-copy{font-size:11px;line-height:1.5;color:var(--muted);margin-bottom:10px}
+.account-delete-btn{border:1px solid rgba(215,154,154,.7);background:#FAEEEE;color:#9a4e4e;border-radius:10px;padding:10px 13px;font-weight:700;cursor:pointer}
+.account-delete-btn:disabled{opacity:.5;cursor:not-allowed}
+
 </style>
 </head>
 <body>
@@ -403,8 +412,13 @@ nav{
       </div>
       <div class="field full"><label>Access</label><div id="permissions"></div></div>
     </div>
+    <div class="account-danger-zone" id="account-danger-zone">
+      <div class="account-danger-title">Account deletion</div>
+      <div class="account-danger-copy" id="account-danger-copy">Checking whether this login can be permanently deleted…</div>
+      <button class="account-delete-btn" id="delete-team-account" type="button" disabled onclick="deleteTeamOnlyAccount()">Delete Alygnn account</button>
+    </div>
     <div class="modal-actions">
-      <button class="secondary" id="remove-member" style="display:none;margin-right:auto" onclick="removeMember()">Remove member</button>
+      <button class="secondary" id="remove-member" style="display:none;margin-right:auto" onclick="removeMember()">Remove from workspace</button>
       <button class="secondary" onclick="closeInvite()">Cancel</button>
       <button class="primary" id="save-member" onclick="saveMember()">Send invite</button>
     </div>
@@ -415,6 +429,7 @@ nav{
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const TEAM_INVITE_FUNCTION_URL='https://auth.alygnn.com/functions/v1/send-team-invite';
+const TEAM_ACCOUNT_API='/api/employer/team-account';
 function alygnnAuthStorageKey(){let t=sessionStorage.getItem('alygnn_auth_tab_id');if(!t){t=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;sessionStorage.setItem('alygnn_auth_tab_id',t)}return `alygnn-auth-${t}`}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:sessionStorage,storageKey:alygnnAuthStorageKey(),persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let session=null,access=null,roster=null,editingMember=null,editingInvite=null;
@@ -552,6 +567,8 @@ function openInvite(){
  $('member-email').readOnly=false;
  $('member-role').value='recruiter';
  $('remove-member').style.display='none';
+ $('account-danger-zone').classList.remove('show');
+ $('delete-team-account').disabled=true;
  $('save-member').disabled=false;
  $('save-member').textContent='Send invite';
  applyRolePreset();
@@ -566,6 +583,8 @@ function openInvite(){
 }
 function closeInvite(){
  $('invite-overlay').classList.remove('show');
+ $('account-danger-zone').classList.remove('show');
+ $('delete-team-account').disabled=true;
  document.body.style.overflow='';
 }
 function editMember(encoded){
@@ -577,6 +596,10 @@ function editMember(encoded){
  $('member-email').readOnly=true;
  $('member-role').value=['admin','hiring_manager','recruiter'].includes(editingMember.team_role)?editingMember.team_role:'recruiter';
  $('remove-member').style.display='inline-block';
+ $('account-danger-zone').classList.toggle('show',access?.is_owner===true);
+ $('delete-team-account').disabled=true;
+ $('account-danger-copy').textContent='Checking whether this login can be permanently deleted…';
+ if(access?.is_owner===true)checkTeamAccountDeletionEligibility();
  $('save-member').disabled=false;
  $('save-member').textContent='Save access';
  renderPermissions(editingMember.permissions);
@@ -804,7 +827,64 @@ async function saveMember(){
     button.textContent=editingMember?'Save access':(editingInvite?'Save & resend invite':originalLabel);
   }
 }
-async function removeMember(){if(!editingMember||!confirm(`Remove ${editingMember.name||editingMember.email} from this workspace?`))return;try{const {error}=await sb.rpc('remove_company_team_member',{p_user_id:editingMember.user_id});if(error)throw error;closeInvite();await loadTeam();showMsg('page-message','Team member removed.','success')}catch(e){showMsg('modal-message',e.message||'Could not remove team member.')}}
+async function teamAccountApi(method='GET',body=null){
+  if(!session?.access_token)throw new Error('Your Alygnn session expired. Please sign in again.');
+  const targetId=String(editingMember?.user_id||'');
+  const url=method==='GET'?`${TEAM_ACCOUNT_API}?user_id=${encodeURIComponent(targetId)}`:TEAM_ACCOUNT_API;
+  const response=await fetch(url,{
+    method,
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    ...(body?{body:JSON.stringify(body)}:{})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data?.error||`Account request failed (${response.status}).`);
+  return data;
+}
+async function checkTeamAccountDeletionEligibility(){
+  if(access?.is_owner!==true||!editingMember?.user_id)return;
+  const button=$('delete-team-account');
+  const copy=$('account-danger-copy');
+  button.disabled=true;
+  try{
+    const result=await teamAccountApi('GET');
+    if(result?.can_delete===true){
+      copy.textContent='This login was created only for your employer team. Deleting it permanently removes the Alygnn login. This cannot be undone.';
+      button.disabled=false;
+    }else{
+      copy.textContent=result?.reason||'This Alygnn account cannot be permanently deleted by the employer. You can still remove it from this workspace.';
+    }
+  }catch(error){
+    copy.textContent=error?.message||'Could not check account deletion eligibility. You can still remove this person from the workspace.';
+  }
+}
+async function deleteTeamOnlyAccount(){
+  if(access?.is_owner!==true||!editingMember)return;
+  const label=editingMember.name||editingMember.email||'this team member';
+  const email=String(editingMember.email||'').trim();
+  if(!confirm(`Permanently delete ${label}'s Alygnn login?\n\nUse Remove from workspace instead if you only want to revoke company access.`))return;
+  const typedEmail=prompt(`Type ${email} exactly to confirm permanent account deletion:`)||'';
+  if(typedEmail.trim().toLowerCase()!==email.toLowerCase()){
+    showMsg('modal-message','The confirmation email did not match. Nothing was deleted.','error');
+    return;
+  }
+  const word=prompt('Type DELETE to permanently delete this Alygnn account:')||'';
+  if(word.trim()!=='DELETE'){
+    showMsg('modal-message','Type DELETE exactly to confirm. Nothing was deleted.','error');
+    return;
+  }
+  const button=$('delete-team-account');
+  button.disabled=true;button.textContent='Deleting account…';
+  try{
+    await teamAccountApi('DELETE',{user_id:editingMember.user_id,confirm_email:typedEmail.trim().toLowerCase(),confirm_word:'DELETE'});
+    closeInvite();await loadTeam();showMsg('page-message','Team-only Alygnn account permanently deleted.','success');
+  }catch(error){
+    showMsg('modal-message',error?.message||'Could not delete this Alygnn account.','error');
+  }finally{
+    button.textContent='Delete Alygnn account';
+    if($('invite-overlay').classList.contains('show'))checkTeamAccountDeletionEligibility();
+  }
+}
+async function removeMember(){if(!editingMember||!confirm(`Remove ${editingMember.name||editingMember.email} from this workspace?\n\nTheir Alygnn account will NOT be deleted.`))return;try{const {error}=await sb.rpc('remove_company_team_member',{p_user_id:editingMember.user_id});if(error)throw error;closeInvite();await loadTeam();showMsg('page-message','Team member removed.','success')}catch(e){showMsg('modal-message',e.message||'Could not remove team member.')}}
 async function revokeInvite(id){if(!confirm('Revoke this pending invitation?'))return;try{const {error}=await sb.rpc('revoke_company_team_invite',{p_invite_id:id});if(error)throw error;await loadTeam();showMsg('page-message','Invitation revoked.','success')}catch(e){showMsg('page-message',e.message||'Could not revoke invitation.')}}
 async function resendInvite(id){
   try{
