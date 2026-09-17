@@ -140,6 +140,155 @@ async function safeCount(supabase, table, column, value) {
   return Number(count || 0);
 }
 
+async function candidateState(supabase, targetUser, profileOverride = null) {
+  const id = targetUser.id;
+  const profile = profileOverride || await profileFor(supabase, id, '*') || {};
+  const meta = targetUser.user_metadata || {};
+
+  const accountType = String(meta.account_type || profile?.account_type || '').toLowerCase();
+  const authRole = String(meta.role || '').toLowerCase();
+  const profileRole = String(profile?.role || '').toLowerCase();
+
+  const candidateMarked =
+    ['candidate', 'seeker', 'employee'].includes(accountType) ||
+    ['candidate', 'seeker', 'employee'].includes(authRole) ||
+    ['candidate', 'seeker', 'employee'].includes(profileRole);
+
+  const candidateActivityChecks = [
+    ['applications', 'candidate_id'],
+    ['saved_jobs', 'candidate_id'],
+    ['liked_jobs', 'candidate_id'],
+    ['skipped_jobs', 'candidate_id'],
+    ['swipes', 'candidate_id'],
+    ['swipe_actions', 'candidate_id'],
+    ['job_views', 'candidate_id'],
+    ['preferences', 'user_id'],
+    ['preferences', 'candidate_id'],
+    ['resumes', 'user_id'],
+    ['resumes', 'candidate_id']
+  ];
+
+  let candidateActivityCount = 0;
+  for (const [table, column] of candidateActivityChecks) {
+    candidateActivityCount += await safeCount(supabase, table, column, id);
+    if (candidateActivityCount > 0) break;
+  }
+
+  const hasResume = !!(
+    profile?.resume_file_path ||
+    profile?.resume_source ||
+    profile?.resume_data
+  );
+
+  const hasCandidate = candidateMarked || candidateActivityCount > 0 || hasResume;
+
+  let candidateRole =
+    ['candidate', 'seeker', 'employee'].includes(profileRole) ? profileRole :
+    ['candidate', 'seeker', 'employee'].includes(authRole) ? authRole :
+    ['candidate', 'seeker', 'employee'].includes(accountType) ? accountType :
+    'candidate';
+
+  if (candidateRole === 'employee') candidateRole = 'candidate';
+
+  return {
+    has_candidate: hasCandidate,
+    candidate_role: candidateRole,
+    candidate_marked: candidateMarked,
+    candidate_activity_count: candidateActivityCount,
+    has_resume: hasResume,
+    profile
+  };
+}
+
+async function activeTeamMemberships(supabase, userId) {
+  const rows = await safeSelect(
+    supabase,
+    'company_members',
+    'company_id,user_id,team_role,membership_status',
+    'user_id',
+    userId
+  );
+
+  return rows.filter(
+    row => String(row.membership_status || 'active').toLowerCase() === 'active'
+  );
+}
+
+async function removeEmployerTeamAccessOnly(supabase, targetUser) {
+  const id = targetUser.id;
+  const profile = await profileFor(supabase, id, '*') || {};
+  const candidate = await candidateState(supabase, targetUser, profile);
+
+  if (!candidate.has_candidate) {
+    const error = new Error(
+      'This login does not have a candidate account to preserve. Use full account deletion for a team-only login.'
+    );
+    error.status = 409;
+    throw error;
+  }
+
+  const memberships = await activeTeamMemberships(supabase, id);
+  if (!memberships.length) {
+    const error = new Error('This account does not currently have employer team access.');
+    error.status = 409;
+    throw error;
+  }
+
+  // Remove employer workspace membership/role only.
+  await safeDeleteBy(supabase, 'company_members', 'user_id', id);
+
+  // Remove accepted invite links when those columns exist in the installed schema.
+  await safeDeleteBy(supabase, 'company_team_invites', 'accepted_user_id', id);
+  await safeDeleteBy(supabase, 'company_team_invites', 'user_id', id);
+
+  // Restore candidate-facing role markers if an older team invitation changed them.
+  const profileRole = String(profile?.role || '').toLowerCase();
+  const profileAccountType = String(profile?.account_type || '').toLowerCase();
+  const profilePatch = {};
+
+  if (['team_member', 'employer_team', 'recruiter', 'hiring_manager'].includes(profileRole)) {
+    profilePatch.role = candidate.candidate_role;
+  }
+  if (['team_member', 'employer_team'].includes(profileAccountType)) {
+    profilePatch.account_type = 'candidate';
+  }
+
+  if (Object.keys(profilePatch).length) {
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update(profilePatch)
+      .eq('id', id);
+
+    if (profileUpdateError && !schemaMissing(profileUpdateError)) {
+      throw profileUpdateError;
+    }
+  }
+
+  const currentMeta = { ...(targetUser.user_metadata || {}) };
+  delete currentMeta.team_invite_id;
+  delete currentMeta.team_role;
+  delete currentMeta.company_id;
+  delete currentMeta.company_account_number;
+
+  if (['team_member', 'employer_team', 'recruiter', 'hiring_manager'].includes(String(currentMeta.role || '').toLowerCase())) {
+    currentMeta.role = candidate.candidate_role;
+  }
+  if (['team_member', 'employer_team'].includes(String(currentMeta.account_type || '').toLowerCase())) {
+    currentMeta.account_type = 'candidate';
+  }
+
+  const { error: metadataError } = await supabase.auth.admin.updateUserById(id, {
+    user_metadata: currentMeta
+  });
+  if (metadataError) throw metadataError;
+
+  return {
+    user_id: id,
+    removed_company_ids: memberships.map(row => row.company_id).filter(Boolean),
+    candidate_preserved: true
+  };
+}
+
 async function listAllFiles(storageBucket, rootPrefix) {
   const files = [];
   const folders = [String(rootPrefix || '').replace(/^\/+|\/+$/g, '')];
@@ -475,43 +624,14 @@ async function teamDeletionEligibility(supabase, targetUser) {
   const authRole = String(meta.role || '').toLowerCase();
   const profileRole = String(profile?.role || '').toLowerCase();
 
-  const candidateMarked =
-    ['candidate', 'seeker', 'employee'].includes(accountType) ||
-    ['candidate', 'seeker', 'employee'].includes(authRole) ||
-    ['candidate', 'seeker', 'employee'].includes(profileRole);
-
   const teamMarked =
     accountType === 'employer_team' ||
     authRole === 'team_member' ||
     profileRole === 'team_member';
 
-  const candidateActivityChecks = [
-    ['applications', 'candidate_id'],
-    ['saved_jobs', 'candidate_id'],
-    ['liked_jobs', 'candidate_id'],
-    ['skipped_jobs', 'candidate_id'],
-    ['swipes', 'candidate_id'],
-    ['swipe_actions', 'candidate_id'],
-    ['job_views', 'candidate_id'],
-    ['preferences', 'user_id'],
-    ['preferences', 'candidate_id'],
-    ['resumes', 'user_id'],
-    ['resumes', 'candidate_id']
-  ];
+  const candidate = await candidateState(supabase, targetUser, profile);
 
-  let candidateActivityCount = 0;
-  for (const [table, column] of candidateActivityChecks) {
-    candidateActivityCount += await safeCount(supabase, table, column, id);
-    if (candidateActivityCount > 0) break;
-  }
-
-  const hasResume = !!(
-    profile?.resume_file_path ||
-    profile?.resume_source ||
-    profile?.resume_data
-  );
-
-  if (!teamMarked || candidateMarked || candidateActivityCount > 0 || hasResume) {
+  if (!teamMarked || candidate.has_candidate) {
     return {
       allowed: false,
       reason: 'This person has a personal candidate account or candidate activity. The company can remove workspace access, but only the person or an Alygnn administrator can permanently delete the Alygnn account.'
@@ -603,6 +723,41 @@ async function adminAccountList(supabase, requester, query) {
       })()
     : [];
 
+  // Detect candidate activity in batches so dual Candidate + Team accounts are
+  // labeled correctly without running many queries per user.
+  const candidateActivityIds = new Set();
+  const candidatePresenceChecks = [
+    ['applications', 'candidate_id'],
+    ['saved_jobs', 'candidate_id'],
+    ['liked_jobs', 'candidate_id'],
+    ['skipped_jobs', 'candidate_id'],
+    ['swipes', 'candidate_id'],
+    ['swipe_actions', 'candidate_id'],
+    ['job_views', 'candidate_id'],
+    ['preferences', 'user_id'],
+    ['preferences', 'candidate_id'],
+    ['resumes', 'user_id'],
+    ['resumes', 'candidate_id']
+  ];
+
+  for (const [table, column] of candidatePresenceChecks) {
+    if (!ids.length) break;
+    const { data, error } = await supabase
+      .from(table)
+      .select(column)
+      .in(column, ids);
+
+    if (error) {
+      if (schemaMissing(error)) continue;
+      throw error;
+    }
+
+    for (const row of (data || [])) {
+      const value = row?.[column];
+      if (value) candidateActivityIds.add(String(value));
+    }
+  }
+
   const profileMap = new Map(profiles.map(row => [String(row.id), row]));
   const companyMap = new Map(companies.map(row => [String(row.id), row.company_name || 'Company']));
 
@@ -634,6 +789,34 @@ async function adminAccountList(supabase, requester, query) {
         ...ownerRows.map(row => row.company_name || companyMap.get(String(row.id))).filter(Boolean)
       ])];
       const isAdmin = profile.is_admin === true;
+      const rawRole = String(
+        profile.role ||
+        profile.account_type ||
+        user.user_metadata?.role ||
+        user.user_metadata?.account_type ||
+        ''
+      ).toLowerCase();
+
+      const authRole = String(user.user_metadata?.role || '').toLowerCase();
+      const authAccountType = String(user.user_metadata?.account_type || '').toLowerCase();
+      const profileRole = String(profile.role || '').toLowerCase();
+      const profileAccountType = String(profile.account_type || '').toLowerCase();
+
+      const hasCandidateMarker = [
+        rawRole,
+        authRole,
+        authAccountType,
+        profileRole,
+        profileAccountType
+      ].some(value => ['candidate', 'seeker', 'employee'].includes(value));
+
+      const hasCandidateAccount =
+        hasCandidateMarker ||
+        candidateActivityIds.has(String(user.id));
+
+      const hasTeamAccess = memberRows.length > 0;
+      const dualWorkspace = hasTeamAccess && hasCandidateAccount;
+
       let protectedReason = '';
       if (isAdmin) protectedReason = 'Admin accounts are protected from deletion here.';
       else if (String(user.id) === String(requester.id)) protectedReason = 'You cannot delete the admin account you are currently signed in with.';
@@ -642,11 +825,14 @@ async function adminAccountList(supabase, requester, query) {
         id: user.id,
         email: user.email || '',
         full_name: profile.full_name || user.user_metadata?.full_name || '',
-        role: profile.role || profile.account_type || user.user_metadata?.role || user.user_metadata?.account_type || '',
+        role: rawRole,
         is_admin: isAdmin,
         team_roles: teamRoles,
         companies: companyNames,
         owns_company: ownerRows.length > 0,
+        has_candidate_account: hasCandidateAccount,
+        has_team_access: hasTeamAccess,
+        dual_workspace: dualWorkspace,
         created_at: user.created_at || null,
         protected_reason: protectedReason
       };
@@ -708,6 +894,7 @@ module.exports = async function handler(req, res) {
         const targetId = String(body.user_id || '').trim();
         const confirmEmail = String(body.confirm_email || '').trim().toLowerCase();
         const confirmWord = String(body.confirm_word || '').trim();
+        const deletionMode = String(body.deletion_mode || 'full').trim().toLowerCase();
 
         if (!targetId) return sendJson(res, 400, { success: false, error: 'A user ID is required.' });
         if (targetId === requester.id) return sendJson(res, 400, { success: false, error: 'You cannot delete the admin account you are currently using.' });
@@ -717,7 +904,7 @@ module.exports = async function handler(req, res) {
         const target = data?.user;
         if (error || !target) return sendJson(res, 404, { success: false, error: 'Alygnn account not found.' });
 
-        const targetProfile = await profileFor(supabase, targetId, 'id,is_admin');
+        const targetProfile = await profileFor(supabase, targetId, '*');
         if (targetProfile?.is_admin === true) {
           return sendJson(res, 403, { success: false, error: 'Admin accounts are protected from deletion on this page.' });
         }
@@ -725,8 +912,40 @@ module.exports = async function handler(req, res) {
           return sendJson(res, 400, { success: false, error: 'The confirmation email does not match this account.' });
         }
 
+        const candidate = await candidateState(supabase, target, targetProfile || {});
+        const memberships = await activeTeamMemberships(supabase, targetId);
+        const isDualCandidateTeamAccount = candidate.has_candidate && memberships.length > 0;
+
+        // A dual candidate + Recruiter/Hiring Manager/Admin account keeps the
+        // Alygnn login and candidate data. Admin deletion removes only employer
+        // workspace access.
+        if (deletionMode === 'employer_only') {
+          if (!isDualCandidateTeamAccount) {
+            return sendJson(res, 409, {
+              success: false,
+              error: 'Employer-only deletion is available only when this login has both a candidate account and employer team access.'
+            });
+          }
+
+          const result = await removeEmployerTeamAccessOnly(supabase, target);
+          return sendJson(res, 200, {
+            success: true,
+            mode: 'employer_only',
+            user_id: targetId,
+            candidate_preserved: true,
+            removed_company_ids: result.removed_company_ids
+          });
+        }
+
+        if (isDualCandidateTeamAccount) {
+          return sendJson(res, 409, {
+            success: false,
+            error: 'This login also has a candidate account. To protect the candidate account, Alygnn Admin can remove only the employer team access from this screen.'
+          });
+        }
+
         await permanentlyDeleteUser(supabase, target);
-        return sendJson(res, 200, { success: true, user_id: targetId });
+        return sendJson(res, 200, { success: true, mode: 'full', user_id: targetId });
       }
 
       res.setHeader('Allow', 'GET, DELETE, OPTIONS');
