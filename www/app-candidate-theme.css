@@ -9,9 +9,9 @@ html[data-effective-theme="light"] body{
 }
 
 html[data-effective-theme="dark"] body{
-  background:
-    radial-gradient(circle at 85% 0%,rgba(93,127,163,.20),transparent 28%),
-    var(--bg)!important;
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
   color:var(--text)!important;
 }
 
@@ -28,8 +28,10 @@ html[data-effective-theme="dark"] :is(
   .app-header,.top-header,.header,.topbar,.stage,.bottom-nav,.bottom-save,
   .details-footer,nav.app-nav,body > nav
 ){
-  background:rgba(14,21,29,.96)!important;
-  border-color:var(--border)!important;
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+  border-color:#29404C!important;
 }
 
 /* Main surfaces */
@@ -118,19 +120,9 @@ html[data-effective-theme="dark"] :is(
 }
 
 /* Selected controls */
-html[data-effective-theme="light"] :is(
-  .comp-type-btn.active,.choice.active,.benefit.active,.job-type.active,
-  .ind-chip.active,.quick-chip.active,.template-option.active,.settings-choice.active
-){
-  background:var(--brand-dark,#35679A)!important;
-  border-color:var(--brand-dark,#35679A)!important;
-  color:#FFFFFF!important;
-  box-shadow:0 5px 14px rgba(53,103,154,.16)!important;
-}
-
 html[data-effective-theme="dark"] :is(
-  .comp-type-btn.active,.choice.active,.benefit.active,.job-type.active,
-  .ind-chip.active,.quick-chip.active,.template-option.active,.settings-choice.active
+  .choice.active,.benefit.active,.job-type.active,.ind-chip.active,.quick-chip.active,
+  .template-option.active,.settings-choice.active
 ){
   background:#1B3042!important;
   border-color:#6C98BF!important;
@@ -331,4 +323,28 @@ html[data-effective-theme="dark"] .hero :is(
 /* Salary slider track also gets clearer light-mode contrast. */
 html[data-effective-theme="light"] .range-bg{
   background:#D7E2E9!important;
+}
+
+
+/* FINAL: Candidate chrome must use the exact Discover canvas in Dark Mode. */
+html[data-effective-theme="dark"],
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] .app-header,
+html[data-effective-theme="dark"] .top-header,
+html[data-effective-theme="dark"] .bottom-nav,
+body[data-effective-theme="dark"],
+body[data-effective-theme="dark"] .app-header,
+body[data-effective-theme="dark"] .top-header,
+body[data-effective-theme="dark"] .bottom-nav{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+html[data-effective-theme="dark"] .app-header,
+html[data-effective-theme="dark"] .top-header,
+body[data-effective-theme="dark"] .app-header,
+body[data-effective-theme="dark"] .top-header{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:none!important;
 }
