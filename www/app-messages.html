@@ -840,6 +840,160 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
 </style>
 
+
+<style id="alygnn-employer-messages-consistency">
+/* Employer Messages uses the exact employer dashboard palette and shell. */
+.employer-header-notification{display:none}
+body.employer-mode{
+  --brand:#5D7FA3;
+  --brand-dark:#345F91;
+  --sage:#8CB69B;
+  --bg:#F6F8F7;
+  --card:#FFFFFF;
+  --text:#172333;
+  --muted:#647282;
+  --border:#DDE3E8;
+  --soft:#EAF0F6;
+  padding-bottom:calc(88px + env(safe-area-inset-bottom));
+  background:var(--bg)!important;
+}
+html[data-theme="dark"] body.employer-mode{
+  --bg:#0B111A;
+  --card:#121B27;
+  --text:#F3F7FA;
+  --muted:#A9B5C2;
+  --border:#293545;
+  --soft:#19283A;
+}
+body.employer-mode .shell{
+  width:100%;
+  max-width:760px;
+  margin:0 auto;
+  padding:0 16px 34px;
+}
+body.employer-mode .top{
+  position:sticky;
+  top:0;
+  z-index:50;
+  min-height:78px;
+  margin:0 -16px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 11px;
+  display:grid;
+  grid-template-columns:46px 1fr 46px;
+  align-items:center;
+  background:rgba(246,248,247,.92);
+  border-bottom:1px solid rgba(221,227,232,.8);
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+html[data-theme="dark"] body.employer-mode .top{
+  background:rgba(11,17,26,.92);
+  border-bottom-color:rgba(41,53,69,.88);
+}
+body.employer-mode .back{visibility:hidden;pointer-events:none}
+body.employer-mode .logo{
+  font-size:29px;
+  letter-spacing:-.2px;
+}
+body.employer-mode .employer-header-notification{
+  width:42px;
+  height:42px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--card);
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  box-shadow:0 7px 22px rgba(23,35,51,.06);
+}
+html[data-theme="dark"] body.employer-mode .employer-header-notification{
+  box-shadow:0 7px 22px rgba(0,0,0,.22);
+}
+body.employer-mode .employer-header-notification svg{width:20px;height:20px}
+body.employer-mode .eyebrow{
+  margin-top:22px;
+  margin-bottom:7px;
+  color:var(--brand-dark);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:1.3px;
+}
+body.employer-mode .title{
+  margin:0;
+  font-size:30px;
+  line-height:1.08;
+  letter-spacing:-.8px;
+  font-weight:900;
+}
+body.employer-mode .sub{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.55;
+}
+body.employer-mode .tools{margin-top:20px}
+body.employer-mode .search,
+body.employer-mode .filter-btn,
+body.employer-mode .job-filter,
+body.employer-mode .thread,
+body.employer-mode .empty{
+  background:var(--card);
+  border-color:var(--border);
+  color:var(--text);
+}
+body.employer-mode .filter-btn{color:var(--muted)}
+body.employer-mode .filter-btn.active{
+  color:#fff;
+  border-color:var(--brand-dark);
+  background:var(--brand-dark);
+}
+body.employer-mode .bottom-nav.employer{
+  min-height:72px;
+  padding:7px 12px calc(8px + env(safe-area-inset-bottom));
+  background:var(--card);
+  border-top:1px solid var(--border);
+  grid-template-columns:repeat(5,minmax(50px,62px));
+  justify-content:center;
+  column-gap:clamp(6px,2.5vw,16px);
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+body.employer-mode .bottom-nav.employer .nav{
+  position:relative;
+  border:none;
+  background:transparent;
+  color:#748190;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  min-width:0;
+  padding:2px 0;
+  font-size:8px;
+  font-weight:900;
+}
+body.employer-mode .bottom-nav.employer .nav svg{
+  width:21px;
+  height:21px;
+  stroke-width:1.8;
+}
+body.employer-mode .bottom-nav.employer .nav.active{color:var(--brand-dark)}
+body.employer-mode .bottom-nav.employer .nav.active::before{
+  content:'';
+  position:absolute;
+  top:-7px;
+  left:50%;
+  transform:translateX(-50%);
+  width:28px;
+  height:3px;
+  border-radius:999px;
+  background:var(--brand-dark);
+}
+</style>
+
 </head>
 
 <body>
@@ -847,7 +1001,12 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   <div class="top">
     <button class="back" id="back" type="button" aria-label="Back">←</button>
     <div class="logo">Alygnn<span>.</span></div>
-    <div></div>
+    <button class="employer-header-notification" id="employer-header-notification" type="button" aria-label="Notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+        <path d="M10 21h4"></path>
+      </svg>
+    </button>
   </div>
 
   <div class="eyebrow" id="eyebrow">Messages</div>
@@ -917,6 +1076,22 @@ const esc=value=>
         "'":'&#039;'
       }[char])
     );
+
+
+function applyEmployerMessagesTheme(){
+  let pref='auto';
+  try{pref=String(localStorage.getItem('alygnnEmployerTheme')||'auto').toLowerCase().trim();}catch(_error){}
+  if(['system','system-default','default'].includes(pref))pref='auto';
+  if(!['auto','light','dark'].includes(pref))pref='auto';
+  const systemDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme=pref==='auto'?(systemDark?'dark':'light'):pref;
+  document.documentElement.dataset.theme=theme;
+  document.documentElement.dataset.effectiveTheme=theme;
+  document.documentElement.style.colorScheme=theme;
+  let meta=document.querySelector('meta[name="theme-color"]');
+  if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
+  meta.setAttribute('content',theme==='dark'?'#0B111A':'#F6F8F7');
+}
 
 let session=null;
 let role='candidate';
@@ -2251,6 +2426,10 @@ $('back').onclick=()=>{
       :'app-applied.html';
 };
 
+$('employer-header-notification').onclick=()=>{
+  location.href='app-employer-dashboard.html?view=dashboard&notifications=1';
+};
+
 (async()=>{
   const {
     data,
@@ -2270,6 +2449,8 @@ $('back').onclick=()=>{
   session=data.session;
   role=await resolveRole();
   document.body.classList.toggle('candidate-mode',role==='candidate');
+  document.body.classList.toggle('employer-mode',role==='employer');
+  if(role==='employer') applyEmployerMessagesTheme();
 
   $('eyebrow').textContent=
     role==='employer'
