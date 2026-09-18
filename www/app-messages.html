@@ -887,8 +887,28 @@ body.employer-mode .top{
   -webkit-backdrop-filter:blur(22px);
 }
 html[data-theme="dark"] body.employer-mode .top{
-  background:rgba(11,17,26,.92);
+  background:#0B111A!important;
   border-bottom-color:rgba(41,53,69,.88);
+}
+
+/* Keep Employer Messages on the exact same canvas as Employer My Jobs.
+   The shared candidate theme has a stronger dark-body rule (#061821);
+   these employer-specific selectors intentionally override it. */
+html[data-effective-theme="light"] body.employer-mode,
+html[data-theme="light"] body.employer-mode{
+  background:#F6F8F7!important;
+}
+html[data-effective-theme="dark"] body.employer-mode,
+html[data-theme="dark"] body.employer-mode{
+  background:#0B111A!important;
+}
+html[data-effective-theme="light"] body.employer-mode .top,
+html[data-theme="light"] body.employer-mode .top{
+  background:#F6F8F7!important;
+}
+html[data-effective-theme="dark"] body.employer-mode .top,
+html[data-theme="dark"] body.employer-mode .top{
+  background:#0B111A!important;
 }
 body.employer-mode .back{visibility:hidden;pointer-events:none}
 body.employer-mode .logo{
