@@ -20,10 +20,10 @@
     --text-muted: #4A5968;
   }
 
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-top: 64px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
   nav {
-    position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 100;
+    position: sticky; top: 0; z-index: 100;
     background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px;
@@ -96,29 +96,26 @@
 
   <div class="doc-header">
     <div class="doc-title">Privacy Policy</div>
-    <div class="doc-updated">Last updated: September 14, 2026</div>
+    <div class="doc-updated">Last updated: September 18, 2026</div>
   </div>
 
   <div class="disclaimer">
-    <strong>Note:</strong> This Privacy Policy describes how Alygnn currently collects, uses, stores, and shares information across its website, mobile applications, candidate features, employer features, resumes, applications, messaging, payments, and AI-assisted tools. It is provided for informational purposes and is not a substitute for advice from a licensed attorney. Alygnn should have this policy reviewed by legal counsel before relying on it for compliance purposes.
+    <strong>Note:</strong> This is a general-purpose privacy policy template describing how Alygnn currently collects and uses data. It is provided for informational purposes and is not a substitute for advice from a licensed attorney. Alygnn should have this document reviewed by legal counsel before relying on it for compliance purposes.
   </div>
 
   <div class="toc">
     <div class="toc-title">On this page</div>
     <ol>
-      <li><a href="#overview">Overview and scope</a></li>
+      <li><a href="#overview">Overview</a></li>
       <li><a href="#info-we-collect">Information we collect</a></li>
-      <li><a href="#how-we-use">How we use information</a></li>
-      <li><a href="#matching-ai">Alygnn Match and AI-assisted processing</a></li>
-      <li><a href="#resumes">Resumes, applications, and employer access</a></li>
-      <li><a href="#messages">Messaging and notifications</a></li>
+      <li><a href="#how-we-use">How we use your information</a></li>
+      <li><a href="#ai-features">AI-powered features</a></li>
       <li><a href="#sharing">How information is shared</a></li>
-      <li><a href="#providers">Service providers</a></li>
-      <li><a href="#cookies">Cookies, local storage, and similar technologies</a></li>
+      <li><a href="#third-parties">Third-party service providers</a></li>
+      <li><a href="#cookies">Cookies and similar technologies</a></li>
       <li><a href="#retention">Data retention and deletion</a></li>
       <li><a href="#security">Security</a></li>
-      <li><a href="#rights">Your rights and choices</a></li>
-      <li><a href="#state-rights">U.S. state privacy disclosures</a></li>
+      <li><a href="#your-rights">Your rights and choices</a></li>
       <li><a href="#children">Children's privacy</a></li>
       <li><a href="#international">International users</a></li>
       <li><a href="#changes">Changes to this policy</a></li>
@@ -126,174 +123,100 @@
     </ol>
   </div>
 
-  <h2 id="overview">1. Overview and scope</h2>
-  <p>Alygnn ("Alygnn," "we," "us," or "our") operates a job-matching and recruiting platform through alygnn.com, related web pages, and supported mobile applications (collectively, the "Service"). This Privacy Policy explains what information we collect, how we use and share it, and the choices available to candidates, employers, and employer team members.</p>
-  <p>This policy applies when you create or use an account, upload or build a resume, set job preferences, browse or apply to jobs, communicate through Alygnn, operate an employer account, verify a business, review candidates, purchase a plan or add-on, or otherwise use the Service.</p>
+  <h2 id="overview">1. Overview</h2>
+  <p>Alygnn ("Alygnn," "we," "us," or "our") operates a job-matching platform that connects job seekers with employers. This Privacy Policy explains what information we collect when you use alygnn.com and our related services (collectively, the "Service"), how we use it, and the choices you have.</p>
+  <p>By creating an account or otherwise using the Service, you agree to the collection and use of information as described in this policy.</p>
 
   <h2 id="info-we-collect">2. Information we collect</h2>
 
-  <h3>Account and authentication information</h3>
+  <h3>Account information</h3>
+  <p>When you create an account, we collect your name, email address, and password, or authentication information if you use a third-party sign-in provider such as Google or Apple. We also store your account role — job seeker or employer.</p>
+  <p>If you choose Continue with Google or Continue with Apple, the provider may send us information associated with the account you select, such as your name, email address, provider-specific account identifier, and profile information that the provider makes available for sign-in. We use that information to create, authenticate, secure, and maintain your Alygnn account. During account creation, clicking Continue with Google or Continue with Apple also serves as your affirmative acceptance of Alygnn's Terms of Service and acknowledgement of this Privacy Policy.</p>
+
+  <h3>Job seeker information</h3>
   <ul>
-    <li>Name, email address, account role, and account identifiers</li>
-    <li>Authentication information handled through our authentication provider, including email/password credentials or supported Google or Apple sign-in tokens. Alygnn does not have access to your plaintext password.</li>
-    <li>Account settings, role or mode changes, verification state, and security-related account events</li>
+    <li>Your resume file and any information extracted from it</li>
+    <li>Profile details such as your headline and photo, if you add one</li>
+    <li>Job preferences you set, including desired role, salary range, location, work style, required benefits, job type, and preferred industries</li>
+    <li>Your activity on the Service, such as jobs you apply to or skip</li>
   </ul>
 
-  <h3>Candidate profile and resume information</h3>
+  <h3>Employer information</h3>
   <ul>
-    <li>Uploaded resume files and Alygnn-built resume data</li>
-    <li>Resume details such as contact information, professional title, professional summary, employment history, education, skills, awards, and other resume content you choose to provide</li>
-    <li>Which resume you select as your active resume when more than one resume is available</li>
-    <li>Candidate profile details such as name, headline, and other profile information you add</li>
-    <li>Job preferences, including desired roles, compensation, locations, work style, job type, benefits, industries, and related matching preferences</li>
+    <li>Company name, description, website, phone number, business email, and business address</li>
+    <li>Verification status and any documentation or details submitted for business verification</li>
+    <li>Job postings you create, including title, description, requirements, benefits, salary, and location</li>
+    <li>Information about candidates who apply to your postings, to the extent needed to operate the Service</li>
   </ul>
 
-  <h3>Application and activity information</h3>
+  <h3>Automatically collected information</h3>
+  <p>We may automatically collect limited technical information such as browser type, device information, IP address, and general usage patterns to help us operate, secure, and improve the Service.</p>
+
+  <h2 id="how-we-use">3. How we use your information</h2>
+  <p>We use the information we collect to:</p>
   <ul>
-    <li>Jobs you view, apply to, skip, save, or otherwise interact with</li>
-    <li>Application timestamps and status information</li>
-    <li>Employer actions associated with an application, such as accepted or passed/not selected status</li>
-    <li>Alygnn Match scores, match labels, and job-related information used to produce those informational results</li>
-    <li>Search terms, filters, and other actions used to operate candidate or employer workflows</li>
+    <li>Create and maintain your account</li>
+    <li>Match job seekers with relevant job postings based on stated preferences and resume content</li>
+    <li>Allow employers to post jobs, review applicants, and manage their hiring pipeline</li>
+    <li>Verify employer identity and business legitimacy before allowing job postings to go live</li>
+    <li>Send account-related communications, such as verification emails and application updates</li>
+    <li>Maintain the security and integrity of the Service, including detecting fraudulent or abusive activity</li>
+    <li>Improve and develop new features</li>
+  </ul>
+  <p>We do not sell your personal information to third parties.</p>
+
+  <h2 id="ai-features">4. AI-powered features</h2>
+  <p>Alygnn uses artificial intelligence, including third-party AI models, to support certain features, such as:</p>
+  <ul>
+    <li>Parsing and interpreting resume content to help match job seekers with relevant postings</li>
+    <li>Generating draft job descriptions for employers based on details they provide</li>
+    <li>Reviewing custom requirement or benefit entries employers add to a job posting, to help ensure listings are meaningful and free of spam</li>
+  </ul>
+  <p>Content processed by these features is sent to our AI service provider solely to generate the requested output and is not used by that provider to train models for other customers. Employers are responsible for reviewing and editing any AI-assisted content before publishing a job posting.</p>
+
+  <h2 id="sharing">5. How information is shared</h2>
+  <p>We share information in the following circumstances:</p>
+  <ul>
+    <li><strong>With employers:</strong> if you are a job seeker and apply to a job, the employer who posted that job can see the application details and resume information you choose to submit.</li>
+    <li><strong>With service providers:</strong> we share information with vendors who help us operate the Service, as described in the "Third-party service providers" section below.</li>
+    <li><strong>For legal reasons:</strong> we may disclose information if required to do so by law, or if we believe disclosure is necessary to protect our rights, investigate fraud, or ensure the safety of our users.</li>
+    <li><strong>In a business transfer:</strong> if Alygnn is involved in a merger, acquisition, or sale of assets, information may be transferred as part of that transaction.</li>
   </ul>
 
-  <h3>Employer and business verification information</h3>
+  <h2 id="third-parties">6. Third-party service providers</h2>
+  <p>We rely on the following categories of third-party providers to operate the Service:</p>
   <ul>
-    <li>Company name, description, website, phone number, business email, business address, and employer account details</li>
-    <li>EIN or other business identifiers and verification documents or information submitted to verify the business</li>
-    <li>Verification status, review history, and information generated or recorded by authorized Alygnn administrators during verification</li>
-    <li>Job postings, including job title, description, duties, qualifications, compensation, benefits, location, work arrangement, job type, and related posting details</li>
-    <li>Employer team members, roles, invitations, permissions, and related access information</li>
+    <li><strong>Supabase</strong> — authentication, database, and file storage (including resumes)</li>
+    <li><strong>Google</strong> — Google account authentication and sign-in</li>
+    <li><strong>Apple</strong> — Apple account authentication and sign-in</li>
+    <li><strong>Anthropic</strong> — AI-powered resume parsing, job description generation, and content moderation features</li>
+    <li><strong>Email delivery providers</strong> — for account verification and transactional emails</li>
   </ul>
+  <p>Each of these providers processes data on our behalf under their own privacy and security terms.</p>
 
-  <h3>Recruiting, candidate-review, and messaging information</h3>
-  <ul>
-    <li>Candidate lists and candidate-review activity associated with an employer's jobs</li>
-    <li>Candidate profiles and resumes made available to an employer after an application or through another supported recruiting flow</li>
-    <li>Messages exchanged between candidates and employers, including message content, timestamps, conversation participants, and the associated job/application</li>
-    <li>Employer decisions and organization data, such as accepted and passed candidate groupings</li>
-    <li>Notifications such as new applicant, message, application, and account notifications</li>
-  </ul>
+  <h2 id="cookies">7. Cookies and similar technologies</h2>
+  <p>We use cookies and similar technologies (such as local storage) that are necessary to keep you signed in and to remember basic preferences. We do not currently use third-party advertising cookies or tracking pixels.</p>
 
-  <h3>Payment, subscription, and entitlement information</h3>
-  <p>When an employer purchases a paid plan, Second Job Slot, Weekly Job Slot, Job Boost, team seat, or other paid feature, payment-card information is processed by Stripe or another payment processor. Alygnn may receive and store:</p>
-  <ul>
-    <li>Customer and transaction identifiers</li>
-    <li>Product or plan purchased, job-slot entitlement, seat entitlement, boost entitlement, billing interval, amount, currency, and payment status</li>
-    <li>Subscription start, renewal, cancellation, expiration, and next-billing information</li>
-    <li>Limited billing details made available by the payment processor</li>
-    <li>Payment, refund, dispute, charge failure, and webhook event information needed to operate billing</li>
-  </ul>
-  <p>Alygnn does not store full payment-card numbers or card security codes.</p>
+  <h2 id="retention">8. Data retention and deletion</h2>
+  <p>We retain your information for as long as your account is active, or as needed to provide the Service. You may request deletion of your account and associated data at any time from your account settings, or by contacting us using the details below. Some information may be retained where required for legal, security, or legitimate business purposes.</p>
 
-  <h3>Technical, device, and usage information</h3>
-  <p>We may collect browser type, operating system, device type, app version, IP address, approximate geographic information derived from technical data, timestamps, error logs, security signals, and general usage information needed to operate, secure, troubleshoot, and improve the Service.</p>
+  <h2 id="security">9. Security</h2>
+  <p>We use reasonable administrative, technical, and organizational safeguards designed to protect your information. However, no method of transmission or storage is completely secure, and we cannot guarantee absolute security.</p>
 
-  <h3>Location and place information you provide</h3>
-  <p>If you enter a city, state, address, job location, or similar place information, we process that information to provide location-based features and matching. If a supported address or place-autocomplete provider is used, the text you enter may be sent to that provider to return suggestions.</p>
+  <h2 id="your-rights">10. Your rights and choices</h2>
+  <p>Depending on where you live, you may have rights to access, correct, delete, or export your personal information, or to object to certain processing. You can exercise most of these rights directly from your account settings. For anything else, contact us using the details below and we will respond in accordance with applicable law.</p>
 
-  <h3>Support and contact information</h3>
-  <p>We collect information you send when you contact Alygnn, request help, report abuse, dispute a transaction, request an account or name change, or otherwise communicate with us.</p>
+  <h2 id="children">11. Children's privacy</h2>
+  <p>The Service is intended for users who are at least 18 years old, or who otherwise meet the legal working age in their jurisdiction. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us so we can remove it.</p>
 
-  <h2 id="how-we-use">3. How we use information</h2>
-  <p>We use information to:</p>
-  <ul>
-    <li>Create, authenticate, secure, and maintain accounts</li>
-    <li>Support candidate and employer roles and account switching where available</li>
-    <li>Store, display, and manage uploaded resumes and Alygnn-built resumes</li>
-    <li>Remember the resume a candidate selected for use in the Service</li>
-    <li>Provide job discovery, application, skip, status, and My Jobs features</li>
-    <li>Provide employer job-posting, candidate-review, accepted/passed organization, and recruiting workflows</li>
-    <li>Calculate informational Alygnn Match results from job-related resume and posting content</li>
-    <li>Provide messaging between candidates and employers and associate conversations with the relevant job/application</li>
-    <li>Verify employer identity and business legitimacy</li>
-    <li>Provide employer plans, permanent and temporary job slots, billing, team seats, Job Boosts, plan badges, and other entitlements</li>
-    <li>Process purchases, renewals, cancellations, expirations, payment failures, refunds where applicable, and billing support</li>
-    <li>Send verification, password reset, application, message, candidate, billing, service, and security communications</li>
-    <li>Detect, investigate, prevent, and respond to fraud, abuse, spam, threats, misuse, and security incidents</li>
-    <li>Provide customer support, troubleshoot issues, measure reliability, and improve the Service</li>
-    <li>Comply with legal obligations and enforce our Terms of Service</li>
-  </ul>
+  <h2 id="international">12. International users</h2>
+  <p>Alygnn is based in the United States and currently focused on the U.S. job market. If you access the Service from outside the United States, your information will be processed and stored in the United States.</p>
 
-  <h2 id="matching-ai">4. Alygnn Match and AI-assisted processing</h2>
-  <p>Alygnn Match may compare job-related information from a job posting with information in a candidate's resume, such as skills, work experience, role history, and explicitly required education, to produce an informational match score or label.</p>
-  <p>Alygnn does not intend to use protected characteristics such as race, ethnicity, religion, sex, sexual orientation, gender identity, disability, age, or other legally protected traits to calculate Alygnn Match. The score does not make a hiring decision and is not intended to be a solely automated employment decision with legal or similarly significant effect. Employers remain responsible for independently reviewing candidates and complying with employment and anti-discrimination laws.</p>
-  <p>We may also use AI-assisted services for functions such as resume parsing, draft job-description generation, matching, and reviewing custom job-posting entries for relevance, professionalism, or spam. Information sent to an AI service provider is limited to what is reasonably needed to provide the requested feature. AI output may be inaccurate and should be reviewed by the user.</p>
+  <h2 id="changes">13. Changes to this policy</h2>
+  <p>We may update this Privacy Policy from time to time. If we make material changes, we will update the "Last updated" date above and, where appropriate, provide additional notice.</p>
 
-  <h2 id="resumes">5. Resumes, applications, and employer access</h2>
-  <p>Candidates may be able to keep an uploaded resume and an Alygnn-built resume and choose which one Alygnn should use as the active resume. The active selection is used where the Service supports resume-based applications and employer access.</p>
-  <p>When a candidate applies to a job, the employer and authorized employer team members may be able to view candidate information and the resume made available through Alygnn. Employers may also be able to download the resume. Once information has been viewed, downloaded, or otherwise received by an employer, Alygnn cannot guarantee that changing the active resume or deleting the account will remove copies already retained by that employer.</p>
-  <p>Employers are independent users of the Service and are responsible for their own use, storage, disclosure, and deletion of candidate information after they receive it, subject to applicable law.</p>
-
-  <h2 id="messages">6. Messaging and notifications</h2>
-  <p>Messages are stored so candidates and employers can communicate about an application. Conversation participants and authorized employer team members may have access to messages associated with their recruiting workflow. Messages are not intended to be public.</p>
-  <p>The current candidate messaging flow may require the employer to initiate the conversation after an application before the candidate can reply. We also store notification records and read/unread state for events such as new applicants, messages, and application activity.</p>
-  <p>We may send transactional emails or supported app/browser notifications for account verification, password resets, messages, applications, billing, security, and other Service-related events.</p>
-
-  <h2 id="sharing">7. How information is shared</h2>
-  <p>We may share information in the following circumstances:</p>
-  <ul>
-    <li><strong>With employers:</strong> when a candidate applies or otherwise uses a supported recruiting flow, the employer may receive application information, profile information, the applicable resume, and related job-specific information.</li>
-    <li><strong>With employer team members:</strong> authorized administrators or recruiters may access candidate, job, message, and recruiting information available to their employer account.</li>
-    <li><strong>With service providers:</strong> vendors process information for authentication, hosting, database, file storage, email delivery, payments, AI-assisted features, location/place services, security, and other infrastructure.</li>
-    <li><strong>For legal and safety reasons:</strong> we may disclose information when required by law or when reasonably necessary to protect rights, investigate fraud or abuse, respond to legal process, enforce our Terms, or protect users and the Service.</li>
-    <li><strong>In a business transaction:</strong> information may be transferred in connection with a merger, financing, acquisition, reorganization, bankruptcy, or sale of assets, subject to applicable law.</li>
-  </ul>
-  <p>We do not sell personal information for money. We do not currently use personal information for third-party cross-context behavioral advertising.</p>
-
-  <h2 id="providers">8. Service providers</h2>
-  <p>Depending on the feature used, Alygnn may rely on providers such as:</p>
-  <ul>
-    <li><strong>Supabase</strong> — authentication, database, and file storage, including resume and application-related data</li>
-    <li><strong>Stripe</strong> — payment processing, subscriptions, invoices, billing events, and payment-status information</li>
-    <li><strong>Resend or other email delivery providers</strong> — verification, password reset, transactional, and service emails</li>
-    <li><strong>Google</strong> — Google sign-in and, where enabled, location/place services</li>
-    <li><strong>Apple</strong> — Sign in with Apple</li>
-    <li><strong>Vercel or other hosting/infrastructure providers</strong> — website and service hosting</li>
-    <li><strong>AI model providers</strong> — resume parsing, matching support, job-description assistance, and content-review features</li>
-  </ul>
-  <p>These providers process information under their own agreements, security practices, and privacy terms. Providers may change as Alygnn's infrastructure evolves.</p>
-
-  <h2 id="cookies">9. Cookies, local storage, and similar technologies</h2>
-  <p>We use cookies, local storage, session storage, and similar browser or app technologies to keep users signed in, preserve per-tab sessions, remember preferences and drafts, support resume-builder functionality, maintain onboarding state, and operate security and Service features.</p>
-  <p>We do not currently use third-party advertising cookies or tracking pixels for targeted advertising.</p>
-
-  <h2 id="retention">10. Data retention and deletion</h2>
-  <p>We retain information for as long as reasonably necessary to provide the Service, maintain account and application history, support billing and fraud prevention, resolve disputes, comply with law, enforce agreements, and protect the Service.</p>
-  <p>Retention periods may differ by data type. For example, payment records may be retained to satisfy accounting or legal requirements; employer verification records may be retained to document verification or fraud-prevention activity; and application or message records may be retained for legitimate recruiting, security, support, or dispute-resolution purposes.</p>
-  <p>You may request account deletion or use available account controls. Deletion from Alygnn does not necessarily delete copies already downloaded, exported, or lawfully retained by an employer or another independent recipient. Backup copies may persist for a limited period before deletion or overwrite.</p>
-
-  <h2 id="security">11. Security</h2>
-  <p>We use reasonable administrative, technical, and organizational safeguards designed to protect information, including access controls and security features provided by our infrastructure vendors. No transmission or storage method is completely secure, and we cannot guarantee absolute security.</p>
-
-  <h2 id="rights">12. Your rights and choices</h2>
-  <p>Depending on your account and location, you may be able to:</p>
-  <ul>
-    <li>Access and update profile, resume, preference, employer, and account information</li>
-    <li>Choose between available resumes and change the active resume</li>
-    <li>Update or replace a resume</li>
-    <li>Change job preferences</li>
-    <li>Control certain notification or account settings</li>
-    <li>Request access, correction, deletion, or export of personal information where applicable</li>
-    <li>Cancel eligible paid subscriptions or add-ons to stop future renewal</li>
-  </ul>
-  <p>To exercise a privacy right not available directly in the Service, contact us using the information below. We may need to verify your identity before completing a request.</p>
-
-  <h2 id="state-rights">13. U.S. state privacy disclosures</h2>
-  <p>Depending on where you live, state privacy law may provide rights to know, access, correct, delete, or obtain a copy of personal information, and in some circumstances to opt out of certain uses or disclosures. Alygnn does not currently sell personal information for money or use personal information for third-party cross-context behavioral advertising.</p>
-  <p>We will respond to verified requests as required by applicable law. You may also have the right to appeal certain decisions or use an authorized agent where provided by law.</p>
-
-  <h2 id="children">14. Children's privacy</h2>
-  <p>The Service is not intended for children under 18 unless a different minimum age is expressly permitted by applicable law and Alygnn's product requirements. We do not knowingly collect personal information from children in violation of applicable law. If you believe a child has provided personal information improperly, contact us so we can investigate and take appropriate action.</p>
-
-  <h2 id="international">15. International users</h2>
-  <p>The Service may be accessible from countries outside the United States. Availability of jobs, payment methods, plans, and features may vary by location. Information may be processed and stored in the United States and in other locations where Alygnn or its service providers operate. If you use the Service from another country, your information may be transferred to jurisdictions with data-protection laws different from those in your country.</p>
-
-  <h2 id="changes">16. Changes to this policy</h2>
-  <p>We may update this Privacy Policy as the Service changes. If we make material changes, we will update the "Last updated" date and may provide additional notice where appropriate or required by law.</p>
-
-  <h2 id="contact">17. Contact us</h2>
-  <p>If you have questions about this Privacy Policy, want to exercise a privacy right, or have a concern about how information is handled, contact us at <a href="mailto:admin@alygnn.com">admin@alygnn.com</a>.</p>
+  <h2 id="contact">14. Contact us</h2>
+  <p>If you have questions about this Privacy Policy or how your information is handled, contact us at <a href="mailto:admin@alygnn.com">admin@alygnn.com</a>.</p>
 
 </div>
 
