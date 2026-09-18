@@ -217,7 +217,7 @@
   <a class="logo" href="employers.html">Alygnn<span>.</span><span class="logo-tag">for Employers</span></a>
   <ul class="nav-links">
     <li><a href="#how">How it works</a></li>
-    <li><a href="login.html?role=employer" id="nav-pricing-link">Pricing</a></li>
+    <li><a href="pricing.html" id="nav-pricing-link" style="display:none;">Pricing</a></li>
     <li><a href="#faq">FAQ</a></li>
   </ul>
   <div class="nav-right">
@@ -231,7 +231,7 @@
 </nav>
 <div class="mobile-menu" id="mobile-menu">
   <a href="#how">How it works</a>
-  <a href="login.html?role=employer" id="mobile-pricing-link">Pricing</a>
+  <a href="pricing.html" id="mobile-pricing-link" style="display:none;">Pricing</a>
   <a href="#faq">FAQ</a>
 </div>
 <script>
@@ -259,7 +259,7 @@
     <p class="hero-sub">Stop sifting through resumes that don't fit. Alygnn ranks every applicant by qualification, so you only spend time on candidates worth interviewing.</p>
     <div class="hero-actions">
       <button class="btn-primary" id="hero-cta-btn" onclick="window.location.href='login.html?role=employer'">Post a job</button>
-      <button class="btn-ghost" id="hero-pricing-btn" onclick="window.location.href='login.html?role=employer'">See pricing</button>
+      <button class="btn-ghost" id="hero-pricing-btn" style="display:none;" onclick="window.location.href='pricing.html'">See pricing</button>
     </div>
   </div>
 
@@ -431,30 +431,9 @@
 <script>
 (async () => {
   const { createClient } = supabase;
-
-  function alygnnAuthStorageKey(){
-    let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
-    if(!tabId){
-      tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
-        ? window.crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-      window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
-    }
-    return `alygnn-auth-${tabId}`;
-  }
-
   const sb = createClient(
     'https://auth.alygnn.com',
-    'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
-    {
-      auth:{
-        storage:window.sessionStorage,
-        storageKey:alygnnAuthStorageKey(),
-        persistSession:true,
-        autoRefreshToken:true,
-        detectSessionInUrl:true
-      }
-    }
+    'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG'
   );
 
   const navAuthLink      = document.getElementById('nav-auth-link');
@@ -487,35 +466,18 @@
   }
 
   const role = String(profile?.role || session?.user?.user_metadata?.role || '').toLowerCase();
-
-  let teamRuntime = null;
-  if (session) {
-    try {
-      const { data } = await sb.rpc('get_my_team_operational_state');
-      teamRuntime = data || null;
-    } catch (_) {}
-  }
-
-  const isTeamMember =
-    !!session &&
-    teamRuntime?.has_company === true &&
-    teamRuntime?.access?.is_owner === false;
-
-  const isEmployerSession = !!session && (role === 'employer' || isTeamMember);
+  const isEmployerSession = !!session && role === 'employer';
 
   if (!isEmployerSession) return;
 
-  // Logged-in employer or employer team member: swap nav to account links
-  if (navAuthLink) {
-    navAuthLink.textContent = 'My account';
-    navAuthLink.href = isTeamMember ? 'employer-account.html?team=1' : 'employer-account.html';
-  }
+  // Logged-in employer: swap nav to account links
+  if (navAuthLink) { navAuthLink.textContent = 'My account'; navAuthLink.href = 'employer-account.html'; }
   if (navCtaBtn)   { navCtaBtn.textContent = 'Dashboard'; navCtaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
   if (heroCta)     { heroCta.textContent = 'Go to dashboard'; heroCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
   if (bottomCta)   { bottomCta.textContent = 'Go to dashboard'; bottomCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
-  if (navPricingLink)    navPricingLink.href = 'pricing.html';
-  if (mobilePricingLink) mobilePricingLink.href = 'pricing.html';
-  if (heroPricingBtn)    heroPricingBtn.onclick = () => window.location.href = 'pricing.html';
+  if (navPricingLink)    { navPricingLink.href = 'pricing.html'; navPricingLink.style.display = ''; }
+  if (mobilePricingLink) { mobilePricingLink.href = 'pricing.html'; mobilePricingLink.style.display = ''; }
+  if (heroPricingBtn)    { heroPricingBtn.style.display = ''; heroPricingBtn.onclick = () => window.location.href = 'pricing.html'; }
   if (footerEmployerAccount) footerEmployerAccount.href = 'employer-account.html';
   if (footerEmployerDashboard) footerEmployerDashboard.href = 'employer-dashboard.html';
 })();
