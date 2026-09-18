@@ -305,14 +305,11 @@
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let currentRole = 'seeker';
-
-  // Pre-select role from URL param
+  // Resolve the requested side before initializing the UI. Because this script
+  // runs after the page markup, we can initialize immediately instead of
+  // waiting for DOMContentLoaded (which caused a visible Job Seeker -> Employer flash).
   const urlRole = new URLSearchParams(window.location.search).get('role');
-  if (urlRole === 'employer') {
-    currentRole = 'employer';
-    document.addEventListener('DOMContentLoaded', () => switchRole('employer'));
-  }
+  let currentRole = urlRole === 'employer' ? 'employer' : 'seeker';
 
   async function employerDestination(userId) {
     const { data: profile, error } = await sb
@@ -603,17 +600,6 @@
     });
   }
 
-  async function redirectExistingSession() {
-    try {
-      const { data: { session }, error } = await sb.auth.getSession();
-      if (error || !session?.user) return;
-      const destination = await redirectForUser(session.user, currentRole);
-      window.location.replace(destination);
-    } catch (error) {
-      console.warn('Existing-session redirect failed:', error);
-    }
-  }
-
   async function doForgot() {
     const email = document.getElementById('email').value.trim();
     if (!email) { showMsg('Enter your email above first.'); return; }
@@ -669,7 +655,9 @@
     lbl.textContent = labels[score]; lbl.style.color = lc[score];
   }
 
-  redirectExistingSession();
+  // Initialize the correct side once, without automatic page redirects.
+  // Successful login/signup handlers perform their own destination routing.
+  switchRole(currentRole);
 </script>
 </body>
 </html>
