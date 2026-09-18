@@ -20,10 +20,10 @@
     --text-muted: #4A5968;
   }
 
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-top: 64px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
   nav {
-    position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 100;
+    position: sticky; top: 0; z-index: 100;
     background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px;
@@ -96,177 +96,100 @@
 
   <div class="doc-header">
     <div class="doc-title">Terms of Service</div>
-    <div class="doc-updated">Last updated: September 14, 2026</div>
+    <div class="doc-updated">Last updated: September 18, 2026</div>
   </div>
 
   <div class="disclaimer">
-    <strong>Note:</strong> These Terms describe how Alygnn currently operates, including candidate accounts, employer accounts, resumes, applications, messaging, job slots, subscriptions, paid add-ons, and AI-assisted features. They are provided for informational purposes and are not a substitute for advice from a licensed attorney. Alygnn should have these Terms reviewed by legal counsel before relying on them for compliance purposes.
+    <strong>Note:</strong> This is a general-purpose terms of service template describing how Alygnn currently operates. It is provided for informational purposes and is not a substitute for advice from a licensed attorney. Alygnn should have this document reviewed by legal counsel before relying on it for compliance purposes.
   </div>
 
   <div class="toc">
     <div class="toc-title">On this page</div>
     <ol>
       <li><a href="#acceptance">Acceptance of terms</a></li>
-      <li><a href="#service">Description of the Service</a></li>
+      <li><a href="#description">Description of the service</a></li>
       <li><a href="#eligibility">Eligibility</a></li>
-      <li><a href="#accounts">Accounts, roles, and security</a></li>
-      <li><a href="#employer-verification">Employer verification</a></li>
-      <li><a href="#employer-team">Employer team members</a></li>
-      <li><a href="#job-postings">Job postings</a></li>
-      <li><a href="#candidate-use">Candidate profiles, resumes, and applications</a></li>
-      <li><a href="#messaging">Messaging and communications</a></li>
-      <li><a href="#matching-ai">Alygnn Match and AI-assisted features</a></li>
-      <li><a href="#hiring-decisions">Hiring decisions and application statuses</a></li>
-      <li><a href="#pricing">Job slots, plans, and paid features</a></li>
-      <li><a href="#billing">Billing, payment authorization, and renewals</a></li>
-      <li><a href="#cancellation">Cancellation, expiration, and job closure</a></li>
-      <li><a href="#refunds">Refunds</a></li>
-      <li><a href="#content">User content and licenses</a></li>
+      <li><a href="#accounts">Accounts and registration</a></li>
+      <li><a href="#employer-terms">Employer job postings and verification</a></li>
+      <li><a href="#seeker-terms">Job seeker use of the service</a></li>
+      <li><a href="#ai-content">AI-assisted content</a></li>
       <li><a href="#prohibited">Prohibited conduct</a></li>
-      <li><a href="#ip">Alygnn intellectual property</a></li>
-      <li><a href="#third-parties">Third-party services</a></li>
+      <li><a href="#fees">Fees, billing, and free trials</a></li>
+      <li><a href="#ip">Intellectual property</a></li>
       <li><a href="#no-guarantee">No guarantee of outcomes</a></li>
-      <li><a href="#termination">Suspension, termination, and account deletion</a></li>
+      <li><a href="#termination">Suspension and termination</a></li>
       <li><a href="#disclaimers">Disclaimers</a></li>
       <li><a href="#liability">Limitation of liability</a></li>
       <li><a href="#indemnification">Indemnification</a></li>
       <li><a href="#governing-law">Governing law</a></li>
-      <li><a href="#changes">Changes to these Terms</a></li>
+      <li><a href="#changes">Changes to these terms</a></li>
       <li><a href="#contact">Contact us</a></li>
     </ol>
   </div>
 
   <h2 id="acceptance">1. Acceptance of terms</h2>
-  <p>These Terms of Service ("Terms") govern your access to and use of Alygnn's websites, mobile applications, and related services (collectively, the "Service"). The Service is operated by Alygnn ("Alygnn," "we," "us," or "our"). By creating an account, purchasing a paid feature, posting a job, applying to a job, or otherwise using the Service, you agree to these Terms and our Privacy Policy. If you do not agree, do not use the Service.</p>
+  <p>These Terms of Service ("Terms") govern your access to and use of alygnn.com and related services (the "Service"), operated by Alygnn ("Alygnn," "we," "us," or "our"). By creating an account or otherwise using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.</p>
+  <p>If you create an account using Continue with Google or Continue with Apple, clicking that button during the account-creation flow is your affirmative acceptance of these Terms and your acknowledgement of our Privacy Policy. You do not need to separately check the email-signup consent box when you use one of those social sign-up methods.</p>
 
-  <h2 id="service">2. Description of the Service</h2>
-  <p>Alygnn is a job-matching and recruiting platform. Candidates can create an account, upload or build resumes, choose which resume Alygnn should use, set job preferences, discover jobs, apply or skip jobs, review application statuses, and communicate with employers when messaging is available. Employers can create and verify a business account, post jobs, review candidates, view or download candidate resumes made available through the Service, organize candidates by status, communicate with applicants, and purchase eligible job-slot capacity and other paid features.</p>
-  <p>Some functionality may differ between the website and mobile applications, and feature availability may vary by account type, plan, geography, device, or rollout status.</p>
+  <h2 id="description">2. Description of the service</h2>
+  <p>Alygnn is a job-matching platform. Job seekers can create a profile, upload a resume, set job preferences, and swipe through and apply to job postings. Employers can create a verified business account and post job openings for job seekers to discover and apply to.</p>
 
   <h2 id="eligibility">3. Eligibility</h2>
-  <p>You must be at least 18 years old or the age of legal majority required to enter into these Terms in your jurisdiction. If you use Alygnn on behalf of a company or other organization, you represent that you have authority to bind that organization to these Terms.</p>
+  <p>You must be at least 18 years old, or the age of legal majority in your jurisdiction, to create an account. If you are creating an account on behalf of a business, you represent that you are authorized to act on that business's behalf and to agree to these Terms for it.</p>
 
-  <h2 id="accounts">4. Accounts, roles, and security</h2>
-  <p>You agree to provide accurate, current, and complete information and to keep it up to date. Alygnn may support candidate and employer modes within the same account or related account experience. Information you provide in each role must be accurate and may be subject to separate onboarding or verification requirements.</p>
-  <p>You are responsible for safeguarding your login credentials and for activity under your account. Authentication may be provided through email/password, Google, Apple, or other supported methods. Notify us promptly if you suspect unauthorized access.</p>
+  <h2 id="accounts">4. Accounts and registration</h2>
+  <p>You agree to provide accurate and current information when creating your account and to keep it up to date. You are responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Notify us immediately if you suspect unauthorized access to your account.</p>
+  <p>If you register or sign in through Google or Apple, you authorize Alygnn to receive the account information that the selected provider makes available to us for authentication and account creation, as described in our Privacy Policy.</p>
 
-  <h2 id="employer-verification">5. Employer verification</h2>
-  <p>Employers may be required to provide company information, an EIN or other business identifier, website, contact information, business address, verification documents, and other details reasonably requested to verify legitimacy. Alygnn may approve, delay, deny, re-review, or revoke verification at its discretion and may request additional documentation.</p>
-  <p>A pending employer may be allowed to prepare or submit a job for review, but Alygnn may keep that job pending or unavailable to candidates until verification is completed.</p>
+  <h2 id="employer-terms">5. Employer job postings and verification</h2>
+  <p>Employers must provide accurate business information, including company name, website, business email, and business address, as part of our verification process. Alygnn may approve, delay, or decline verification at its discretion, and may request additional information to confirm a business's legitimacy.</p>
+  <p>Employers are solely responsible for the accuracy, legality, and content of their job postings, including compliance with applicable employment and anti-discrimination laws. Alygnn reserves the right to edit, reject, or remove any job posting that it believes, in its sole discretion, is fraudulent, misleading, discriminatory, or otherwise violates these Terms or applicable law.</p>
 
-  <h2 id="employer-team">6. Employer team members</h2>
-  <p>Employer accounts may allow authorized team members, such as administrators or recruiters, to access employer tools. The employer is responsible for invitations, permissions, removal of former team members, and activity performed through its team. Authorized team members may be able to view job postings, applications, candidate resumes, candidate profiles, messages, and other recruiting information available to the employer account.</p>
-  <p>Some plans may include team seats and additional seats may be available for an added fee as shown on the pricing page or at checkout.</p>
+  <h2 id="seeker-terms">6. Job seeker use of the service</h2>
+  <p>Job seekers are responsible for the accuracy of the information in their profile and resume. Submitting an application through Alygnn does not guarantee a response from, or interview with, the employer. Alygnn is not a party to, and is not responsible for, any employment relationship, offer, or agreement between a job seeker and an employer.</p>
 
-  <h2 id="job-postings">7. Job postings</h2>
-  <p>Employers are responsible for the accuracy, legality, and content of their job postings, including job title, duties, compensation, location, benefits, qualifications, and other requirements. Employers must comply with applicable employment, wage-and-hour, anti-discrimination, accessibility, privacy, and recruiting laws.</p>
-  <p>Alygnn may edit, reject, limit, pause, or remove postings that are fraudulent, misleading, discriminatory, unlawful, abusive, duplicative, spam-like, or otherwise inconsistent with these Terms or the intended use of the Service.</p>
+  <h2 id="ai-content">7. AI-assisted content</h2>
+  <p>Certain features of the Service use artificial intelligence to assist with tasks such as generating draft job descriptions or evaluating custom entries added to a job posting. AI-generated or AI-assisted content may contain errors or inaccuracies. Employers are responsible for reviewing, editing, and approving any AI-assisted content before it is published, and for ensuring the final content is accurate and compliant with applicable law.</p>
 
-  <h2 id="candidate-use">8. Candidate profiles, resumes, and applications</h2>
-  <p>Candidates are responsible for the accuracy of their profile, resume, work history, education, skills, awards, preferences, and application information. Alygnn may allow a candidate to keep more than one resume, including an uploaded resume and an Alygnn-built resume, and to select which resume is currently active for use within the Service.</p>
-  <p>When a candidate applies to a job, the employer may receive access to the candidate's application information and the resume made available through Alygnn. Employers may be able to view or download that resume. Information already viewed, downloaded, or otherwise received by an employer may remain with that employer even if the candidate later changes the active resume or deletes the account, subject to applicable law.</p>
-  <p>Applying through Alygnn does not guarantee a response, interview, offer, or employment.</p>
-
-  <h2 id="messaging">9. Messaging and communications</h2>
-  <p>Messaging is intended for legitimate recruiting communications connected to a job application. In the current candidate messaging flow, an employer may initiate a conversation after a candidate applies, and the candidate may then reply. Candidates may not use Alygnn to send unsolicited messages to employers where the Service does not provide that ability.</p>
-  <p>You may not use messaging to threaten, harass, abuse, discriminate against, exploit, defraud, spam, or otherwise harm another user. Alygnn may restrict or suspend messaging or account access for misuse.</p>
-  <p>Alygnn may send transactional communications such as account verification, password reset, application, candidate, message, billing, and service notifications. Some notifications may also appear in the Service or on a supported device or browser.</p>
-
-  <h2 id="matching-ai">10. Alygnn Match and AI-assisted features</h2>
-  <p>Alygnn Match may compare job-related information from a job posting with information available in a candidate's resume, such as skills, work experience, role history, and explicitly required education. Match scores or labels are informational tools only. They do not make the hiring decision and should not be treated as a substitute for an employer's independent review.</p>
-  <p>Alygnn does not intend Alygnn Match to use protected characteristics such as race, ethnicity, religion, sex, sexual orientation, gender identity, disability, age, or other protected traits to determine a match. Employers remain responsible for complying with anti-discrimination and employment laws and for making their own hiring decisions.</p>
-  <p>The Service may also use AI-assisted tools for features such as resume parsing, job-description drafting, matching, and reviewing custom job-posting entries for relevance, professionalism, or spam. AI-generated or AI-assisted content can be inaccurate. Users are responsible for reviewing and approving content before relying on or publishing it.</p>
-
-  <h2 id="hiring-decisions">11. Hiring decisions and application statuses</h2>
-  <p>Employers may organize applicants using statuses such as accepted or passed/not selected. These statuses reflect the employer's actions within the Service and are not decisions made by Alygnn. Employers are solely responsible for their hiring criteria, communications, interviews, offers, rejections, and compliance with applicable law.</p>
-
-  <h2 id="pricing">12. Job slots, plans, and paid features</h2>
-  <p>The pricing page and checkout shown to you before purchase are incorporated into these Terms and control the specific price, billing interval, slot count, seat count, and feature entitlement for that purchase if they differ from a general description below.</p>
-
-  <h3>Free job slot</h3>
-  <p>Eligible employer accounts receive one permanent reusable free job slot. One slot supports one active job at a time. The employer may close or delete the job and reuse the available slot for another opening. Alygnn does not currently impose a plan-based applicant cap on the permanent free slot.</p>
-
-  <h3>Second Job Slot for free employers</h3>
-  <p>Free employers may purchase one additional reusable "Second Job Slot" for $150 per month, giving that employer two total job slots while the add-on remains active. This add-on renews monthly until canceled. It is intended for free employers and is not offered as an add-on to Launch, Growth, Scale, or other paid subscription plans.</p>
-
-  <h3>Launch, Growth, Scale, and Enterprise</h3>
-  <p>As of the date above, standard paid-plan job-slot capacity is structured as follows, including the employer's permanent free slot:</p>
-  <ul>
-    <li><strong>Launch:</strong> 3 plan slots + 1 permanent free slot = 4 total job slots</li>
-    <li><strong>Growth:</strong> 5 plan slots + 1 permanent free slot = 6 total job slots</li>
-    <li><strong>Scale:</strong> 8 plan slots + 1 permanent free slot = 9 total job slots</li>
-    <li><strong>Enterprise:</strong> custom capacity, pricing, seats, or features as stated in the applicable order or agreement</li>
-  </ul>
-  <p>Launch, Growth, and Scale may be offered on monthly and/or quarterly billing intervals as displayed on the pricing page or checkout.</p>
-
-  <h3>Weekly Job Slot</h3>
-  <p>An employer with an eligible active paid plan may purchase one temporary Weekly Job Slot for $99 for seven (7) days, adding one temporary job slot during that period. The seven-day period begins immediately after successful purchase and continues whether the slot is used or unused. Closing or deleting a job, leaving the slot empty, or reusing the slot does not pause, restart, extend, or carry over the seven-day period. Alygnn may limit employers to one active Weekly Job Slot add-on at a time and may recommend upgrading the underlying plan instead of repeatedly purchasing temporary capacity.</p>
-
-  <h3>Job Boost</h3>
-  <p>Eligible paid-plan employers may purchase a Job Boost for a selected active job. The current standard price is $15 per day where the feature is offered. A boost increases visibility or placement for the selected job during the purchased period but does not guarantee views, applications, interviews, candidates, or hires. A boost does not extend the underlying job slot or subscription.</p>
-
-  <h3>Urgently Hiring and other plan features</h3>
-  <p>Eligible Growth, Scale, or other qualifying plans may display an "Urgently Hiring" badge or similar visibility feature on eligible jobs. The badge is a presentation feature only and does not represent or guarantee a particular hiring timeline, candidate response, or outcome.</p>
-
-  <h2 id="billing">13. Billing, payment authorization, and renewals</h2>
-  <p>Paid purchases are processed through Stripe or another payment processor made available by Alygnn. By submitting a purchase, you authorize Alygnn and its payment processor to charge the payment method you provide for the amount, taxes, and recurring charges disclosed at checkout.</p>
-  <p>Recurring monthly or quarterly subscriptions and recurring add-ons automatically renew at the applicable billing interval until canceled, unless checkout states otherwise. Your account may display a "Next billing" date. You are responsible for maintaining a valid payment method.</p>
-  <p>Prices, taxes, and plan availability may change for future purchases or renewal periods. Where required, Alygnn will provide notice before a material price change takes effect.</p>
-
-  <h2 id="cancellation">14. Cancellation, expiration, and job closure</h2>
-  <p>You may cancel an eligible recurring subscription or add-on from the available account or billing controls. Unless otherwise stated, cancellation stops future renewal but does not immediately end the paid entitlement. The plan or add-on remains active through the current paid period and ends on the next billing or expiration date.</p>
-  <p>When a paid plan, Second Job Slot, Weekly Job Slot, or other paid capacity ends, jobs that depend on capacity no longer available may be paused, closed, or unpublished. Alygnn may require the employer to reduce active jobs to the number of remaining available slots. The permanent free slot remains available to an eligible account in good standing.</p>
-
-  <h2 id="refunds">15. Refunds</h2>
-  <p>Unless the pricing page, checkout, applicable order, or law states otherwise, fees are charged in advance and are non-refundable, including for unused time, unused slots, or unused boosts. Nothing in these Terms limits any refund right required by applicable law.</p>
-
-  <h2 id="content">16. User content and licenses</h2>
-  <p>You retain ownership of content you submit, including resumes, profile information, job postings, company content, messages, and uploaded documents. You grant Alygnn a non-exclusive, worldwide, royalty-free license to host, store, reproduce, display, process, transmit, format, and otherwise use that content as reasonably necessary to operate, secure, improve, and provide the Service.</p>
-  <p>You represent that you have the rights necessary to submit your content and that your content does not violate law or third-party rights.</p>
-
-  <h2 id="prohibited">17. Prohibited conduct</h2>
+  <h2 id="prohibited">8. Prohibited conduct</h2>
   <p>You agree not to:</p>
   <ul>
-    <li>Provide false, misleading, stolen, or fraudulent identity, resume, business, verification, payment, or job-posting information</li>
-    <li>Post unlawful, discriminatory, deceptive, exploitative, or sham job opportunities</li>
-    <li>Use protected characteristics unlawfully in hiring, screening, messaging, or employment decisions</li>
-    <li>Threaten, harass, abuse, intimidate, defraud, exploit, or impersonate another person or business</li>
-    <li>Send spam, scams, malware, credential-harvesting links, or other malicious content</li>
-    <li>Attempt to access accounts, candidate data, employer data, systems, or administrative tools you are not authorized to access</li>
-    <li>Scrape, harvest, copy, or systematically collect data from the Service using automated means without written permission</li>
-    <li>Circumvent pricing, job-slot, subscription, verification, security, application, messaging, or usage controls</li>
-    <li>Interfere with, overload, reverse engineer, or disrupt the Service except to the extent such restrictions are prohibited by law</li>
+    <li>Provide false, misleading, or fraudulent information, including fake job postings or fabricated business details</li>
+    <li>Post job listings that are discriminatory, illegal, or that violate the rights of others</li>
+    <li>Attempt to access accounts, data, or systems you are not authorized to access</li>
+    <li>Scrape, harvest, or collect data from the Service using automated means without our written permission</li>
+    <li>Use the Service to harass, abuse, or harm another user</li>
+    <li>Interfere with or disrupt the operation of the Service</li>
   </ul>
 
-  <h2 id="ip">18. Alygnn intellectual property</h2>
-  <p>Alygnn and its licensors own all rights, title, and interest in the Service, including its software, design, branding, interfaces, graphics, and other proprietary materials, excluding user content. These Terms do not grant you ownership of the Service or Alygnn trademarks.</p>
+  <h2 id="fees">9. Fees, billing, and free trials</h2>
+  <p>Employer accounts may be subject to subscription fees as described on our pricing page. Where a free trial is offered, it is available under the terms stated at signup and may be modified or discontinued at any time. Unless otherwise stated, fees are billed in advance on a recurring basis and are non-refundable except as required by law. You may cancel your subscription at any time from your account settings; cancellation will take effect at the end of the then-current billing period.</p>
 
-  <h2 id="third-parties">19. Third-party services</h2>
-  <p>The Service relies on third-party services for functions such as authentication, hosting, file storage, email delivery, payments, location or place lookup, and AI-assisted features. Your use of third-party services may also be subject to their terms and privacy practices. Alygnn is not responsible for outages, errors, or acts of third-party providers beyond our reasonable control.</p>
+  <h2 id="ip">10. Intellectual property</h2>
+  <p>Alygnn and its licensors own all rights, title, and interest in the Service, including its design, code, and branding. You retain ownership of the content you submit (such as your resume or job postings), but you grant Alygnn a non-exclusive, worldwide, royalty-free license to host, display, process, and use that content as necessary to operate and improve the Service.</p>
 
-  <h2 id="no-guarantee">20. No guarantee of outcomes</h2>
-  <p>Alygnn provides tools to help candidates and employers connect. We do not guarantee that a candidate will receive an interview, offer, or job, that an employer will receive a particular number or quality of applicants, or that any match score, boost, badge, plan, or paid feature will produce a specific hiring outcome.</p>
+  <h2 id="no-guarantee">11. No guarantee of outcomes</h2>
+  <p>Alygnn provides a platform to help connect job seekers and employers. We do not guarantee that any job seeker will be hired, that any employer will find a suitable candidate, or that any specific outcome will result from use of the Service.</p>
 
-  <h2 id="termination">21. Suspension, termination, and account deletion</h2>
-  <p>We may suspend, restrict, or terminate access to all or part of the Service if we reasonably believe an account violates these Terms, creates legal or security risk, engages in fraud or abuse, fails verification, misuses payments, or harms Alygnn or other users.</p>
-  <p>You may stop using the Service and may request or use available controls to delete your account. Account deletion does not automatically require third parties, such as employers that already received or downloaded application materials, to delete copies they lawfully retained. Certain records may also be retained as described in the Privacy Policy or as required by law.</p>
+  <h2 id="termination">12. Suspension and termination</h2>
+  <p>We may suspend or terminate your access to the Service at any time, with or without notice, if we believe you have violated these Terms or engaged in conduct that harms Alygnn, other users, or third parties. You may stop using the Service and delete your account at any time.</p>
 
-  <h2 id="disclaimers">22. Disclaimers</h2>
-  <p>The Service is provided "as is" and "as available" without warranties of any kind, whether express or implied, including warranties of merchantability, fitness for a particular purpose, title, and non-infringement. We do not warrant that the Service will be uninterrupted, error-free, completely secure, or that content, AI outputs, match scores, employer information, candidate information, or job postings will always be accurate.</p>
+  <h2 id="disclaimers">13. Disclaimers</h2>
+  <p>The Service is provided "as is" and "as available," without warranties of any kind, whether express or implied, including implied warranties of merchantability, fitness for a particular purpose, or non-infringement. We do not warrant that the Service will be uninterrupted, error-free, or completely secure.</p>
 
-  <h2 id="liability">23. Limitation of liability</h2>
-  <p>To the fullest extent permitted by law, Alygnn and its officers, employees, affiliates, contractors, and licensors will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for loss of profits, data, goodwill, employment opportunity, business opportunity, or revenue arising from or related to use of the Service, even if advised of the possibility of such damages.</p>
+  <h2 id="liability">14. Limitation of liability</h2>
+  <p>To the fullest extent permitted by law, Alygnn and its officers, employees, and affiliates will not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, data, or business opportunities, arising from your use of the Service, even if advised of the possibility of such damages.</p>
 
-  <h2 id="indemnification">24. Indemnification</h2>
-  <p>To the extent permitted by law, you agree to indemnify and hold Alygnn and its affiliates, officers, employees, and agents harmless from claims, damages, liabilities, losses, and expenses, including reasonable attorneys' fees, arising from your content, your use of the Service, your employment or recruiting practices, or your violation of these Terms or applicable law.</p>
+  <h2 id="indemnification">15. Indemnification</h2>
+  <p>You agree to indemnify and hold Alygnn harmless from any claims, damages, liabilities, and expenses (including reasonable attorneys' fees) arising from your use of the Service, your content, or your violation of these Terms.</p>
 
-  <h2 id="governing-law">25. Governing law</h2>
-  <p>These Terms are governed by the laws of the State of North Carolina, without regard to conflict-of-law principles, except where another law must apply.</p>
+  <h2 id="governing-law">16. Governing law</h2>
+  <p>These Terms are governed by the laws of the State of North Carolina, without regard to its conflict of law principles, unless otherwise required by applicable law.</p>
 
-  <h2 id="changes">26. Changes to these Terms</h2>
-  <p>We may update these Terms as the Service changes. If we make material changes, we will update the "Last updated" date and may provide additional notice where appropriate. Continued use of the Service after updated Terms take effect constitutes acceptance of the updated Terms to the extent permitted by law.</p>
+  <h2 id="changes">17. Changes to these terms</h2>
+  <p>We may update these Terms from time to time. If we make material changes, we will update the "Last updated" date above. Continued use of the Service after changes take effect constitutes acceptance of the updated Terms.</p>
 
-  <h2 id="contact">27. Contact us</h2>
+  <h2 id="contact">18. Contact us</h2>
   <p>If you have questions about these Terms, contact us at <a href="mailto:admin@alygnn.com">admin@alygnn.com</a>.</p>
 
 </div>
