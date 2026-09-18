@@ -446,27 +446,34 @@
   const footerEmployerAccount = document.getElementById('footer-employer-account');
   const footerEmployerDashboard = document.getElementById('footer-employer-dashboard');
 
-  const { data: { session } } = await sb.auth.getSession();
+  // Validate the session with Supabase instead of trusting the browser's
+  // cached session object. A stale local session was making signed-out visitors
+  // see My account / Dashboard until those pages rejected the expired session.
+  const { data: { user }, error: userError } = await sb.auth.getUser();
+  if (userError || !user) return;
 
-  // The real employer/seeker role lives in profiles.role (that's what
-  // employer-onboarding.html writes and what employer-dashboard.html and
-  // employer-account.html both check) — session.user.user_metadata.role
-  // is never actually populated anywhere in the app, so checking only
-  // that field meant this nav always thought a logged-in employer was
-  // signed out, even while the linked account/dashboard pages correctly
-  // recognized the same session.
   let profile = null;
-  if (session) {
-    const { data } = await sb
+  try {
+    const { data, error } = await sb
       .from('profiles')
       .select('role, company_name')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .maybeSingle();
+    if (error) throw error;
     profile = data;
+  } catch (error) {
+    console.warn('Could not verify employer profile:', error);
   }
 
-  const role = String(profile?.role || session?.user?.user_metadata?.role || '').toLowerCase();
-  const isEmployerSession = !!session && role === 'employer';
+  const role = String(
+    profile?.role ||
+    user.user_metadata?.role ||
+    user.user_metadata?.account_type ||
+    user.app_metadata?.role ||
+    user.app_metadata?.account_type ||
+    ''
+  ).toLowerCase();
+  const isEmployerSession = role === 'employer';
 
   if (!isEmployerSession) return;
 
