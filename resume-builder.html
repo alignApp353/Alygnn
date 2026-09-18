@@ -3752,6 +3752,38 @@ html.resume-preview-ready body{
     return { monthSelect, yearSelect, hidden, sync };
   }
 
+  // Use the same Google Places city search Alygnn already uses for job locations.
+  // This is the primary source for city suggestions so small towns are not limited
+  // by the fallback array below. The fallback list is kept only if Places cannot load.
+  const GOOGLE_MAPS_API_KEY = 'AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
+  let googlePlacesLoadPromise = null;
+
+  function loadGooglePlacesForResume() {
+    if (window.google?.maps?.places) return Promise.resolve();
+    if (googlePlacesLoadPromise) return googlePlacesLoadPromise;
+
+    googlePlacesLoadPromise = new Promise((resolve, reject) => {
+      const existing = document.getElementById('google-places-script');
+      if (existing) {
+        if (window.google?.maps?.places) { resolve(); return; }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Google Places failed to load.')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'google-places-script';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Google Places failed to load.'));
+      document.head.appendChild(script);
+    });
+
+    return googlePlacesLoadPromise;
+  }
+
   const US_CITIES = [
     'Aberdeen, SD','Abilene, TX','Aiken, SC','Akron, OH','Albany, GA',
     'Albany, NY','Albemarle, NC','Albuquerque, NM','Alexandria, LA','Alexandria, VA',
@@ -3770,7 +3802,7 @@ html.resume-preview-ready body{
     'Bowling Green, KY','Bozeman, MT','Bradenton, FL','Brattleboro, VT','Bridgeport, CT',
     'Brockton, MA','Broken Arrow, OK','Brookhaven, GA','Brookings, SD','Brooklyn, NY',
     'Broomfield, CO','Brownsville, TX','Buffalo, NY','Burbank, CA','Burlington, NC',
-    'Burlington, VT','Butte, MT','Caldwell, ID','Cambridge, MA','Camden, NJ',
+    'Burlington, VT','Butner, NC','Butte, MT','Caldwell, ID','Cambridge, MA','Camden, NJ',
     'Canton, OH','Cape Coral, FL','Carlsbad, CA','Carmel, IN','Carrboro, NC',
     'Carrollton, TX','Carson City, NV','Cary, NC','Casper, WY','Castle Rock, CO',
     'Cedar Rapids, IA','Centennial, CO','Champaign, IL','Chandler, AZ','Chapel Hill, NC',
@@ -3943,22 +3975,75 @@ html.resume-preview-ready body{
     locationSuggestBox.classList.add('show');
   }
 
-  // Generic autocomplete attacher — used for city fields (US_CITIES) and
-  // school fields (US_UNIVERSITIES). This never restricts what someone can
-  // actually type or save; picking a suggestion is just a shortcut. Anyone
-  // whose real city or school isn't in the list can still type their own.
-  function attachLocationAutocomplete(input, list, onPick) {
-    if (!input || input.dataset.autocompleteBound) return;
-    input.dataset.autocompleteBound = 'true';
+  function bindFallbackAutocomplete(input, list, onPick) {
     input._suggestionList = list;
+    input._onLocationPick = onPick;
     input.addEventListener('input', () => renderLocationSuggestions(input));
     input.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLocationSuggestions(); });
     input.addEventListener('focus', () => {
       if (input.value.trim().length >= 2) renderLocationSuggestions(input);
     });
-    // Store the pick callback on the element itself so the single shared
-    // click handler below knows what to do for whichever field is active.
+  }
+
+  function cityStateFromGooglePlace(place, fallbackValue) {
+    const parts = place?.address_components || [];
+    const getPart = (types) => {
+      const part = parts.find(component => types.some(type => component.types?.includes(type)));
+      return part || null;
+    };
+
+    const cityPart = getPart(['locality', 'postal_town', 'administrative_area_level_3']);
+    const statePart = getPart(['administrative_area_level_1']);
+    const city = cityPart?.long_name || place?.name || '';
+    const state = statePart?.short_name || '';
+
+    if (city && state) return `${city}, ${state}`;
+    return String(place?.formatted_address || place?.name || fallbackValue || '')
+      .replace(/,\s*USA$/i, '')
+      .trim();
+  }
+
+  function attachGoogleCityAutocomplete(input, onPick) {
     input._onLocationPick = onPick;
+
+    // Do not show the old finite dropdown while Google Places is loading.
+    // If Places fails for any reason, the existing embedded list becomes the fallback.
+    loadGooglePlacesForResume().then(() => {
+      if (!window.google?.maps?.places || input._googleCityAutocomplete) return;
+
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        types: ['(cities)'],
+        componentRestrictions: { country: 'us' },
+        fields: ['formatted_address', 'name', 'place_id', 'address_components']
+      });
+
+      input._googleCityAutocomplete = autocomplete;
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place?.place_id) return;
+        input.value = cityStateFromGooglePlace(place, input.value);
+        closeLocationSuggestions();
+        if (input._onLocationPick) input._onLocationPick();
+      });
+    }).catch((error) => {
+      console.warn('Google Places city search unavailable. Using fallback city list.', error);
+      bindFallbackAutocomplete(input, US_CITIES, onPick);
+    });
+  }
+
+  // Generic autocomplete attacher. City fields use Google Places so the
+  // suggestions cover small U.S. cities/towns instead of being limited to a
+  // hand-maintained array. School/title fields keep their existing lists.
+  function attachLocationAutocomplete(input, list, onPick) {
+    if (!input || input.dataset.autocompleteBound) return;
+    input.dataset.autocompleteBound = 'true';
+
+    if (list === US_CITIES) {
+      attachGoogleCityAutocomplete(input, onPick);
+      return;
+    }
+
+    bindFallbackAutocomplete(input, list, onPick);
   }
 
   window.addEventListener('scroll', () => { if (locationSuggestBox.classList.contains('show')) positionLocationSuggestions(); }, true);
