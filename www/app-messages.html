@@ -1179,6 +1179,23 @@ html[data-effective-theme="dark"] .messages-boot-track{background:#293545}
 
 <nav class="bottom-nav candidate" id="nav"></nav>
 
+<script id="alygnn-messages-boot-watchdog">
+(function(){
+  window.__alygnnMessagesBootWatchdog=setTimeout(function(){
+    document.body.classList.remove('messages-booting');
+    const loader=document.getElementById('messages-boot-loader');
+    if(loader)loader.setAttribute('aria-hidden','true');
+
+    const notice=document.getElementById('notice');
+    if(notice && !String(notice.textContent||'').trim()){
+      notice.hidden=false;
+      notice.className='notice error';
+      notice.textContent='Messages are taking longer than expected. Check your connection and try again.';
+    }
+  },8000);
+})();
+</script>
+
 <script>
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
@@ -1193,7 +1210,72 @@ const sb=supabase.createClient(
 );
 
 const $=id=>document.getElementById(id);
-\n\nconst ALYGNN_EMPLOYER_LOADING_MESSAGES=[\n  "Building your team.",\n  "Finding your next hire.",\n  "Connecting you with talent.",\n  "Preparing your hiring workspace.",\n  "Matching talent to opportunity.",\n  "Getting your candidates ready.",\n  "Organizing your hiring pipeline.",\n  "Bringing your workspace together.",\n  "Loading your hiring dashboard.",\n  "Preparing your next move.",\n  "Finding talent that fits.",\n  "Getting your team in place.",\n  "Preparing your candidate matches.",\n  "Powering up your hiring workspace.",\n  "Bringing the right people closer.",\n  "Getting your hiring tools ready.",\n  "Preparing your recruiting workspace.",\n  "Connecting you to your next hire.",\n  "Getting everything ready to hire.",\n  "Helping you build what’s next."\n];\n\nfunction messagesStartupRole(){\n  try{\n    const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();\n    if(requested==='employer'||requested==='candidate')return requested;\n    return String(localStorage.getItem('alygnn_account_type')||'').toLowerCase()==='employer'?'employer':'candidate';\n  }catch(_error){\n    return 'candidate';\n  }\n}\n\nfunction alygnnEmployerLoadingMessage(){\n  const storageKey='alygnnEmployerLastLoadingMessage';\n  let last='';\n  try{last=localStorage.getItem(storageKey)||'';}catch(_error){}\n  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;\n  if(last&&choices.length>1)choices=choices.filter(message=>message!==last);\n  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';\n  try{localStorage.setItem(storageKey,message);}catch(_error){}\n  return message;\n}\n\n(function setMessagesBootCopy(){\n  const node=document.getElementById('messages-boot-message');\n  if(!node)return;\n  node.textContent=messagesStartupRole()==='employer'\n    ?alygnnEmployerLoadingMessage()\n    :'Opening your conversations.';\n})();\n\nfunction finishMessagesBoot(){\n  requestAnimationFrame(()=>{\n    document.body.classList.remove('messages-booting');\n    const loader=document.getElementById('messages-boot-loader');\n    if(loader)loader.setAttribute('aria-hidden','true');\n  });\n}\n
+
+
+const ALYGNN_EMPLOYER_LOADING_MESSAGES=[
+  "Building your team.",
+  "Finding your next hire.",
+  "Connecting you with talent.",
+  "Preparing your hiring workspace.",
+  "Matching talent to opportunity.",
+  "Getting your candidates ready.",
+  "Organizing your hiring pipeline.",
+  "Bringing your workspace together.",
+  "Loading your hiring dashboard.",
+  "Preparing your next move.",
+  "Finding talent that fits.",
+  "Getting your team in place.",
+  "Preparing your candidate matches.",
+  "Powering up your hiring workspace.",
+  "Bringing the right people closer.",
+  "Getting your hiring tools ready.",
+  "Preparing your recruiting workspace.",
+  "Connecting you to your next hire.",
+  "Getting everything ready to hire.",
+  "Helping you build what’s next."
+];
+
+function messagesStartupRole(){
+  try{
+    const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();
+    if(requested==='employer'||requested==='candidate')return requested;
+    return String(localStorage.getItem('alygnn_account_type')||'').toLowerCase()==='employer'?'employer':'candidate';
+  }catch(_error){
+    return 'candidate';
+  }
+}
+
+function alygnnEmployerLoadingMessage(){
+  const storageKey='alygnnEmployerLastLoadingMessage';
+  let last='';
+  try{last=localStorage.getItem(storageKey)||'';}catch(_error){}
+  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
+  if(last&&choices.length>1)choices=choices.filter(message=>message!==last);
+  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
+  try{localStorage.setItem(storageKey,message);}catch(_error){}
+  return message;
+}
+
+(function setMessagesBootCopy(){
+  const node=document.getElementById('messages-boot-message');
+  if(!node)return;
+  node.textContent=messagesStartupRole()==='employer'
+    ?alygnnEmployerLoadingMessage()
+    :'Opening your conversations.';
+})();
+
+function finishMessagesBoot(){
+  if(window.__alygnnMessagesBootWatchdog){
+    clearTimeout(window.__alygnnMessagesBootWatchdog);
+    window.__alygnnMessagesBootWatchdog=null;
+  }
+  requestAnimationFrame(()=>{
+    document.body.classList.remove('messages-booting');
+    const loader=document.getElementById('messages-boot-loader');
+    if(loader)loader.setAttribute('aria-hidden','true');
+  });
+}
+
 const esc=value=>
   String(value??'')
     .replace(
