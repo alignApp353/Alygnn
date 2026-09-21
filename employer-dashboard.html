@@ -2491,6 +2491,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     await loadJobs();
+    await syncCompanyLogoToJobs(currentProfile?.company_logo_url || '');
 
     if (!isTeamMember || teamCan('candidates_manage')) {
       await loadCandidates();
@@ -3193,6 +3194,33 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+  async function syncCompanyLogoToJobs(logoUrl) {
+    const logo = String(logoUrl || '').trim();
+    if (!logo || !workspaceOwnerId) return;
+
+    // Keep only the company-logo snapshot on each job synchronized.
+    if (isTeamMember && !teamCan('jobs_manage')) return;
+
+    if (Array.isArray(jobs) && jobs.length &&
+        jobs.every(job => String(job?.company_logo || '').trim() === logo)) {
+      return;
+    }
+
+    const { error } = await sb
+      .from('jobs')
+      .update({ company_logo: logo })
+      .eq('employer_id', workspaceOwnerId);
+
+    if (error) {
+      console.warn('Could not sync company logo to job listings:', error);
+      return;
+    }
+
+    if (Array.isArray(jobs)) {
+      jobs = jobs.map(job => ({ ...job, company_logo: logo }));
+    }
+  }
+
   async function savePostingCompanyLogoUrl(logoUrl) {
     if (isTeamMember) {
       if (!teamCan('company_edit')) {
@@ -3204,6 +3232,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if (error) throw error;
       if (data?.profile) currentProfile = { ...(currentProfile || {}), ...data.profile };
       else currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+      await syncCompanyLogoToJobs(logoUrl);
       return;
     }
 
@@ -3213,6 +3242,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       .eq('id', workspaceOwnerId || currentUser?.id);
     if (error) throw error;
     currentProfile = { ...(currentProfile || {}), company_logo_url: logoUrl };
+    await syncCompanyLogoToJobs(logoUrl);
   }
 
   async function handlePostingCompanyLogoUpload(event) {
@@ -5047,6 +5077,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     await loadJobs();
+    await syncCompanyLogoToJobs(currentProfile?.company_logo_url || '');
     await loadBillingEntitlement();
     updatePostingAccessUI();
     setTimeout(() => showPanel('jobs'), 500);
