@@ -1121,6 +1121,65 @@ html[data-effective-theme="dark"] .messages-boot-track{background:#293545}
 }
 </style>
 
+
+<style id="alygnn-employer-messages-nav-exact-match">
+/* Employer Messages must use the exact same bottom navigation geometry as
+   app-employer-dashboard.html so the icons never change between tabs. */
+.bottom-nav.employer{
+  min-height:72px!important;
+  padding:7px 12px calc(8px + env(safe-area-inset-bottom))!important;
+  grid-template-columns:repeat(5,minmax(50px,62px))!important;
+  justify-content:center!important;
+  column-gap:clamp(6px,2.5vw,16px)!important;
+  background:rgba(255,255,255,.96)!important;
+  border-top:1px solid rgba(221,227,232,.9)!important;
+  backdrop-filter:blur(22px)!important;
+  -webkit-backdrop-filter:blur(22px)!important;
+}
+html[data-theme="dark"] .bottom-nav.employer,
+html[data-effective-theme="dark"] .bottom-nav.employer{
+  background:var(--card)!important;
+  border-top-color:var(--border)!important;
+}
+.bottom-nav.employer .nav{
+  min-height:0!important;
+  border:none!important;
+  background:transparent!important;
+  color:#748190;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px!important;
+  min-width:0;
+  padding:2px 0!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  position:relative;
+}
+.bottom-nav.employer .nav svg{
+  width:21px!important;
+  height:21px!important;
+  display:block;
+  overflow:visible;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2!important;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.bottom-nav.employer .nav.active{color:var(--brand-dark)!important}
+.bottom-nav.employer .nav.active::before{
+  content:'';
+  position:absolute;
+  top:-7px;
+  width:28px;
+  height:3px;
+  border-radius:999px;
+  background:var(--brand-dark);
+}
+</style>
+
 </head>
 
 <body class="messages-booting">
@@ -1322,12 +1381,12 @@ const icon={
   // bottom nav never changes shape when moving between pages.
   profile:'<circle cx="12" cy="7.5" r="3.5"></circle><path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path>',
   discover:'<circle cx="10.5" cy="10.5" r="5.5"></circle><path d="m15 15 4.5 4.5"></path>',
-  jobs:'<rect x="4" y="7" width="16" height="12" rx="2"></rect><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path><path d="M4 11h16"></path>',
+  jobs:'<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"></path><path d="M3 12h18"></path><path d="M10 12v2h4v-2"></path>',
   messages:'<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path>',
-  settings:'<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>',
+  settings:'<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.36.7.64.96.3.27.68.42 1.08.43H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.61Z"></path>',
   dashboard:'<rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect>',
   applicants:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>',
-  company:'<path d="M3 21h18"></path><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path>'
+  company:'<path d="M3 21h18"></path><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path><path d="M9 7h2"></path><path d="M13 7h2"></path><path d="M9 11h2"></path><path d="M13 11h2"></path><path d="M9 15h2"></path><path d="M13 15h2"></path>'
 };
 
 function navButton(name,label,url,active=false){
