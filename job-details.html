@@ -1033,7 +1033,8 @@ function renderPublicEmployerProfile(profile, fallbackCompanyName){
 
   const companyName = profile.company_name || fallbackCompanyName || 'Company';
   title.textContent = `About ${companyName}`;
-  setJobCompanyLogo(profile.company_logo_url, companyName);
+  const publicLogoUrl = profile.company_logo_url || profile.company_logo || '';
+  if (publicLogoUrl) setJobCompanyLogo(publicLogoUrl, companyName);
 
   const aboutText = String(profile.company_headline || '').trim();
   if(aboutText){
@@ -1084,7 +1085,7 @@ function renderJob(job, appInfo, interviewInfo){
   document.title = `${job.title || 'Job'} — Alygnn`;
 
   document.getElementById('job-title').textContent = job.title || 'Untitled role';
-  setJobCompanyLogo(job.company_logo_url, job.company);
+  setJobCompanyLogo(job.company_logo_url || job.company_logo, job.company);
 
   const metaParts = [job.company, job.location].filter(Boolean).join(' · ');
   document.getElementById('job-meta').textContent = metaParts || '';
