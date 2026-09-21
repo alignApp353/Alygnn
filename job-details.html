@@ -279,10 +279,30 @@ nav{
 .badge.status-applied{ border-color:var(--brand); color:var(--brand); background:rgba(93,127,163,.08); }
 .badge.plain{ background:white; }
 .badge.urgent{
-  border-color:rgba(215,154,154,.55);
-  color:#9a5151;
-  background:rgba(215,154,154,.14);
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:6px 12px;
+  border-radius:10px;
+  border:1px solid rgba(215,154,154,.48);
+  color:#914747;
+  background:linear-gradient(180deg, rgba(215,154,154,.22), rgba(215,154,154,.12));
+  box-shadow:
+    0 5px 14px rgba(154,81,81,.10),
+    inset 0 0 0 1px rgba(255,255,255,.45);
+  font-size:11px;
   font-weight:700;
+  letter-spacing:.65px;
+  text-transform:uppercase;
+}
+.badge.urgent::before{
+  content:'';
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  background:#D79A9A;
+  box-shadow:0 0 0 3px rgba(215,154,154,.18);
 }
 
 .badge.recommended{
