@@ -382,6 +382,46 @@ let currentOccupationProfile=null;
 const selectedSkills=new Set();
 const selectedBenefits=new Set();
 
+// Extra common hiring titles that may not exist as exact O*NET catalog labels.
+// These are suggestions only; employers can always keep any custom title they type.
+const ALYGNN_COMMON_JOB_TITLES=[
+  {job_title:'Canvasser',occupation_title:'Common hiring title'},
+  {job_title:'Political Canvasser',occupation_title:'Common hiring title'},
+  {job_title:'Team Lead Canvasser',occupation_title:'Common hiring title'},
+  {job_title:'Door-to-Door Canvasser',occupation_title:'Common hiring title'},
+  {job_title:'Trainee - Canvassing Manager',occupation_title:'Common hiring title'}
+];
+
+function normalizeTitleText(value){
+  return String(value||'').trim().toLowerCase();
+}
+
+function localJobTitleMatches(query){
+  const q=normalizeTitleText(query);
+  if(!q)return[];
+
+  return ALYGNN_COMMON_JOB_TITLES.filter(row=>
+    normalizeTitleText(row.job_title).includes(q)
+  );
+}
+
+function mergeJobTitleRows(primary=[],extras=[]){
+  const seen=new Set();
+  const merged=[];
+
+  [...extras,...primary].forEach(row=>{
+    const title=String(row?.job_title||'').trim();
+    if(!title)return;
+
+    const key=normalizeTitleText(title);
+    if(seen.has(key))return;
+    seen.add(key);
+    merged.push(row);
+  });
+
+  return merged.slice(0,12);
+}
+
 async function searchJobTitleCatalog(query){
   const clean=String(query||'').trim();
   if(clean.length<2)return[];
@@ -505,6 +545,88 @@ function renderCatalogResults(box,rows,onSelect,emptyText='No matches. You can k
       moved=true;
     });
   });
+}
+
+function renderJobTitleResults(box,rows,query,onSelect){
+  const cleanQuery=String(query||'').trim();
+  const exactMatch=rows.some(row=>
+    normalizeTitleText(row?.job_title)===normalizeTitleText(cleanQuery)
+  );
+
+  const resultHtml=rows.map((row,index)=>{
+    const title=row.job_title||'';
+    const sub=row.occupation_title||'';
+    return `
+      <button type="button" class="suggest-item catalog-result" data-index="${index}">
+        <span class="suggest-main">${escapeHtml(title)}</span>
+        ${sub?`<span class="suggest-sub">${escapeHtml(sub)}</span>`:''}
+      </button>
+    `;
+  }).join('');
+
+  const customHtml=cleanQuery&&!exactMatch
+    ? `
+      <button type="button" class="suggest-item custom-title-result">
+        <span class="suggest-main">Use “${escapeHtml(cleanQuery)}”</span>
+        <span class="suggest-sub">Use your own job title</span>
+      </button>
+    `
+    : '';
+
+  box.innerHTML=(resultHtml||'')+customHtml;
+  box.classList.add('show');
+
+  box.querySelectorAll('.catalog-result').forEach(button=>{
+    let startX=0;
+    let startY=0;
+    let moved=false;
+
+    button.addEventListener('pointerdown',event=>{
+      startX=event.clientX;
+      startY=event.clientY;
+      moved=false;
+    });
+
+    button.addEventListener('pointermove',event=>{
+      if(
+        Math.abs(event.clientX-startX)>8 ||
+        Math.abs(event.clientY-startY)>8
+      ){
+        moved=true;
+      }
+    });
+
+    button.addEventListener('pointerup',event=>{
+      if(moved)return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const row=rows[Number(button.dataset.index)];
+      if(!row)return;
+
+      onSelect(row);
+      closeSuggestionBox(box);
+    });
+
+    button.addEventListener('pointercancel',()=>{
+      moved=true;
+    });
+  });
+
+  const customButton=box.querySelector('.custom-title-result');
+  if(customButton){
+    customButton.addEventListener('pointerup',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+
+      onSelect({
+        job_title:cleanQuery,
+        onet_soc_code:'',
+        occupation_title:'Custom job title'
+      });
+      closeSuggestionBox(box);
+    });
+  }
 }
 
 function debounceCatalogSearch(timerName,callback,delay=250){
@@ -655,14 +777,20 @@ function setupSuggestions(){
     titleBox.innerHTML='<div class="suggest-empty">Searching job titles…</div>';
     titleBox.classList.add('show');
 
-    const rows=await searchJobTitleCatalog(query);
+    const catalogRows=await searchJobTitleCatalog(query);
 
     if(titleInput.value.trim()!==query)return;
 
-    renderCatalogResults(titleBox,rows,row=>{
+    const rows=mergeJobTitleRows(
+      catalogRows,
+      localJobTitleMatches(query)
+    );
+
+    renderJobTitleResults(titleBox,rows,query,row=>{
       titleInput.value=row.job_title;
       selectedOnetCode=row.onet_soc_code||'';
       loadOccupationProfile(selectedOnetCode);
+      refreshRoleSuggestions();
     });
   }
 
