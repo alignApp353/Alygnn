@@ -989,30 +989,102 @@
       background:var(--brand-dark);
     }
 
+    /* Branded employer boot screen — matches the current Alygnn Messages experience. */
     .loading{
       position:fixed;
       inset:0;
       z-index:120;
-      background:var(--bg);
-      color:var(--text);
       display:flex;
       align-items:center;
       justify-content:center;
-      flex-direction:column;
-      gap:13px;
+      padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
+        #F6F8F7;
+      color:#172333;
+      transition:opacity .18s ease,visibility .18s ease;
     }
 
-    .spinner{
-      width:42px;
-      height:42px;
-      border:4px solid var(--border);
-      border-top-color:var(--brand);
-      border-radius:50%;
-      animation:spin .75s linear infinite;
+    html[data-theme="dark"] .loading{
+      background:
+        radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
+        #0B111A;
+      color:#F3F7FA;
     }
 
-    .loading-copy{color:var(--muted);font-size:12px;font-weight:800}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-inner{
+      width:min(360px,88vw);
+      text-align:center;
+      transform:translateY(-3vh);
+    }
+
+    .loading-logo{
+      display:inline-block;
+      font-family:'DM Serif Display',Georgia,serif!important;
+      font-size:clamp(54px,15vw,72px);
+      line-height:.95;
+      letter-spacing:-2px;
+      color:#5D7FA3;
+      text-rendering:optimizeLegibility;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .loading-logo span{color:#8CB69B}
+
+    .loading-copy{
+      margin-top:18px;
+      color:#647282;
+      font-size:14px;
+      line-height:1.45;
+      font-weight:700;
+      letter-spacing:.01em;
+    }
+
+    html[data-theme="dark"] .loading-copy{color:#A9B5C2}
+
+    .loading-track{
+      position:relative;
+      width:116px;
+      height:3px;
+      margin:25px auto 0;
+      overflow:hidden;
+      border-radius:999px;
+      background:#DDE3E8;
+    }
+
+    html[data-theme="dark"] .loading-track{background:#293545}
+
+    .loading-bar{
+      position:absolute;
+      top:0;
+      bottom:0;
+      left:-48%;
+      width:48%;
+      border-radius:999px;
+      background:linear-gradient(90deg,#5D7FA3,#8CB69B);
+      animation:alygnn-employer-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
+    }
+
+    @keyframes alygnn-employer-loading{
+      0%{transform:translateX(0);opacity:.45}
+      45%{opacity:1}
+      100%{transform:translateX(310%);opacity:.55}
+    }
+
+    @media(prefers-reduced-motion:reduce){
+      .loading-bar{left:0;width:100%;animation:none;opacity:.8}
+    }
+
+    .notification>svg{
+      width:20px;
+      height:20px;
+      display:block;
+      fill:none;
+      stroke:currentColor;
+      stroke-width:2;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+    }
 
 
 
@@ -4246,18 +4318,45 @@
 </style>
 
 </head>
-<body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs">
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div class="loading-copy">Loading employer workspace…</div>
+<body data-employer-dashboard-build="2026-09-21-loader-bell-settings-scroll-fix">
+  <div class="loading" id="loading" aria-label="Alygnn is loading">
+    <div class="loading-inner">
+      <div class="loading-logo">Alygnn<span>.</span></div>
+      <div class="loading-copy" id="employer-loading-copy">Opening your workspace.</div>
+      <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+    </div>
   </div>
+  <script id="alygnn-employer-boot-copy">
+    (function(){
+      try{
+        if('scrollRestoration' in history) history.scrollRestoration='manual';
+        window.scrollTo(0,0);
+        const view=String(new URLSearchParams(location.search).get('view')||'').toLowerCase();
+        const copy={
+          jobs:'Opening your jobs.',
+          company:'Opening your company workspace.',
+          settings:'Opening your settings.',
+          dashboard:'Opening your workspace.'
+        };
+        const node=document.getElementById('employer-loading-copy');
+        if(node) node.textContent=copy[view]||'Opening your workspace.';
+        window.__alygnnEmployerBootSafety=setTimeout(function(){
+          const loader=document.getElementById('loading');
+          if(loader) loader.hidden=true;
+        },6500);
+      }catch(_error){}
+    })();
+  </script>
 
   <div class="shell">
     <header class="header">
       <div aria-hidden="true"></div>
       <div class="logo">Alygnn<span>.</span></div>
       <button class="icon-btn notification" id="notifications-btn" type="button" aria-label="Notifications">
-        ○
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+          <path d="M10 21h4"></path>
+        </svg>
         <span class="notification-badge" id="notification-count">0</span>
       </button>
     </header>
@@ -6904,8 +7003,20 @@
 
       const view = $(name + '-view');
       view?.classList.remove('enter');
-      requestAnimationFrame(() => view?.classList.add('enter'));
-      window.scrollTo({top:0,behavior:'smooth'});
+
+      /*
+       * Every employer tab starts at the top. Using smooth scrolling here
+       * left Settings visibly halfway down the page while the old scroll
+       * position animated back to zero. Reset immediately instead.
+       */
+      if('scrollRestoration' in history){
+        history.scrollRestoration='manual';
+      }
+      window.scrollTo(0,0);
+      requestAnimationFrame(()=>{
+        window.scrollTo(0,0);
+        view?.classList.add('enter');
+      });
 
       /*
        * Always enter My Jobs on Open.
@@ -14096,8 +14207,12 @@
           requestedView==='jobs'
         ){
           state.currentView='jobs';
-        }else if(requestedView==='company'){
-          state.currentView='company';
+        }else if(
+          requestedView==='company' ||
+          requestedView==='settings' ||
+          requestedView==='dashboard'
+        ){
+          state.currentView=requestedView;
         }
 
         safeRenderAll();
@@ -14111,6 +14226,10 @@
               0
             );
           }
+        }else if(requestedView==='settings'){
+          setView('settings');
+        }else if(requestedView==='dashboard'){
+          setView('dashboard');
         }
 
         if(
@@ -14138,7 +14257,12 @@
         safeRenderAll();
 
       }finally{
+        if(window.__alygnnEmployerBootSafety){
+          clearTimeout(window.__alygnnEmployerBootSafety);
+          window.__alygnnEmployerBootSafety=null;
+        }
         els.loading.hidden = true;
+        window.scrollTo(0,0);
 
         /*
          * Do not require a second tap on Open Jobs.
