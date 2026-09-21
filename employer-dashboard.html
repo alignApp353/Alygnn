@@ -2748,7 +2748,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     // available slot is already occupied. A Weekly slot adds capacity, but it
     // cannot create a free opening while the account is still at/over capacity.
     if (Number.isFinite(used) && Number.isFinite(limit)) {
-      if (used > limit) return 'Over capacity';
+      if (used > limit) return 'No slots available';
       if (used === limit) return 'All slots in use';
     }
     return '+ Add a job slot';
@@ -2904,7 +2904,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const over = Math.max(0, access.used - access.limit);
       const neededToPost = Math.max(0, access.used - access.limit + 1);
       slotUsage.textContent = over > 0
-        ? `· ${access.used} of ${access.limit} slots used · ${over} over capacity · close ${neededToPost} ${neededToPost === 1 ? 'job' : 'jobs'} to post another`
+        ? `· ${access.used} of ${access.limit} slots used · close ${neededToPost} ${neededToPost === 1 ? 'job' : 'jobs'} to open a slot`
         : `· ${access.used} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
     }
 
@@ -2961,7 +2961,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (sidebarLabel) {
       sidebarLabel.textContent = access.allowed
         ? 'Post a Job'
-        : (access.used > access.limit ? 'Over capacity' : 'All slots in use');
+        : 'All slots in use';
     }
 
     if (typeof renderWizardStep === 'function') renderWizardStep();
