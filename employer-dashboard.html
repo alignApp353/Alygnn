@@ -2743,6 +2743,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     return names[plan] || plan;
   }
 
+  function unavailablePostingLabel(used, limit) {
+    // Never imply a newly purchased Weekly slot failed just because every
+    // available slot is already occupied. A Weekly slot adds capacity, but it
+    // cannot create a free opening while the account is still at/over capacity.
+    if (Number.isFinite(used) && Number.isFinite(limit)) {
+      if (used > limit) return 'Over capacity';
+      if (used === limit) return 'All slots in use';
+    }
+    return '+ Add a job slot';
+  }
+
   function getPostingAccess() {
     if (!billingReady) {
       return { allowed: false, reason: 'billing-loading', label: 'Checking slots…' };
@@ -2769,7 +2780,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         : {
             allowed: false,
             reason: billingEntitlement.server_reason || 'slot-limit',
-            label: '+ Add a job slot',
+            label: unavailablePostingLabel(used, limit),
             used,
             limit
           };
@@ -2784,14 +2795,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (hasActivePaidPlan() || effectiveLimit > 1) {
       return used < effectiveLimit
         ? { allowed: true, reason: 'slot-available', label: '+ Post new job', used, limit: effectiveLimit }
-        : { allowed: false, reason: 'slot-limit', label: '+ Add a job slot', used, limit: effectiveLimit };
+        : { allowed: false, reason: 'slot-limit', label: unavailablePostingLabel(used, effectiveLimit), used, limit: effectiveLimit };
     }
 
     // Free employers have one reusable slot. Deleting or closing the job frees it.
     const limit = 1;
     return used < limit
       ? { allowed: true, reason: 'free-slot-available', label: '+ Post new job', used, limit }
-      : { allowed: false, reason: 'slot-limit', label: '+ Add a job slot', used, limit };
+      : { allowed: false, reason: 'slot-limit', label: unavailablePostingLabel(used, limit), used, limit };
   }
 
   function canCreateNewJob() {
@@ -2890,7 +2901,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const access = getPostingAccess();
 
     if (slotUsage && Number.isFinite(access.used) && Number.isFinite(access.limit)) {
-      slotUsage.textContent = `· ${access.used} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
+      const over = Math.max(0, access.used - access.limit);
+      const neededToPost = Math.max(0, access.used - access.limit + 1);
+      slotUsage.textContent = over > 0
+        ? `· ${access.used} of ${access.limit} slots used · ${over} over capacity · close ${neededToPost} ${neededToPost === 1 ? 'job' : 'jobs'} to post another`
+        : `· ${access.used} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
     }
 
     if (testBanner) {
@@ -2910,10 +2925,12 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         const weeklyExpiry = billingEntitlement.weekly_slots_expires_at
           ? new Date(billingEntitlement.weekly_slots_expires_at).toLocaleString()
           : '';
+        const effectiveLimit = paidJobLimit();
+        const baseLimit = Math.max(1, effectiveLimit - weeklyCount);
         const weeklyCopy = weeklyCount
-          ? ` · +${weeklyCount} Weekly slot${weeklyCount===1?'':'s'}${weeklyExpiry ? ' (expires ' + weeklyExpiry + ')' : ''}`
-          : '';
-        testBanner.innerHTML = `<strong>TEST PACKAGE ACTIVE</strong> · ${entitlementDisplayName()}${billing ? ' · ' + billing : ''} · ${paidJobLimit()} total job slot${paidJobLimit() === 1 ? '' : 's'}${addonCopy}${weeklyCopy}${urgent}<br>Base plan expires: ${expiry} · No payment was charged.`;
+          ? ` · ${baseLimit} base + ${weeklyCount} Weekly = ${effectiveLimit} total slot${effectiveLimit===1?'':'s'}${weeklyExpiry ? ' (Weekly expires ' + weeklyExpiry + ')' : ''}`
+          : ` · ${effectiveLimit} total job slot${effectiveLimit === 1 ? '' : 's'}`;
+        testBanner.innerHTML = `<strong>TEST PACKAGE ACTIVE</strong> · ${entitlementDisplayName()}${billing ? ' · ' + billing : ''}${weeklyCopy}${addonCopy}${urgent}<br>Base plan expires: ${expiry} · No payment was charged.`;
         testBanner.classList.add('show');
       } else {
         testBanner.classList.remove('show');
@@ -2928,15 +2945,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if (topButton) {
       topButton.textContent = access.label;
-      topButton.title = access.reason === 'slot-limit'
-        ? `All ${access.limit} job ${access.limit === 1 ? 'slot is' : 'slots are'} in use. Delete or close a job to free a slot, or add more job-slot capacity.`
-        : `You have ${access.limit - access.used} job ${access.limit - access.used === 1 ? 'slot' : 'slots'} available.`;
+      if (!access.allowed && Number.isFinite(access.used) && Number.isFinite(access.limit)) {
+        const neededToPost = Math.max(1, access.used - access.limit + 1);
+        topButton.title = access.used > access.limit
+          ? `This account is ${access.used - access.limit} job${access.used - access.limit === 1 ? '' : 's'} over its current capacity. Close ${neededToPost} job${neededToPost === 1 ? '' : 's'} before posting another, or add more capacity.`
+          : `All ${access.limit} job ${access.limit === 1 ? 'slot is' : 'slots are'} in use. Close a job to free a slot or add more capacity.`;
+      } else {
+        const available = Math.max(0, access.limit - access.used);
+        topButton.title = `You have ${available} job ${available === 1 ? 'slot' : 'slots'} available.`;
+      }
     }
 
     if (sidebarButton) sidebarButton.title = topButton?.title || '';
 
     if (sidebarLabel) {
-      sidebarLabel.textContent = access.allowed ? 'Post a Job' : 'Add a job slot';
+      sidebarLabel.textContent = access.allowed
+        ? 'Post a Job'
+        : (access.used > access.limit ? 'Over capacity' : 'All slots in use');
     }
 
     if (typeof renderWizardStep === 'function') renderWizardStep();
