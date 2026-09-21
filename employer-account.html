@@ -3079,7 +3079,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const savedLogo = localStorage.getItem('companyLogo:' + currentUserId);
     if (savedLogo) showPhoto(savedLogo);
 
-    document.body.classList.add('auth-ready');
+    // Keep the account page behind the existing loading screen until the
+    // above-the-fold account data is ready. Previously the page became visible
+    // here, then jobs, posting access, and candidates loaded one after another,
+    // which made buttons and candidate rows visibly pop in late.
 
     const companyNameEl = document.getElementById('company-name');
     const headlineEl    = document.getElementById('company-headline');
@@ -3128,17 +3131,50 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     applyTeamAccountPermissionUI();
 
+    // Load independent account data together instead of serially. Jobs still
+    // finish before posting access/candidates because those calculations depend
+    // on the employer's job list.
+    const companyTasks=[];
     if(!isTeamMember || accountTeamCan('company_edit')){
       updateVerificationBanner();
-      await loadCompanyId();
-      await loadProfileUpdateRequests();
+      companyTasks.push(loadCompanyId(), loadProfileUpdateRequests());
     }
 
-    if(!isTeamMember || accountTeamCan('jobs_manage')){
-      await loadEmployerJobs();
-      if(!isTeamMember) await loadAccountPostingAccess();
+    let jobsReady=Promise.resolve();
+    if(!isTeamMember || accountTeamCan('jobs_manage') || accountTeamCan('candidates_manage')){
+      // Candidate previews also need the employer's job IDs/titles even when a
+      // teammate does not have permission to manage the jobs themselves.
+      jobsReady=loadEmployerJobs();
     }
 
+    // Wait for the jobs list first so slot usage and candidate job titles are
+    // correct before those sections render.
+    await jobsReady;
+
+    if(!isTeamMember){
+      await loadAccountPostingAccess();
+    }
+
+    // Candidate preview is part of the visible account page, so finish it
+    // before revealing the page. This removes the old empty-state -> rows flash.
+    if(!isTeamMember || accountTeamCan('candidates_manage')){
+      await loadCandidates();
+    }
+
+    // Company-ID / update-request work can finish in parallel with jobs and
+    // candidates, but make sure any visible company controls are settled before
+    // the loading screen disappears.
+    if(companyTasks.length){
+      await Promise.allSettled(companyTasks);
+    }
+
+    // Reveal the page only after the visible shell, posting button, jobs and
+    // candidate preview are stable.
+    document.body.classList.add('auth-ready');
+
+    // Billing is below the main account content and can involve a slower API
+    // call. Start it after reveal so it never delays the whole page, while all
+    // top navigation/buttons are already correct.
     if(!isTeamMember || accountTeamCan('billing_view') || accountTeamCan('billing_manage')){
       if(isTeamMember){
         // Team runtime intentionally exposes safe entitlement data without
@@ -3148,11 +3184,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           toggleBillingPanel(true);
         }
       }else{
-        await loadBillingSummary();
+        loadBillingSummary();
       }
     }
 
-    if(!isTeamMember || accountTeamCan('candidates_manage')) await loadCandidates();
     if(!isTeamMember) initNotifications();
   }
 
