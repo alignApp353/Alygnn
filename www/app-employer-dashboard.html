@@ -886,50 +886,6 @@
 
     .settings-link:last-child{border-bottom:none}
 
-
-    .settings-signout-wrap{
-      margin-top:18px;
-      padding:0;
-      background:transparent!important;
-      border:0!important;
-      border-radius:0;
-      box-shadow:none!important;
-      overflow:visible;
-    }
-    .settings-signout{
-      width:100%;
-      min-height:66px;
-      padding:0 16px;
-      border:1px solid color-mix(in srgb,var(--danger) 34%,var(--border-soft));
-      border-radius:18px;
-      background:color-mix(in srgb,var(--danger) 7%,var(--card));
-      color:var(--danger);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      font:inherit;
-      text-align:left;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .settings-signout:active{
-      transform:scale(.995);
-      background:color-mix(in srgb,var(--danger) 11%,var(--card));
-    }
-    .settings-signout-left{display:flex;align-items:center;gap:12px;min-width:0}
-    .settings-signout-icon{
-      width:38px;height:38px;border-radius:12px;
-      background:color-mix(in srgb,var(--danger) 12%,transparent);
-      display:grid;place-items:center;flex:0 0 auto;
-    }
-    .settings-signout-icon svg{width:19px;height:19px;display:block}
-    .settings-signout-copy strong{display:block;font-size:13px;font-weight:900;color:var(--danger)}
-    .settings-signout-copy small{display:block;margin-top:3px;font-size:10px;font-weight:700;color:var(--muted)}
-    .settings-signout-arrow{color:var(--danger);opacity:.78;font-size:20px;line-height:1}
-    html[data-theme="dark"] .settings-signout{
-      background:color-mix(in srgb,var(--danger) 9%,var(--card));
-    }
-
     .settings-group-title{
       font-size:12px;
       font-weight:900;
@@ -1037,87 +993,26 @@
       position:fixed;
       inset:0;
       z-index:120;
-      background:
-        radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
-        var(--bg);
+      background:var(--bg);
       color:var(--text);
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:
-        calc(24px + env(safe-area-inset-top))
-        24px
-        calc(24px + env(safe-area-inset-bottom));
-      transition:opacity .18s ease,visibility .18s ease;
+      flex-direction:column;
+      gap:13px;
     }
 
-    html[data-theme="dark"] .loading{
-      background:
-        radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
-        var(--bg);
+    .spinner{
+      width:42px;
+      height:42px;
+      border:4px solid var(--border);
+      border-top-color:var(--brand);
+      border-radius:50%;
+      animation:spin .75s linear infinite;
     }
 
-    .alygnn-loader{
-      width:min(360px,88vw);
-      text-align:center;
-      transform:translateY(-3vh);
-    }
-
-    .alygnn-loader-logo{
-      display:inline-block;
-      font-family:'DM Serif Display',Georgia,serif!important;
-      font-size:clamp(54px,15vw,72px);
-      line-height:.95;
-      letter-spacing:-2px;
-      color:var(--brand);
-      text-rendering:optimizeLegibility;
-      -webkit-font-smoothing:antialiased;
-    }
-
-    .alygnn-loader-logo span{color:var(--sage)}
-
-    .loading-copy{
-      margin-top:18px;
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.45;
-      font-weight:700;
-      letter-spacing:.01em;
-    }
-
-    .alygnn-loading-track{
-      position:relative;
-      width:116px;
-      height:3px;
-      margin:25px auto 0;
-      overflow:hidden;
-      border-radius:999px;
-      background:var(--border);
-    }
-
-    .alygnn-loading-bar{
-      position:absolute;
-      inset:0 auto 0 -48%;
-      width:48%;
-      border-radius:999px;
-      background:linear-gradient(90deg,var(--brand),var(--sage));
-      animation:alygnn-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
-    }
-
-    @keyframes alygnn-loading{
-      0%{transform:translateX(0);opacity:.45}
-      45%{opacity:1}
-      100%{transform:translateX(310%);opacity:.55}
-    }
-
-    @media (prefers-reduced-motion:reduce){
-      .alygnn-loading-bar{
-        left:0;
-        width:100%;
-        animation:none;
-        opacity:.8;
-      }
-    }
+    .loading-copy{color:var(--muted);font-size:12px;font-weight:800}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
 
 
@@ -4352,14 +4247,9 @@
 
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs">
-  <div class="loading" id="loading" aria-label="Alygnn is loading">
-    <div class="alygnn-loader">
-      <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
-      <div class="loading-copy" id="employer-loading-message">Building your team.</div>
-      <div class="alygnn-loading-track" aria-hidden="true">
-        <div class="alygnn-loading-bar"></div>
-      </div>
-    </div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-copy">Loading employer workspace…</div>
   </div>
 
   <div class="shell">
@@ -5129,23 +5019,8 @@
           </button>
         </section>
 
-        <section class="settings-signout-wrap">
-          <button class="settings-signout" id="sign-out-btn" type="button" aria-label="Sign out of Alygnn">
-            <span class="settings-signout-left">
-              <span class="settings-signout-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10 17l5-5-5-5"></path>
-                  <path d="M15 12H3"></path>
-                  <path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                </svg>
-              </span>
-              <span class="settings-signout-copy">
-                <strong>Sign out</strong>
-                <small>Sign out of this Alygnn account</small>
-              </span>
-            </span>
-            <span class="settings-signout-arrow" aria-hidden="true">›</span>
-          </button>
+        <section class="section">
+          <button class="settings-link" id="sign-out-btn" type="button" style="color:var(--danger)">Sign out <span>›</span></button>
         </section>
       </section>
     </main>
@@ -5671,45 +5546,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const ALYGNN_EMPLOYER_LOADING_MESSAGES=[
-      "Building your team.",
-      "Finding your next hire.",
-      "Connecting you with talent.",
-      "Preparing your hiring workspace.",
-      "Matching talent to opportunity.",
-      "Getting your candidates ready.",
-      "Organizing your hiring pipeline.",
-      "Bringing your workspace together.",
-      "Loading your hiring dashboard.",
-      "Preparing your next move.",
-      "Finding talent that fits.",
-      "Getting your team in place.",
-      "Preparing your candidate matches.",
-      "Powering up your hiring workspace.",
-      "Bringing the right people closer.",
-      "Getting your hiring tools ready.",
-      "Preparing your recruiting workspace.",
-      "Connecting you to your next hire.",
-      "Getting everything ready to hire.",
-      "Helping you build what’s next."
-    ];
-
-    function alygnnEmployerLoadingMessage(){
-      const storageKey='alygnnEmployerLastLoadingMessage';
-      let last='';
-      try{last=localStorage.getItem(storageKey)||'';}catch(_error){}
-      let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
-      if(last&&choices.length>1) choices=choices.filter(message=>message!==last);
-      const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
-      try{localStorage.setItem(storageKey,message);}catch(_error){}
-      return message;
-    }
-
-    (function setInitialEmployerLoadingMessage(){
-      const node=document.getElementById('employer-loading-message');
-      if(node)node.textContent=alygnnEmployerLoadingMessage();
-    })();
-
     const sb = supabase.createClient(
       'https://auth.alygnn.com',
       'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
