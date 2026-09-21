@@ -630,6 +630,81 @@
       line-height:1.45;
     }
 
+
+    /* ===== Plan-powered candidate-facing job treatments ===== */
+    .job-treatment-badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      margin-top:10px;
+    }
+
+    .job-treatment-badge{
+      display:inline-flex;
+      align-items:center;
+      min-height:24px;
+      padding:0 9px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    .job-treatment-badge.featured{
+      color:var(--brand-dark);
+      border-color:rgba(93,127,163,.30);
+      background:var(--brand-soft);
+    }
+
+    .job-treatment-badge.urgent{
+      color:#9A5151;
+      border-color:rgba(215,154,154,.38);
+      background:rgba(215,154,154,.14);
+    }
+
+    .job-treatment-badge.recommended{
+      color:#fff;
+      border-color:var(--brand-dark);
+      background:linear-gradient(135deg,var(--brand-dark),var(--brand));
+      box-shadow:0 6px 16px rgba(52,95,145,.18);
+    }
+
+    .job-card.plan-featured{
+      border-left:3px solid rgba(93,127,163,.72);
+    }
+
+    .job-card.plan-recommended{
+      border-left:4px solid var(--brand-dark);
+      border-right:4px solid var(--brand-dark);
+      box-shadow:0 12px 34px rgba(52,95,145,.12);
+    }
+
+    .mini-btn.urgent-toggle-on{
+      border-color:rgba(215,154,154,.42);
+      background:rgba(215,154,154,.14);
+      color:#9A5151;
+    }
+
+    .mini-btn.urgent-toggle-off{
+      border-color:rgba(93,127,163,.34);
+      background:var(--brand-soft);
+      color:var(--brand-dark);
+    }
+
+    .mini-btn.plan-locked{
+      opacity:.68;
+      cursor:default;
+    }
+
+    html[data-theme="dark"] .job-treatment-badge.urgent,
+    html[data-theme="dark"] .mini-btn.urgent-toggle-on{
+      color:#E6AAAA;
+      background:rgba(215,154,154,.13);
+    }
+
     .free-slot-applicant-meter{
       margin-top:10px;
       max-width:290px;
@@ -7521,6 +7596,81 @@
       return '';
     }
 
+
+    function dashboardEffectivePlan(){
+      const entitlement=state.entitlement||{};
+      const raw=String(
+        entitlement.test_plan||
+        entitlement.package_key||
+        entitlement.plan||
+        'free'
+      ).toLowerCase().trim();
+
+      if(raw==='business')return 'launch';
+      return raw;
+    }
+
+    function dashboardPlanAllowsFeatured(){
+      return dashboardBasePaidPlanActive() &&
+        ['launch','growth','scale','enterprise'].includes(dashboardEffectivePlan());
+    }
+
+    function dashboardPlanAllowsUrgent(){
+      return dashboardBasePaidPlanActive() &&
+        ['growth','scale','enterprise'].includes(dashboardEffectivePlan());
+    }
+
+    function dashboardPlanAllowsRecommended(){
+      return dashboardBasePaidPlanActive() &&
+        ['scale','enterprise'].includes(dashboardEffectivePlan());
+    }
+
+    function jobTreatmentBadges(job){
+      const recommended=job?.alygnn_recommended===true;
+      const featured=(job?.featured_employer===true || dashboardPlanAllowsFeatured());
+      const urgent=job?.urgently_hiring===true;
+      const badges=[];
+
+      if(recommended){
+        badges.push('<span class="job-treatment-badge recommended">Alygnn Recommended</span>');
+      }else if(featured){
+        badges.push('<span class="job-treatment-badge featured">Featured Employer</span>');
+      }
+
+      if(urgent){
+        badges.push('<span class="job-treatment-badge urgent">Urgently Hiring</span>');
+      }
+
+      return badges.length
+        ?`<div class="job-treatment-badges">${badges.join('')}</div>`
+        :'';
+    }
+
+    function jobTreatmentClass(job){
+      if(job?.alygnn_recommended===true)return 'plan-recommended';
+      if(job?.featured_employer===true || dashboardPlanAllowsFeatured())return 'plan-featured';
+      return '';
+    }
+
+    function urgentHiringAction(job){
+      if(!dashboardPlanAllowsUrgent()){
+        if(dashboardEffectivePlan()==='launch'){
+          return '<button class="mini-btn plan-locked" type="button" disabled>Urgently Hiring · Growth+</button>';
+        }
+        return '';
+      }
+
+      const enabled=job?.urgently_hiring===true;
+      return `
+        <button
+          class="mini-btn ${enabled?'urgent-toggle-on':'urgent-toggle-off'}"
+          data-job-action="${enabled?'urgent-off':'urgent-on'}"
+          data-job-id="${escapeHtml(job?.id||'')}">
+          ${enabled?'Urgently Hiring: On':'Mark Urgently Hiring'}
+        </button>
+      `;
+    }
+
     function freeJobAtApplicantLimit(job){
       return (
         postingAccessType(job)==='free' &&
@@ -7551,12 +7701,13 @@
       const saves = Number(job.saves || job.save_count || 0);
 
       return `
-        <article class="job-card">
+        <article class="job-card ${jobTreatmentClass(job)}">
           <div class="job-top">
             <div>
               <div class="job-title">${escapeHtml(job.title || 'Untitled position')}</div>
               <div class="job-meta">Posted ${timeAgo(job.created_at || job.updated_at)}</div>
               ${jobAccessBadge(job)}
+              ${jobTreatmentBadges(job)}
             </div>
             <span class="status-badge ${statusClass(status)}">${escapeHtml(status)}</span>
           </div>
@@ -7573,6 +7724,7 @@
               <button class="mini-btn" data-job-action="view" data-job-id="${job.id}">View Job</button>
               <button class="mini-btn primary" data-job-action="applicants" data-job-id="${job.id}">View Applicants</button>
               <button class="mini-btn" data-job-action="edit" data-job-id="${job.id}">Edit</button>
+              ${urgentHiringAction(job)}
               ${freeJobCanBoost(job)
                 ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${job.id}">Boost · $15/day</button>`
                 : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -7627,6 +7779,7 @@
             <button class="mini-btn" data-job-action="view" data-job-id="${escapeHtml(id)}">View Job</button>
             <button class="mini-btn primary" data-job-action="applicants" data-job-id="${escapeHtml(id)}">View Applicants</button>
             <button class="mini-btn" data-job-action="edit" data-job-id="${escapeHtml(id)}">Edit</button>
+            ${urgentHiringAction(job)}
             ${freeJobCanBoost(job)
               ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${escapeHtml(id)}">Boost · $15/day</button>`
               : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -7653,13 +7806,14 @@
         `;
 
         return `
-          <article class="job-card" style="display:block;visibility:visible;opacity:1">
+          <article class="job-card ${jobTreatmentClass(job)}" style="display:block;visibility:visible;opacity:1">
             <div class="job-top">
               <div style="min-width:0">
                 <div class="job-title">${title}</div>
                 <div class="job-meta">${posted}</div>
                 <div class="job-meta" style="margin-top:7px">${location} · ${jobType}</div>
                 ${jobAccessBadge(job)}
+                ${jobTreatmentBadges(job)}
               </div>
               <span class="status-badge ${statusBadgeClass}">${status}</span>
             </div>
@@ -12903,6 +13057,51 @@
         return;
       }
 
+
+      if(action==='urgent-on'||action==='urgent-off'){
+        if(!dashboardPlanAllowsUrgent()){
+          toast('Urgently Hiring is available with Growth, Scale, and Enterprise.');
+          return;
+        }
+
+        const nextValue=action==='urgent-on';
+
+        try{
+          const {data,error}=await sb
+            .from('jobs')
+            .update({
+              urgently_hiring:nextValue,
+              updated_at:new Date().toISOString()
+            })
+            .eq('id',id)
+            .select('urgently_hiring,featured_employer,alygnn_recommended')
+            .single();
+
+          if(error)throw error;
+
+          job.urgently_hiring=data?.urgently_hiring===true;
+          if(data && 'featured_employer' in data){
+            job.featured_employer=data.featured_employer===true;
+          }
+          if(data && 'alygnn_recommended' in data){
+            job.alygnn_recommended=data.alygnn_recommended===true;
+          }
+
+          renderAll();
+
+          if(nextValue && job.urgently_hiring){
+            toast('Urgently Hiring is now shown to candidates.');
+          }else if(!nextValue && !job.urgently_hiring){
+            toast('Urgently Hiring turned off for this job.');
+          }else{
+            toast('Run the latest Alygnn plan-badges SQL patch, then try again.');
+          }
+        }catch(error){
+          console.error('Urgently Hiring update failed:',error);
+          toast(error?.message||'Could not update Urgently Hiring.');
+        }
+        return;
+      }
 
       if(action === 'duplicate'){
         const copy = {...job};
