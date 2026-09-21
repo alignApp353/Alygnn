@@ -959,14 +959,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     if(currentSession && currentRole === 'employer'){
-      // Existing monthly/quarterly subscribers change plans through Alygnn's
-      // billing controls so upgrades use the fixed plan difference and
-      // downgrades wait until renewal. Do not open a second Stripe subscription.
-      if(plan!=='weekly_slot' && currentAccess?.active_paid_plan===true){
-        const params=new URLSearchParams({target_plan:plan});
-        window.location.href='employer-account.html?'+params.toString()+'#billing-section';
-        return;
-      }
+      // Send every non-current plan selection through payment.html.
+      // payment.html detects an existing paid plan and turns this into a
+      // plan-change review (upgrade or downgrade) instead of creating a
+      // second subscription.
 
       if(plan==='weekly_slot'){
         if(currentAccess?.active_paid_plan!==true){
