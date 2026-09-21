@@ -4392,8 +4392,142 @@
 }
 </style>
 
+
+<style id="alygnn-settings-polish-v2">
+  /* Settings: current Alygnn mobile workspace treatment */
+  #settings-view{
+    padding-bottom:18px;
+    scroll-margin-top:0;
+  }
+  .settings-page-head{
+    margin:0 0 18px;
+  }
+  .settings-page-head .eyebrow{margin-bottom:7px}
+  .settings-page-head .page-sub{max-width:560px}
+
+  #settings-view .settings-card{
+    margin-top:0;
+    padding:16px;
+    border-radius:20px;
+    background:var(--card);
+  }
+  #settings-view .settings-group-title,
+  #settings-view .section-kicker{
+    font-size:10px;
+    letter-spacing:1px;
+    font-weight:900;
+  }
+  #settings-view .section-kicker{
+    margin-top:22px;
+    margin-bottom:9px;
+  }
+  #settings-view .section{
+    margin-top:0;
+    border-radius:20px;
+  }
+  #settings-view .appearance-options{
+    gap:8px;
+  }
+  #settings-view .appearance-option{
+    min-height:82px;
+    padding:10px 7px;
+    border-radius:15px;
+    gap:8px;
+  }
+  #settings-view .appearance-icon{
+    width:28px;
+    height:28px;
+    display:grid;
+    place-items:center;
+    color:var(--brand-dark);
+  }
+  #settings-view .appearance-icon svg{
+    width:20px;
+    height:20px;
+    display:block;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+  #settings-view .appearance-option.active .appearance-icon{
+    color:var(--brand-dark);
+  }
+  #settings-view .preference-note{
+    margin-top:12px;
+  }
+
+  #settings-view .settings-link{
+    min-height:62px;
+    padding:8px 12px;
+    gap:10px;
+  }
+  #settings-view .settings-icon-label{
+    min-width:0;
+    flex:1;
+    gap:12px;
+  }
+  #settings-view .settings-icon{
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    border-radius:12px;
+    background:var(--brand-soft);
+    color:var(--brand-dark);
+    display:grid;
+    place-items:center;
+  }
+  #settings-view .settings-icon svg{
+    width:18px;
+    height:18px;
+    display:block;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+  #settings-view .settings-copy{
+    min-width:0;
+  }
+  #settings-view .settings-copy strong{
+    font-size:12.5px;
+    line-height:1.25;
+  }
+  #settings-view .settings-copy small{
+    margin-top:4px;
+    font-size:9.5px;
+    line-height:1.35;
+  }
+  #settings-view .settings-chevron{
+    color:var(--muted);
+    font-size:18px;
+    line-height:1;
+    flex:0 0 auto;
+  }
+  #settings-view .settings-link:active{
+    background:var(--brand-soft);
+  }
+  #settings-view .settings-signout{
+    color:var(--danger)!important;
+  }
+  #settings-view .settings-signout .settings-icon{
+    background:var(--danger-bg);
+    color:var(--danger);
+  }
+  html[data-theme="dark"] #settings-view .settings-link:active{
+    background:#172334;
+  }
+  @media(max-width:390px){
+    #settings-view .settings-link{padding-left:10px;padding-right:10px}
+    #settings-view .settings-icon{width:36px;height:36px;flex-basis:36px}
+    #settings-view .appearance-option{min-height:78px}
+  }
+</style>
+
 </head>
-<body data-employer-dashboard-build="2026-09-21-loader-bell-settings-scroll-fix">
+<body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
     <div class="loading-inner">
       <div class="loading-logo">Alygnn<span>.</span></div>
@@ -5137,21 +5271,32 @@
       </section>
 
       <section class="view" id="settings-view" hidden>
-        <div class="eyebrow">Employer workspace</div>
-        <h1 class="page-title">Settings</h1>
-        <p class="page-sub">Personalize your workspace, manage your account, and control how Alygnn fits into your hiring process.</p>
+        <div class="settings-page-head">
+          <div class="eyebrow">Employer workspace</div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-sub">Personalize your workspace, manage your account, and control how Alygnn fits into your hiring process.</p>
+        </div>
 
         <div class="settings-card">
           <div class="settings-group-title">Appearance</div>
           <div class="appearance-options" role="radiogroup" aria-label="Appearance preference">
             <button class="appearance-option" data-theme-choice="auto" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon">◐</span><span>Auto</span>
+              <span class="appearance-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
+              </span>
+              <span>Auto</span>
             </button>
             <button class="appearance-option" data-theme-choice="light" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon">☀</span><span>Light</span>
+              <span class="appearance-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5v2M12 19.5v2M4.5 4.5l1.4 1.4M18.1 18.1l1.4 1.4M2.5 12h2M19.5 12h2M4.5 19.5l1.4-1.4M18.1 5.9l1.4-1.4"></path></svg>
+              </span>
+              <span>Light</span>
             </button>
             <button class="appearance-option" data-theme-choice="dark" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon">◒</span><span>Dark</span>
+              <span class="appearance-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M20 15.4A8 8 0 0 1 8.6 4a8.2 8.2 0 1 0 11.4 11.4Z"></path></svg>
+              </span>
+              <span>Dark</span>
             </button>
           </div>
           <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
@@ -5160,41 +5305,79 @@
         <div class="section-kicker" id="candidate-mode-kicker" hidden>Workspace mode</div>
         <section class="section" id="candidate-mode-section" hidden>
           <button class="settings-link" id="switch-candidate-mode" type="button" onclick="switchToCandidateMode()">
-            <span class="settings-icon-label"><span class="settings-icon">C</span><span class="settings-copy"><strong>Switch to Candidate Mode</strong><small>Browse matches, apply to jobs, and manage your applications</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path></svg></span>
+              <span class="settings-copy"><strong>Switch to Candidate Mode</strong><small>Browse matches, apply to jobs, and manage your applications</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
         </section>
 
         <div class="section-kicker">Workspace</div>
         <section class="section">
           <button class="settings-link" id="notification-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">N</span><span class="settings-copy"><strong>Notifications</strong><small>Application and hiring updates</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>
+              <span class="settings-copy"><strong>Notifications</strong><small>Application and hiring updates</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
           <button class="settings-link" id="team-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">T</span><span class="settings-copy"><strong>Team members</strong><small>Recruiters and hiring managers</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M16 3.5a4 4 0 0 1 0 7.5M22 21v-2a4 4 0 0 0-3-3.7"></path></svg></span>
+              <span class="settings-copy"><strong>Team members</strong><small>Recruiters and hiring managers</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
           <button class="settings-link" id="billing-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">$</span><span class="settings-copy"><strong>Billing &amp; plan</strong><small>Reusable job slots, boosts, and payment details</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 10h18M7 15h3"></path></svg></span>
+              <span class="settings-copy"><strong>Billing &amp; plan</strong><small>Reusable job slots, boosts, and payment details</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
         </section>
 
         <div class="section-kicker">Account</div>
         <section class="section">
           <button class="settings-link" id="security-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">S</span><span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z"></path><path d="M9.5 12 11 13.5 14.8 9.7"></path></svg></span>
+              <span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
           <button class="settings-link" id="privacy-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">P</span><span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4C7 4 3.5 8 2.5 12c1 4 4.5 8 9.5 8s8.5-4 9.5-8c-1-4-4.5-8-9.5-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+              <span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
           <button class="settings-link" id="support-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">?</span><span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.7 9a2.5 2.5 0 0 1 4.8.8c0 1.8-2.5 2.2-2.5 4M12 17.2h.01"></path></svg></span>
+              <span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
           <button class="settings-link" id="about-settings" type="button">
-            <span class="settings-icon-label"><span class="settings-icon">A</span><span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span></span><span>›</span>
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 10.5V17M12 7h.01"></path></svg></span>
+              <span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
           </button>
         </section>
 
         <section class="section">
-          <button class="settings-link" id="sign-out-btn" type="button" style="color:var(--danger)">Sign out <span>›</span></button>
+          <button class="settings-link settings-signout" id="sign-out-btn" type="button">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M9 12h9"></path></svg></span>
+              <span class="settings-copy"><strong>Sign out</strong><small>Sign out of this employer workspace</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
         </section>
       </section>
     </main>
@@ -7054,6 +7237,19 @@
       toast.timer = setTimeout(() => els.toast.classList.remove('show'),2200);
     }
 
+    function resetEmployerWorkspaceScroll(){
+      try{
+        if('scrollRestoration' in history){
+          history.scrollRestoration='manual';
+        }
+        const root=document.scrollingElement||document.documentElement;
+        if(root)root.scrollTop=0;
+        document.documentElement.scrollTop=0;
+        document.body.scrollTop=0;
+        window.scrollTo(0,0);
+      }catch(_error){}
+    }
+
     function setView(name){
       const previousView = state.currentView;
       state.currentView = name;
@@ -7079,19 +7275,19 @@
       const view = $(name + '-view');
       view?.classList.remove('enter');
 
-      /*
-       * Every employer tab starts at the top. Using smooth scrolling here
-       * left Settings visibly halfway down the page while the old scroll
-       * position animated back to zero. Reset immediately instead.
-       */
-      if('scrollRestoration' in history){
-        history.scrollRestoration='manual';
-      }
-      window.scrollTo(0,0);
+      /* Android WebView can restore the old document scroll after a hidden
+       * workspace view is revealed. Force the scrolling element itself back
+       * to zero across the next layouts so Settings always opens at its title. */
+      resetEmployerWorkspaceScroll();
       requestAnimationFrame(()=>{
-        window.scrollTo(0,0);
-        view?.classList.add('enter');
+        resetEmployerWorkspaceScroll();
+        requestAnimationFrame(()=>{
+          resetEmployerWorkspaceScroll();
+          view?.classList.add('enter');
+        });
       });
+      setTimeout(resetEmployerWorkspaceScroll,0);
+      setTimeout(resetEmployerWorkspaceScroll,80);
 
       /*
        * Always enter My Jobs on Open.
@@ -14461,7 +14657,8 @@
           window.__alygnnEmployerBootSafety=null;
         }
         els.loading.hidden = true;
-        window.scrollTo(0,0);
+        resetEmployerWorkspaceScroll();
+        setTimeout(resetEmployerWorkspaceScroll,80);
 
         /*
          * Do not require a second tap on Open Jobs.
@@ -14488,6 +14685,9 @@
     document.addEventListener('click',event => {
       const nav = event.target.closest('[data-view]');
       if(nav){
+        event.preventDefault();
+        try{nav.blur();}catch(_error){}
+        resetEmployerWorkspaceScroll();
         if(
           nav.dataset.view==='applicants' &&
           nav.dataset.applicantsScope==='all'
