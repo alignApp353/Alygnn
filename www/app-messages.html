@@ -13,12 +13,32 @@
     if(v==='auto'||v==='system-default'||v==='default') return 'system';
     return ['system','light','dark'].includes(v)?v:'system';
   }
+  function startupRole(){
+    try{
+      const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();
+      if(requested==='employer'||requested==='candidate') return requested;
+      const stored=String(localStorage.getItem('alygnn_account_type')||'').toLowerCase();
+      return stored==='employer'?'employer':'candidate';
+    }catch(_error){
+      return 'candidate';
+    }
+  }
   function pref(){
+    const role=startupRole();
+    if(role==='employer'){
+      return normalize(
+        localStorage.getItem('alygnnEmployerTheme') ||
+        localStorage.getItem('alygnnTheme') ||
+        localStorage.getItem('alygnn_candidate_theme') ||
+        localStorage.getItem('alygnn-theme') ||
+        'system'
+      );
+    }
     return normalize(
       localStorage.getItem('alygnnTheme') ||
-      localStorage.getItem('alygnnEmployerTheme') ||
       localStorage.getItem('alygnn_candidate_theme') ||
       localStorage.getItem('alygnn-theme') ||
+      localStorage.getItem('alygnnEmployerTheme') ||
       'system'
     );
   }
@@ -1014,9 +1034,103 @@ body.employer-mode .bottom-nav.employer .nav.active::before{
 }
 </style>
 
+<style id="alygnn-messages-boot-loader-style">
+body.messages-booting{overflow:hidden!important}
+body.messages-booting>.shell,
+body.messages-booting>.bottom-nav{visibility:hidden!important}
+.messages-boot-loader{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
+    #F6F8F7;
+  color:#172333;
+  transition:opacity .18s ease,visibility .18s ease;
+}
+html[data-theme="dark"] .messages-boot-loader,
+html[data-effective-theme="dark"] .messages-boot-loader{
+  background:
+    radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
+    #0B111A;
+  color:#F3F7FA;
+}
+body:not(.messages-booting) .messages-boot-loader{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+.messages-boot-inner{
+  width:min(360px,88vw);
+  text-align:center;
+  transform:translateY(-3vh);
+}
+.messages-boot-logo{
+  display:inline-block;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  font-size:clamp(54px,15vw,72px);
+  line-height:.95;
+  letter-spacing:-2px;
+  color:#5D7FA3;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+.messages-boot-logo span{color:#8CB69B}
+.messages-boot-copy{
+  margin-top:18px;
+  color:#647282;
+  font-size:14px;
+  line-height:1.45;
+  font-weight:700;
+  letter-spacing:.01em;
+}
+html[data-theme="dark"] .messages-boot-copy,
+html[data-effective-theme="dark"] .messages-boot-copy{color:#A9B5C2}
+.messages-boot-track{
+  position:relative;
+  width:116px;
+  height:3px;
+  margin:25px auto 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:#DDE3E8;
+}
+html[data-theme="dark"] .messages-boot-track,
+html[data-effective-theme="dark"] .messages-boot-track{background:#293545}
+.messages-boot-bar{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:-48%;
+  width:48%;
+  border-radius:999px;
+  background:linear-gradient(90deg,#5D7FA3,#8CB69B);
+  animation:alygnn-messages-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
+}
+@keyframes alygnn-messages-loading{
+  0%{transform:translateX(0);opacity:.45}
+  45%{opacity:1}
+  100%{transform:translateX(310%);opacity:.55}
+}
+@media(prefers-reduced-motion:reduce){
+  .messages-boot-bar{left:0;width:100%;animation:none;opacity:.8}
+}
+</style>
+
 </head>
 
-<body>
+<body class="messages-booting">
+<div class="messages-boot-loader" id="messages-boot-loader" aria-label="Alygnn is loading">
+  <div class="messages-boot-inner">
+    <div class="messages-boot-logo">Alygnn<span>.</span></div>
+    <div class="messages-boot-copy" id="messages-boot-message">Opening your conversations.</div>
+    <div class="messages-boot-track" aria-hidden="true"><div class="messages-boot-bar"></div></div>
+  </div>
+</div>
 <div class="shell">
   <div class="top">
     <button class="back" id="back" type="button" aria-label="Back">←</button>
@@ -1060,11 +1174,7 @@ body.employer-mode .bottom-nav.employer .nav.active::before{
 
   <div id="notice" class="notice" hidden></div>
 
-  <div id="list" class="list">
-    <div class="empty">
-      <strong>Loading conversations…</strong>
-    </div>
-  </div>
+  <div id="list" class="list"></div>
 </div>
 
 <nav class="bottom-nav candidate" id="nav"></nav>
@@ -1083,7 +1193,7 @@ const sb=supabase.createClient(
 );
 
 const $=id=>document.getElementById(id);
-
+\n\nconst ALYGNN_EMPLOYER_LOADING_MESSAGES=[\n  "Building your team.",\n  "Finding your next hire.",\n  "Connecting you with talent.",\n  "Preparing your hiring workspace.",\n  "Matching talent to opportunity.",\n  "Getting your candidates ready.",\n  "Organizing your hiring pipeline.",\n  "Bringing your workspace together.",\n  "Loading your hiring dashboard.",\n  "Preparing your next move.",\n  "Finding talent that fits.",\n  "Getting your team in place.",\n  "Preparing your candidate matches.",\n  "Powering up your hiring workspace.",\n  "Bringing the right people closer.",\n  "Getting your hiring tools ready.",\n  "Preparing your recruiting workspace.",\n  "Connecting you to your next hire.",\n  "Getting everything ready to hire.",\n  "Helping you build what’s next."\n];\n\nfunction messagesStartupRole(){\n  try{\n    const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();\n    if(requested==='employer'||requested==='candidate')return requested;\n    return String(localStorage.getItem('alygnn_account_type')||'').toLowerCase()==='employer'?'employer':'candidate';\n  }catch(_error){\n    return 'candidate';\n  }\n}\n\nfunction alygnnEmployerLoadingMessage(){\n  const storageKey='alygnnEmployerLastLoadingMessage';\n  let last='';\n  try{last=localStorage.getItem(storageKey)||'';}catch(_error){}\n  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;\n  if(last&&choices.length>1)choices=choices.filter(message=>message!==last);\n  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';\n  try{localStorage.setItem(storageKey,message);}catch(_error){}\n  return message;\n}\n\n(function setMessagesBootCopy(){\n  const node=document.getElementById('messages-boot-message');\n  if(!node)return;\n  node.textContent=messagesStartupRole()==='employer'\n    ?alygnnEmployerLoadingMessage()\n    :'Opening your conversations.';\n})();\n\nfunction finishMessagesBoot(){\n  requestAnimationFrame(()=>{\n    document.body.classList.remove('messages-booting');\n    const loader=document.getElementById('messages-boot-loader');\n    if(loader)loader.setAttribute('aria-hidden','true');\n  });\n}\n
 const esc=value=>
   String(value??'')
     .replace(
@@ -2451,45 +2561,51 @@ $('employer-header-notification').onclick=()=>{
 };
 
 (async()=>{
-  const {
-    data,
-    error
-  }=await sb.auth.getSession();
+  try{
+    const {
+      data,
+      error
+    }=await sb.auth.getSession();
 
-  if(
-    error||
-    !data.session
-  ){
-    location.replace(
-      'app-login.html'
-    );
-    return;
+    if(
+      error||
+      !data.session
+    ){
+      location.replace(
+        'app-login.html'
+      );
+      return;
+    }
+
+    session=data.session;
+    role=await resolveRole();
+    document.body.classList.toggle('candidate-mode',role==='candidate');
+    document.body.classList.toggle('employer-mode',role==='employer');
+    if(role==='employer') applyEmployerMessagesTheme();
+
+    $('eyebrow').textContent=
+      role==='employer'
+        ?'Employer workspace'
+        :'Candidate workspace';
+
+    $('sub').textContent=
+      role==='candidate'
+        ?'Conversations employers started after you applied.'
+        :'Manage applicant conversations and follow up faster.';
+
+    $('search').placeholder=
+      role==='employer'
+        ?'Search candidate or job'
+        :'Search employer or job';
+
+    renderNav();
+    await load();
+    realtime();
+    finishMessagesBoot();
+  }catch(error){
+    console.error('Messages failed to initialize:',error);
+    finishMessagesBoot();
   }
-
-  session=data.session;
-  role=await resolveRole();
-  document.body.classList.toggle('candidate-mode',role==='candidate');
-  document.body.classList.toggle('employer-mode',role==='employer');
-  if(role==='employer') applyEmployerMessagesTheme();
-
-  $('eyebrow').textContent=
-    role==='employer'
-      ?'Employer workspace'
-      :'Candidate workspace';
-
-  $('sub').textContent=
-    role==='candidate'
-      ?'Conversations employers started after you applied.'
-      :'Manage applicant conversations and follow up faster.';
-
-  $('search').placeholder=
-    role==='employer'
-      ?'Search candidate or job'
-      :'Search employer or job';
-
-  renderNav();
-  await load();
-  realtime();
 })();
 </script>
 
