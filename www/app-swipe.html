@@ -2,3365 +2,1557 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<script id="alygnn-candidate-theme-critical">
-(function(){
-  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
-  function normalize(v){
-    v=String(v||'').toLowerCase().trim();
-    if(v==='auto'||v==='system-default'||v==='default') return 'system';
-    return ['system','light','dark'].includes(v)?v:'system';
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Alygnn — Find your match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brand: #5D7FA3;
+    --sage: #8CB69B;
+    --bg: #F0F3F2;
+    --card-bg: #FCFCFA;
+    --text: #1A2530;
+    --border: #DDE3E8;
+    --mint: #6FBF8F;
+    --rose: #D79A9A;
+    --text-muted: #4A5968;
+    --brand-light: rgba(93,127,163,0.08);
   }
-  function pref(){
-    return normalize(
-      localStorage.getItem('alygnnTheme') ||
-      localStorage.getItem('alygnnEmployerTheme') ||
-      localStorage.getItem('alygnn_candidate_theme') ||
-      localStorage.getItem('alygnn-theme') ||
-      'system'
-    );
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
-  function apply(){
-    const p=pref();
-    const theme=p==='system' ? (media&&media.matches?'dark':'light') : p;
-    const root=document.documentElement;
-    root.dataset.theme=theme;
-    root.dataset.effectiveTheme=theme;
-    root.style.colorScheme=theme;
-    let meta=document.querySelector('meta[name="theme-color"]');
-    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
-    meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
-    if(document.body){
-      document.body.dataset.theme=theme;
-      document.body.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+
+  /* NAV */
+  nav {
+    background: rgba(246,248,247,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; flex-shrink: 0; z-index: 10;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--brand); letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: var(--sage); }
+  .nav-stats { display: flex; gap: 20px; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 18px; font-weight: 500; color: var(--text); line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  .nav-back { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+  .nav-back:hover { color: var(--text); }
+
+  /* LOADING STATE */
+  .loading-screen {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+  }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--brand);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text { font-size: 16px; color: var(--text-muted); }
+  .loading-sub { font-size: 13px; color: var(--text-muted); opacity: 0.7; }
+
+  /* ERROR STATE */
+  .error-screen {
+    flex: 1; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    text-align: center; padding: 40px;
+  }
+  .error-icon { font-size: 40px; }
+  .error-title { font-size: 18px; font-weight: 500; }
+  .error-sub { font-size: 14px; color: var(--text-muted); max-width: 320px; line-height: 1.6; }
+  .btn-retry {
+    margin-top: 8px;
+    background: var(--brand); color: white;
+    border: none; border-radius: 100px;
+    padding: 12px 28px; font-size: 14px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+  }
+  .state-actions {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin-top: 8px;
+  }
+  .state-actions .btn-retry, .state-actions .btn-reload { margin-top: 0; }
+  .btn-preferences {
+    background: transparent; color: var(--brand);
+    border: 1.5px solid var(--brand); border-radius: 100px;
+    padding: 11px 24px; font-size: 14px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-preferences:hover { background: var(--brand-light); transform: translateY(-1px); }
+
+  /* SWIPE AREA */
+  .swipe-area {
+    flex: 1; display: none;
+    flex-direction: column; align-items: center;
+    justify-content: center; padding: 20px;
+    position: relative;
+  }
+
+  /* CARD STACK */
+  .card-stack { position: relative; width: 100%; max-width: 480px; height: 520px; }
+
+  .job-card {
+    position: absolute; inset: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    transform-origin: center bottom;
+    transition: box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    display: flex; flex-direction: column;
+  }
+  .job-card:active { cursor: grabbing; }
+  .job-card.is-dragging { transition: none; box-shadow: 0 16px 48px rgba(0,0,0,0.16); }
+  .job-card.swipe-left { animation: swipeLeft 0.35s ease forwards; }
+  .job-card.swipe-right { animation: swipeRight 0.35s ease forwards; }
+  .action-buttons button:disabled { pointer-events: none; }
+
+  /* Behind cards */
+  .job-card:nth-child(2) { transform: scale(0.96) translateY(8px); z-index: 1; }
+  .job-card:nth-child(3) { transform: scale(0.92) translateY(16px); z-index: 0; }
+  .job-card:nth-child(n+4) { display: none; }
+  .job-card:first-child { z-index: 2; }
+
+  /* LIKE/NOPE overlays */
+  .stamp {
+    position: absolute; top: 28px;
+    padding: 6px 16px; border-radius: 8px;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 2px; opacity: 0;
+    border: 3px solid;
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+  .stamp-apply { right: 28px; color: var(--mint); border-color: var(--mint); transform: rotate(12deg); }
+  .stamp-skip  { left: 28px;  color: var(--rose); border-color: var(--rose); transform: rotate(-12deg); }
+
+  /* CARD CONTENT */
+  .card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+  .company-logo {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: var(--brand-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 500; color: var(--brand); flex-shrink: 0; overflow: hidden;
+    border: 1px solid var(--border);
+    font-family: 'DM Serif Display', serif;
+  }
+  .company-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 5px;
+    background: white;
+    display: block;
+  }
+  .company-logo-fallback {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Serif Display', serif;
+  }
+  .card-top-text { flex: 1; min-width: 0; }
+  .job-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); letter-spacing: -0.3px; line-height: 1.2; margin-bottom: 3px; }
+  .company-name { font-size: 14px; color: var(--text-muted); }
+
+  .card-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 100px;
+    border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .pill.remote { background: rgba(111,191,143,0.1); color: #2e7a52; border-color: rgba(111,191,143,0.3); }
+  .pill.salary { background: var(--brand-light); color: var(--brand); border-color: rgba(93,127,163,0.2); }
+  .pill.urgent {
+    background: rgba(215,154,154,0.14);
+    color: #9a5151;
+    border-color: rgba(215,154,154,0.55);
+    font-weight: 700;
+  }
+
+  /* Featured Employer — paid-plan treatment, intentionally subtler than Alygnn Recommended. */
+  .job-card.featured-employer-card:first-child {
+    border-left: 3px solid rgba(93,127,163,0.72);
+    border-right: 3px solid rgba(93,127,163,0.72);
+    box-shadow:
+      0 8px 28px rgba(93,127,163,0.14),
+      -8px 0 22px -19px rgba(93,127,163,0.72),
+      8px 0 22px -19px rgba(93,127,163,0.72);
+  }
+
+  .featured-employer-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 23px;
+    margin-top: 7px;
+    padding: 0 9px;
+    border: 1px solid rgba(93,127,163,0.28);
+    border-radius: 999px;
+    background: rgba(93,127,163,0.09);
+    color: var(--brand);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.45px;
+    text-transform: uppercase;
+  }
+
+  /* Alygnn Recommended — keep the blue side accents, but make the label feel
+     built into the card instead of looking like a separate sticker. */
+  .job-card.alygnn-recommended-card:first-child {
+    border-left: 5px solid var(--brand);
+    border-right: 5px solid var(--brand);
+    padding-top: 50px;
+    box-shadow:
+      0 12px 34px rgba(93,127,163,0.22),
+      -10px 0 28px -18px rgba(93,127,163,0.95),
+      10px 0 28px -18px rgba(93,127,163,0.95);
+  }
+
+  .alygnn-recommended-banner {
+    display: none;
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    left: auto;
+    transform: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 35px;
+    padding: 0 20px;
+    border-radius: 0 20px 0 14px;
+    background: var(--brand);
+    color: #fff;
+    box-shadow: 0 7px 18px rgba(93,127,163,0.28);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.95px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .job-card.alygnn-recommended-card:first-child .alygnn-recommended-banner {
+    display: inline-flex;
+  }
+
+  .alygnn-recommended-mark {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.16);
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  @media (max-width: 640px) {
+    .job-card.alygnn-recommended-card:first-child {
+      border-left-width: 4px;
+      border-right-width: 4px;
+      padding-top: 47px;
+    }
+
+    .alygnn-recommended-banner {
+      min-height: 32px;
+      padding: 0 17px;
+      border-radius: 0 18px 0 12px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
     }
   }
-  apply();
-  window.__alygnnApplyCandidateGlobalTheme=apply;
-  window.addEventListener('pageshow',apply);
-  window.addEventListener('storage',apply);
-  if(media){
-    if(typeof media.addEventListener==='function') media.addEventListener('change',()=>{ if(pref()==='system') apply(); });
-    else if(typeof media.addListener==='function') media.addListener(()=>{ if(pref()==='system') apply(); });
+
+  .match-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(111,191,143,0.15); color: #3a9463;
+    font-size: 12px; font-weight: 500; padding: 4px 12px;
+    border-radius: 100px; margin-bottom: 12px;
   }
-})();
-</script>
-<title>Alygnn — Swipe Jobs</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-
-<style>
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:'DM Sans',Arial,sans-serif!important;
-}
-
-:root{
-  --brand:#5D7FA3;
-  --brand-dark:#345F91;
-  --sage:#8CB69B;
-  --bg:#F6F8F7;
-  --card-bg:#FFFFFF;
-  --text:#172333;
-  --border:#DDE3E8;
-  --mint:#6FBF8F;
-  --rose:#D79A9A;
-  --text-muted:#56677B;
-  --brand-light:rgba(93,127,163,.10);
-  --mint-light:rgba(111,191,143,.15);
-  --rose-light:rgba(215,154,154,.16);
-}
-
-html,body{
-  width:100%;
-  min-height:100%;
-}
-
-body{
-  background:
-    radial-gradient(circle at top,rgba(93,127,163,.09),transparent 30%),
-    var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  overflow:hidden;
-}
-
-/* HEADER */
-.top-header{
-  min-height:112px;
-  padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
-  display:grid;
-  grid-template-columns:92px 1fr 92px;
-  align-items:center;
-  background:rgba(246,248,247,.96);
-  border-bottom:1px solid var(--border);
-  backdrop-filter:blur(16px);
-}
-
-.back-btn{
-  min-height:44px;
-  border:none;
-  border-radius:999px;
-  background:rgba(93,127,163,.09);
-  color:var(--text);
-  padding:0 15px;
-  font-size:14px;
-  font-weight:800;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  cursor:pointer;
-}
-
-.brand-block{
-  text-align:center;
-}
-
-.logo{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px;
-  line-height:1;
-  color:var(--brand);
-}
-
-.logo span{
-  color:var(--sage);
-}
-
-.tagline{
-  margin-top:5px;
-  font-size:11px;
-  color:var(--text-muted);
-  font-weight:600;
-}
-
-.profile-chip{
-  justify-self:end;
-  width:46px;
-  height:46px;
-  border:none;
-  border-radius:50%;
-  background:linear-gradient(145deg,var(--brand),#6E95BE);
-  color:#fff;
-  font-size:14px;
-  font-weight:900;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-/* PROGRESS */
-.progress-shell{
-  padding:12px 18px 0;
-}
-
-.progress-card{
-  max-width:430px;
-  margin:0 auto;
-  background:rgba(255,255,255,.88);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:12px 14px;
-  display:grid;
-  grid-template-columns:repeat(3,1fr) 1.4fr;
-  gap:8px;
-  align-items:center;
-  box-shadow:0 8px 22px rgba(25,40,60,.05);
-}
-
-.stat{
-  text-align:center;
-}
-
-.stat-val{
-  font-size:18px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.stat-label{
-  margin-top:2px;
-  font-size:9px;
-  color:var(--text-muted);
-  text-transform:uppercase;
-  letter-spacing:.8px;
-  font-weight:800;
-}
-
-.job-progress{
-  border-left:1px solid var(--border);
-  padding-left:12px;
-}
-
-.progress-copy{
-  font-size:11px;
-  font-weight:800;
-  color:var(--text);
-  text-align:center;
-  margin-bottom:6px;
-}
-
-.progress-track{
-  width:100%;
-  height:7px;
-  background:#E8EDF2;
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.progress-fill{
-  height:100%;
-  width:0;
-  background:var(--brand);
-  border-radius:inherit;
-  transition:width .25s ease;
-}
-
-/* MAIN */
-.swipe-area{
-  height:calc(100vh - 112px - 84px);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:14px 18px calc(92px + env(safe-area-inset-bottom));
-}
-
-.card-stack{
-  position:relative;
-  width:100%;
-  max-width:430px;
-  height:min(440px,calc(100vh - 345px));
-}
-
-.job-card{
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.08),transparent 28%),
-    var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:30px;
-  padding:24px;
-  box-shadow:0 22px 60px rgba(27,43,63,.12);
-  display:flex;
-  flex-direction:column;
-  cursor:grab;
-  user-select:none;
-  touch-action:none;
-  transform-origin:center bottom;
-  transition:transform .22s ease,box-shadow .22s ease;
-}
-
-.job-card:nth-child(2){
-  transform:scale(.97) translateY(10px);
-  z-index:1;
-  pointer-events:none;
-}
-
-.job-card:nth-child(3){
-  transform:scale(.94) translateY(20px);
-  z-index:0;
-  pointer-events:none;
-}
-
-/* Background cards are only visual stack shells.
-   Hiding their children prevents duplicate footer/text from showing below
-   the active card. */
-.job-card:nth-child(n+2) > *{
-  visibility:hidden !important;
-}
-
-.job-card:first-child{
-  z-index:2;
-}
-
-.job-card.is-dragging{
-  transition:none;
-  box-shadow:0 22px 55px rgba(27,43,63,.17);
-}
-
-.job-card.swipe-left{animation:swipeLeft .35s ease forwards}
-.job-card.swipe-right{animation:swipeRight .35s ease forwards}
-
-.stamp{
-  position:absolute;
-  top:24px;
-  padding:7px 16px;
-  border-radius:10px;
-  font-size:19px;
-  font-weight:900;
-  letter-spacing:2px;
-  opacity:0;
-  border:3px solid;
-  pointer-events:none;
-}
-
-.stamp-apply{
-  right:24px;
-  color:var(--mint);
-  border-color:var(--mint);
-  transform:rotate(12deg);
-}
-
-.stamp-skip{
-  left:24px;
-  color:var(--rose);
-  border-color:var(--rose);
-  transform:rotate(-12deg);
-}
-
-.card-toolbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:18px;
-}
-
-.match{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  width:max-content;
-  background:linear-gradient(180deg,#EDF8F1,#E4F3EA);
-  color:#257B52;
-  padding:9px 14px;
-  border-radius:999px;
-  border:1px solid rgba(111,191,143,.28);
-  font-size:13px;
-  font-weight:900;
-}
-
-.save-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  font-size:19px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.card-top{
-  display:flex;
-  gap:15px;
-  margin-bottom:18px;
-  align-items:flex-start;
-}
-
-.company-logo{
-  width:68px;
-  height:68px;
-  border-radius:22px;
-  background:linear-gradient(145deg,#F5F8FA,#E5ECF2);
-  border:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:23px;
-  font-weight:900;
-  color:var(--brand-dark);
-  flex-shrink:0;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
-}
-
-.job-title{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px;
-  line-height:1.02;
-  letter-spacing:-.4px;
-  color:var(--text);
-  text-transform:none;
-}
-
-.company-line{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin-top:6px;
-}
-
-.company-name{
-  font-size:15px;
-  color:var(--text-muted);
-}
-
-.verified{
-  width:17px;
-  height:17px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--brand);
-  color:white;
-  font-size:10px;
-  font-weight:900;
-}
-
-.card-pills{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:18px;
-}
-
-.pill{
-  font-size:12px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  color:var(--text-muted);
-  background:rgba(250,252,253,.92);
-  font-weight:800;
-}
-
-.salary{
-  background:var(--brand-light);
-  color:var(--brand-dark);
-}
-
-.card-overview{
-  margin-top:12px;
-  padding-top:11px;
-  border-top:1px solid rgba(93,127,163,.18);
-}
-
-.card-overview-label{
-  margin-bottom:5px;
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:1.15px;
-  text-transform:uppercase;
-  color:var(--brand-dark);
-}
-
-.card-desc{
-  font-size:12px;
-  color:var(--text-muted);
-  line-height:1.5;
-  max-width:100%;
-  overflow:hidden;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:3;
-}
-
-.card-bottom{
-  border-top:1px solid var(--border);
-  padding-top:11px;
-  margin-top:auto;
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-}
-
-.view-full-ad{
-  width:auto;
-  min-height:36px;
-  padding:5px 2px 5px 12px;
-  border:none;
-  border-radius:10px;
-  background:transparent;
-  color:var(--brand-dark);
-  display:inline-flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:7px;
-  font-size:12px;
-  font-weight:900;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-
-.view-full-ad:active{
-  opacity:.68;
-}
-
-.view-full-ad-arrow{
-  font-size:15px;
-  line-height:1;
-}
-
-.apply-link{
-  text-decoration:none;
-}
-
-
-
-/* COMPACT ALYGNN MATCH */
-.alygnn-match-mini{
-  border:1px solid var(--border);
-  background:rgba(248,250,252,.82);
-  border-radius:19px;
-  padding:12px 13px;
-  margin:2px 0 16px;
-}
-
-.alygnn-match-mini-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-
-.alygnn-match-mini-title{
-  font-size:12px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.alygnn-match-mini-sub{
-  margin-top:2px;
-  font-size:9px;
-  color:var(--text-muted);
-  font-weight:700;
-}
-
-.alygnn-match-mini-body{
-  display:grid;
-  grid-template-columns:64px 1fr;
-  gap:13px;
-  align-items:center;
-}
-
-.alygnn-score-ring{
-  --score:0;
-  width:62px;
-  height:62px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  position:relative;
-  background:
-    conic-gradient(
-      var(--mint) calc(var(--score) * 1%),
-      rgba(93,127,163,.13) 0
-    );
-}
-
-.alygnn-score-ring::after{
-  content:'';
-  position:absolute;
-  width:46px;
-  height:46px;
-  border-radius:50%;
-  background:var(--card-bg);
-  border:1px solid rgba(93,127,163,.08);
-}
-
-.alygnn-score-number{
-  position:relative;
-  z-index:1;
-  text-align:center;
-  font-size:16px;
-  line-height:1;
-  color:var(--text);
-  font-weight:900;
-}
-
-.alygnn-score-number small{
-  display:block;
-  margin-top:3px;
-  font-size:7px;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-  color:var(--text-muted);
-  font-weight:900;
-}
-
-.alygnn-mini-metrics{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px 12px;
-}
-
-.alygnn-mini-row{
-  min-width:0;
-}
-
-.alygnn-mini-row-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:6px;
-  margin-bottom:4px;
-}
-
-.alygnn-mini-label{
-  font-size:9px;
-  color:var(--text-muted);
-  font-weight:800;
-  white-space:nowrap;
-}
-
-.alygnn-mini-value{
-  font-size:9px;
-  color:var(--brand-dark);
-  font-weight:900;
-}
-
-.alygnn-mini-track{
-  height:4px;
-  background:rgba(93,127,163,.12);
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.alygnn-mini-fill{
-  height:100%;
-  width:0;
-  background:var(--mint);
-  border-radius:999px;
-}
-
-.details-match-wrap{
-  margin-top:14px;
-}
-
-@media(max-height:760px){
-  .alygnn-match-mini{
-    padding:10px 11px;
-    margin-bottom:12px;
+  .match-badge.pending { background: var(--border); color: var(--text-muted); }
+
+  .card-desc {
+    font-size: 13px; color: var(--text-muted); line-height: 1.65; margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  .alygnn-match-mini-head{
-    margin-bottom:8px;
+  .card-highlights { margin-bottom: 16px; }
+  .highlights-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .highlight-item { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; line-height: 1.4; }
+  .highlight-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--brand); margin-top: 5px; flex-shrink: 0; }
+
+  .card-benefits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .benefit-tag { font-size: 10px; padding: 3px 9px; border-radius: 100px; background: rgba(111,191,143,0.1); color: #2e7a52; }
+
+  .card-bottom { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto; }
+  .posted-time { font-size: 11px; color: var(--text-muted); }
+  .view-details-link {
+    font-size: 12px; font-weight: 500; color: var(--brand);
+    text-decoration: none; background: var(--brand-light);
+    padding: 5px 12px; border-radius: 100px; transition: opacity 0.2s;
+  }
+  .view-details-link:hover { opacity: 0.8; }
+
+  /* ACTION BUTTONS */
+  .action-buttons {
+    display:flex;
+    align-items:stretch;
+    justify-content:center;
+    gap:12px;
+    margin-top:20px;
+    width:min(100%, 520px);
+    flex-wrap:wrap;
   }
 
-  .alygnn-match-mini-body{
-    grid-template-columns:56px 1fr;
-    gap:10px;
+  .btn-undo,
+  .btn-skip,
+  .btn-apply{
+    border-radius:18px;
+    min-height:72px;
+    padding:12px 18px;
+    cursor:pointer;
+    transition:all .2s;
+    font-family:'DM Sans', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
   }
 
-  .alygnn-score-ring{
-    width:54px;
-    height:54px;
+  .btn-undo{
+    min-width:120px;
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    color:var(--text);
+    box-shadow:0 6px 18px rgba(26,37,48,.08);
   }
 
-  .alygnn-score-ring::after{
-    width:40px;
-    height:40px;
-  }
-
-  .alygnn-score-number{
-    font-size:14px;
-  }
-
-  .alygnn-mini-metrics{
-    gap:6px 10px;
-  }
-}
-
-
-.quick-facts{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:9px;
-  margin:2px 0 18px;
-}
-
-.fact{
-  border:1px solid var(--border);
-  background:rgba(248,250,252,.9);
-  border-radius:16px;
-  padding:11px 10px;
-}
-
-.fact-label{
-  font-size:9px;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-  color:var(--text-muted);
-  font-weight:900;
-}
-
-.fact-value{
-  margin-top:5px;
-  font-size:12px;
-  line-height:1.25;
-  color:var(--text);
-  font-weight:900;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.card-actions-mini{
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-
-.icon-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:17px;
-}
-
-/* ACTIONS */
-.action-buttons{
-  width:100%;
-  max-width:430px;
-  display:grid;
-  grid-template-columns:82px minmax(0,1fr) minmax(0,1.45fr);
-  gap:10px;
-  margin-top:14px;
-  padding:11px;
-  border:1px solid var(--border);
-  border-radius:20px;
-  background:rgba(252,252,250,.94);
-  box-shadow:0 10px 30px rgba(27,43,63,.08);
-}
-
-.action-btn{
-  min-width:0;
-  height:68px;
-  border-radius:16px;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:var(--text);
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  -webkit-tap-highlight-color:transparent;
-  transition:transform .12s ease,opacity .12s ease;
-}
-
-.action-btn:active{
-  transform:scale(.985);
-}
-
-.btn-undo{
-  flex-direction:column;
-  gap:3px;
-}
-
-.action-undo-icon{
-  font-size:22px;
-  line-height:1;
-}
-
-.action-main{
-  display:block;
-  font-size:12px;
-  line-height:1.15;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-.action-sub{
-  display:block;
-  margin-top:4px;
-  font-size:9px;
-  line-height:1.1;
-  color:var(--text-muted);
-  font-weight:700;
-  white-space:nowrap;
-}
-
-.btn-skip{
-  flex-direction:column;
-  padding:0 10px;
-  border-color:var(--brand);
-  background:transparent;
-}
-
-.btn-apply{
-  position:relative;
-  flex-direction:column;
-  align-items:flex-start;
-  padding:0 34px 0 17px;
-  border-color:transparent;
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1);
-  color:#fff;
-}
-
-.btn-apply .action-sub{
-  color:rgba(255,255,255,.76);
-}
-
-.action-arrow{
-  position:absolute;
-  right:15px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:20px;
-  line-height:1;
-}
-
-@media(max-width:390px){
-  .action-buttons{
-    grid-template-columns:72px minmax(0,1fr) minmax(0,1.35fr);
-    gap:8px;
-    padding:9px;
-  }
-
-  .action-btn{
-    height:64px;
-  }
-
-  .action-main{
-    font-size:11px;
-  }
-
-  .action-sub{
-    font-size:8px;
+  .btn-skip{
+    min-width:150px;
+    background:var(--card-bg);
+    border:1.5px solid var(--border);
+    color:var(--text);
+    box-shadow:0 6px 18px rgba(26,37,48,.08);
   }
 
   .btn-apply{
-    padding-left:13px;
-    padding-right:29px;
+    min-width:170px;
+    background:var(--brand);
+    border:1.5px solid var(--brand);
+    box-shadow:0 8px 20px rgba(93,127,163,0.30);
   }
 
-  .action-arrow{
-    right:11px;
+  .btn-undo:hover{
+    border-color:var(--brand);
+    transform:translateY(-1px);
   }
-}
 
-/* BOTTOM NAV */
-.bottom-nav{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  max-width:520px;
-  margin:0 auto;
-  min-height:72px;
-  padding:10px 12px calc(13px + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.96);
-  border-top:1px solid var(--border);
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  z-index:50;
-  backdrop-filter:blur(16px);
-}
-
-.nav-link{
-  border:none;
-  background:transparent;
-  color:var(--text-muted);
-  font-size:11px;
-  font-weight:800;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-}
-
-.nav-icon{
-  font-size:19px;
-  line-height:1;
-}
-
-.nav-link.active{
-  color:var(--brand-dark);
-}
-
-/* EMPTY + TOAST */
-.empty-screen{
-  display:none;
-  height:calc(100vh - 112px);
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  text-align:center;
-  padding:30px;
-}
-
-.empty-title{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:32px;
-  margin-bottom:10px;
-}
-
-.empty-sub{
-  color:var(--text-muted);
-  line-height:1.6;
-  max-width:320px;
-}
-
-.toast{
-  position:fixed;
-  bottom:92px;
-  left:50%;
-  transform:translateX(-50%) translateY(18px);
-  background:var(--text);
-  color:white;
-  padding:12px 22px;
-  border-radius:999px;
-  font-size:14px;
-  transition:opacity .2s ease, transform .2s ease;
-  z-index:100;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  white-space:nowrap;
-}
-
-.toast.show{
-  transform:translateX(-50%) translateY(0);
-  opacity:1;
-  visibility:visible;
-}
-
-@keyframes swipeLeft{
-  to{transform:translateX(-130%) rotate(-22deg);opacity:0}
-}
-
-@keyframes swipeRight{
-  to{transform:translateX(130%) rotate(22deg);opacity:0}
-}
-
-@media(max-height:760px){
-  .top-header{min-height:96px;padding-top:calc(9px + env(safe-area-inset-top))}
-  .logo{font-size:27px}
-  .tagline{display:none}
-  .progress-shell{padding-top:7px}
-  .progress-card{padding:9px 12px}
-  .swipe-area{height:calc(100vh - 96px - 72px);padding-top:9px}
-  .card-stack{height:min(415px,calc(100vh - 315px))}
-  .job-card{padding:19px}
-  .job-title{font-size:25px}
-  .card-desc{-webkit-line-clamp:5}
-  .action-buttons{margin-top:13px}
-}
-
-
-/* FULL JOB AD */
-body.details-open{overflow:hidden}
-.job-details-overlay{
-  position:fixed;inset:0;z-index:300;background:rgba(23,35,51,.42);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .22s ease;
-}
-.job-details-overlay.open{opacity:1;pointer-events:auto}
-.job-details-sheet{
-  width:100%;max-height:94vh;background:var(--bg);border-radius:30px 30px 0 0;
-  transform:translateY(100%);transition:transform .34s cubic-bezier(.2,.8,.2,1);
-  overflow:hidden;display:flex;flex-direction:column;
-  box-shadow:0 -22px 70px rgba(23,35,51,.18);
-}
-.job-details-overlay.open .job-details-sheet{transform:translateY(0)}
-.details-grip{width:44px;height:5px;border-radius:999px;background:#D4DCE3;margin:10px auto 5px;flex-shrink:0}
-.details-header{
-  padding:8px 18px 14px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;
-  border-bottom:1px solid var(--border);background:rgba(246,248,247,.96)
-}
-.details-close,.details-save{
-  width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;
-  color:var(--text);font-size:20px;display:grid;place-items:center
-}
-.details-header-title{text-align:center;font-size:13px;font-weight:900;color:var(--text)}
-.details-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 17px 120px}
-.details-hero{background:#fff;border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:0 12px 32px rgba(23,35,51,.07)}
-.details-company-row{display:flex;gap:14px;align-items:flex-start}
-.details-logo{width:64px;height:64px;border-radius:20px;background:linear-gradient(145deg,#F5F8FA,#E5ECF2);border:1px solid var(--border);display:grid;place-items:center;font-size:22px;font-weight:900;color:var(--brand-dark);flex-shrink:0}
-.details-title{font-family:'DM Serif Display',Georgia,serif!important;font-size:29px;line-height:1.05;color:var(--text)}
-.details-company{margin-top:6px;font-size:14px;color:var(--text-muted);font-weight:700}
-.details-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
-.details-pill{font-size:11px;font-weight:800;padding:8px 11px;border-radius:999px;border:1px solid var(--border);background:#F9FBFC;color:var(--text-muted)}
-.details-pill.pay{background:var(--brand-light);color:var(--brand-dark);border-color:rgba(93,127,163,.2)}
-.details-section{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:21px;padding:18px}
-.details-company-about{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.details-company-about-logo{width:56px;height:56px;border:1px solid #dbe5ee;border-radius:16px;overflow:hidden;display:grid;place-items:center;background:#eef4f8;color:#376da3;font-size:19px;font-weight:900;flex:0 0 auto}
-.details-company-about-logo img,.details-logo img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit}
-.details-company-about-name{color:#162336;font-weight:900;font-size:16px}
-.details-company-about-meta{margin-top:4px;color:#718096;font-size:11px;font-weight:700}
-.details-company-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
-.details-company-link{display:inline-flex;min-height:33px;align-items:center;padding:0 10px;border:1px solid #dbe5ee;border-radius:999px;color:#376da3;background:#fff;font-size:10px;font-weight:800;text-decoration:none}
-
-.details-section h2{font-size:16px;font-weight:900;margin-bottom:10px;color:var(--text)}
-.details-copy{font-size:14px;color:var(--text-muted);line-height:1.7;white-space:pre-wrap;word-break:break-word}
-.details-list{display:grid;gap:10px;list-style:none}
-.details-list li{position:relative;padding-left:17px;font-size:13px;color:var(--text-muted);line-height:1.55}
-.details-list li::before{content:'';position:absolute;left:0;top:.58em;width:6px;height:6px;border-radius:50%;background:var(--brand)}
-.details-empty{font-size:13px;color:var(--text-muted);font-style:italic}
-.details-footer{position:absolute;left:0;right:0;bottom:0;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--border);backdrop-filter:blur(18px)}
-.details-apply{width:100%;min-height:56px;border:none;border-radius:17px;background:var(--brand-dark);color:#fff;font-size:15px;font-weight:900;box-shadow:0 9px 22px rgba(52,95,145,.22)}
-.details-apply:disabled{opacity:.6}
-.tap-hint{font-size:11px;color:var(--brand-dark);font-weight:900}
-@media(min-width:700px){.job-details-overlay{align-items:center;justify-content:center;padding:24px}.job-details-sheet{max-width:560px;border-radius:30px;max-height:90vh}.details-footer{border-radius:0 0 30px 30px}}
-
-
-/* ==========================================================
-   SYSTEM DARK MODE
-   Follows Android/iPhone appearance automatically.
-   ========================================================== */
-
-
-
-
-/* ==========================================================
-   CANDIDATE THEME SYNC
-   Base CSS = Light.
-   Dark styles only run when JS resolves the candidate theme
-   to data-theme="dark".
-   ========================================================== */
-body[data-theme="dark"]{
-  color-scheme:dark;
-
-  --brand:#5D86B1;
-  --brand-dark:#79A7D5;
-  --sage:#8FC6A2;
-
-  --bg:#061821;
-  --card-bg:#10232D;
-  --text:#F3F7FA;
-  --border:#29404C;
-  --mint:#71C795;
-  --rose:#E58C96;
-  --text-muted:#A9B8C5;
-
-  --brand-light:rgba(93,134,177,.18);
-  --mint-light:rgba(113,199,149,.13);
-  --rose-light:rgba(229,140,150,.13);
-
-  background:
-    radial-gradient(circle at top,rgba(93,127,163,.12),transparent 31%),
-    #061821 !important;
-  color:var(--text);
-}
-
-body[data-theme="dark"] .top-header{
-  background:rgba(5,24,33,.96) !important;
-  border-bottom-color:var(--border);
-}
-
-body[data-theme="dark"] .back-btn{
-  background:#0D202A;
-  color:var(--text);
-  border:1px solid var(--border);
-}
-
-body[data-theme="dark"] .logo{
-  color:#6F96BE;
-}
-
-body[data-theme="dark"] .tagline{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .progress-card{
-  background:#10232D !important;
-  border-color:var(--border);
-  box-shadow:0 8px 26px rgba(0,0,0,.20);
-}
-
-body[data-theme="dark"] .progress-track{
-  background:#203640;
-}
-
-body[data-theme="dark"] .job-card{
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.12),transparent 28%),
-    var(--card-bg) !important;
-  border-color:var(--border);
-  box-shadow:0 22px 60px rgba(0,0,0,.30);
-}
-
-body[data-theme="dark"] .match{
-  background:rgba(111,191,143,.12);
-  color:#83D6A6;
-  border-color:rgba(111,191,143,.26);
-}
-
-body[data-theme="dark"] .save-btn,
-body[data-theme="dark"] .icon-btn{
-  background:#0B1D26 !important;
-  color:var(--text);
-  border-color:var(--border);
-  box-shadow:0 5px 16px rgba(0,0,0,.20);
-}
-
-body[data-theme="dark"] .action-buttons{
-  background:rgba(9,29,38,.96);
-  border-color:var(--border);
-  box-shadow:0 12px 32px rgba(0,0,0,.22);
-}
-
-body[data-theme="dark"] .action-btn{
-  background:#0B1D26;
-  color:var(--text);
-  border-color:var(--border);
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .btn-skip{
-  background:#0B1D26;
-  color:var(--text);
-  border-color:#5D86B1;
-}
-
-body[data-theme="dark"] .btn-apply{
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1) !important;
-  color:#fff;
-  border-color:transparent;
-}
-
-body[data-theme="dark"] .company-logo{
-  background:linear-gradient(145deg,#183343,#0E2530);
-  border-color:var(--border);
-  color:#8EB4DA;
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .job-title,
-body[data-theme="dark"] .stat-val,
-body[data-theme="dark"] .progress-copy{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .company-name,
-body[data-theme="dark"] .stat-label,
-body[data-theme="dark"] .action-label,
-body[data-theme="dark"] .posted-time,
-body[data-theme="dark"] .card-desc{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .verified{
-  background:#638CB5;
-}
-
-body[data-theme="dark"] .pill{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:#BCC8D2;
-}
-
-body[data-theme="dark"] .pill.salary{
-  background:rgba(93,127,163,.17);
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .alygnn-match-mini{
-  background:#0B1D26 !important;
-  border-color:var(--border);
-}
-
-body[data-theme="dark"] .alygnn-match-mini-title,
-body[data-theme="dark"] .alygnn-score-number{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .alygnn-match-mini-sub,
-body[data-theme="dark"] .alygnn-mini-label{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .alygnn-mini-value{
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .alygnn-score-ring{
-  background:
-    conic-gradient(
-      var(--mint) calc(var(--score) * 1%),
-      #203640 0
-    );
-}
-
-body[data-theme="dark"] .alygnn-score-ring::after{
-  background:#10232D;
-  border-color:var(--border);
-}
-
-body[data-theme="dark"] .alygnn-mini-track{
-  background:#203640;
-}
-
-body[data-theme="dark"] .card-bottom{
-  border-top-color:var(--border);
-}
-
-body[data-theme="dark"] .view-full-ad{
-  background:transparent;
-  border-color:transparent;
-  color:#78A7D6;
-}
-
-body[data-theme="dark"] .apply-link,
-body[data-theme="dark"] .tap-hint{
-  color:#78A7D6;
-}
-
-body[data-theme="dark"] .empty-title{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .empty-sub{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .bottom-nav{
-  background:rgba(6,24,33,.97) !important;
-  border-top-color:var(--border);
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item{
-  color:#7F92A1;
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item.active{
-  color:#6FA6DB;
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item.active:before{
-  background:#4D89C3;
-}
-
-body[data-theme="dark"] .nav-icon{
-  color:inherit;
-}
-
-body[data-theme="dark"] .toast{
-  background:#EAF0F4;
-  color:#14222D;
-}
-
-/* Full job ad */
-body[data-theme="dark"] .job-details-overlay{
-  background:rgba(0,0,0,.62);
-}
-
-body[data-theme="dark"] .job-details-sheet{
-  background:#061821;
-  box-shadow:0 -22px 70px rgba(0,0,0,.45);
-}
-
-body[data-theme="dark"] .details-grip{
-  background:#415864;
-}
-
-body[data-theme="dark"] .details-header{
-  background:rgba(6,24,33,.97);
-  border-bottom-color:var(--border);
-}
-
-body[data-theme="dark"] .details-close,
-body[data-theme="dark"] .details-save{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-header-title{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-hero,
-body[data-theme="dark"] .details-section{
-  background:#10232D !important;
-  border-color:var(--border);
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .details-logo{
-  background:linear-gradient(145deg,#183343,#0E2530);
-  border-color:var(--border);
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .details-title,
-body[data-theme="dark"] .details-section h2{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-company,
-body[data-theme="dark"] .details-copy,
-body[data-theme="dark"] .details-list li,
-body[data-theme="dark"] .details-empty{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .details-pill{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:#BCC8D2;
-}
-
-body[data-theme="dark"] .details-pill.pay{
-  background:rgba(93,127,163,.18);
-  color:#8EB4DA;
-  border-color:rgba(93,127,163,.28);
-}
-
-body[data-theme="dark"] .details-footer{
-  background:rgba(6,24,33,.97);
-  border-top-color:var(--border);
-}
-
-/* Explicit light mode wins even if Android/WebView was previously dark. */
-body[data-theme="light"]{
-  color-scheme:light;
-}
-
-</style>
-
-<style id="candidate-four-tab-nav">
-.bottom-nav{
-  display:grid!important;
-  grid-template-columns:repeat(4,1fr)!important;
-}
-.bottom-nav .nav-item{
-  position:relative;
-  min-height:54px;
-  border:none;
-  background:transparent;
-  color:#738394;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  font-size:9px;
-  font-weight:800;
-  cursor:pointer;
-}
-.bottom-nav .nav-item.active{color:#35679A}
-.bottom-nav .nav-item.active:before{
-  content:'';
-  position:absolute;
-  top:-9px;
-  width:34px;
-  height:3px;
-  border-radius:999px;
-  background:#35679A;
-}
-.bottom-nav .nav-icon{
-  width:20px;
-  height:20px;
-  display:grid;
-  place-items:center;
-  line-height:1;
-}
-
-.bottom-nav .nav-icon svg{
-  width:20px;
-  height:20px;
-  stroke:currentColor;
-  stroke-width:1.8;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-
-</style>
-
-
-<style id="alygnn-candidate-messages-nav">
-#candidate-bottom-nav{grid-template-columns:repeat(5,1fr)!important}
-.messaging-nav-badge{
-  position:absolute;
-  top:2px;
-  right:calc(50% - 19px);
-  min-width:15px;
-  height:15px;
-  padding:0 4px;
-  border-radius:999px;
-  background:#E64141;
-  color:#fff;
-  font-size:8px;
-  font-weight:900;
-  line-height:1;
-  display:grid;
-  place-items:center;
-  border:2px solid var(--card-bg,var(--card,#fff));
-}
-.messaging-nav-badge[hidden]{display:none!important}
-</style>
-
-
-<style id="alygnn-candidate-primary-header-consistency">
-/* Primary candidate tabs all use the same Alygnn header as My Profile. */
-.top-header{
-  position:sticky!important;
-  top:0!important;
-  z-index:40!important;
-  min-height:86px!important;
-  display:grid!important;
-  grid-template-columns:46px minmax(0,1fr) 46px!important;
-  align-items:center!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.top-header .logo{
-  font-size:31px!important;
-  line-height:1!important;
-}
-.top-header .tagline{display:none!important}
-.top-header .back-btn,
-.top-header .profile-chip{
-  visibility:hidden!important;
-  pointer-events:none!important;
-  width:42px!important;
-  height:42px!important;
-  min-width:42px!important;
-  padding:0!important;
-}
-html[data-effective-theme="light"] .top-header,
-body[data-theme="light"] .top-header{
-  background:rgba(246,248,247,.96)!important;
-  border-bottom-color:#DDE3E8!important;
-}
-html[data-effective-theme="dark"] .top-header,
-body[data-theme="dark"] .top-header{
-  background:rgba(5,24,33,.96)!important;
-  border-bottom-color:#29404C!important;
-}
-</style>
-
-<style id="alygnn-native-surface-match-messages">
-/* Keep Android system-bar edges and the page canvas on the same surface as Messages. */
-html,
-body{
-  min-height:100%;
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-}
-body{min-height:100dvh}
-html[data-effective-theme="light"],
-html[data-effective-theme="light"] body,
-body[data-theme="light"]{
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-}
-html[data-effective-theme="dark"],
-html[data-effective-theme="dark"] body,
-body[data-theme="dark"]{
-  background:#061821!important;
-  background-color:#061821!important;
-}
-/* Never expose a contrasting white strip behind the fixed navigation. */
-html[data-effective-theme="dark"] .bottom-nav,
-body[data-theme="dark"] .bottom-nav{
-  background:rgba(5,24,33,.96)!important;
-}
-html[data-effective-theme="light"] .bottom-nav,
-body[data-theme="light"] .bottom-nav{
-  background:rgba(246,248,247,.96)!important;
-}
-</style>
-
-
-<style id="alygnn-discover-system-edge-fix">
-html[data-effective-theme="dark"] .top-header,
-body[data-theme="dark"] .top-header{background:rgba(5,24,33,.96)!important}
-html[data-effective-theme="light"] .top-header,
-body[data-theme="light"] .top-header{background:rgba(246,248,247,.96)!important}
-/* The empty state must fill only the app canvas; never paint a second system-edge color. */
-.empty-screen{background:transparent!important}
-</style>
-
-
-<style id="alygnn-candidate-shell-consistency-final">
-html[data-effective-theme='dark'],
-html[data-effective-theme='dark'] body,
-html[data-effective-theme='dark'] .top-header,
-body[data-theme='dark'],
-body[data-theme='dark'] .top-header{
-  background:#061821!important;
-  background-color:#061821!important;
-  background-image:none!important;
-}
-html[data-effective-theme='light'],
-html[data-effective-theme='light'] body,
-html[data-effective-theme='light'] .top-header,
-body[data-theme='light'],
-body[data-theme='light'] .top-header{
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-  background-image:none!important;
-}
-.top-header{
-  position:sticky!important;
-  top:0!important;
-  z-index:40!important;
-  width:100%!important;
-  min-height:86px!important;
-  display:grid!important;
-  grid-template-columns:46px minmax(0,1fr) 46px!important;
-  align-items:center!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  margin:0!important;
-  border-bottom:1px solid #29404C!important;
-  box-shadow:none!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.top-header .logo{
-  margin:0!important;
-  padding:0!important;
-  text-align:center!important;
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px!important;
-  font-weight:400!important;
-  line-height:1!important;
-  letter-spacing:-.7px!important;
-  color:#6F96BE!important;
-  white-space:nowrap!important;
-}
-.top-header .logo span{color:#8FC6A2!important}
-.top-header .tagline{display:none!important}
-.top-header .back-btn,.top-header .profile-chip{
-  visibility:hidden!important;
-  pointer-events:none!important;
-  width:42px!important;
-  height:42px!important;
-  min-width:42px!important;
-  padding:0!important;
-}
-html[data-effective-theme='light'] .top-header,
-body[data-theme='light'] .top-header{border-bottom-color:#DDE3E8!important}
-html[data-effective-theme='light'] .top-header .logo,
-body[data-theme='light'] .top-header .logo{color:#5D7FA3!important}
-html[data-effective-theme='light'] .top-header .logo span,
-body[data-theme='light'] .top-header .logo span{color:#8CB69B!important}
-
-/* Candidate bottom nav source of truth: same dimensions/icons on every tab. */
-#candidate-bottom-nav,
-.bottom-nav.candidate{
-  position:fixed!important;
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  z-index:50!important;
-  width:100%!important;
-  max-width:560px!important;
-  margin:0 auto!important;
-  min-height:72px!important;
-  padding:8px 12px calc(10px + env(safe-area-inset-bottom))!important;
-  display:grid!important;
-  grid-template-columns:repeat(5,minmax(0,1fr))!important;
-  border-top:1px solid #29404C!important;
-  background:#061821!important;
-  background-image:none!important;
-  box-shadow:none!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-
-#candidate-bottom-nav .nav-item,
-.bottom-nav.candidate .nav{
-  position:relative!important;
-  min-width:0!important;
-  min-height:54px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  background:transparent!important;
-  color:#8293A2!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:4px!important;
-  font-family:'DM Sans',Arial,sans-serif!important;
-  font-size:9px!important;
-  line-height:1.1!important;
-  font-weight:800!important;
-}
-
-#candidate-bottom-nav .nav-icon,
-.bottom-nav.candidate .nav svg{
-  width:20px!important;
-  height:20px!important;
-  min-width:20px!important;
-  min-height:20px!important;
-}
-
-#candidate-bottom-nav .nav-icon svg,
-.bottom-nav.candidate .nav svg{
-  width:20px!important;
-  height:20px!important;
-  fill:none!important;
-  stroke:currentColor!important;
-  stroke-width:1.8!important;
-  stroke-linecap:round!important;
-  stroke-linejoin:round!important;
-}
-
-#candidate-bottom-nav .nav-item.active,
-.bottom-nav.candidate .nav.active{
-  color:#73A4CE!important;
-}
-
-#candidate-bottom-nav .nav-item.active::before,
-.bottom-nav.candidate .nav.active::before{
-  content:''!important;
-  position:absolute!important;
-  top:-9px!important;
-  left:50%!important;
-  transform:translateX(-50%)!important;
-  width:34px!important;
-  height:3px!important;
-  border-radius:999px!important;
-  background:#73A4CE!important;
-}
-
-#candidate-bottom-nav .nav-label,
-.bottom-nav.candidate .nav > span:not(.messaging-nav-badge){
-  font-family:'DM Sans',Arial,sans-serif!important;
-  font-size:9px!important;
-  line-height:1.1!important;
-  font-weight:800!important;
-  white-space:nowrap!important;
-}
-
-html[data-effective-theme='light'] #candidate-bottom-nav,
-body[data-theme='light'] #candidate-bottom-nav,
-html[data-effective-theme='light'] .bottom-nav.candidate{
-  background:#F6F8F7!important;
-  border-top-color:#DDE3E8!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item,
-body[data-theme='light'] #candidate-bottom-nav .nav-item,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav{
-  color:#738394!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active,
-body[data-theme='light'] #candidate-bottom-nav .nav-item.active,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav.active{
-  color:#35679A!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active::before,
-body[data-theme='light'] #candidate-bottom-nav .nav-item.active::before,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
-  background:#35679A!important;
-}
-
-</style>
-
-
-<style id="discover-profile-header-alignment-fix">
-/* Keep Discover's top shell visually identical to My Profile. */
-.top-header{
-  min-height:86px!important;
-  height:auto!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  grid-template-columns:46px minmax(0,1fr) 46px!important;
-}
-.top-header .brand-block{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-width:0!important;
-}
-.top-header .logo{
-  font-size:31px!important;
-  line-height:1!important;
-  letter-spacing:-.7px!important;
-}
-/* Match the content breathing room used directly below the My Profile header. */
-.progress-shell{
-  padding:28px 18px 0!important;
-}
-
-/* When there are no more matches, center the message in the usable content area
-   (between the progress card and bottom nav), not the whole viewport. */
-.empty-screen{
-  height:auto!important;
-  min-height:calc(100dvh - 86px - 118px - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
-  padding:12px 30px calc(44px + env(safe-area-inset-bottom))!important;
-  align-items:center!important;
-  justify-content:center!important;
-  transform:translateY(-5vh)!important;
-}
-.empty-title{
-  margin-bottom:12px!important;
-}
-.empty-sub{
-  max-width:340px!important;
-}
-@media (max-height:760px){
-  .top-header{
-    min-height:86px!important;
-    padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+  .btn-skip:hover{
+    border-color:var(--rose);
+    color:#9a5151;
+    transform:translateY(-1px);
   }
-  .progress-shell{padding-top:20px!important}
-  .empty-screen{
-    min-height:calc(100dvh - 86px - 104px - 82px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
-    transform:translateY(-3vh)!important;
-  }
-}
-</style>
 
+  .btn-apply:hover{
+    transform:translateY(-1px);
+    opacity:.92;
+  }
+
+  .action-btn-stack{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+  }
+
+  .action-btn-icon{
+    font-size:18px;
+    line-height:1;
+    font-weight:600;
+  }
+
+  .btn-apply .action-btn-icon{
+    color:white;
+  }
+
+  .btn-undo .action-btn-icon,
+  .btn-skip .action-btn-icon{
+    color:var(--text);
+  }
+
+  .action-btn-label{
+    font-size:16px;
+    line-height:1.1;
+    font-weight:700;
+  }
+
+  .btn-apply .action-btn-label{
+    color:white;
+  }
+
+  .btn-undo .action-btn-label,
+  .btn-skip .action-btn-label{
+    color:var(--text);
+  }
+
+  .action-btn-sub{
+    font-size:11px;
+    line-height:1.15;
+    font-weight:400;
+  }
+
+  .btn-apply .action-btn-sub{
+    color:rgba(255,255,255,.88);
+  }
+
+  .btn-undo .action-btn-sub,
+  .btn-skip .action-btn-sub{
+    color:var(--text-muted);
+  }
+
+  .action-buttons button:disabled{
+    pointer-events:none;
+    opacity:.55;
+  }
+
+  @media (max-width:640px){
+    .action-buttons{
+      width:100%;
+      gap:10px;
+    }
+
+    .btn-undo{ min-width:96px; }
+    .btn-skip{ min-width:132px; }
+    .btn-apply{ min-width:154px; }
+  }
+
+  /* EMPTY STATE */
+  .empty-screen {
+    flex: 1; display: none;
+    flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; text-align: center; padding: 40px;
+  }
+  .empty-icon { font-size: 48px; }
+  .empty-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); }
+  .empty-sub { font-size: 15px; color: var(--text-muted); max-width: 300px; line-height: 1.6; }
+  .btn-reload {
+    margin-top: 8px; background: var(--brand); color: white;
+    border: none; border-radius: 100px;
+    padding: 14px 32px; font-size: 15px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-reload:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: white;
+    padding: 10px 20px; border-radius: 100px;
+    font-size: 13px; font-weight: 500;
+    transition: transform 0.3s ease; z-index: 100;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes swipeLeft {
+    to { transform: translateX(-120%) rotate(-20deg); opacity: 0; }
+  }
+  @keyframes swipeRight {
+    to { transform: translateX(120%) rotate(20deg); opacity: 0; }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
 </head>
+<body>
 
-<body data-swipe-build="2026-08-26-theme-sync">
-<header class="top-header">
-  <button class="back-btn" id="back-button" type="button">
-    <span aria-hidden="true">←</span>
-    <span>Back</span>
-  </button>
-
-  <div class="brand-block">
-    <div class="logo">Alygnn<span>.</span></div>
-    <div class="tagline">Get better job matches.</div>
+<nav>
+  <a href="index.html" class="logo">Alygnn<span>.</span></a>
+  <div class="nav-stats">
+    <div class="stat"><div class="stat-val" id="stat-applied">0</div><div class="stat-label">Applied</div></div>
+    <div class="stat"><div class="stat-val" id="stat-skipped">0</div><div class="stat-label">Skipped</div></div>
+    <div class="stat"><div class="stat-val" id="stat-remaining">—</div><div class="stat-label">Left</div></div>
   </div>
-
-  <button class="profile-chip" id="profile-button" type="button" aria-label="Open profile">JE</button>
-</header>
-
-<section class="progress-shell">
-  <div class="progress-card">
-    <div class="stat">
-      <div class="stat-val" id="stat-applied">0</div>
-      <div class="stat-label">Applied</div>
-    </div>
-
-    <div class="stat">
-      <div class="stat-val" id="stat-skipped">0</div>
-      <div class="stat-label">Passed</div>
-    </div>
-
-    <div class="stat">
-      <div class="stat-val" id="stat-remaining">0</div>
-      <div class="stat-label">Left</div>
-    </div>
-
-    <div class="job-progress">
-      <div class="progress-copy" id="job-progress-copy">Job 0 of 0</div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill"></div>
-      </div>
-    </div>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <a href="account.html" class="nav-back">👤 Account</a>
+    <a href="index.html" class="nav-back">← Back</a>
   </div>
-</section>
-
-<main class="swipe-area" id="swipe-area">
-  <div class="card-stack" id="card-stack"></div>
-
-  <div class="action-buttons">
-    <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">
-      <span class="action-undo-icon">↶</span>
-      <span class="action-main">Undo</span>
-    </button>
-
-    <button class="action-btn btn-skip" id="skip-button" type="button" aria-label="Not for me">
-      <span class="action-main">Not for me</span>
-      <span class="action-sub">Skip this job</span>
-    </button>
-
-    <button class="action-btn btn-apply" id="apply-button" type="button" aria-label="Apply now">
-      <span class="action-main">Apply now</span>
-      <span class="action-sub">Send my application</span>
-      <span class="action-arrow">→</span>
-    </button>
-  </div>
-</main>
-
-<section class="empty-screen" id="empty-screen">
-  <div class="empty-title">You're all caught up</div>
-  <div class="empty-sub">
-    You went through all your matches. More jobs will appear as Alygnn finds better fits for you.
-  </div>
-</section>
-
-<nav class="bottom-nav" id="candidate-bottom-nav" aria-label="Candidate navigation">
-  <button class="nav-item" type="button" onclick="window.location.href='app-account.html'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="7.5" r="3.5"></circle>
-        <path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path>
-      </svg>
-    </span>
-    <span class="nav-label">My Profile</span>
-  </button>
-
-  <button class="nav-item active" type="button" aria-current="page">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="10.5" cy="10.5" r="5.5"></circle>
-        <path d="m15 15 4.5 4.5"></path>
-      </svg>
-    </span>
-    <span class="nav-label" id="discover-nav-label">Discover</span>
-  </button>
-
-  <button class="nav-item" type="button" onclick="window.location.href='app-applied.html'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <rect x="4" y="7" width="16" height="12" rx="2"></rect>
-        <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path>
-        <path d="M4 11h16"></path>
-      </svg>
-    </span>
-    <span class="nav-label">My Jobs</span>
-  </button>
-
-
-  <button class="nav-item" id="nav-messages" type="button" onclick="window.location.href='app-messages.html?role=candidate'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-        <path d="M8 9h8"></path>
-        <path d="M8 13h5"></path>
-      </svg>
-    </span>
-    <span class="nav-label">Messages</span>
-    <span class="messaging-nav-badge" id="candidate-message-badge" hidden>0</span>
-  </button>
-
-  <button class="nav-item" type="button" onclick="window.location.href='app-account.html#settings'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
-      </svg>
-    </span>
-    <span class="nav-label">Settings</span>
-  </button>
 </nav>
 
-
-
-<div class="job-details-overlay" id="job-details-overlay" aria-hidden="true">
-  <section class="job-details-sheet" id="job-details-sheet" role="dialog" aria-modal="true" aria-labelledby="details-job-title">
-    <div class="details-grip"></div>
-    <header class="details-header">
-      <button class="details-close" id="details-close" type="button" aria-label="Close job details">←</button>
-      <div class="details-header-title">Full job ad</div>
-      <button class="details-save" id="details-save" type="button" aria-label="Save job">♡</button>
-    </header>
-    <div class="details-scroll" id="details-scroll"></div>
-    <footer class="details-footer">
-      <button class="details-apply" id="details-apply" type="button">Apply Now</button>
-    </footer>
-  </section>
+<!-- LOADING -->
+<div class="loading-screen" id="loading-screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Finding your matches...</div>
+  <div class="loading-sub">Searching jobs based on your preferences</div>
 </div>
 
+<!-- ERROR -->
+<div class="error-screen" id="error-screen">
+  <div class="error-icon">😕</div>
+  <div class="error-title">Couldn't load jobs</div>
+  <div class="error-sub" id="error-msg">Something went wrong fetching jobs. Check your internet connection and try again.</div>
+  <div class="state-actions">
+    <button class="btn-retry" onclick="loadJobs()">Try again</button>
+    <button class="btn-preferences" onclick="goToPreferences()">Set preferences again</button>
+  </div>
+</div>
+
+<!-- SWIPE AREA -->
+<div class="swipe-area" id="swipe-area">
+  <div class="card-stack" id="card-stack"></div>
+  <div class="action-buttons">
+    <button class="btn-undo" onclick="undo()" title="Undo">
+      <span class="action-btn-stack">
+        <span class="action-btn-icon">↩</span>
+        <span class="action-btn-label">Undo</span>
+        <span class="action-btn-sub">Bring it back</span>
+      </span>
+    </button>
+
+    <button class="btn-skip" onclick="skipCurrent()" title="Pass">
+      <span class="action-btn-stack">
+        <span class="action-btn-icon">✕</span>
+        <span class="action-btn-label">Pass</span>
+        <span class="action-btn-sub">Skip this job</span>
+      </span>
+    </button>
+
+    <button class="btn-apply" onclick="applyCurrent()" title="Apply now">
+      <span class="action-btn-stack">
+        <span class="action-btn-icon">✓</span>
+        <span class="action-btn-label">Apply now</span>
+        <span class="action-btn-sub">Send my application</span>
+      </span>
+    </button>
+  </div>
+</div>
+
+<!-- EMPTY -->
+<div class="empty-screen" id="empty-screen">
+  <div class="empty-icon">🎉</div>
+  <div class="empty-title">You've seen them all!</div>
+  <div class="empty-sub">You went through all your matches. Load a fresh batch or update your preferences.</div>
+  <div class="state-actions">
+    <button class="btn-reload" onclick="loadJobs()">Load more jobs</button>
+    <button class="btn-preferences" onclick="goToPreferences()">Set preferences again</button>
+  </div>
+</div>
+
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
-const sb=supabase.createClient(
-  'https://auth.alygnn.com',
-  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
-);
+  const SUPABASE_URL = 'https://auth.alygnn.com';
+  const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+  function alygnnAuthStorageKey() {
+    let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
 
-let session=null;
-let candidateProfile={};
-let candidatePreferences={};
-let candidateResume={};
-let jobs=[];
-let currentIndex=0;
-const SWIPE_COMMIT_THRESHOLD=70;
-let applied=0;
-let skipped=0;
-let history=[];
-let activeCard=null;
-let isDragging=false;
-let startX=0;
-let startY=0;
-let currentX=0;
-let activePointerId=null;
-let toastTimer;
-let detailsJobIndex=null;
-let dragDistance=0;
+    if (!tabId) {
+      tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 
-function escapeHtml(value){
-  return String(value??'').replace(/[&<>"']/g,c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  })[c]);
-}
-
-function initials(value){
-  const parts=String(value||'A').trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0]||'A')+(parts[1]?.[0]||'')).toUpperCase();
-}
-
-function salaryText(job){
-  if(job.salary)return job.salary;
-  if(job.salary_min&&job.salary_max){
-    return '$'+Number(job.salary_min).toLocaleString()+'–$'+Number(job.salary_max).toLocaleString();
-  }
-  if(job.salary_min)return 'From $'+Number(job.salary_min).toLocaleString();
-  if(job.salary_max)return 'Up to $'+Number(job.salary_max).toLocaleString();
-  return 'Salary not listed';
-}
-
-function postedText(value){
-  if(!value)return 'Recently posted';
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime()))return 'Recently posted';
-  const days=Math.floor((Date.now()-date.getTime())/86400000);
-  if(days<=0)return 'Today';
-  if(days===1)return '1 day ago';
-  return days+' days ago';
-}
-
-
-
-function normalizeList(value){
-  if(Array.isArray(value))return value.map(v=>String(v).trim()).filter(Boolean);
-  if(!value)return [];
-  if(typeof value==='object')return Object.values(value).flatMap(normalizeList);
-  return String(value)
-    .split(/\n|•|;|\|/)
-    .map(v=>v.replace(/^[-–—✓✔]\s*/, '').trim())
-    .filter(Boolean);
-}
-
-
-function parseObject(value){
-  if(!value)return {};
-  if(typeof value==='object'&&!Array.isArray(value))return value;
-  if(typeof value==='string'){
-    try{
-      const parsed=JSON.parse(value);
-      return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
-    }catch(_error){
-      return {};
-    }
-  }
-  return {};
-}
-
-function normalizeMatchText(value){
-  return String(value||'')
-    .toLowerCase()
-    .replace(/&/g,' and ')
-    .replace(/[–—]/g,'-')
-    .replace(/[^a-z0-9+#.\s-]/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
-const MATCH_STOP_WORDS=new Set([
-  'a','an','and','are','as','at','be','by','for','from','in','is','it','of',
-  'on','or','the','to','with','your','you','our','we','this','that','will',
-  'job','role','position','work','working','team','candidate','company'
-]);
-
-function matchTokens(value){
-  return normalizeMatchText(value)
-    .split(/[\s/,_-]+/)
-    .map(token=>token.trim())
-    .filter(token=>token.length>1&&!MATCH_STOP_WORDS.has(token));
-}
-
-function textSimilarity(left,right){
-  const a=normalizeMatchText(left);
-  const b=normalizeMatchText(right);
-  if(!a||!b)return null;
-  if(a===b)return 100;
-  if(a.includes(b)||b.includes(a))return 95;
-  const aTokens=[...new Set(matchTokens(a))];
-  const bTokens=[...new Set(matchTokens(b))];
-  if(!aTokens.length||!bTokens.length)return 0;
-  const bSet=new Set(bTokens);
-  const overlap=aTokens.filter(token=>bSet.has(token)).length;
-  const denominator=Math.max(aTokens.length,bTokens.length);
-  if(!overlap)return 0;
-  return Math.min(100,Math.round((overlap/denominator)*100));
-}
-
-function canonicalWorkStyle(value){
-  const text=normalizeMatchText(value).replace(/\s+/g,'');
-  if(text.includes('remote'))return 'remote';
-  if(text.includes('hybrid'))return 'hybrid';
-  if(text.includes('onsite')||text.includes('on-site'))return 'onsite';
-  return text;
-}
-
-function canonicalJobType(value){
-  const text=normalizeMatchText(value).replace(/[\s-]+/g,'');
-  if(text.includes('fulltime'))return 'fulltime';
-  if(text.includes('parttime'))return 'parttime';
-  if(text.includes('contractor')||text.includes('contract'))return 'contract';
-  if(text.includes('internship')||text.includes('intern'))return 'intern';
-  if(text.includes('temporary')||text.includes('temp'))return 'temporary';
-  return text;
-}
-
-function splitLocation(value){
-  const raw=String(value||'').trim();
-  const parts=raw.split(',').map(part=>normalizeMatchText(part)).filter(Boolean);
-  return {raw:normalizeMatchText(raw),city:parts[0]||'',state:parts[1]||''};
-}
-
-function locationScore(job){
-  const wanted=candidatePreferences.location||[candidatePreferences.city,candidatePreferences.state].filter(Boolean).join(', ');
-  const offered=job.location||[job.location_city||job.city,job.location_state||job.state].filter(Boolean).join(', ');
-  if(!wanted||!offered)return null;
-  const preferredStyle=canonicalWorkStyle(candidatePreferences.workStyle);
-  const jobStyle=canonicalWorkStyle(job.work_style||job.work_arrangement);
-  if(jobStyle==='remote')return preferredStyle==='remote'?100:90;
-  const a=splitLocation(wanted);
-  const b=splitLocation(offered);
-  if(a.raw===b.raw)return 100;
-  if(a.city&&b.city&&a.city===b.city&&a.state&&b.state&&a.state===b.state)return 100;
-  if(a.city&&b.city&&a.city===b.city)return 90;
-  if(a.state&&b.state&&a.state===b.state)return 75;
-  return 20;
-}
-
-function workStyleScore(job){
-  const wanted=canonicalWorkStyle(candidatePreferences.workStyle);
-  const offered=canonicalWorkStyle(job.work_style||job.work_arrangement);
-  if(!wanted||!offered)return null;
-  if(wanted===offered)return 100;
-  if(wanted==='hybrid'&&(offered==='remote'||offered==='onsite'))return 65;
-  if(offered==='hybrid'&&(wanted==='remote'||wanted==='onsite'))return 65;
-  return 15;
-}
-
-function jobTypeScore(job){
-  const wantedRaw=Array.isArray(candidatePreferences.jobTypes)&&candidatePreferences.jobTypes.length
-    ?candidatePreferences.jobTypes
-    :[candidatePreferences.jobType].filter(Boolean);
-  if(!wantedRaw.length)return null;
-  const wanted=wantedRaw.map(canonicalJobType).filter(Boolean);
-  const offered=canonicalJobType(job.job_type||job.employment_type);
-  if(!offered)return null;
-  return wanted.includes(offered)?100:10;
-}
-
-function extractMoneyValues(text){
-  const source=String(text||'');
-  const values=[];
-  const regex=/\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kK])?/g;
-  let match;
-  while((match=regex.exec(source))){
-    let value=Number(match[1].replace(/,/g,''));
-    if(match[2])value*=1000;
-    if(Number.isFinite(value))values.push(value);
-  }
-  return values;
-}
-
-function annualizePay(value,periodText){
-  if(!Number.isFinite(value))return null;
-  const period=normalizeMatchText(periodText);
-  if(period.includes('hour'))return value*2080;
-  if(period.includes('week'))return value*52;
-  if(period.includes('month'))return value*12;
-  if(period.includes('day'))return value*260;
-  return value;
-}
-
-function jobPayRange(job){
-  let min=Number(job.pay_min??job.salary_min??NaN);
-  let max=Number(job.pay_max??job.salary_max??NaN);
-  const salaryTextValue=job.salary||'';
-  const period=job.pay_period||salaryTextValue;
-  if(!Number.isFinite(min)&&!Number.isFinite(max)){
-    const numbers=extractMoneyValues(salaryTextValue);
-    if(numbers.length){
-      min=numbers[0];
-      max=numbers.length>1?numbers[1]:numbers[0];
-    }
-  }
-  if(!Number.isFinite(min)&&Number.isFinite(max))min=max;
-  if(!Number.isFinite(max)&&Number.isFinite(min))max=min;
-  if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-  min=annualizePay(min,period);
-  max=annualizePay(max,period);
-  if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-  if(min>max)[min,max]=[max,min];
-  return {min,max};
-}
-
-function salaryScore(job){
-  const wantedMin=Number(candidatePreferences.salary_min);
-  const wantedMax=Number(candidatePreferences.salary_max);
-  const offered=jobPayRange(job);
-  if(!Number.isFinite(wantedMin)||!Number.isFinite(wantedMax)||!offered)return null;
-  if(offered.max>=wantedMin&&offered.min<=wantedMax)return 100;
-  if(offered.min>wantedMax)return 95;
-  const gap=wantedMin-offered.max;
-  const denominator=Math.max(wantedMin,1);
-  return Math.max(0,Math.round(100-(gap/denominator)*160));
-}
-
-function candidateSkills(){
-  const direct=normalizeList(candidateResume.skills);
-  const profileSkills=normalizeList(candidateProfile.skills||candidateProfile.skill_list||candidateProfile.top_skills);
-  return [...new Set([...direct,...profileSkills].map(skill=>String(skill).trim()).filter(Boolean))];
-}
-
-function resumeRoleText(){
-  const personal=parseObject(candidateResume.personal);
-  const experiences=Array.isArray(candidateResume.experience)?candidateResume.experience:[];
-  return [
-    candidatePreferences.query,
-    candidateResume.title,
-    personal.professional_title,
-    ...experiences.map(item=>item?.title||item?.job_title||'')
-  ].filter(Boolean).join(' ');
-}
-
-function jobSearchText(job){
-  return [job.title,job.description,job.requirements,job.qualifications,job.skills,job.responsibilities,job.tasks,job.duties]
-    .flatMap(value=>Array.isArray(value)?value:[value])
-    .filter(Boolean)
-    .join(' ');
-}
-
-function roleScore(job){
-  const candidateRole=resumeRoleText();
-  const jobTitle=job.title||'';
-  if(!candidateRole||!jobTitle)return null;
-  if(candidatePreferences.query){
-    const preferred=textSimilarity(candidatePreferences.query,jobTitle);
-    if(preferred!=null&&preferred>=80)return preferred;
-  }
-  return textSimilarity(candidateRole,jobTitle);
-}
-
-function skillsScore(job){
-  const skills=candidateSkills();
-  if(!skills.length)return null;
-  const haystack=normalizeMatchText(jobSearchText(job));
-  if(!haystack)return null;
-  let matched=0;
-  skills.forEach(skill=>{
-    const normalized=normalizeMatchText(skill);
-    if(!normalized)return;
-    if(haystack.includes(normalized)){
-      matched++;
-      return;
-    }
-    const tokens=matchTokens(normalized);
-    if(tokens.length&&tokens.every(token=>haystack.includes(token)))matched++;
-  });
-  return Math.round((matched/skills.length)*100);
-}
-
-
-function experienceScore(job){
-  const experiences=Array.isArray(candidateResume.experience)
-    ?candidateResume.experience
-    :[];
-
-  if(!experiences.length)return null;
-
-  const jobTitle=job.title||'';
-  const jobText=normalizeMatchText(jobSearchText(job));
-
-  let bestTitle=0;
-  const experienceText=[];
-
-  experiences.forEach(item=>{
-    if(!item||typeof item!=='object')return;
-
-    const title=
-      item.title||
-      item.job_title||
-      item.position||
-      item.role||
-      '';
-
-    const description=
-      item.description||
-      item.details||
-      item.summary||
-      item.responsibilities||
-      '';
-
-    if(title){
-      const similarity=textSimilarity(title,jobTitle);
-      if(Number.isFinite(similarity)){
-        bestTitle=Math.max(bestTitle,similarity);
-      }
+      window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
     }
 
-    experienceText.push(
-      title,
-      item.company||item.company_name||'',
-      description
-    );
+    return `alygnn-auth-${tabId}`;
+  }
+
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: window.sessionStorage,
+      storageKey: alygnnAuthStorageKey(),
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
   });
 
-  const candidateText=normalizeMatchText(experienceText.filter(Boolean).join(' '));
+  let jobs = [];
+  let currentIndex = 0;
+  let applied = 0;
+  let skipped = 0;
+  let history = [];
+  let currentUserId = null;
+  // Tracks which job ids have already had their view counted this session,
+  // so re-rendering the same top card (e.g. after undo) doesn't double-count.
+  const viewedJobIds = new Set();
 
-  let keywordScore=0;
+  // AI match scores (candidate <-> job fit), keyed by job id. Populated
+  // lazily as cards come into view — see ensureScoresFor(). Cached
+  // server-side in job_matches, so this only ever hits the network for
+  // pairs that haven't been scored before (or went stale after a resume
+  // or job edit — see the invalidation triggers in setup-job-matches.sql).
+  const matchScores = {};
+  const scoreRequestInFlight = new Set();
 
-  if(candidateText&&jobText){
-    const jobTokens=[...new Set(matchTokens(jobText))];
-    const candidateTokens=new Set(matchTokens(candidateText));
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let activeCard = null;
+  let activePointerId = null;
 
-    if(jobTokens.length){
-      const overlap=jobTokens.filter(token=>candidateTokens.has(token)).length;
-      keywordScore=Math.min(
-        100,
-        Math.round((overlap/Math.min(jobTokens.length,18))*100)
-      );
-    }
+  // Prevent double-swipes / rapid button taps from advancing the same card
+  // more than once while its 350ms exit animation is still running.
+  let swipeLocked = false;
+  let swipeFinishTimer = null;
+  let snapBackTimer = null;
+
+  function setSwipeControlsLocked(locked) {
+    document.querySelectorAll('.btn-undo, .btn-skip, .btn-apply').forEach(btn => {
+      btn.disabled = locked;
+      btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    });
   }
 
-  return Math.round(
-    Math.min(
-      100,
-      (bestTitle*.65)+(keywordScore*.35)
-    )
-  );
-}
+  function resetSwipeInteractionState() {
+    clearTimeout(swipeFinishTimer);
+    clearTimeout(snapBackTimer);
+    swipeFinishTimer = null;
+    snapBackTimer = null;
+    isDragging = false;
+    activePointerId = null;
+    currentX = 0;
+    activeCard = null;
+    swipeLocked = false;
+    setSwipeControlsLocked(false);
+  }
 
-function scoreMetric(job,key){
-  const value=job?._alygnn_breakdown?.[key];
-  return Number.isFinite(Number(value))
-    ?Math.max(0,Math.min(100,Math.round(Number(value))))
-    :null;
-}
-
-function compactMetric(label,value){
-  const display=value==null?'—':value+'%';
-  const width=value==null?0:value;
-
-  return `
-    <div class="alygnn-mini-row">
-      <div class="alygnn-mini-row-top">
-        <span class="alygnn-mini-label">${escapeHtml(label)}</span>
-        <span class="alygnn-mini-value">${escapeHtml(display)}</span>
-      </div>
-      <div class="alygnn-mini-track">
-        <div class="alygnn-mini-fill" style="width:${width}%"></div>
-      </div>
-    </div>
-  `;
-}
-
-function renderCompactAlygnnMatch(job){
-  const score=Number.isFinite(Number(job?.match_score))
-    ?Math.max(0,Math.min(100,Math.round(Number(job.match_score))))
-    :null;
-
-  const breakdown=job?._alygnn_breakdown||{};
-
-  const skills=scoreMetric(job,'skills');
-  const experience=scoreMetric(job,'experience');
-  const salary=scoreMetric(job,'salary');
-  const location=scoreMetric(job,'location');
-
-  return `
-    <div class="alygnn-match-mini">
-      <div class="alygnn-match-mini-head">
-        <div>
-          <div class="alygnn-match-mini-title">Your Alygnn match</div>
-          <div class="alygnn-match-mini-sub">Based on your resume + preferences</div>
-        </div>
-      </div>
-
-      <div class="alygnn-match-mini-body">
-        <div
-          class="alygnn-score-ring"
-          style="--score:${score==null?0:score}"
-          aria-label="${score==null?'Alygnn score pending':score+' percent Alygnn match'}"
-        >
-          <div class="alygnn-score-number">
-            ${score==null?'—':score+'%'}
-            <small>Match</small>
-          </div>
-        </div>
-
-        <div class="alygnn-mini-metrics">
-          ${compactMetric('Skills',skills)}
-          ${compactMetric('Experience',experience)}
-          ${compactMetric('Salary',salary)}
-          ${compactMetric('Location',location)}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-
-function benefitsScore(job){
-  const wanted=normalizeList(candidatePreferences.benefits);
-  const offeredText=normalizeMatchText(Array.isArray(job.benefits)?job.benefits.join(' '):(job.benefits||job.perks||''));
-  if(!wanted.length||!offeredText)return null;
-  let matches=0;
-  wanted.forEach(item=>{
-    const text=normalizeMatchText(item);
-    const tokens=matchTokens(text);
-    if(offeredText.includes(text)||(tokens.length&&tokens.some(token=>offeredText.includes(token))))matches++;
-  });
-  return Math.round((matches/wanted.length)*100);
-}
-
-function industryScore(job){
-  const wanted=normalizeList(candidatePreferences.industries);
-  const offered=job.industry||job.industry_name||job.category||'';
-  if(!wanted.length||!offered)return null;
-  return Math.max(...wanted.map(industry=>textSimilarity(industry,offered)??0));
-}
-
-function calculateAlygnnScore(job){
-  const criteria=[
-    {key:'role',weight:12,value:roleScore(job)},
-    {key:'skills',weight:20,value:skillsScore(job)},
-    {key:'experience',weight:15,value:experienceScore(job)},
-    {key:'location',weight:13,value:locationScore(job)},
-    {key:'workStyle',weight:10,value:workStyleScore(job)},
-    {key:'jobType',weight:10,value:jobTypeScore(job)},
-    {key:'salary',weight:15,value:salaryScore(job)},
-    {key:'benefits',weight:3,value:benefitsScore(job)},
-    {key:'industry',weight:2,value:industryScore(job)}
-  ];
-  const available=criteria.filter(item=>Number.isFinite(item.value));
-  if(!available.length)return {score:null,breakdown:{}};
-  const totalWeight=available.reduce((sum,item)=>sum+item.weight,0);
-  const weighted=available.reduce((sum,item)=>sum+(item.value*item.weight),0);
-  const score=Math.max(0,Math.min(100,Math.round(weighted/totalWeight)));
-  return {
-    score,
-    breakdown:Object.fromEntries(available.map(item=>[item.key,Math.round(item.value)]))
+  // Maps the checkbox values saved on preferences.html (FULLTIME, PARTTIME,
+  // CONTRACTOR, INTERN) to how job_type is actually stored on the jobs table
+  // (Full-time, Part-time, Contract, Internship).
+  const JOB_TYPE_MAP = {
+    FULLTIME: 'Full-time',
+    PARTTIME: 'Part-time',
+    CONTRACTOR: 'Contract',
+    INTERN: 'Internship'
   };
-}
 
-async function loadCandidateMatchingProfile(){
-  const {data,error}=await sb
-    .from('profiles')
-    .select('*')
-    .eq('id',session.user.id)
-    .maybeSingle();
-  if(error)throw error;
-  candidateProfile=data||{};
-  candidatePreferences=parseObject(candidateProfile.preferences);
-  candidateResume=parseObject(candidateProfile.resume_data);
-}
-
-function renderList(items,emptyText){
-  const clean=normalizeList(items);
-  if(!clean.length)return `<div class="details-empty">${escapeHtml(emptyText)}</div>`;
-  return `<ul class="details-list">${clean.map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-}
-
-function getJobLists(job){
-  return {
-    responsibilities: job.responsibilities||job.tasks||job.duties||[],
-    requirements: job.requirements||job.qualifications||job.skills||[],
-    benefits: job.benefits||job.perks||[]
-  };
-}
-
-function candidateExternalUrl(value){
-  const raw=String(value||'').trim();
-  if(!raw)return '';
-  try{
-    const url=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw);
-    return ['http:','https:'].includes(url.protocol)?url.href:'';
-  }catch(_error){
-    return '';
+  function getInitials(name) {
+    if (!name) return '🏢';
+    return name.trim().split(/\s+/).map(w => w[0]).join('').substring(0, 2).toUpperCase();
   }
-}
 
-function candidateCompanyLogoHtml(job,company){
-  const logo=candidateExternalUrl(job.company_logo||job.logo_url);
-  if(!logo)return escapeHtml(initials(company));
-  return `<img src="${escapeHtml(logo)}" alt="${escapeHtml(company)} logo" onerror="this.remove();this.parentElement.textContent='${escapeHtml(initials(company))}'">`;
-}
+  function safeCompanyLogoUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    try {
+      const url = new URL(raw);
+      return (url.protocol === 'https:' || url.protocol === 'http:') ? url.toString() : '';
+    } catch {
+      return '';
+    }
+  }
 
-function candidateCompanyLink(label,value){
-  const url=candidateExternalUrl(value);
-  if(!url)return '';
-  return `<a class="details-company-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
-}
+  async function attachEmployerLogos(jobRows) {
+    const rows = Array.isArray(jobRows) ? jobRows : [];
+    const employerIds = [...new Set(rows.map(job => job.employer_id).filter(Boolean).map(String))];
 
-function openJobDetails(index){
-  const job=jobs[Number(index)];
-  if(!job)return;
-  detailsJobIndex=Number(index);
+    if (!employerIds.length) return rows;
 
-  const company=job.company||job.company_name||'Employer';
-  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
-  const type=job.job_type||job.employment_type||'Job';
-  const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
-    ?Math.round(Number(job.match_score))
-    :null;
-  const lists=getJobLists(job);
-  const companyAbout=job.company_description||job.company_headline||job.about_company||'';
+    const logoByEmployer = new Map();
 
-  document.getElementById('details-scroll').innerHTML=`
-    <article class="details-hero">
-      <div class="details-company-row">
-        <div class="details-logo">${candidateCompanyLogoHtml(job,company)}</div>
-        <div>
-          <h1 class="details-title" id="details-job-title">${escapeHtml(job.title||'Job Opportunity')}</h1>
-          <div class="details-company">${escapeHtml(company)}</div>
-        </div>
-      </div>
-      <div class="details-pills">
-        <span class="details-pill">⌖ ${escapeHtml(location)}</span>
-        <span class="details-pill">▣ ${escapeHtml(type)}</span>
-        ${style?`<span class="details-pill">⌂ ${escapeHtml(style)}</span>`:''}
-        <span class="details-pill pay">${escapeHtml(salaryText(job))}</span>
-      </div>
+    await Promise.all(employerIds.map(async employerId => {
+      let logoUrl = '';
 
-      <div class="details-match-wrap">
-        ${renderCompactAlygnnMatch(job)}
-      </div>
-    </article>
-
-    <section class="details-section">
-      <h2>About the role</h2>
-      <div class="details-copy">${escapeHtml(job.description||'The employer has not added a full description yet.')}</div>
-    </section>
-
-    <section class="details-section">
-      <h2>Responsibilities</h2>
-      ${renderList(lists.responsibilities,'Responsibilities will be discussed during the hiring process.')}
-    </section>
-
-    <section class="details-section">
-      <h2>Requirements</h2>
-      ${renderList(lists.requirements,'No additional requirements were listed.')}
-    </section>
-
-    <section class="details-section">
-      <h2>Benefits</h2>
-      ${renderList(lists.benefits,'Benefits were not listed for this role.')}
-    </section>
-
-    <section class="details-section">
-      <h2>About ${escapeHtml(company)}</h2>
-
-      <div class="details-company-about">
-        <div class="details-company-about-logo">${candidateCompanyLogoHtml(job,company)}</div>
-        <div>
-          <div class="details-company-about-name">${escapeHtml(company)}</div>
-          <div class="details-company-about-meta">Verified employer on Alygnn</div>
-        </div>
-      </div>
-
-      <div class="details-copy">${escapeHtml(companyAbout||'Company information has not been added yet.')}</div>
-
-      <div class="details-company-links">
-        ${candidateCompanyLink('Website',job.company_website)}
-        ${candidateCompanyLink('LinkedIn',job.company_linkedin_url)}
-        ${candidateCompanyLink('Instagram',job.company_instagram_url)}
-        ${candidateCompanyLink('Facebook',job.company_facebook_url)}
-        ${candidateCompanyLink('X',job.company_x_url)}
-      </div>
-    </section>
-  `;
-
-  document.getElementById('details-save').textContent='♡';
-  document.getElementById('details-apply').textContent='Apply Now';
-  document.getElementById('details-apply').disabled=false;
-  document.getElementById('details-scroll').scrollTop=0;
-  document.body.classList.add('details-open');
-  const overlay=document.getElementById('job-details-overlay');
-  overlay.classList.add('open');
-  overlay.setAttribute('aria-hidden','false');
-}
-
-function closeJobDetails(){
-  const overlay=document.getElementById('job-details-overlay');
-  overlay.classList.remove('open');
-  overlay.setAttribute('aria-hidden','true');
-  document.body.classList.remove('details-open');
-  setTimeout(()=>{detailsJobIndex=null;},220);
-}
-
-async function applyFromDetails(){
-  if(detailsJobIndex===null)return;
-  const button=document.getElementById('details-apply');
-  const job=jobs[detailsJobIndex];
-  if(!job)return;
-  button.disabled=true;
-  button.textContent='Applying…';
-  try{
-    const alreadyExists=await createApplication(job);
-    if(!alreadyExists)applied++;
-    button.textContent=alreadyExists?'Already Applied':'✓ Applied';
-    updateStats();
-    showToast(alreadyExists?'Already applied':'Application submitted');
-    setTimeout(()=>{
-      closeJobDetails();
-      if(detailsJobIndex===currentIndex){
-        history.push({
-          job,
-          direction:'right',
-          index:currentIndex,
-          persistenceCreated:!alreadyExists
+      try {
+        const { data, error } = await sb.rpc('get_public_employer_profile', {
+          target_employer: employerId
         });
-        currentIndex++;
-        setTimeout(renderCards,230);
+
+        if (!error) {
+          const profile = Array.isArray(data) ? (data[0] || null) : (data || null);
+          logoUrl = safeCompanyLogoUrl(profile?.company_logo_url);
+        }
+      } catch (_) {}
+
+      if (!logoUrl) {
+        try {
+          const { data } = await sb
+            .from('profiles')
+            .select('company_logo_url')
+            .eq('id', employerId)
+            .maybeSingle();
+
+          logoUrl = safeCompanyLogoUrl(data?.company_logo_url);
+        } catch (_) {}
       }
-    },650);
-  }catch(error){
-    console.error(error);
-    button.disabled=false;
-    button.textContent='Apply Now';
-    showToast(error.message||'Could not apply');
+
+      if (logoUrl) logoByEmployer.set(employerId, logoUrl);
+    }));
+
+    return rows.map(job => ({
+      ...job,
+      company_logo_url: safeCompanyLogoUrl(job.company_logo_url) ||
+        logoByEmployer.get(String(job.employer_id || '')) ||
+        ''
+    }));
   }
-}
 
-function buildCard(job,index){
-  const card=document.createElement('div');
-  card.className='job-card';
-  card.dataset.index=index;
+  // Pulls jobs directly from Alygnn's own employer-posted jobs table —
+  // these only ever come from real business owners who created an
+  // employer account and posted through the dashboard, never from an
+  // outside job board or aggregator.
+  async function loadJobs() {
+    showScreen('loading');
 
-  const company=job.company||job.company_name||'Employer';
-  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
-  const type=job.job_type||job.employment_type||'Job';
-  const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
-    ?Math.round(Number(job.match_score))
-    :null;
-  const match=alygnnScore!=null
-    ?alygnnScore+'% Match'
-    :'Match pending';
+    const { data: { session } } = await sb.auth.getSession();
+    currentUserId = session?.user?.id || null;
 
-  card.innerHTML=`
-    <div class="stamp stamp-apply">APPLY</div>
-    <div class="stamp stamp-skip">PASS</div>
+    // FIX: this used to only ever read sessionStorage.getItem('preferences').
+    // That works during the very first onboarding pass (upload → preferences
+    // → swipe, before an account exists), but preferences.html deletes that
+    // sessionStorage entry immediately after saving to Supabase for anyone
+    // logged in — so on every subsequent visit, `pref` was silently just
+    // `{}` and none of salary/location/work style was ever actually being
+    // filtered on, even though the person had set it. Now: logged-in users
+    // get their real saved preferences from profiles.preferences; the
+    // sessionStorage fallback only covers the pre-login case.
+    let pref = {};
+    if (currentUserId) {
+      const { data: profile, error: profileError } = await sb
+        .from('profiles')
+        .select('preferences')
+        .eq('id', currentUserId)
+        .maybeSingle();
 
-    <div class="card-toolbar">
-      <div class="match">★ ${escapeHtml(match)}</div>
-      <div class="card-actions-mini">
-        <button class="icon-btn share-btn" type="button" aria-label="Share job">↗</button>
-        <button class="save-btn" type="button" aria-label="Save job">♡</button>
-      </div>
-    </div>
+      if (profileError) {
+        console.warn('Could not load saved preferences:', profileError);
+      }
+      pref = profile?.preferences || {};
+    } else {
+      const prefRaw = sessionStorage.getItem('preferences');
+      pref = prefRaw ? JSON.parse(prefRaw) : {};
+    }
 
-    <div class="card-top">
-      <div class="company-logo">${escapeHtml(initials(company))}</div>
-      <div>
-        <div class="job-title">${escapeHtml(job.title||'Job Opportunity')}</div>
-        <div class="company-line">
-          <div class="company-name">${escapeHtml(company)}</div>
-          <div class="verified" title="Verified employer">✓</div>
+    try {
+      const { data, error } = await sb
+        .from('jobs')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      let results = data || [];
+
+      // Never show a job again once the person has applied to it — without
+      // this, the same job kept reappearing indefinitely, and nothing
+      // stopped duplicate applications from piling up for it. Same idea
+      // now applies to skipped jobs via the skipped_jobs table, so a
+      // left-swipe is a real, permanent decision rather than something
+      // that resurfaces on the next reload.
+      if (currentUserId) {
+        const [{ data: existingApps, error: appsError }, { data: existingSkips, error: skipsError }] = await Promise.all([
+          sb.from('applications').select('job_id').eq('candidate_id', currentUserId),
+          sb.from('skipped_jobs').select('job_id').eq('candidate_id', currentUserId),
+        ]);
+
+        if (appsError) {
+          console.warn('Could not load existing applications:', appsError);
+        } else {
+          const appliedJobIds = new Set((existingApps || []).map(a => a.job_id));
+          results = results.filter(job => !appliedJobIds.has(job.id));
+        }
+
+        if (skipsError) {
+          console.warn('Could not load existing skips:', skipsError);
+        } else {
+          const skippedJobIds = new Set((existingSkips || []).map(s => s.job_id));
+          results = results.filter(job => !skippedJobIds.has(job.id));
+        }
+      }
+
+      const queryText = (pref.query || '').trim().toLowerCase();
+      if (queryText) {
+        results = results.filter(job =>
+          (job.title || '').toLowerCase().includes(queryText) ||
+          (job.description || '').toLowerCase().includes(queryText)
+        );
+      }
+
+      // Location matching. Keep the existing city behavior, but also
+      // allow a candidate to intentionally choose an entire state.
+      const STATE_ABBR_TO_NAME = {
+        AL:'Alabama', AK:'Alaska', AZ:'Arizona', AR:'Arkansas', CA:'California',
+        CO:'Colorado', CT:'Connecticut', DE:'Delaware', DC:'District of Columbia',
+        FL:'Florida', GA:'Georgia', HI:'Hawaii', ID:'Idaho', IL:'Illinois',
+        IN:'Indiana', IA:'Iowa', KS:'Kansas', KY:'Kentucky', LA:'Louisiana',
+        ME:'Maine', MD:'Maryland', MA:'Massachusetts', MI:'Michigan', MN:'Minnesota',
+        MS:'Mississippi', MO:'Missouri', MT:'Montana', NE:'Nebraska', NV:'Nevada',
+        NH:'New Hampshire', NJ:'New Jersey', NM:'New Mexico', NY:'New York',
+        NC:'North Carolina', ND:'North Dakota', OH:'Ohio', OK:'Oklahoma', OR:'Oregon',
+        PA:'Pennsylvania', RI:'Rhode Island', SC:'South Carolina', SD:'South Dakota',
+        TN:'Tennessee', TX:'Texas', UT:'Utah', VT:'Vermont', VA:'Virginia',
+        WA:'Washington', WV:'West Virginia', WI:'Wisconsin', WY:'Wyoming'
+      };
+
+      const STATE_NAME_TO_ABBR = Object.fromEntries(
+        Object.entries(STATE_ABBR_TO_NAME).map(([abbr, name]) => [name.toLowerCase(), abbr.toLowerCase()])
+      );
+
+      const rawState = String(pref.state_abbr || pref.state || '').trim();
+      let preferredState = '';
+
+      if (/^[A-Za-z]{2}$/.test(rawState)) {
+        preferredState = rawState.toLowerCase();
+      } else if (rawState) {
+        preferredState = STATE_NAME_TO_ABBR[rawState.toLowerCase()] || '';
+      }
+
+      const rawLocation = String(pref.location || '').trim();
+      if (!preferredState && rawLocation) {
+        if (/^[A-Za-z]{2}$/.test(rawLocation)) {
+          preferredState = rawLocation.toLowerCase();
+        } else if (STATE_NAME_TO_ABBR[rawLocation.toLowerCase()]) {
+          preferredState = STATE_NAME_TO_ABBR[rawLocation.toLowerCase()];
+        } else {
+          const stateMatch = rawLocation.match(/,\s*([A-Za-z]{2})\s*$/);
+          if (stateMatch) preferredState = stateMatch[1].toLowerCase();
+        }
+      }
+
+      const preferredCity = String(pref.city || '').trim().toLowerCase();
+      const isStateOnly = !preferredCity && !!preferredState;
+
+      if (isStateOnly) {
+        results = results.filter(job => {
+          if (job.work_style === 'Remote') return true;
+
+          const jobLocation = String(job.location || '').toLowerCase();
+          const stateName = String(STATE_ABBR_TO_NAME[preferredState.toUpperCase()] || '').toLowerCase();
+
+          return new RegExp(`,\\s*${preferredState}(?:\\s|$)`, 'i').test(jobLocation) ||
+            (stateName && jobLocation.includes(stateName));
+        });
+      } else {
+        const locationPref = (pref.city || pref.location || '').trim().toLowerCase();
+
+        if (locationPref) {
+          results = results.filter(job =>
+            job.work_style === 'Remote' ||
+            (job.location || '').toLowerCase().includes(locationPref) ||
+            locationPref.includes((job.location || '').toLowerCase())
+          );
+        }
+      }
+
+      if (Array.isArray(pref.jobTypes) && pref.jobTypes.length) {
+        const wantedTypes = pref.jobTypes.map(t => JOB_TYPE_MAP[t] || t);
+        results = results.filter(job => wantedTypes.includes(job.job_type));
+      }
+
+      if (pref.workStyle) {
+        // "Remote" preference is treated as a strict filter since that's
+        // usually a hard requirement; other work styles are left loose so
+        // results don't get overly narrow.
+        if (pref.workStyle === 'Remote') {
+          results = results.filter(job => job.work_style === 'Remote');
+        }
+      }
+
+      if (!results.length) {
+        throw new Error('No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.');
+      }
+
+      results = await attachEmployerLogos(results);
+
+      jobs = results;
+      currentIndex = 0;
+      applied = 0;
+      skipped = 0;
+      history = [];
+      updateStats();
+      renderCards();
+      showScreen('swipe');
+    } catch (err) {
+      console.error('loadJobs error:', err);
+      document.getElementById('error-msg').textContent = err.message || 'Failed to load jobs.';
+      showScreen('error');
+    }
+  }
+
+  function goToPreferences() {
+    window.location.href = 'preferences.html';
+  }
+
+  function showScreen(name) {
+    document.getElementById('loading-screen').style.display = name === 'loading' ? 'flex' : 'none';
+    document.getElementById('error-screen').style.display = name === 'error' ? 'flex' : 'none';
+    document.getElementById('swipe-area').style.display = name === 'swipe' ? 'flex' : 'none';
+    document.getElementById('empty-screen').style.display = name === 'empty' ? 'flex' : 'none';
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + ' days ago';
+    if (days < 30) return Math.floor(days / 7) + ' weeks ago';
+    return Math.floor(days / 30) + ' months ago';
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function buildCard(job, index) {
+    const card = document.createElement('div');
+    card.className = 'job-card';
+    if (job.alygnn_recommended === true) {
+      card.classList.add('alygnn-recommended-card');
+    } else if (job.featured_employer === true) {
+      card.classList.add('featured-employer-card');
+    }
+    card.dataset.index = index;
+
+    const pillsHTML = [
+      job.urgently_hiring === true ? '<span class="pill urgent">Urgently Hiring</span>' : '',
+      job.work_style === 'Remote' ? '<span class="pill remote">🌐 Remote</span>' : '',
+      job.location ? `<span class="pill">📍 ${escapeHtml(job.location)}</span>` : '',
+      job.job_type ? `<span class="pill">${escapeHtml(job.job_type)}</span>` : '',
+      job.salary ? `<span class="pill salary">${escapeHtml(job.salary)}</span>` : '',
+    ].filter(Boolean).join('');
+
+    const requirements = (job.requirements || '').split('\n').map(r => r.trim()).filter(Boolean).slice(0, 4);
+    const highlightsHTML = requirements.length
+      ? `<div class="card-highlights">
+          <div class="highlights-label">Requirements</div>
+          ${requirements.map(r => `<div class="highlight-item"><div class="highlight-dot"></div>${escapeHtml(r)}</div>`).join('')}
+        </div>`
+      : '';
+
+    const benefits = (job.benefits || '').split('\n').map(b => b.trim()).filter(Boolean).slice(0, 5);
+    const benefitsHTML = benefits.length
+      ? `<div class="card-benefits">${benefits.map(b => `<span class="benefit-tag">${escapeHtml(b)}</span>`).join('')}</div>`
+      : '';
+
+    const description = job.description || 'No description available.';
+
+    // Only shown to logged-in candidates — scoring needs their saved
+    // resume_data, which guests/pre-login sessions don't have yet.
+    const cachedMatch = matchScores[job.id];
+    const matchBadgeHTML = currentUserId
+      ? (cachedMatch
+          ? `<div class="match-badge" data-job-id="${job.id}">✦ ${cachedMatch.score}% match</div>`
+          : `<div class="match-badge pending" data-job-id="${job.id}">Calculating match…</div>`)
+      : '';
+
+    const companyLogoUrl = safeCompanyLogoUrl(job.company_logo_url);
+    const companyInitials = escapeHtml(getInitials(job.company));
+    const companyLogoHTML = companyLogoUrl
+      ? `<img src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(job.company || 'Company')} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="company-logo-fallback" style="display:none;">${companyInitials}</span>`
+      : `<span class="company-logo-fallback">${companyInitials}</span>`;
+
+    const recommendedBannerHTML = job.alygnn_recommended === true
+      ? `<div class="alygnn-recommended-banner"><span class="alygnn-recommended-mark">✦</span><span>Alygnn Recommended</span></div>`
+      : '';
+
+    const featuredEmployerHTML =
+      job.featured_employer === true && job.alygnn_recommended !== true
+        ? '<div class="featured-employer-badge">Featured Employer</div>'
+        : '';
+
+    card.innerHTML = `
+      <div class="stamp stamp-apply">APPLIED ✓</div>
+      <div class="stamp stamp-skip">PASSED ✕</div>
+      ${recommendedBannerHTML}
+      <div class="card-top">
+        <div class="company-logo">${companyLogoHTML}</div>
+        <div class="card-top-text">
+          <div class="job-title">${escapeHtml(job.title || 'Untitled Role')}</div>
+          <div class="company-name">${escapeHtml(job.company || '')}</div>
+          ${featuredEmployerHTML}
         </div>
       </div>
-    </div>
-
-    <div class="card-pills">
-      <span class="pill">⌖ ${escapeHtml(location)}</span>
-      <span class="pill">▣ ${escapeHtml(type)}</span>
-      ${style?`<span class="pill">⌂ ${escapeHtml(style)}</span>`:''}
-      <span class="pill salary">$ ${escapeHtml(salaryText(job))}</span>
-    </div>
-
-    <div class="card-overview">
-      <div class="card-overview-label">Quick overview</div>
-      <div class="card-desc">
-        ${escapeHtml(job.description||'Open the full job ad to review responsibilities, requirements, and company details.')}
+      ${matchBadgeHTML}
+      <div class="card-pills">${pillsHTML}</div>
+      <div class="card-desc">${escapeHtml(description)}</div>
+      ${highlightsHTML}
+      ${benefitsHTML}
+      <div class="card-bottom">
+        <div class="posted-time">${timeAgo(job.created_at)}</div>
+        <a class="view-details-link" href="job-details.html?job=${encodeURIComponent(job.id)}&from=swipe">View details →</a>
       </div>
-    </div>
+    `;
 
-    <div class="card-bottom">
-      <button
-        class="view-full-ad apply-link"
-        type="button"
-        aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
-      >
-        <span>View full job ad</span>
-        <span class="view-full-ad-arrow">→</span>
-      </button>
-    </div>
-  `;
-
-  const viewFullAdButton=card.querySelector('.view-full-ad');
-  if(viewFullAdButton){
-    viewFullAdButton.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      openJobDetails(index);
-    });
+    setupDrag(card);
+    return card;
   }
 
-  setupDrag(card);
-  return card;
-}
+  function renderCards() {
+    const stack = document.getElementById('card-stack');
 
-function renderCards(){
-  const stack=document.getElementById('card-stack');
-  stack.innerHTML='';
+    // Every render begins from a clean interaction state. This prevents a
+    // stale pointer capture, snap-back timeout, or swipe lock from leaving
+    // the next card unresponsive.
+    resetSwipeInteractionState();
+    stack.innerHTML = '';
 
-  const remaining=jobs.slice(currentIndex,currentIndex+3);
+    const remaining = jobs.slice(currentIndex, currentIndex + 3);
+    if (!remaining.length) {
+      showScreen('empty');
+      return;
+    }
 
-  if(!remaining.length){
-    document.getElementById('swipe-area').style.display='none';
-    document.getElementById('empty-screen').style.display='flex';
+    // IMPORTANT: First card in the DOM is the visible top card because CSS uses .job-card:first-child.
+    remaining.forEach((job, i) => {
+      stack.appendChild(buildCard(job, currentIndex + i));
+    });
+
     updateStats();
-    return;
+    setupTopCard();
+    trackViewForTopCard();
+
+    // Keep match scores ready a few cards ahead of what's currently
+    // visible, so by the time someone swipes to a card its score has
+    // usually already resolved instead of showing "Calculating…".
+    const lookahead = jobs.slice(currentIndex, currentIndex + 6).map(j => j.id);
+    ensureScoresFor(lookahead);
   }
 
-  document.getElementById('swipe-area').style.display='flex';
-  document.getElementById('empty-screen').style.display='none';
+  // Fetches AI match scores for the given job ids, cache-first. Reads
+  // job_matches directly (cheap, no Edge Function call) for anything
+  // already scored in a previous visit; only calls the score-job-match
+  // Edge Function for pairs that have genuinely never been scored.
+  async function ensureScoresFor(jobIds) {
+    if (!currentUserId) return; // no resume_data to score against pre-login
 
-  remaining.forEach((job,i)=>{
-    stack.appendChild(buildCard(job,currentIndex+i));
-  });
+    const need = jobIds.filter(id => !(id in matchScores) && !scoreRequestInFlight.has(id));
+    if (!need.length) return;
 
-  updateStats();
-  setupTopCard();
-  resetDecisionStamps(activeCard);
-}
+    need.forEach(id => scoreRequestInFlight.add(id));
 
-function setupTopCard(){
-  activeCard=document.querySelector('.job-card:first-child');
-}
+    try {
+      const { data: cachedRows, error: cacheError } = await sb
+        .from('job_matches')
+        .select('job_id, score, reason')
+        .eq('candidate_id', currentUserId)
+        .in('job_id', need);
 
-function setupDrag(card){
-  card.addEventListener('pointerdown',dragStart,{passive:false});
-}
+      if (cacheError) console.warn('Could not read cached match scores:', cacheError);
 
-function resetDecisionStamps(card=activeCard){
-  if(!card)return;
-  const applyStamp=card.querySelector('.stamp-apply');
-  const skipStamp=card.querySelector('.stamp-skip');
-  if(applyStamp)applyStamp.style.opacity=0;
-  if(skipStamp)skipStamp.style.opacity=0;
-}
+      (cachedRows || []).forEach(row => {
+        matchScores[row.job_id] = { score: row.score, reason: row.reason };
+      });
 
-function dragStart(e){
-  setupTopCard();
-  if(!activeCard||activeCard!==e.currentTarget)return;
-  if(e.target.closest('button,.apply-link')){
-    return;
-  }
+      const stillMissing = need.filter(id => !(id in matchScores));
 
-  e.preventDefault();
-  isDragging=true;
-  activePointerId=e.pointerId;
-  startX=e.clientX;
-  startY=e.clientY;
-  currentX=0;
-  dragDistance=0;
-  resetDecisionStamps(activeCard);
+      if (stillMissing.length) {
+        const { data, error } = await sb.functions.invoke('score-job-match', {
+          body: { candidateId: currentUserId, jobIds: stillMissing },
+        });
 
-  activeCard.classList.add('is-dragging');
-  activeCard.style.transition='none';
-
-  try{activeCard.setPointerCapture(e.pointerId)}catch(_){}
-
-  activeCard.addEventListener('pointermove',dragMove,{passive:false});
-  activeCard.addEventListener('pointerup',dragEnd);
-  activeCard.addEventListener('pointercancel',dragEnd);
-}
-
-function dragMove(e){
-  if(!isDragging||!activeCard)return;
-  if(activePointerId!==null&&e.pointerId!==activePointerId)return;
-
-  e.preventDefault();
-
-  currentX=e.clientX-startX;
-  const currentY=e.clientY-startY;
-  dragDistance=Math.hypot(currentX,currentY);
-  const rotate=currentX*.08;
-
-  activeCard.style.transform=`translate(${currentX}px,${currentY*.25}px) rotate(${rotate}deg)`;
-
-  const applyStamp=activeCard.querySelector('.stamp-apply');
-  const skipStamp=activeCard.querySelector('.stamp-skip');
-
-  // No preview state. If a stamp is visible, releasing performs it.
-  if(currentX>=SWIPE_COMMIT_THRESHOLD){
-    if(applyStamp)applyStamp.style.opacity=1;
-    if(skipStamp)skipStamp.style.opacity=0;
-  }else if(currentX<=-SWIPE_COMMIT_THRESHOLD){
-    if(skipStamp)skipStamp.style.opacity=1;
-    if(applyStamp)applyStamp.style.opacity=0;
-  }else{
-    resetDecisionStamps(activeCard);
-  }
-}
-
-function dragEnd(e){
-  if(!isDragging||!activeCard)return;
-
-  isDragging=false;
-  activePointerId=null;
-
-  activeCard.removeEventListener('pointermove',dragMove);
-  activeCard.removeEventListener('pointerup',dragEnd);
-  activeCard.removeEventListener('pointercancel',dragEnd);
-  activeCard.classList.remove('is-dragging');
-
-  const tapped=dragDistance<9&&Math.abs(currentX)<9;
-  const tappedIndex=activeCard.dataset.index;
-
-  if(currentX>=SWIPE_COMMIT_THRESHOLD){
-    resetDecisionStamps(activeCard);
-    animateSwipe('right');
-  }else if(currentX<=-SWIPE_COMMIT_THRESHOLD){
-    resetDecisionStamps(activeCard);
-    animateSwipe('left');
-  }else{
-    resetDecisionStamps(activeCard);
-    activeCard.style.transition='transform .25s ease';
-    activeCard.style.transform='';
-    if(tapped)setTimeout(()=>openJobDetails(tappedIndex),40);
-  }
-}
-
-function candidateSeenJobsKey(userId=session?.user?.id||''){
-  return `alygnn_candidate_seen_jobs:${String(userId||'unknown')}`;
-}
-
-function readCandidateSeenJobs(userId=session?.user?.id||''){
-  try{
-    const value=JSON.parse(localStorage.getItem(candidateSeenJobsKey(userId))||'[]');
-    return new Set(Array.isArray(value)?value.map(String):[]);
-  }catch(_){
-    return new Set();
-  }
-}
-
-function rememberCandidateSeenJob(jobId,userId=session?.user?.id||''){
-  if(!jobId)return;
-  try{
-    const seen=readCandidateSeenJobs(userId);
-    seen.add(String(jobId));
-    localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seen]));
-  }catch(_){}
-}
-
-function forgetCandidateSeenJob(jobId,userId=session?.user?.id||''){
-  if(!jobId)return;
-  try{
-    const seen=readCandidateSeenJobs(userId);
-    seen.delete(String(jobId));
-    localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seen]));
-  }catch(_){}
-}
-
-async function createApplication(job){
-  const {data:existing,error:checkError}=await sb
-    .from('applications')
-    .select('id')
-    .eq('candidate_id',session.user.id)
-    .eq('job_id',job.id)
-    .maybeSingle();
-
-  if(checkError)console.warn(checkError);
-  if(existing){
-    rememberCandidateSeenJob(job.id);
-    return true;
-  }
-
-  const {error}=await sb.from('applications').insert({
-    candidate_id:session.user.id,
-    job_id:job.id,
-    status:'applied',
-    applied_at:new Date().toISOString(),
-    match_score:Number.isFinite(Number(job.match_score))
-      ?Math.round(Number(job.match_score))
-      :null
-  });
-
-  if(error)throw error;
-  rememberCandidateSeenJob(job.id);
-  return false;
-}
-
-async function saveSkippedJob(job){
-  if(!job?.id)return true;
-
-  const {data:existing,error:checkError}=await sb
-    .from('skipped_jobs')
-    .select('job_id')
-    .eq('candidate_id',session.user.id)
-    .eq('job_id',job.id)
-    .maybeSingle();
-
-  if(checkError){
-    console.warn('Could not check skipped job:',checkError);
-  }
-
-  if(existing){
-    rememberCandidateSeenJob(job.id);
-    return true;
-  }
-
-  const {error}=await sb
-    .from('skipped_jobs')
-    .insert({
-      candidate_id:session.user.id,
-      job_id:job.id
-    });
-
-  if(error)throw error;
-  rememberCandidateSeenJob(job.id);
-  return false;
-}
-
-async function animateSwipe(direction){
-  setupTopCard();
-  if(!activeCard)return;
-
-  const job=jobs[Number(activeCard.dataset.index)];
-  activeCard.classList.add(direction==='right'?'swipe-right':'swipe-left');
-
-  let persistenceCreated=false;
-
-  if(direction==='right'){
-    try{
-      const alreadyExists=await createApplication(job);
-      persistenceCreated=!alreadyExists;
-      if(!alreadyExists)applied++;
-      showToast(alreadyExists?'Already applied':'Application submitted');
-    }catch(error){
-      console.error(error);
-      activeCard?.classList.remove('swipe-right');
-      renderCards();
-      showToast(error.message||'Could not apply');
-      return;
-    }
-  }else{
-    try{
-      const alreadySkipped=await saveSkippedJob(job);
-      persistenceCreated=!alreadySkipped;
-      if(!alreadySkipped)skipped++;
-      showToast(alreadySkipped?'Already passed':'Passed');
-    }catch(error){
-      console.error(error);
-      activeCard?.classList.remove('swipe-left');
-      renderCards();
-      showToast(error.message||'Could not save pass');
-      return;
-    }
-  }
-
-  history.push({
-    job,
-    direction,
-    index:currentIndex,
-    persistenceCreated
-  });
-
-  currentIndex++;
-
-  setTimeout(renderCards,350);
-}
-
-function skipCurrent(){
-  setupTopCard();
-  if(activeCard)animateSwipe('left');
-}
-
-function applyCurrent(){
-  setupTopCard();
-  if(activeCard)animateSwipe('right');
-}
-
-async function undo(){
-  if(!history.length){
-    showToast('Nothing to undo');
-    return;
-  }
-
-  const last=history.pop();
-  const jobId=last.job?.id;
-
-  try{
-    if(last.persistenceCreated && jobId){
-      if(last.direction==='right'){
-        const result=await sb
-          .from('applications')
-          .delete()
-          .eq('candidate_id',session.user.id)
-          .eq('job_id',jobId);
-
-        if(result.error)throw result.error;
-      }else{
-        const result=await sb
-          .from('skipped_jobs')
-          .delete()
-          .eq('candidate_id',session.user.id)
-          .eq('job_id',jobId);
-
-        if(result.error)throw result.error;
+        if (error) {
+          console.warn('score-job-match failed:', error);
+        } else {
+          (data?.scores || []).forEach(s => {
+            matchScores[s.job_id] = { score: s.score, reason: s.reason };
+          });
+        }
       }
-
-      forgetCandidateSeenJob(jobId);
+    } catch (err) {
+      console.warn('Could not compute match scores:', err);
+    } finally {
+      need.forEach(id => scoreRequestInFlight.delete(id));
+      patchRenderedBadges(need);
     }
-
-    if(last.direction==='right' && last.persistenceCreated){
-      applied=Math.max(0,applied-1);
-    }else if(last.direction==='left' && last.persistenceCreated){
-      skipped=Math.max(0,skipped-1);
-    }
-
-    currentIndex=last.index;
-    renderCards();
-    showToast('Undone');
-  }catch(error){
-    console.error('Could not undo candidate action:',error);
-    history.push(last);
-    showToast(error.message||'Could not undo');
-  }
-}
-
-function updateStats(){
-  const remaining=Math.max(0,jobs.length-currentIndex);
-  const position=jobs.length?Math.min(currentIndex+1,jobs.length):0;
-  const completed=jobs.length?Math.min(currentIndex,jobs.length):0;
-  const progress=jobs.length?(completed/jobs.length)*100:0;
-
-  document.getElementById('stat-applied').textContent=applied;
-  document.getElementById('stat-skipped').textContent=skipped;
-  document.getElementById('stat-remaining').textContent=remaining;
-  document.getElementById('job-progress-copy').textContent=`Job ${position} of ${jobs.length}`;
-  document.getElementById('progress-fill').style.width=progress+'%';
-}
-
-function showToast(message){
-  const toast=document.getElementById('toast');
-  toast.textContent=message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>toast.classList.remove('show'),1800);
-}
-
-async function loadJobs(){
-  const userId=session?.user?.id;
-  if(!userId){
-    jobs=[];
-    renderCards();
-    return;
   }
 
-  const [jobsResult,applicationsResult,skippedResult]=await Promise.all([
-    sb
-      .from('jobs')
-      .select('*')
-      .eq('status','active')
-      .order('created_at',{ascending:false}),
-    sb
+  // Updates any currently-rendered cards' badges in place once their
+  // score resolves, without a full re-render (which would restart the
+  // card's drag/animation state).
+  function patchRenderedBadges(jobIds) {
+    jobIds.forEach(id => {
+      const el = document.querySelector(`.match-badge[data-job-id="${CSS.escape(id)}"]`);
+      if (!el) return;
+      const match = matchScores[id];
+      if (match) {
+        el.textContent = `✦ ${match.score}% match`;
+        el.classList.remove('pending');
+      }
+    });
+  }
+
+  // Counts a "view" the first time a job actually reaches the top of the
+  // stack (i.e. the person can see it), not just because it exists in the
+  // fetched results. Uses a security-definer RPC since a job seeker isn't
+  // allowed to write to the jobs table directly under RLS — only the
+  // owning employer can, so a plain .update() here would be silently
+  // blocked the same way the old "applied" counter was.
+  function trackViewForTopCard() {
+    const topJob = jobs[currentIndex];
+    if (!topJob?.id || viewedJobIds.has(topJob.id)) return;
+
+    viewedJobIds.add(topJob.id);
+
+    sb.rpc('increment_job_views', { p_job_id: topJob.id }).then(({ error }) => {
+      if (error) console.warn('Could not record job view:', error);
+    });
+  }
+
+  function setupTopCard() {
+    const stack = document.getElementById('card-stack');
+    activeCard = stack.querySelector('.job-card:first-child');
+  }
+
+  function setupDrag(card) {
+    card.addEventListener('pointerdown', dragStart, { passive: false });
+  }
+
+  function dragStart(e) {
+    if (swipeLocked || isDragging) return;
+    if (e.target.closest('a')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    // A previous short drag may still have a snap-back timer pending.
+    // Cancel it so it cannot change transition styles in the middle of
+    // this new drag (the main cause of the intermittent "stuck" feeling).
+    clearTimeout(snapBackTimer);
+    snapBackTimer = null;
+
+    setupTopCard();
+
+    if (!activeCard || activeCard !== e.currentTarget) return;
+
+    e.preventDefault();
+
+    isDragging = true;
+    activePointerId = e.pointerId;
+    startX = e.clientX;
+    startY = e.clientY;
+    currentX = 0;
+
+    activeCard.classList.add('is-dragging');
+    activeCard.style.transition = 'none';
+
+    try {
+      activeCard.setPointerCapture(e.pointerId);
+    } catch (err) {
+      console.warn('Pointer capture not supported:', err);
+    }
+
+    activeCard.addEventListener('pointermove', dragMove, { passive: false });
+    activeCard.addEventListener('pointerup', dragEnd);
+    activeCard.addEventListener('pointercancel', dragCancel);
+  }
+
+  function dragMove(e) {
+    if (swipeLocked || !isDragging || !activeCard) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+
+    e.preventDefault();
+
+    currentX = e.clientX - startX;
+    const currentY = e.clientY - startY;
+    const rotate = currentX * 0.08;
+
+    activeCard.style.transform = `translate(${currentX}px, ${currentY * 0.25}px) rotate(${rotate}deg)`;
+
+    const applyStamp = activeCard.querySelector('.stamp-apply');
+    const skipStamp = activeCard.querySelector('.stamp-skip');
+    const ratio = Math.min(Math.abs(currentX) / 80, 1);
+
+    if (currentX > 20) {
+      applyStamp.style.opacity = ratio;
+      skipStamp.style.opacity = 0;
+    } else if (currentX < -20) {
+      skipStamp.style.opacity = ratio;
+      applyStamp.style.opacity = 0;
+    } else {
+      applyStamp.style.opacity = 0;
+      skipStamp.style.opacity = 0;
+    }
+  }
+
+  function detachDragListeners(card) {
+    if (!card) return;
+    card.removeEventListener('pointermove', dragMove);
+    card.removeEventListener('pointerup', dragEnd);
+    card.removeEventListener('pointercancel', dragCancel);
+  }
+
+  function releaseActivePointer(e) {
+    if (!activeCard) return;
+    try {
+      if (activePointerId !== null && activeCard.hasPointerCapture?.(activePointerId)) {
+        activeCard.releasePointerCapture(activePointerId);
+      } else if (e?.pointerId != null) {
+        activeCard.releasePointerCapture(e.pointerId);
+      }
+    } catch (err) {}
+  }
+
+  function resetCardToCenter(card) {
+    if (!card) return;
+    const applyStamp = card.querySelector('.stamp-apply');
+    const skipStamp = card.querySelector('.stamp-skip');
+    if (applyStamp) applyStamp.style.opacity = 0;
+    if (skipStamp) skipStamp.style.opacity = 0;
+
+    card.classList.remove('is-dragging');
+    card.style.transition = 'transform 0.25s ease';
+    card.style.transform = '';
+
+    clearTimeout(snapBackTimer);
+    snapBackTimer = setTimeout(() => {
+      // Only clear the transition if this is still the same live card and
+      // the user has not begun another drag or swipe.
+      if (card === activeCard && !isDragging && !swipeLocked) {
+        card.style.transition = '';
+      }
+      snapBackTimer = null;
+    }, 270);
+  }
+
+  function dragCancel(e) {
+    if (!isDragging || !activeCard) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+
+    const card = activeCard;
+    detachDragListeners(card);
+    releaseActivePointer(e);
+    isDragging = false;
+    activePointerId = null;
+    currentX = 0;
+    resetCardToCenter(card);
+  }
+
+  function dragEnd(e) {
+    if (!isDragging || !activeCard) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+
+    const card = activeCard;
+    const releasedX = currentX;
+
+    detachDragListeners(card);
+    releaseActivePointer(e);
+    isDragging = false;
+    activePointerId = null;
+    card.classList.remove('is-dragging');
+
+    const threshold = 70;
+
+    if (releasedX > threshold) {
+      animateSwipe('right');
+    } else if (releasedX < -threshold) {
+      animateSwipe('left');
+    } else {
+      currentX = 0;
+      resetCardToCenter(card);
+    }
+  }
+
+  // Inserts the actual application row candidates already have RLS rights
+  // to write ("Candidates manage their applications" — auth.uid() =
+  // candidate_id). This is what makes the application show up on the
+  // employer's Candidates page. The previous version of this function only
+  // tried to bump jobs.applied directly, which is blocked by RLS for
+  // anyone who isn't the job's employer, and so silently failed every time.
+  async function recordApplication(job) {
+    if (!currentUserId) {
+      throw new Error('Please sign in before applying.');
+    }
+    if (!job?.id) {
+      throw new Error('This job is missing its Alygnn job ID.');
+    }
+
+    // Check first so a second click / another open tab cannot create a
+    // duplicate application. More importantly, do not move the swipe card
+    // forward until Supabase confirms the application exists.
+    const { data: existing, error: existingError } = await sb
       .from('applications')
-      .select('job_id')
-      .eq('candidate_id',userId),
-    sb
-      .from('skipped_jobs')
-      .select('job_id')
-      .eq('candidate_id',userId)
-  ]);
+      .select('id,status')
+      .eq('candidate_id', currentUserId)
+      .eq('job_id', job.id)
+      .maybeSingle();
 
-  if(jobsResult.error){
-    console.error(jobsResult.error);
-    showToast(jobsResult.error.message||'Could not load jobs');
-    jobs=[];
-    renderCards();
-    return;
-  }
+    if (existingError) throw existingError;
+    if (existing) return { created: false, application: existing };
 
-  if(applicationsResult.error){
-    console.warn('Could not load prior applications for Discover filtering:',applicationsResult.error);
-  }
-
-  if(skippedResult.error){
-    console.warn('Could not load prior passed jobs for Discover filtering:',skippedResult.error);
-  }
-
-  const seenJobIds=readCandidateSeenJobs(userId);
-
-  (applicationsResult.data||[]).forEach(row=>{
-    if(row?.job_id)seenJobIds.add(String(row.job_id));
-  });
-
-  (skippedResult.data||[]).forEach(row=>{
-    if(row?.job_id)seenJobIds.add(String(row.job_id));
-  });
-
-  try{
-    localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seenJobIds]));
-  }catch(_){}
-
-  skipped=(skippedResult.data||[]).length;
-
-  jobs=(jobsResult.data||[])
-    .filter(job=>job?.id && !seenJobIds.has(String(job.id)))
-    .map(job=>{
-      const result=calculateAlygnnScore(job);
-      return {
-        ...job,
-        match_score:result.score,
-        _alygnn_breakdown:result.breakdown
-      };
-    })
-    .sort((a,b)=>{
-      const scoreA=Number.isFinite(Number(a.match_score))?Number(a.match_score):-1;
-      const scoreB=Number.isFinite(Number(b.match_score))?Number(b.match_score):-1;
-      return scoreB-scoreA;
-    });
-
-  currentIndex=0;
-  history=[];
-  renderCards();
-}
-
-document.getElementById('back-button').addEventListener('click',()=>{
-  window.location.href='app-account.html';
-});
-
-document.getElementById('profile-button').addEventListener('click',()=>{
-  window.location.href='app-account.html';
-});
-
-document.getElementById('undo-button').addEventListener('click',undo);
-document.getElementById('skip-button').addEventListener('click',skipCurrent);
-document.getElementById('apply-button').addEventListener('click',applyCurrent);
-
-document.addEventListener('click',event=>{
-  const saveButton=event.target.closest('.save-btn');
-  if(saveButton){
-    event.stopPropagation();
-    saveButton.textContent=saveButton.textContent==='♡'?'♥':'♡';
-    showToast(saveButton.textContent==='♥'?'Job saved':'Removed from saved');
-    return;
-  }
-
-  const shareButton=event.target.closest('.share-btn');
-  if(shareButton){
-    event.stopPropagation();
-    showToast('Share option coming next');
-  }
-});
-
-
-
-document.getElementById('details-close').addEventListener('click',closeJobDetails);
-document.getElementById('details-apply').addEventListener('click',applyFromDetails);
-document.getElementById('details-save').addEventListener('click',event=>{
-  const button=event.currentTarget;
-  button.textContent=button.textContent==='♡'?'♥':'♡';
-  showToast(button.textContent==='♥'?'Job saved':'Removed from saved');
-});
-document.getElementById('job-details-overlay').addEventListener('click',event=>{
-  if(event.target===event.currentTarget)closeJobDetails();
-});
-document.getElementById('job-details-sheet').addEventListener('click',event=>event.stopPropagation());
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&document.getElementById('job-details-overlay').classList.contains('open'))closeJobDetails();
-});
-
-
-function getCandidateThemePreference(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
-
-  return ['system','light','dark'].includes(saved)
-    ?saved
-    :'system';
-}
-
-function resolveCandidateTheme(preference=getCandidateThemePreference()){
-  if(preference==='light'||preference==='dark'){
-    return preference;
-  }
-
-  return window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-      ?'dark'
-      :'light';
-}
-
-function applyCandidateTheme(){
-  const preference=getCandidateThemePreference();
-  const resolved=resolveCandidateTheme(preference);
-
-  document.body.dataset.theme=resolved;
-  document.body.dataset.themePreference=preference;
-
-  const themeMeta=document.querySelector('meta[name="theme-color"]:not([media])');
-  if(themeMeta){
-    themeMeta.setAttribute(
-      'content',
-      resolved==='dark' ? '#061821' : '#F6F8F7'
-    );
-  }
-
-  return resolved;
-}
-
-function watchCandidateTheme(){
-  applyCandidateTheme();
-
-  if(window.matchMedia){
-    const media=window.matchMedia('(prefers-color-scheme: dark)');
-    const onSystemThemeChange=()=>{
-      if(getCandidateThemePreference()==='system'){
-        applyCandidateTheme();
-      }
+    const score = Number(matchScores[job.id]?.score);
+    const payload = {
+      candidate_id: currentUserId,
+      job_id: job.id,
+      status: 'applied',
+      applied_at: new Date().toISOString()
     };
 
-    if(typeof media.addEventListener==='function'){
-      media.addEventListener('change',onSystemThemeChange);
-    }else if(typeof media.addListener==='function'){
-      media.addListener(onSystemThemeChange);
+    if (Number.isFinite(score)) {
+      payload.match_score = score;
     }
-  }
 
-  window.addEventListener('storage',event=>{
-    if(
-      event.key==='alygnn_candidate_theme' ||
-      event.key==='alygnn-theme'
-    ){
-      applyCandidateTheme();
+    let result = await sb
+      .from('applications')
+      .insert(payload)
+      .select('id,status')
+      .single();
+
+    // Older databases may not have match_score exposed in the schema cache.
+    // Retry once without that optional field, while keeping applied_at.
+    if (
+      result.error &&
+      Object.prototype.hasOwnProperty.call(payload, 'match_score') &&
+      /match_score|schema cache|column/i.test(String(result.error.message || ''))
+    ) {
+      delete payload.match_score;
+      result = await sb
+        .from('applications')
+        .insert(payload)
+        .select('id,status')
+        .single();
     }
-  });
 
-  document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden){
-      applyCandidateTheme();
-    }
-  });
-
-  window.addEventListener('pageshow',applyCandidateTheme);
-}
-
-function enforceCandidateNav(){
-  const label=document.getElementById('discover-nav-label');
-  if(label&&label.textContent!=='Discover'){
-    label.textContent='Discover';
-  }
-}
-
-(async function initialize(){
-  watchCandidateTheme();
-
-  const {data,error}=await sb.auth.getSession();
-
-  if(error||!data.session){
-    window.location.replace('app-login.html');
-    return;
-  }
-
-  session=data.session;
-
-  const fullName=
-    session.user.user_metadata?.full_name||
-    session.user.user_metadata?.name||
-    session.user.email?.split('@')[0]||
-    'User';
-
-  document.getElementById('profile-button').textContent=initials(fullName);
-
-  const {count}=await sb
-    .from('applications')
-    .select('*',{count:'exact',head:true})
-    .eq('candidate_id',session.user.id);
-
-  applied=count||0;
-
-  try{
-    await loadCandidateMatchingProfile();
-  }catch(profileError){
-    console.error('Could not load Alygnn matching profile:',profileError);
-    showToast('Could not load your Alygnn matching profile');
-  }
-
-  await loadJobs();
-
-  enforceCandidateNav();
-  setTimeout(enforceCandidateNav,250);
-  setTimeout(enforceCandidateNav,1000);
-})();
-</script>
-
-
-<script id="alygnn-candidate-message-badge-script">
-(async function(){
-  const badge=document.getElementById('candidate-message-badge');
-  if(!badge || typeof sb==='undefined') return;
-
-  async function refresh(){
-    try{
-      const {data,error}=await sb.auth.getSession();
-      if(error) throw error;
-      const userId=data?.session?.user?.id;
-      if(!userId){ badge.hidden=true; return; }
-
-      const conversations=await sb
-        .from('application_conversations')
-        .select('id')
-        .eq('candidate_id',userId);
-
-      if(conversations.error) throw conversations.error;
-      const ids=(conversations.data||[]).map(row=>row.id).filter(Boolean);
-      if(!ids.length){
-        badge.textContent='0';
-        badge.hidden=true;
-        return;
+    if (result.error) {
+      // If another tab won the race after our pre-check, treat the unique
+      // constraint as success because the application is already there.
+      if (result.error.code === '23505') {
+        return { created: false, application: null };
       }
-
-      const unread=await sb
-        .from('application_messages')
-        .select('id')
-        .in('conversation_id',ids)
-        .neq('sender_id',userId)
-        .is('read_at',null);
-
-      if(unread.error) throw unread.error;
-      const count=(unread.data||[]).length;
-      badge.textContent=count>99?'99+':String(count);
-      badge.hidden=count===0;
-    }catch(error){
-      console.warn('Candidate message badge unavailable:',error);
-      badge.hidden=true;
+      throw result.error;
     }
+
+    return { created: true, application: result.data || null };
   }
 
-  window.AlygnnRefreshCandidateMessageBadge=refresh;
-  await refresh();
-  window.addEventListener('pageshow',refresh);
-  window.addEventListener('focus',refresh);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible') refresh();
-  });
+  // Mirrors recordApplication() for a left-swipe. Previously a skip only
+  // ever changed the in-memory `skipped` counter for this session — nothing
+  // was written to Supabase, so account.html's "Skipped jobs" list had
+  // nothing to read. This writes to the new skipped_jobs table (candidates
+  // have RLS rights on their own rows there, same pattern as applications).
+  async function recordSkip(job) {
+    if (!currentUserId || !job?.id) return;
+    try {
+      const { error } = await sb
+        .from('skipped_jobs')
+        .insert({
+          candidate_id: currentUserId,
+          job_id: job.id
+        });
 
-  try{
-    const channel=sb
-      .channel('candidate-nav-message-badge-'+Math.random().toString(36).slice(2))
-      .on('postgres_changes',{event:'*',schema:'public',table:'application_messages'},refresh)
-      .on('postgres_changes',{event:'*',schema:'public',table:'application_conversations'},refresh)
-      .subscribe();
-    window.addEventListener('pagehide',()=>{ try{ sb.removeChannel(channel); }catch(_){} },{once:true});
-  }catch(_){}
-})();
-</script>
-
-
-<script id="alygnn-candidate-message-badge-persistence">
-(function(){
-  const badge=document.getElementById('candidate-message-badge');
-  if(!badge || typeof sb==='undefined')return;
-
-  const GLOBAL_KEY='alygnn_candidate_unread_messages_last';
-  let activeUserId='';
-
-  function scopedKey(userId){
-    return `alygnn_candidate_unread_messages:${String(userId||'unknown')}`;
-  }
-
-  function parseCount(value){
-    const count=Number(value);
-    return Number.isFinite(count)&&count>0?Math.floor(count):0;
-  }
-
-  function cachedCount(){
-    try{
-      return parseCount(
-        (activeUserId&&localStorage.getItem(scopedKey(activeUserId))) ||
-        localStorage.getItem(GLOBAL_KEY) ||
-        '0'
-      );
-    }catch(_){
-      return 0;
-    }
-  }
-
-  function paint(count,persist=true){
-    count=Math.max(0,Number(count)||0);
-    badge.textContent=count>99?'99+':String(count);
-    badge.hidden=count===0;
-
-    if(persist){
-      try{
-        localStorage.setItem(GLOBAL_KEY,String(count));
-        if(activeUserId){
-          localStorage.setItem(scopedKey(activeUserId),String(count));
+      if (error) {
+        // Duplicate skip (already skipped this job before) isn't a real
+        // failure from the person's perspective.
+        if (error.code !== '23505') {
+          console.warn('Could not record skip:', error);
         }
-      }catch(_){}
+      }
+    } catch (err) {
+      console.warn('Could not record skip server-side:', err);
     }
   }
 
-  const initial=cachedCount();
-  if(initial>0)paint(initial,false);
+  async function animateSwipe(direction) {
+    // A swipe lasts 350ms. Without a lock, a fast double-click, held arrow
+    // key, or pointer-up + button click can advance currentIndex multiple
+    // times before renderCards() replaces the card.
+    if (swipeLocked) return;
 
-  async function refreshPersistentCandidateBadge(){
-    try{
-      const {data,error}=await sb.auth.getSession();
-      if(error)throw error;
+    setupTopCard();
+    if (!activeCard) return;
 
-      activeUserId=data?.session?.user?.id||'';
-      if(!activeUserId){
-        paint(0);
+    const cardToSwipe = activeCard;
+    const jobIndex = Number.parseInt(cardToSwipe.dataset.index, 10);
+    const job = jobs[jobIndex];
+    if (!job) {
+      renderCards();
+      return;
+    }
+
+    swipeLocked = true;
+    setSwipeControlsLocked(true);
+    clearTimeout(snapBackTimer);
+    snapBackTimer = null;
+
+    detachDragListeners(cardToSwipe);
+    isDragging = false;
+    activePointerId = null;
+    currentX = 0;
+    cardToSwipe.style.pointerEvents = 'none';
+
+    let applicationResult = null;
+
+    // Applying is different from passing: we must have a real application
+    // row before showing success or advancing to the next card. The old code
+    // fired the insert in the background and moved on even when Supabase
+    // rejected it, which is why a right swipe could look successful without
+    // appearing under Applications.
+    if (direction === 'right') {
+      cardToSwipe.style.transition = 'transform .18s ease';
+      cardToSwipe.style.transform = '';
+      showToast('Sending application…');
+
+      try {
+        applicationResult = await recordApplication(job);
+      } catch (error) {
+        console.error('Application failed:', error);
+        cardToSwipe.style.pointerEvents = '';
+        cardToSwipe.style.transition = '';
+        swipeLocked = false;
+        setSwipeControlsLocked(false);
+        resetCardToCenter(cardToSwipe);
+        showToast(error?.message || 'Could not send application. Please try again.');
         return;
       }
+    }
 
-      const conversations=await sb
-        .from('application_conversations')
-        .select('id')
-        .eq('candidate_id',activeUserId);
+    cardToSwipe.style.transition = '';
+    cardToSwipe.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
 
-      if(conversations.error)throw conversations.error;
+    const historyIndex = currentIndex;
+    history.push({
+      job,
+      direction,
+      index: historyIndex,
+      persistedCreated: direction === 'right' ? applicationResult?.created !== false : true
+    });
 
-      const ids=(conversations.data||[])
-        .map(row=>row.id)
-        .filter(Boolean);
+    if (direction === 'right') {
+      applied++;
+      showToast('✓ Application sent!');
+    } else {
+      skipped++;
+      showToast('Skipped');
+      recordSkip(job);
+    }
 
-      if(!ids.length){
-        paint(0);
-        return;
-      }
+    currentIndex = historyIndex + 1;
+    updateStats();
 
-      const unread=await sb
-        .from('application_messages')
-        .select('id')
-        .in('conversation_id',ids)
-        .neq('sender_id',activeUserId)
-        .is('read_at',null);
+    let finished = false;
+    const finishSwipe = (event) => {
+      if (finished) return;
+      if (event && event.target !== cardToSwipe) return;
+      finished = true;
+      cardToSwipe.removeEventListener('animationend', finishSwipe);
+      clearTimeout(swipeFinishTimer);
+      swipeFinishTimer = null;
+      renderCards();
+    };
 
-      if(unread.error)throw unread.error;
-      paint((unread.data||[]).length);
-    }catch(error){
-      console.warn('Persistent candidate message badge refresh failed:',error);
-      const count=cachedCount();
-      if(count>0)paint(count,false);
+    cardToSwipe.addEventListener('animationend', finishSwipe);
+    swipeFinishTimer = setTimeout(() => finishSwipe(null), 500);
+  }
+
+  function skipCurrent() {
+    if (swipeLocked || isDragging) return;
+    setupTopCard();
+    if (activeCard) {
+      animateSwipe('left');
     }
   }
 
-  const observer=new MutationObserver(()=>{
-    if(badge.hidden){
-      const count=cachedCount();
-      if(count>0){
-        badge.textContent=count>99?'99+':String(count);
-        badge.hidden=false;
+  function applyCurrent() {
+    if (swipeLocked || isDragging) return;
+    setupTopCard();
+    if (activeCard) {
+      animateSwipe('right');
+    }
+  }
+
+  async function undoPersistedRecord(last) {
+    if (!currentUserId || !last.job?.id) return;
+    try {
+      if (last.direction === 'right') {
+        // If the application already existed (for example another tab won
+        // the race), Undo must not delete that pre-existing application.
+        if (last.persistedCreated !== false) {
+          await sb.from('applications').delete()
+            .eq('candidate_id', currentUserId).eq('job_id', last.job.id);
+        }
+      } else {
+        await sb.from('skipped_jobs').delete()
+          .eq('candidate_id', currentUserId).eq('job_id', last.job.id);
       }
+    } catch (err) {
+      console.warn('Could not undo persisted record:', err);
     }
+  }
+
+  function undo() {
+    if (swipeLocked || isDragging) return;
+
+    if (!history.length) {
+      showToast('Nothing to undo');
+      return;
+    }
+
+    const last = history.pop();
+
+    if (last.direction === 'right') applied = Math.max(0, applied - 1);
+    else skipped = Math.max(0, skipped - 1);
+
+    currentIndex = last.index;
+    undoPersistedRecord(last);
+    renderCards();
+    showToast('↩ Undone');
+  }
+
+  function updateStats() {
+    document.getElementById('stat-applied').textContent = applied;
+    document.getElementById('stat-skipped').textContent = skipped;
+    document.getElementById('stat-remaining').textContent = Math.max(0, jobs.length - currentIndex);
+  }
+
+  let toastTimer;
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  document.addEventListener('keydown', e => {
+    // Do not let a held key auto-repeat multiple swipes during one animation.
+    if (e.repeat || swipeLocked || isDragging) return;
+    if (e.key === 'ArrowLeft') skipCurrent();
+    if (e.key === 'ArrowRight') applyCurrent();
+    if (e.key === 'z' && (e.metaKey || e.ctrlKey)) undo();
   });
 
-  observer.observe(badge,{attributes:true,attributeFilter:['hidden']});
-
-  window.AlygnnRefreshCandidateMessageBadge=refreshPersistentCandidateBadge;
-  refreshPersistentCandidateBadge();
-  setTimeout(refreshPersistentCandidateBadge,250);
-  window.addEventListener('pageshow',refreshPersistentCandidateBadge);
-  window.addEventListener('focus',refreshPersistentCandidateBadge);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){
-      refreshPersistentCandidateBadge();
-    }
-  });
-  window.addEventListener('storage',event=>{
-    if(event.key===GLOBAL_KEY || event.key===scopedKey(activeUserId)){
-      const count=cachedCount();
-      paint(count,false);
-    }
-  });
-})();
+  loadJobs();
 </script>
-
 </body>
 </html>
