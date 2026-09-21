@@ -709,7 +709,7 @@
 
     return rows.map(job => ({
       ...job,
-      company_logo_url: safeCompanyLogoUrl(job.company_logo_url) ||
+      company_logo_url: safeCompanyLogoUrl(job.company_logo_url || job.company_logo) ||
         logoByEmployer.get(String(job.employer_id || '')) ||
         ''
     }));
@@ -969,7 +969,7 @@
           : `<div class="match-badge pending" data-job-id="${job.id}">Calculating match…</div>`)
       : '';
 
-    const companyLogoUrl = safeCompanyLogoUrl(job.company_logo_url);
+    const companyLogoUrl = safeCompanyLogoUrl(job.company_logo_url || job.company_logo);
     const companyInitials = escapeHtml(getInitials(job.company));
     const companyLogoHTML = companyLogoUrl
       ? `<img src="${escapeHtml(companyLogoUrl)}" alt="${escapeHtml(job.company || 'Company')} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="company-logo-fallback" style="display:none;">${companyInitials}</span>`
