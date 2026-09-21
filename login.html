@@ -600,22 +600,23 @@
 
   async function handleGoogle() {
     recordOAuthLegalConsent('google');
-    // Pass the currently selected role in the redirect URL so
-    // set-password.html can save it to the profiles table after
-    // Google OAuth completes — fixing the role routing for Google sign-ins.
-    const roleParam = currentRole === 'employer' ? '?role=employer' : '';
+    const oauthDestination = currentRole === 'employer'
+      ? '/employer-onboarding.html'
+      : '/account.html';
     await sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/set-password.html' + roleParam }
+      options: { redirectTo: window.location.origin + oauthDestination }
     });
   }
 
   async function handleApple() {
     recordOAuthLegalConsent('apple');
-    const roleParam = currentRole === 'employer' ? '?role=employer' : '';
+    const oauthDestination = currentRole === 'employer'
+      ? '/employer-onboarding.html'
+      : '/account.html';
     await sb.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: window.location.origin + '/set-password.html' + roleParam }
+      options: { redirectTo: window.location.origin + oauthDestination }
     });
   }
 
