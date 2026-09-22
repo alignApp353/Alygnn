@@ -776,9 +776,6 @@ button,a{-webkit-tap-highlight-color:transparent}
   <div class="section-head">
     <div>
       <h2 class="section-title">Billing overview</h2>
-      <p class="section-copy">
-        The important account details companies normally show in one place.
-      </p>
     </div>
   </div>
 
@@ -1423,15 +1420,10 @@ function renderBillingOverview(context){
         ?`Expires ${String(pm.exp_month).padStart(2,'0')}/${String(pm.exp_year).slice(-2)} · securely stored by Stripe`
         :'Securely stored by Stripe';
   }else{
-    $('payment-method').textContent=
-      entitlement?.test_mode===true
-        ?'Test billing'
-        :'No card on file';
+    $('payment-method').textContent='No card on file';
 
     $('payment-method-copy').textContent=
-      entitlement?.test_mode===true
-        ?'No real payment method is charged in Alygnn test mode.'
-        :'A payment method appears here after secure checkout.';
+      'A payment method appears here after secure checkout.';
   }
 
   $('billing-email').textContent=
@@ -1570,7 +1562,7 @@ function renderPlans(){
       `Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. New recurring subscriptions can be managed automatically from this page.`;
   }else if(currentItem){
     $('change-copy').textContent=
-      'Upgrades charge only the exact plan-price difference and unlock immediately after payment while keeping your same renewal date. Downgrades are $0 today, never create refunds or credits, and begin at your next renewal.';
+      'Upgrade now or schedule a lower plan for your next renewal.';
   }else{
     $('change-copy').textContent=
       'Choose the hiring capacity that fits your team. Your always-free reusable slot remains included.';
@@ -1928,11 +1920,7 @@ function renderInvoices(){
   if(!invoices.length){
     box.innerHTML=`
       <div class="empty">
-        ${
-          entitlement?.test_mode===true
-            ?'This test billing account has no real Stripe invoices.'
-            :'No paid invoices are available yet. Receipts will appear here after Stripe processes billing.'
-        }
+        No paid invoices are available yet. Receipts will appear here after Stripe processes billing.
       </div>
     `;
     return;
