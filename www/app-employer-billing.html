@@ -956,17 +956,6 @@ button,a{-webkit-tap-highlight-color:transparent}
   <button class="action neutral full mt12" id="pricing-btn-bottom" type="button">
     View all pricing options
   </button>
-
-  <div class="note">
-    <strong>How Alygnn billing works:</strong>
-    billing is collected at the beginning of each paid period. Upgrades charge
-    only the exact price difference between your current plan and the higher
-    plan, unlock immediately after payment, and keep the same renewal date.
-    Downgrades never create a refund or account credit: your current plan stays
-    active through the period already paid for, and the lower plan begins on
-    your next renewal date at its lower price.
-  </div>
-
   <div class="message" id="message"></div>
 </main>
 
@@ -1755,7 +1744,7 @@ function renderCancelPlan(){
       'Plan cancellation scheduled';
 
     $('plan-cancel-copy').textContent=
-      `${planName(plan)} remains active through ${fmtDate(summary?.cancel_effective_at||summary?.current_period_end)}. Use the upcoming-change section above if you want to keep the subscription.`;
+      `${planName(plan)} stays active through ${fmtDate(summary?.cancel_effective_at||summary?.current_period_end)}. No further renewal charge is scheduled.`;
 
     return;
   }
@@ -1766,9 +1755,7 @@ function renderCancelPlan(){
     `Cancel ${planName(plan)} at renewal`;
 
   $('plan-cancel-copy').textContent=
-    billing==='quarterly'
-      ?`You have already paid through ${fmtDate(summary?.current_period_end)}. Canceling stops the next 3-month renewal and does not remove your current access early.`
-      :`You have already paid through ${fmtDate(summary?.current_period_end)}. Canceling stops the next monthly renewal and does not remove your current access early.`;
+    `${planName(plan)} stays active through ${fmtDate(summary?.current_period_end)}. Canceling stops the next renewal charge.`;
 
   cancelButton.textContent='Cancel plan at renewal';
 }
