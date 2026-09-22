@@ -290,7 +290,7 @@ html[data-theme="dark"] .spinner{border-color:#2B3A4B;border-top-color:#8EB5DF}
 
     <div class="step" data-step="4">
       <button class="company-ai-link" id="use-role-data-btn" type="button">
-        ✨ Build from verified occupation data
+        ✨ Build job details with Alygnn
       </button>
 
       <div class="field">
@@ -1605,17 +1605,91 @@ el('company-ai-link').addEventListener('click',()=>{
 });
 
 
-el('use-role-data-btn').addEventListener('click',()=>{
-  if(!currentOccupationProfile){
-    showMessage('Choose a suggested job title first so Alygnn can load verified occupation data.');
+el('use-role-data-btn').addEventListener('click',async()=>{
+  clearMessage();
+
+  const button=el('use-role-data-btn');
+  const title=el('title').value.trim();
+
+  if(!title){
+    showMessage('Enter a job title first so Alygnn can build the job details.');
     return;
   }
 
-  applyOccupationProfileToForm();
-  showMessage(
-    'Role-specific responsibilities were added and matching skill buttons were selected. Review them before publishing.',
-    'success'
-  );
+  button.disabled=true;
+  const originalText=button.textContent;
+  button.textContent='Building job details…';
+
+  try{
+    // Best path: a catalog title with a loaded O*NET occupation profile.
+    if(currentOccupationProfile){
+      applyOccupationProfileToForm();
+      showMessage(
+        'Verified occupation details were added. Review the description and skills before publishing.',
+        'success'
+      );
+      return;
+    }
+
+    // Common/custom titles (for example Canvasser) may not have an O*NET
+    // profile attached. Fall back to Alygnn's job-description service instead
+    // of making the button appear broken.
+    const job=getJob();
+    const payload={
+      title,
+      company:job.company||'Company',
+      location:job.location,
+      job_type:jobType,
+      work_style:workStyle,
+      salary:buildSalary()
+    };
+
+    const {data,error}=await sb.functions.invoke('generate-job-description',{
+      body:payload
+    });
+
+    if(error||!data?.description){
+      console.error('Build job details fallback failed:',error,data);
+      showMessage('Alygnn could not build the job details right now. You can still enter the description and skills manually.');
+      return;
+    }
+
+    if(!el('description').value.trim()){
+      el('description').value=String(data.description)
+        .replace(/\n{3,}/g,'\n\n')
+        .trim();
+      el('description').dispatchEvent(new Event('input'));
+    }
+
+    // Give custom/common titles useful starter skills too. These remain fully
+    // editable; the employer can remove or add anything before publishing.
+    if(!selectedSkills.size){
+      const lower=title.toLowerCase();
+      let starter=[];
+
+      if(/canvass|door[- ]?to[- ]?door|field representative/.test(lower)){
+        starter=['Communication skills','Lead generation','Reliable transportation'];
+      }else{
+        const category=roleCategory(title);
+        starter=[...(ROLE_SKILLS[category]||[]),...BASE_SKILLS].slice(0,3);
+      }
+
+      starter.filter(Boolean).forEach(skill=>selectedSkills.add(skill));
+      refreshRoleSuggestions();
+      syncSelectedValues();
+    }
+
+    showMessage(
+      'Alygnn drafted the job description and starter skills. Review and edit anything before publishing.',
+      'success'
+    );
+  }catch(error){
+    console.error('Could not build job details:',error);
+    showMessage('Alygnn could not build the job details right now. You can still enter them manually.');
+  }finally{
+    button.disabled=false;
+    button.textContent=originalText;
+  }
 });
 
 
