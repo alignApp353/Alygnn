@@ -5916,6 +5916,7 @@
     );
 
     let jobsStatusTab = 'open';
+    let requestedInitialJobsTab = '';
     let jobsSortMode = 'performance';
 
     const state = {
@@ -7297,7 +7298,12 @@
        */
       if(name==='jobs'){
         if(previousView !== 'jobs'){
-          jobsStatusTab = 'open';
+          if(['open','drafts','closed'].includes(requestedInitialJobsTab)){
+            jobsStatusTab=requestedInitialJobsTab;
+            requestedInitialJobsTab='';
+          }else{
+            jobsStatusTab='open';
+          }
         }
 
         renderJobs();
@@ -14593,6 +14599,17 @@
             ''
           ).trim();
 
+        const requestedJobsTab=
+          String(
+            initialParams.get('jobs_tab') ||
+            ''
+          ).toLowerCase().trim();
+
+        requestedInitialJobsTab=
+          ['open','drafts','closed'].includes(requestedJobsTab)
+            ?requestedJobsTab
+            :'';
+
         /*
          * IMPORTANT:
          * If the employer came from "Job published -> View Job",
@@ -14635,16 +14652,19 @@
           requestedJobId ||
           requestedView==='jobs'
         ){
-          jobsStatusTab='open';
+          if(requestedJobId){
+            jobsStatusTab='open';
+            requestedInitialJobsTab='';
+          }
 
           setView('jobs');
 
-          /*
-           * state.jobs is already loaded above, so this normally opens
-           * immediately. openRequestedDashboardJob() also has its own
-           * retry behavior for a just-published record.
-           */
-          openRequestedDashboardJob();
+          /* Only a direct published-job request should force Open and launch
+             the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
+             the requested Drafts tab selected. */
+          if(requestedJobId){
+            openRequestedDashboardJob();
+          }
         }
 
       }catch(error){
@@ -14671,17 +14691,17 @@
         const pendingJobId=
           requestedDashboardJobId();
 
-        if(
-          state.currentView==='jobs' ||
-          pendingJobId
-        ){
+        if(pendingJobId){
           jobsStatusTab='open';
+          requestedInitialJobsTab='';
 
           if(state.currentView!=='jobs'){
             setView('jobs');
           }
 
           openRequestedDashboardJob();
+        }else if(state.currentView==='jobs'){
+          renderJobs();
         }
       }
     }
