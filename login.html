@@ -371,16 +371,28 @@
   async function redirectForUser(user, fallbackRole = currentRole) {
     if (!user?.id) return window.location.origin + '/login.html';
 
+    // Keep login routing lightweight and resilient. On a fresh computer the
+    // first profile request can occasionally be slower than the auth request;
+    // the old code waited on multiple database checks before navigating, which
+    // could leave a successfully signed-in user sitting on login.html.
     let profileRole = '';
     try {
-      const { data: profile } = await sb
+      const profileLookup = sb
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .maybeSingle();
-      profileRole = String(profile?.role || '').toLowerCase();
+
+      const result = await Promise.race([
+        profileLookup,
+        new Promise(resolve => setTimeout(() => resolve({ data: null, timedOut: true }), 3500))
+      ]);
+
+      if (!result?.timedOut) {
+        profileRole = String(result?.data?.role || '').toLowerCase();
+      }
     } catch (error) {
-      console.warn('Could not read account role:', error);
+      console.warn('Could not read account role during login routing:', error);
     }
 
     const role = String(
@@ -393,7 +405,14 @@
       'seeker'
     ).toLowerCase();
 
-    if (role === 'employer') return employerDestination(user.id);
+    // Every employer enters through onboarding. That page is the single source
+    // of truth for whether setup is already complete and forwards completed
+    // employers to the dashboard. This avoids duplicate checks on login.html
+    // and prevents login <-> dashboard redirect loops.
+    if (role === 'employer') {
+      return window.location.origin + '/employer-onboarding.html';
+    }
+
     return window.location.origin + '/account.html';
   }
 
@@ -480,15 +499,53 @@
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     if (!email || !password) { showMsg('Please enter your email and password.'); return; }
+
     hideMsg();
     const btn = document.getElementById('login-btn');
-    const orig = btn.textContent; btn.disabled = true; btn.textContent = 'Signing in…';
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    btn.disabled = false; btn.textContent = orig;
-    if (error) { showMsg(error.message); return; }
-    await savePendingPreferences(data.user);
-    const destination = await redirectForUser(data.user, currentRole);
-    window.location.replace(destination);
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        showMsg(error.message);
+        return;
+      }
+
+      // Confirm that this tab can read the exact session that was just created
+      // before leaving the login page. This catches browser/storage failures
+      // instead of silently bouncing back from the next page.
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      const signedInUser = sessionData?.session?.user || data?.user || null;
+      if (sessionError || !sessionData?.session || !signedInUser) {
+        console.error('Session was not available after sign in:', sessionError);
+        showMsg('You were signed in, but this browser could not save the session. Please allow site storage/cookies for Alygnn and try again.');
+        return;
+      }
+
+      // Preferences are helpful, but they must never trap the user on the login
+      // page. Give the save a short window, then continue routing regardless.
+      try {
+        await Promise.race([
+          savePendingPreferences(signedInUser),
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
+      } catch (preferenceError) {
+        console.warn('Pending preferences could not be saved during login:', preferenceError);
+      }
+
+      const destination = await redirectForUser(signedInUser, currentRole);
+      window.location.replace(destination);
+    } catch (error) {
+      console.error('Login failed unexpectedly:', error);
+      showMsg('Unable to finish signing in. Please try again.');
+    } finally {
+      // If navigation succeeded this is irrelevant; if it did not, make sure
+      // the button never stays stuck in a loading state.
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
   }
 
   async function doSignup() {
