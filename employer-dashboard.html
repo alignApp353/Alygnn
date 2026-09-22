@@ -2379,10 +2379,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   async function checkAuth() {
-    const { data, error } = await sb.auth.getUser();
-    const authedUser = data && data.user;
+    // Read the persisted session first. getUser() always requires a network
+    // round trip, and on a freshly signed-in browser that extra request could
+    // fail/lag and incorrectly bounce a valid session back to login.html.
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    let authedUser = sessionData?.session?.user || null;
 
-    if (error || !authedUser) {
+    // If no local session was available, do one authoritative network check
+    // before deciding the user is signed out.
+    if (!authedUser) {
+      const { data: userData, error: userError } = await sb.auth.getUser();
+      authedUser = userData?.user || null;
+      if ((sessionError || userError) && !authedUser) {
+        console.warn('Employer dashboard auth check failed:', sessionError || userError);
+      }
+    }
+
+    if (!authedUser) {
       window.location.replace('login.html?role=employer');
       return;
     }
@@ -2439,9 +2452,26 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         console.error('Failed to load employer profile:', profileError);
       }
 
-      const role = String(ownerProfile?.role || authedUser.user_metadata?.role || '').toLowerCase();
-      if (role !== 'employer') {
-        window.location.replace('login.html?role=employer');
+      const role = String(
+        ownerProfile?.role ||
+        authedUser.user_metadata?.role ||
+        authedUser.user_metadata?.account_type ||
+        authedUser.app_metadata?.role ||
+        authedUser.app_metadata?.account_type ||
+        ''
+      ).toLowerCase();
+
+      // Website and app-created accounts have historically used both `role`
+      // and `account_type`. Treat either employer marker as valid. Also accept
+      // an existing employer blueprint/verification as an employer signal so
+      // older accounts cannot get trapped in a login redirect loop.
+      const hasEmployerSignal =
+        role === 'employer' ||
+        ownerProfile?.employer_verified === true ||
+        !!ownerProfile?.hiring_blueprint;
+
+      if (!hasEmployerSignal) {
+        window.location.replace('account.html');
         return;
       }
 
