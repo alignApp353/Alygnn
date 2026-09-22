@@ -214,7 +214,7 @@
   <div class="grid">
     <div class="field"><label class="required" for="business-phone">Business phone number</label><input id="business-phone" name="business_phone" required type="tel" inputmode="numeric" maxlength="14" autocomplete="tel-national" placeholder="(919) 555-0123"><p class="field-error" id="business-phone-error">Enter a valid 10-digit U.S. phone number, such as (919) 555-0123.</p></div>
     <div class="field"><label class="required" for="business-email">Business email</label><input id="business-email" name="business_email" required type="email" autocomplete="email" placeholder="admin@yourcompany.com"></div>
-    <div class="field"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"></div>
+    <div class="field suggest-wrap"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"><div id="address-suggestions" class="suggestions"></div></div>
     <div class="field suggest-wrap"><label class="required" for="industry">Industry</label><input id="industry" name="industry" required autocomplete="off" placeholder="Start typing an industry"><div id="industry-suggestions" class="suggestions"></div></div>
     <div class="field"><label class="required" for="company-size">Company size</label><select id="company-size" name="company_size" required><option value="">Select size</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>501–1,000</option><option>1,001+</option></select></div>
     <div class="field suggest-wrap"><label class="required" for="headquarters">Headquarters</label><input id="headquarters" name="headquarters" required autocomplete="off" placeholder="Start typing any U.S. city or town"><div id="city-suggestions" class="suggestions"></div></div>
@@ -329,99 +329,216 @@ const CANDIDATE_PRIORITY_OPTIONS=['Technical Skills','Soft Skills','Experience',
 const INDUSTRIES=['Accounting','Advertising and Marketing','Agriculture','Architecture and Design','Automotive','Banking','Biotechnology','Construction','Consulting','Consumer Services','Education','Energy and Utilities','Engineering','Entertainment and Media','Financial Services','Food and Beverage','Government','Healthcare','Hospitality','Human Resources and Staffing','Insurance','Legal Services','Logistics and Transportation','Manufacturing','Nonprofit','Pharmaceuticals','Professional Services','Real Estate','Retail','Software and Technology','Telecommunications','Travel and Tourism','Wholesale','Wireless Services','Internet Service Provider','Fiber Optics','Network Infrastructure','Telecommunications Equipment'];
 
 // Google Places is the primary source for U.S. business addresses and headquarters.
-// This is the same browser-restricted key used by Alygnn's existing Places-powered location fields.
-// The key must remain restricted in Google Cloud to Alygnn's web origins.
+// IMPORTANT: this uses Google's current Autocomplete Data API (Places API New),
+// not the legacy google.maps.places.Autocomplete class. Google stopped making
+// the legacy Autocomplete class available to new Maps customers in March 2025.
 const GOOGLE_MAPS_API_KEY='AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
-let googlePlacesLoadPromise=null;
-let businessAddressAutocomplete=null;
-let headquartersAutocomplete=null;
+let googleMapsLoadPromise=null;
+let googlePlacesLibraryPromise=null;
 
-function loadGooglePlaces(){
-  if(window.google?.maps?.places)return Promise.resolve();
-  if(googlePlacesLoadPromise)return googlePlacesLoadPromise;
+function loadGoogleMapsJs(){
+  if(window.google?.maps?.importLibrary)return Promise.resolve();
+  if(googleMapsLoadPromise)return googleMapsLoadPromise;
 
-  googlePlacesLoadPromise=new Promise((resolve,reject)=>{
-    const existing=document.getElementById('google-places-script');
+  googleMapsLoadPromise=new Promise((resolve,reject)=>{
+    const existing=document.getElementById('google-maps-script');
     if(existing){
-      if(window.google?.maps?.places){resolve();return}
+      if(window.google?.maps?.importLibrary){resolve();return}
       existing.addEventListener('load',()=>resolve(),{once:true});
-      existing.addEventListener('error',()=>reject(new Error('Google Places failed to load.')),{once:true});
+      existing.addEventListener('error',()=>reject(new Error('Google Maps JavaScript API failed to load.')),{once:true});
       return;
     }
 
     const script=document.createElement('script');
-    script.id='google-places-script';
-    script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places&v=weekly`;
+    script.id='google-maps-script';
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly&loading=async`;
     script.async=true;
     script.defer=true;
     script.onload=()=>resolve();
-    script.onerror=()=>reject(new Error('Google Places failed to load.'));
+    script.onerror=()=>reject(new Error('Google Maps JavaScript API failed to load.'));
     document.head.appendChild(script);
   });
 
-  return googlePlacesLoadPromise;
+  return googleMapsLoadPromise;
 }
 
-function placeComponent(place,type,useShort=false){
-  const component=(place?.address_components||[]).find(c=>Array.isArray(c.types)&&c.types.includes(type));
-  return component?(useShort?component.short_name:component.long_name):'';
+async function loadGooglePlaces(){
+  await loadGoogleMapsJs();
+  if(!window.google?.maps?.importLibrary)throw new Error('Google Maps importLibrary is unavailable.');
+  if(!googlePlacesLibraryPromise){
+    googlePlacesLibraryPromise=google.maps.importLibrary('places');
+  }
+  return googlePlacesLibraryPromise;
 }
 
-function cityStateFromGooglePlace(place,fallback=''){
+function newPlaceComponent(place,type,useShort=false){
+  const component=(place?.addressComponents||[]).find(c=>Array.isArray(c.types)&&c.types.includes(type));
+  if(!component)return '';
+  return String(useShort?(component.shortText||component.longText||''):(component.longText||component.shortText||'')).trim();
+}
+
+function cityStateFromNewGooglePlace(place,fallback=''){
   const city=
-    placeComponent(place,'locality')||
-    placeComponent(place,'postal_town')||
-    placeComponent(place,'administrative_area_level_3')||
-    placeComponent(place,'sublocality')||
-    String(place?.name||'').trim();
-  const state=placeComponent(place,'administrative_area_level_1',true);
+    newPlaceComponent(place,'locality')||
+    newPlaceComponent(place,'postal_town')||
+    newPlaceComponent(place,'administrative_area_level_3')||
+    newPlaceComponent(place,'sublocality')||
+    String(place?.displayName||'').trim();
+  const state=newPlaceComponent(place,'administrative_area_level_1',true);
   if(city&&state)return `${city}, ${state}`;
-  return city||String(place?.formatted_address||fallback||'').trim();
+  return city||String(place?.formattedAddress||fallback||'').trim();
+}
+
+function closePlacesBox(box){
+  if(!box)return;
+  box.classList.remove('show');
+  box.innerHTML='';
+}
+
+function setupNewPlacesField({input,box,primaryTypes=null,formatPlace}){
+  let debounceTimer=null;
+  let currentSuggestions=[];
+  let sessionToken=null;
+  let newestRequestId=0;
+  let ready=false;
+  let placesLib=null;
+
+  async function ensureReady(){
+    if(ready&&placesLib)return placesLib;
+    placesLib=await loadGooglePlaces();
+    ready=true;
+    return placesLib;
+  }
+
+  async function renderPredictions(){
+    const query=String(input.value||'').trim();
+    if(query.length<2){
+      closePlacesBox(box);
+      return;
+    }
+
+    const requestId=++newestRequestId;
+
+    try{
+      const lib=await ensureReady();
+      const {AutocompleteSuggestion,AutocompleteSessionToken}=lib;
+      if(!AutocompleteSuggestion||!AutocompleteSessionToken){
+        throw new Error('Places API (New) autocomplete is unavailable.');
+      }
+
+      if(!sessionToken)sessionToken=new AutocompleteSessionToken();
+
+      const request={
+        input:query,
+        includedRegionCodes:['us'],
+        language:'en-US',
+        region:'us',
+        sessionToken
+      };
+      if(Array.isArray(primaryTypes)&&primaryTypes.length){
+        request.includedPrimaryTypes=primaryTypes;
+      }
+
+      const result=await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+      if(requestId!==newestRequestId)return;
+
+      currentSuggestions=(result?.suggestions||[])
+        .filter(s=>s?.placePrediction)
+        .slice(0,8);
+
+      if(!currentSuggestions.length){
+        closePlacesBox(box);
+        return;
+      }
+
+      box.innerHTML=currentSuggestions.map((s,index)=>{
+        const text=String(s.placePrediction?.text?.toString?.()||s.placePrediction?.mainText?.toString?.()||'').trim();
+        return `<button class="suggestion" type="button" data-place-index="${index}">${escapeHtml(text)}</button>`;
+      }).join('');
+      box.classList.add('show');
+    }catch(error){
+      if(requestId!==newestRequestId)return;
+      console.warn('Google Places autocomplete request failed:',error);
+      closePlacesBox(box);
+    }
+  }
+
+  input.addEventListener('input',()=>{
+    clearTimeout(debounceTimer);
+    debounceTimer=setTimeout(renderPredictions,180);
+  });
+
+  input.addEventListener('focus',()=>{
+    if(String(input.value||'').trim().length>=2){
+      clearTimeout(debounceTimer);
+      debounceTimer=setTimeout(renderPredictions,0);
+    }
+  });
+
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Escape')closePlacesBox(box);
+  });
+
+  input.addEventListener('blur',()=>setTimeout(()=>closePlacesBox(box),180));
+
+  box.addEventListener('mousedown',e=>e.preventDefault());
+  box.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-place-index]');
+    if(!button)return;
+    const suggestion=currentSuggestions[Number(button.dataset.placeIndex)];
+    const prediction=suggestion?.placePrediction;
+    if(!prediction)return;
+
+    try{
+      const place=prediction.toPlace();
+      await place.fetchFields({fields:['formattedAddress','addressComponents','displayName']});
+      const nextValue=String(formatPlace(place,input.value)||'').trim();
+      if(nextValue)input.value=nextValue;
+      closePlacesBox(box);
+      currentSuggestions=[];
+      sessionToken=null; // a selection ends this billing session
+      saveDraft();
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(error){
+      console.warn('Could not load the selected Google Place:',error);
+    }
+  });
+
+  // Warm the library in the background so the first keystroke is responsive.
+  ensureReady().catch(error=>console.warn('Google Places initialization failed:',error));
 }
 
 async function setupGooglePlacesAutocomplete(){
   const addressInput=document.getElementById('business-address');
+  const addressBox=document.getElementById('address-suggestions');
   const headquartersInput=document.getElementById('headquarters');
-  const cityFallback=document.getElementById('city-suggestions');
+  const cityBox=document.getElementById('city-suggestions');
+
+  // Always keep the manual fallback available for Headquarters. Google is the
+  // primary source, but this means Butner, NC and other small towns can still be
+  // selected if Google is blocked by a browser extension or temporarily fails.
+  setupSuggestions('headquarters','city-suggestions',US_CITIES);
 
   try{
     await loadGooglePlaces();
 
-    businessAddressAutocomplete=new google.maps.places.Autocomplete(addressInput,{
-      types:['address'],
-      componentRestrictions:{country:'us'},
-      fields:['formatted_address','place_id','address_components','name']
-    });
-    businessAddressAutocomplete.addListener('place_changed',()=>{
-      const place=businessAddressAutocomplete.getPlace();
-      if(place?.place_id&&place.formatted_address){
-        addressInput.value=place.formatted_address;
-        saveDraft();
-      }
+    setupNewPlacesField({
+      input:addressInput,
+      box:addressBox,
+      // Do not over-filter address predictions: street addresses, premises,
+      // suites, and other valid business locations can have different types.
+      primaryTypes:null,
+      formatPlace:(place,fallback)=>place?.formattedAddress||fallback
     });
 
-    headquartersAutocomplete=new google.maps.places.Autocomplete(headquartersInput,{
-      types:['(cities)'],
-      componentRestrictions:{country:'us'},
-      fields:['formatted_address','place_id','address_components','name']
+    setupNewPlacesField({
+      input:headquartersInput,
+      box:cityBox,
+      primaryTypes:['(cities)'],
+      formatPlace:(place,fallback)=>cityStateFromNewGooglePlace(place,fallback)
     });
-    headquartersAutocomplete.addListener('place_changed',()=>{
-      const place=headquartersAutocomplete.getPlace();
-      if(place?.place_id){
-        headquartersInput.value=cityStateFromGooglePlace(place,headquartersInput.value);
-        if(cityFallback)cityFallback.classList.remove('show');
-        saveDraft();
-      }
-    });
-
-    // Google is now the city source; keep Alygnn's local suggestion box hidden.
-    if(cityFallback){
-      cityFallback.classList.remove('show');
-      cityFallback.innerHTML='';
-    }
   }catch(error){
-    console.warn('Google Places unavailable. Using Alygnn fallback city suggestions and free typing.',error);
-    setupSuggestions('headquarters','city-suggestions',US_CITIES);
+    console.warn('Google Places unavailable. Manual address entry and Alygnn city fallback remain enabled.',error);
   }
 }
 const US_CITIES=['Butner, NC','Clayton, NC','Garner, NC','Fuquay-Varina, NC','Holly Springs, NC','Knightdale, NC','Wake Forest, NC','Morrisville, NC','Apex, NC','Smithfield, NC','Albuquerque, NM','Alexandria, VA','Anaheim, CA','Anchorage, AK','Arlington, TX','Arlington, VA','Atlanta, GA','Augusta, GA','Austin, TX','Baltimore, MD','Baton Rouge, LA','Birmingham, AL','Boise, ID','Boston, MA','Buffalo, NY','Burlington, VT','Cary, NC','Charleston, SC','Charlotte, NC','Chattanooga, TN','Chicago, IL','Cincinnati, OH','Cleveland, OH','Colorado Springs, CO','Columbia, SC','Columbus, OH','Dallas, TX','Denver, CO','Des Moines, IA','Detroit, MI','Durham, NC','El Paso, TX','Fayetteville, NC','Fort Lauderdale, FL','Fort Worth, TX','Fresno, CA','Greensboro, NC','Greenville, SC','Hartford, CT','Henderson, NV','Honolulu, HI','Houston, TX','Indianapolis, IN','Irvine, CA','Jackson, MS','Jacksonville, FL','Kansas City, MO','Knoxville, TN','Las Vegas, NV','Lexington, KY','Little Rock, AR','Long Beach, CA','Los Angeles, CA','Louisville, KY','Madison, WI','Memphis, TN','Mesa, AZ','Miami, FL','Milwaukee, WI','Minneapolis, MN','Nashville, TN','New Orleans, LA','New York, NY','Newark, NJ','Norfolk, VA','Oakland, CA','Oklahoma City, OK','Omaha, NE','Orlando, FL','Philadelphia, PA','Phoenix, AZ','Pittsburgh, PA','Plano, TX','Portland, ME','Portland, OR','Providence, RI','Raleigh, NC','Reno, NV','Richmond, VA','Rochester, NY','Sacramento, CA','Salt Lake City, UT','San Antonio, TX','San Diego, CA','San Francisco, CA','San Jose, CA','Savannah, GA','Seattle, WA','St. Louis, MO','St. Petersburg, FL','Syracuse, NY','Tallahassee, FL','Tampa, FL','Toledo, OH','Tucson, AZ','Tulsa, OK','Virginia Beach, VA','Washington, DC','Wilmington, NC','Winston-Salem, NC'];
