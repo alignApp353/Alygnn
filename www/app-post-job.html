@@ -45,10 +45,12 @@ button{cursor:pointer}
   background:rgba(246,248,247,.96);backdrop-filter:blur(18px);
   border-bottom:1px solid var(--border)
 }
-.back{
+.exit-btn{
   width:42px;height:42px;border:1px solid var(--border);border-radius:50%;
-  background:#fff;color:var(--text);font-size:20px
+  background:#fff;color:var(--text);font-size:26px;font-weight:500;line-height:1;
+  display:grid;place-items:center;padding:0;justify-self:end;
 }
+.exit-btn:active{transform:scale(.97)}
 .logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:27px;color:var(--brand)}
 .logo span{color:var(--sage)}
 .page{max-width:560px;margin:0 auto;padding:22px 16px 24px}
@@ -142,6 +144,27 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 .suggest-main{font-size:13px;font-weight:900;color:var(--text)}
 .suggest-sub{font-size:10px;font-weight:600;color:var(--muted)}
 
+.exit-modal{
+  position:fixed;inset:0;z-index:120;display:grid;place-items:center;
+  padding:24px;background:rgba(16,27,39,.42);backdrop-filter:blur(7px);
+}
+.exit-modal-card{
+  width:min(100%,390px);background:var(--card);border:1px solid var(--border);
+  border-radius:24px;padding:22px;box-shadow:0 24px 60px rgba(19,32,48,.2);
+  text-align:center;
+}
+.exit-modal-mark{
+  width:46px;height:46px;margin:0 auto 14px;border-radius:50%;
+  display:grid;place-items:center;background:#EDF3F9;color:var(--brand-dark);
+  font-size:24px;font-weight:800;line-height:1;
+}
+.exit-modal-card h2{font-size:21px;line-height:1.2;font-weight:900;letter-spacing:-.25px}
+.exit-modal-card p{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5}
+.exit-modal-actions{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;margin-top:20px}
+.exit-modal-actions button{min-height:50px;border-radius:15px;font-size:13px;font-weight:900}
+.exit-stay{border:1px solid var(--border);background:#fff;color:var(--text)}
+.exit-save{border:0;background:var(--brand-dark);color:#fff}
+.exit-save:disabled{opacity:.55}
 
 html[data-theme="dark"]{
   --bg:#07121D;--card:#101C29;--text:#F5F7FA;--muted:#AAB6C4;--border:#2B3A4B;
@@ -150,7 +173,7 @@ html[data-theme="dark"]{
 html[data-theme="dark"] body{background:var(--bg);color:var(--text)}
 html[data-theme="dark"] .header{background:rgba(7,18,29,.96)}
 html[data-theme="dark"] .footer{background:rgba(7,18,29,.97)}
-html[data-theme="dark"] .back,
+html[data-theme="dark"] .exit-btn,
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .input,
 html[data-theme="dark"] .select,
@@ -172,6 +195,9 @@ html[data-theme="dark"] .lock{background:#2B2414;border-color:#6D5729;color:#F3D
 html[data-theme="dark"] .loading{background:rgba(7,18,29,.97)}
 html[data-theme="dark"] .progress{background:#263545}
 html[data-theme="dark"] .spinner{border-color:#2B3A4B;border-top-color:#8EB5DF}
+html[data-theme="dark"] .exit-modal-card{background:#101C29;border-color:#2B3A4B}
+html[data-theme="dark"] .exit-stay{background:#101C29;color:#F5F7FA;border-color:#2B3A4B}
+html[data-theme="dark"] .exit-modal-mark{background:#15283A;color:#8EB5DF}
 
 </style>
 </head>
@@ -185,9 +211,9 @@ html[data-theme="dark"] .spinner{border-color:#2B3A4B;border-top-color:#8EB5DF}
 </div>
 
 <header class="header">
-  <button class="back" id="back-btn" type="button">←</button>
+  <div aria-hidden="true"></div>
   <div class="logo">Alygnn<span>.</span></div>
-  <div></div>
+  <button class="exit-btn" id="exit-btn" type="button" aria-label="Exit job post">×</button>
 </header>
 
 <main class="page">
@@ -336,6 +362,18 @@ html[data-theme="dark"] .spinner{border-color:#2B3A4B;border-top-color:#8EB5DF}
   </section>
 </main>
 
+<div class="exit-modal" id="exit-modal" hidden>
+  <div class="exit-modal-card" role="dialog" aria-modal="true" aria-labelledby="exit-modal-title">
+    <div class="exit-modal-mark" aria-hidden="true">×</div>
+    <h2 id="exit-modal-title">Save this job as a draft?</h2>
+    <p>Your progress will be saved in My Jobs → Drafts so you can finish it later.</p>
+    <div class="exit-modal-actions">
+      <button class="exit-stay" id="exit-stay-btn" type="button">Keep Editing</button>
+      <button class="exit-save" id="exit-save-btn" type="button">Save &amp; Exit</button>
+    </div>
+  </div>
+</div>
+
 <footer class="footer">
   <div class="footer-inner">
     <button class="secondary" id="previous-btn" type="button">Cancel</button>
@@ -372,6 +410,8 @@ let currentCompanyId = '';
 let currentCompany = null;
 let slotEntitlement = null;
 let slotUsage = {used:0,limit:1};
+let activeJobDraftId = sessionStorage.getItem('alygnnActiveJobDraftId') || '';
+let exitDraftSaving = false;
 
 
 let titleSearchTimer=null;
@@ -1486,13 +1526,86 @@ function saveCurrentJobDraft(){
   };
 
   sessionStorage.setItem('alygnnJobDraft',JSON.stringify(draft));
+  return draft;
 }
 
-function saveDraftAndOpenPreview(){
-  // Employer setup already collected company-level voice, strengths, and
-  // hiring priorities. A separate Company AI Profile is optional refinement,
-  // not a requirement for creating or previewing a job.
-  saveCurrentJobDraft();
+async function persistCurrentJobDraft(stepOverride=currentStep){
+  if(!session?.user?.id){
+    throw new Error('Your session is not ready yet.');
+  }
+
+  const draft=saveCurrentJobDraft();
+  const row={
+    employer_id:session.user.id,
+    title:String(draft?.title||'').trim()||'Untitled job draft',
+    location:String(draft?.location||'').trim()||null,
+    current_step:Math.max(1,Math.min(5,Number(stepOverride||currentStep||1))),
+    draft_data:draft||{},
+    updated_at:new Date().toISOString()
+  };
+
+  if(activeJobDraftId){
+    const {error}=await sb
+      .from('employer_job_drafts')
+      .update(row)
+      .eq('id',activeJobDraftId)
+      .eq('employer_id',session.user.id);
+
+    if(error)throw error;
+  }else{
+    const {data,error}=await sb
+      .from('employer_job_drafts')
+      .insert(row)
+      .select('id')
+      .single();
+
+    if(error)throw error;
+    activeJobDraftId=String(data?.id||'');
+    if(activeJobDraftId){
+      sessionStorage.setItem('alygnnActiveJobDraftId',activeJobDraftId);
+    }
+  }
+
+  return activeJobDraftId;
+}
+
+function openExitDraftConfirm(){
+  el('exit-modal').hidden=false;
+}
+
+function closeExitDraftConfirm(){
+  if(exitDraftSaving)return;
+  el('exit-modal').hidden=true;
+}
+
+async function saveDraftAndExit(){
+  if(exitDraftSaving)return;
+  exitDraftSaving=true;
+
+  const button=el('exit-save-btn');
+  button.disabled=true;
+  button.textContent='Saving…';
+
+  try{
+    await persistCurrentJobDraft(currentStep);
+    sessionStorage.setItem('alygnnEmployerJobsTab','drafts');
+    sessionStorage.removeItem('alygnnJobReturnStep');
+    location.href='app-employer-dashboard.html?view=jobs&jobs_tab=drafts';
+  }catch(error){
+    console.error('Could not save job draft before exit:',error);
+    el('exit-modal').hidden=true;
+    showMessage('Could not save this draft. Please try again.');
+  }finally{
+    exitDraftSaving=false;
+    button.disabled=false;
+    button.textContent='Save & Exit';
+  }
+}
+
+async function saveDraftAndOpenPreview(){
+  // Save the same draft record the dashboard uses so Preview and Drafts stay in sync.
+  await persistCurrentJobDraft(5);
+  sessionStorage.setItem('alygnnJobReturnStep','5');
   location.href='app-job-preview.html';
 }
 
@@ -1569,20 +1682,22 @@ el('next-btn').addEventListener('click', async () => {
     return;
   }
 
-  saveDraftAndOpenPreview();
+  await saveDraftAndOpenPreview();
 });
 
 el('previous-btn').addEventListener('click', () => {
   if(currentStep === 1){
-    location.href = 'app-employer-dashboard.html';
+    openExitDraftConfirm();
   }else{
     showStep(currentStep - 1);
   }
 });
 
-el('back-btn').addEventListener('click', () => {
-  if(currentStep === 1) location.href = 'app-employer-dashboard.html';
-  else showStep(currentStep - 1);
+el('exit-btn').addEventListener('click',openExitDraftConfirm);
+el('exit-stay-btn').addEventListener('click',closeExitDraftConfirm);
+el('exit-save-btn').addEventListener('click',saveDraftAndExit);
+el('exit-modal').addEventListener('click',event=>{
+  if(event.target===el('exit-modal'))closeExitDraftConfirm();
 });
 
 el('company-ai-link').addEventListener('click',()=>{
@@ -1895,7 +2010,22 @@ el('description').addEventListener('input', () => {
 
     setupSuggestions();
     restoreDraft();
-    showStep(1);
+
+    activeJobDraftId =
+      entryParams.get('draft') ||
+      sessionStorage.getItem('alygnnActiveJobDraftId') ||
+      activeJobDraftId ||
+      '';
+
+    const requestedStep=Math.max(
+      1,
+      Math.min(
+        5,
+        Number(sessionStorage.getItem('alygnnJobReturnStep')||1)||1
+      )
+    );
+
+    showStep(requestedStep);
   }catch(error){
     console.error(error);
     showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
