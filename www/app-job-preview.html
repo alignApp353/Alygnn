@@ -870,6 +870,16 @@ button{
   font-weight:900!important;
 }
 
+
+.preview-job-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.preview-job-badge{
+  display:inline-flex;align-items:center;min-height:27px;padding:0 9px;border-radius:999px;
+  font-size:9px;font-weight:900;border:1px solid var(--border)
+}
+.preview-job-badge.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
+.preview-job-badge.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
+.preview-job-badge.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
+
 .candidate-card-pills{
   display:flex;
   flex-wrap:wrap;
@@ -2331,6 +2341,7 @@ html[data-theme="dark"] .exit-draft-card{
               <div class="company-name candidate-company-name" id="company-name">Company</div>
               <div class="candidate-verified" id="verified-pill" title="Verified employer">✓</div>
             </div>
+            <div class="preview-job-badges" id="preview-job-badges"></div>
           </div>
         </div>
 
@@ -2884,6 +2895,26 @@ function render(){
     'Not listed';
 
   $('company-name').textContent=company;
+
+  const previewBadges=$('preview-job-badges');
+  if(previewBadges){
+    const freeSlot=String(draft.posting_access_type||'').toLowerCase()==='free';
+    const badges=[];
+
+    if(!freeSlot&&draft.alygnn_recommended===true){
+      badges.push('<span class="preview-job-badge recommended">Alygnn Recommended</span>');
+    }
+    if(!freeSlot&&draft.urgently_hiring===true){
+      badges.push('<span class="preview-job-badge urgent">Urgently Hiring</span>');
+    }
+    if(!freeSlot&&draft.featured_employer===true){
+      badges.push('<span class="preview-job-badge featured">Featured Employer</span>');
+    }
+
+    previewBadges.innerHTML=badges.join('');
+    previewBadges.hidden=!badges.length;
+  }
+
   $('company-meta').textContent=
     [location,workStyle].filter(Boolean).join(' · ');
 
@@ -3271,6 +3302,10 @@ function baseJobPayload(){
     description:draft.description,
     requirements:draft.requirements,
     benefits:draft.benefits,
+    posting_access_type:draft.posting_access_type||null,
+    featured_employer:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.featured_employer===true,
+    urgently_hiring:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.urgently_hiring===true,
+    alygnn_recommended:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.alygnn_recommended===true,
     status:'active',
     created_at:new Date().toISOString()
   };
