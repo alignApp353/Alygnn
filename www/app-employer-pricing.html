@@ -477,6 +477,26 @@ let jobs=[];
 
 const $=id=>document.getElementById(id);
 
+function escapeHtml(value){
+  return String(value??'').replace(
+    /[&<>"']/g,
+    char=>({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#039;'
+    }[char])
+  );
+}
+
+function clearMessage(){
+  const box=$('message');
+  if(!box)return;
+  box.textContent='';
+  box.hidden=true;
+}
+
 function withTimeout(promise,ms=5000,label='Request'){
   let timer;
 
@@ -1629,6 +1649,7 @@ async function loadAccount(){
     );
 
     renderCurrent();
+    clearMessage();
 
   }catch(error){
     console.error(
