@@ -2116,6 +2116,155 @@ html[data-theme="dark"] .details-footer{
   }
 }
 
+
+/* ==========================================================
+   EMPLOYER PREVIEW — CLEAN EXIT + TIGHTER LAYOUT
+   ========================================================== */
+.employer-preview-header{
+  grid-template-columns:54px 1fr 54px!important;
+}
+
+.header-spacer{
+  width:46px;
+  height:46px;
+}
+
+.preview-exit-btn{
+  width:46px;
+  height:46px;
+  justify-self:end;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:#fff;
+  color:var(--text);
+  display:grid;
+  place-items:center;
+  padding:0;
+  box-shadow:0 5px 16px rgba(24,42,62,.06);
+}
+
+.preview-exit-btn span{
+  display:block;
+  font-size:29px;
+  font-weight:400;
+  line-height:1;
+  transform:translateY(-1px);
+}
+
+.preview-exit-btn:active{
+  transform:scale(.97);
+}
+
+/* The progress strip was intentionally removed, so don't vertically center
+   the card in the leftover candidate-screen space. Keep the preview close to
+   the header like a normal review screen. */
+.candidate-preview-swipe-area{
+  justify-content:flex-start!important;
+  padding-top:30px!important;
+  padding-bottom:22px!important;
+}
+
+.flip-shell{
+  margin-top:0!important;
+}
+
+.exit-draft-overlay{
+  position:fixed;
+  inset:0;
+  z-index:400;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  background:rgba(11,24,37,.42);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+
+.exit-draft-overlay[hidden]{
+  display:none!important;
+}
+
+.exit-draft-card{
+  width:100%;
+  max-width:430px;
+  padding:22px;
+  border:1px solid var(--border);
+  border-radius:24px;
+  background:var(--card,#fff);
+  box-shadow:0 24px 60px rgba(15,31,48,.22);
+}
+
+.exit-draft-icon{
+  width:44px;
+  height:44px;
+  margin-bottom:14px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:rgba(93,127,163,.10);
+  color:var(--brand-dark,var(--brand));
+  font-size:22px;
+  font-weight:900;
+}
+
+.exit-draft-card h2{
+  margin:0;
+  color:var(--text);
+  font-size:22px;
+  line-height:1.15;
+  letter-spacing:-.35px;
+}
+
+.exit-draft-card p{
+  margin:9px 0 18px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.exit-draft-actions{
+  display:grid;
+  grid-template-columns:1fr 1.35fr;
+  gap:10px;
+}
+
+.exit-draft-actions button{
+  min-height:50px;
+  border-radius:15px;
+  font-size:13px;
+  font-weight:900;
+}
+
+.exit-draft-cancel{
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--text);
+}
+
+.exit-draft-save{
+  border:1px solid var(--brand);
+  background:var(--brand);
+  color:#fff;
+}
+
+.exit-draft-save:disabled{
+  opacity:.65;
+  cursor:default;
+}
+
+html[data-theme="dark"] .preview-exit-btn,
+html[data-theme="dark"] .exit-draft-card{
+  background:#0F1B28!important;
+  border-color:#2B3A4A!important;
+}
+
+@media(min-width:700px){
+  .exit-draft-overlay{
+    align-items:center;
+  }
+}
+
 </style>
 </head>
 
@@ -2128,11 +2277,25 @@ html[data-theme="dark"] .details-footer{
   </div>
 </div>
 
-<header class="header">
-  <button class="back" id="header-back" type="button">←</button>
+<header class="header employer-preview-header">
+  <div class="header-spacer" aria-hidden="true"></div>
   <div class="logo">Alygnn<span>.</span></div>
-  <div></div>
+  <button class="preview-exit-btn" id="exit-draft-btn" type="button" aria-label="Exit job preview">
+    <span aria-hidden="true">×</span>
+  </button>
 </header>
+
+<div class="exit-draft-overlay" id="exit-draft-overlay" hidden aria-hidden="true">
+  <section class="exit-draft-card" role="dialog" aria-modal="true" aria-labelledby="exit-draft-title">
+    <div class="exit-draft-icon" aria-hidden="true">×</div>
+    <h2 id="exit-draft-title">Exit this job ad?</h2>
+    <p>Your progress will be saved to Drafts so you can finish and publish it later.</p>
+    <div class="exit-draft-actions">
+      <button class="exit-draft-cancel" id="exit-draft-cancel" type="button">Keep Editing</button>
+      <button class="exit-draft-save" id="exit-draft-save" type="button">Save to Drafts &amp; Exit</button>
+    </div>
+  </section>
+</div>
 
 <main class="page" id="page" hidden>
 
@@ -2954,6 +3117,130 @@ function closeCandidateDetailsPreview(){
 }
 
 
+
+function openExitDraftConfirm(){
+  const overlay=$('exit-draft-overlay');
+  overlay.hidden=false;
+  overlay.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+}
+
+function closeExitDraftConfirm(){
+  const overlay=$('exit-draft-overlay');
+  overlay.hidden=true;
+  overlay.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+}
+
+async function persistPreviewDraftToCloud(){
+  if(!session?.user?.id || !draft){
+    throw new Error('Your job draft is not ready to save yet.');
+  }
+
+  const now=new Date().toISOString();
+  const draftData={
+    ...draft,
+    employer_id:session.user.id
+  };
+
+  const row={
+    employer_id:session.user.id,
+    title:String(draftData.title||'').trim()||'Untitled job draft',
+    location:String(draftData.location||'').trim()||null,
+    current_step:5,
+    draft_data:draftData,
+    updated_at:now
+  };
+
+  let activeId=String(
+    sessionStorage.getItem('alygnnActiveJobDraftId')||''
+  ).trim();
+
+  if(activeId){
+    const {data,error}=await sb
+      .from('employer_job_drafts')
+      .update(row)
+      .eq('id',activeId)
+      .eq('employer_id',session.user.id)
+      .select('id')
+      .maybeSingle();
+
+    if(!error && data?.id){
+      return String(data.id);
+    }
+
+    if(error){
+      console.warn('Existing draft update failed; creating a fresh draft:',error);
+    }
+  }
+
+  const {data,error}=await sb
+    .from('employer_job_drafts')
+    .insert(row)
+    .select('id')
+    .single();
+
+  if(error)throw error;
+
+  return String(data?.id||'');
+}
+
+async function savePreviewDraftAndExit(){
+  const button=$('exit-draft-save');
+  const cancel=$('exit-draft-cancel');
+
+  button.disabled=true;
+  cancel.disabled=true;
+  button.textContent='Saving…';
+
+  try{
+    await persistPreviewDraftToCloud();
+
+    /* The cloud copy is now the source of truth. Clearing these prevents
+       "Post a Job" from accidentally reopening the draft; Continue Draft
+       from My Jobs restores them when the employer actually chooses it. */
+    sessionStorage.removeItem('alygnnJobDraft');
+    sessionStorage.removeItem('alygnnActiveJobDraftId');
+    sessionStorage.removeItem('alygnnJobReturnStep');
+    sessionStorage.removeItem('alygnnEditJobId');
+
+    location.replace(
+      'app-employer-dashboard.html?view=jobs&jobs_tab=drafts'
+    );
+  }catch(error){
+    console.error('Could not save preview to Drafts:',error);
+    closeExitDraftConfirm();
+    showMessage(
+      'Could not save this job to Drafts yet. Your preview is still open, so nothing was lost.'
+    );
+    button.disabled=false;
+    cancel.disabled=false;
+    button.textContent='Save to Drafts & Exit';
+  }
+}
+
+async function deleteActiveCloudDraftBestEffort(){
+  const activeId=String(
+    sessionStorage.getItem('alygnnActiveJobDraftId')||''
+  ).trim();
+
+  if(!activeId || !session?.user?.id)return;
+
+  try{
+    const {error}=await sb
+      .from('employer_job_drafts')
+      .delete()
+      .eq('id',activeId)
+      .eq('employer_id',session.user.id);
+
+    if(error){
+      console.warn('Published job draft cleanup failed:',error);
+    }
+  }catch(error){
+    console.warn('Published job draft cleanup skipped:',error);
+  }
+}
+
 function editJob(){
   if(draft){
     sessionStorage.setItem(
@@ -3165,12 +3452,24 @@ async function publishJob(){
     publishedJobId='';
     resolvePublishedJobIdBestEffort();
 
+    /* Publishing finishes the draft lifecycle. Remove its cloud draft so the
+       same job does not remain under My Jobs > Drafts after going live. */
+    await deleteActiveCloudDraftBestEffort();
+
     sessionStorage.removeItem(
       'alygnnJobDraft'
     );
 
     sessionStorage.removeItem(
       'alygnnEditJobId'
+    );
+
+    sessionStorage.removeItem(
+      'alygnnActiveJobDraftId'
+    );
+
+    sessionStorage.removeItem(
+      'alygnnJobReturnStep'
     );
 
     $('success-job').textContent=
@@ -3218,7 +3517,15 @@ async function publishJob(){
 }
 
 function wire(){
-  $('header-back').onclick=editJob;
+  $('exit-draft-btn').onclick=openExitDraftConfirm;
+  $('exit-draft-cancel').onclick=closeExitDraftConfirm;
+  $('exit-draft-save').onclick=savePreviewDraftAndExit;
+
+  $('exit-draft-overlay').addEventListener('click',event=>{
+    if(event.target===$('exit-draft-overlay')){
+      closeExitDraftConfirm();
+    }
+  });
   $('edit-btn').onclick=editJob;
 
   $('return-builder').onclick=()=>{
@@ -3274,10 +3581,15 @@ function wire(){
 
 
   document.addEventListener('keydown',event=>{
-    if(
-      event.key==='Escape' &&
-      $('job-details-overlay')?.classList.contains('open')
-    ){
+    if(event.key!=='Escape')return;
+
+    if(!$('exit-draft-overlay').hidden){
+      event.preventDefault();
+      closeExitDraftConfirm();
+      return;
+    }
+
+    if($('job-details-overlay')?.classList.contains('open')){
       event.preventDefault();
       closeCandidateDetailsPreview();
     }
