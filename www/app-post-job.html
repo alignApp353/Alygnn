@@ -1221,82 +1221,138 @@ function marketPayLabel(value,period){
 async function suggestMarketPay(){
   clearMessage();
 
-  if(!selectedOnetCode){
-    showMessage('Select a suggested job title first so Alygnn can match the correct occupation.');
-    showStep(1);
-    el('title').focus();
+  const button=el('suggest-pay-btn');
+  const title=el('title').value.trim();
+  const location=el('location').value.trim();
+  const period=el('pay-period').value;
+
+  if(!title){
+    showMessage('Enter a job title first so Alygnn can suggest a market pay range.');
     return;
   }
 
-  const button=el('suggest-pay-btn');
   button.disabled=true;
   button.textContent='Finding market pay…';
 
-  const locationType=selectedLocation?.location_type||'';
-  const stateCode=
-    locationType==='remote'
-      ? null
-      : (selectedLocation?.state_code||null);
+  try{
+    // If the employer selected a catalog title with an O*NET code, use the
+    // structured BLS/OEWS wage data first.
+    if(selectedOnetCode){
+      const locationType=selectedLocation?.location_type||'';
+      const stateCode=
+        locationType==='remote'
+          ? null
+          : (selectedLocation?.state_code||null);
 
-  const areaCode=
-    locationType==='metro'
-      ? (selectedLocation?.source_id||null)
-      : null;
+      const areaCode=
+        locationType==='metro'
+          ? (selectedLocation?.source_id||null)
+          : null;
 
-  const {data,error}=await sb.rpc('suggest_market_pay',{
-    occupation_code_input:selectedOnetCode,
-    state_code_input:stateCode,
-    area_code_input:areaCode
-  });
+      const {data,error}=await sb.rpc('suggest_market_pay',{
+        occupation_code_input:selectedOnetCode,
+        state_code_input:stateCode,
+        area_code_input:areaCode
+      });
 
-  button.disabled=false;
-  button.textContent='✨ Suggest market pay';
+      if(!error){
+        const profile=Array.isArray(data)?data[0]:data;
+        const values=profile?salaryValuesForPeriod(profile,period):null;
 
-  if(error){
+        if(values&&values.min!==null&&values.max!==null){
+          el('pay-min').value=values.min;
+          el('pay-max').value=values.max;
+
+          const periodText={
+            hour:'hour',
+            week:'week',
+            month:'month',
+            year:'year'
+          }[period];
+
+          el('market-pay-range').textContent=
+            `${marketPayLabel(values.min,period)}–${marketPayLabel(values.max,period)} per ${periodText}`;
+
+          const sourceLabel={
+            metro:'metro-area',
+            state:'state',
+            national:'national'
+          }[profile.geographic_level]||profile.geographic_level;
+
+          el('market-pay-note').textContent=
+            `Based on the ${profile.source_year} BLS OEWS ${sourceLabel} estimate for ${profile.occupation_title} in ${profile.area_title}. This is guidance, not a required rate.`;
+
+          el('market-pay-card').hidden=false;
+          showMessage('The suggested range was added. You can edit it before publishing.','success');
+          return;
+        }
+      }else{
+        console.warn('Structured market-pay suggestion failed; trying title-based estimate:',error);
+      }
+    }
+
+    // Custom/common titles may not have an O*NET code. Do not send the
+    // employer back to Step 1. Use Alygnn's title-based pay service instead.
+    const payload={
+      title,
+      location,
+      job_type:jobType,
+      work_style:workStyle,
+      period
+    };
+
+    const {data,error}=await sb.functions.invoke('smart-service',{
+      body:payload
+    });
+
+    if(error||!data||typeof data.min!=='number'||typeof data.max!=='number'){
+      console.error('Title-based market-pay suggestion failed:',error,data);
+      showMessage('Alygnn could not estimate market pay for this title. You can still enter the pay range manually.');
+      return;
+    }
+
+    const normalizeSuggestedPay=value=>{
+      const n=Number(value);
+      if(!Number.isFinite(n))return'';
+      return period==='hour'
+        ? Math.round(n*100)/100
+        : Math.round(n);
+    };
+
+    const min=normalizeSuggestedPay(data.min);
+    const max=normalizeSuggestedPay(data.max);
+
+    if(min===''||max===''){
+      showMessage('Alygnn could not estimate market pay for this title. You can still enter the pay range manually.');
+      return;
+    }
+
+    el('pay-min').value=min;
+    el('pay-max').value=max;
+
+    const periodText={
+      hour:'hour',
+      week:'week',
+      month:'month',
+      year:'year'
+    }[period];
+
+    el('market-pay-range').textContent=
+      `${marketPayLabel(min,period)}–${marketPayLabel(max,period)} per ${periodText}`;
+
+    el('market-pay-note').textContent=
+      data.note||
+      `Alygnn estimate for ${title}${location?` in ${location}`:''}. This is guidance, not a required rate.`;
+
+    el('market-pay-card').hidden=false;
+    showMessage('The suggested range was added. You can edit it before publishing.','success');
+  }catch(error){
     console.error('Market-pay suggestion failed:',error);
-    showMessage(`Market pay is unavailable: ${error.message||'database error'}`);
-    return;
+    showMessage('Alygnn could not estimate market pay right now. You can still enter the pay range manually.');
+  }finally{
+    button.disabled=false;
+    button.textContent='✨ Suggest market pay';
   }
-
-  const profile=Array.isArray(data)?data[0]:data;
-
-  if(!profile){
-    showMessage('No reliable wage estimate was available for this occupation. Enter the range manually.');
-    return;
-  }
-
-  const period=el('pay-period').value;
-  const values=salaryValuesForPeriod(profile,period);
-
-  if(!values||values.min===null||values.max===null){
-    showMessage('This occupation does not have a usable range for the selected pay period.');
-    return;
-  }
-
-  el('pay-min').value=values.min;
-  el('pay-max').value=values.max;
-
-  const periodText={
-    hour:'hour',
-    week:'week',
-    month:'month',
-    year:'year'
-  }[period];
-
-  el('market-pay-range').textContent=
-    `${marketPayLabel(values.min,period)}–${marketPayLabel(values.max,period)} per ${periodText}`;
-
-  const sourceLabel={
-    metro:'metro-area',
-    state:'state',
-    national:'national'
-  }[profile.geographic_level]||profile.geographic_level;
-
-  el('market-pay-note').textContent=
-    `Based on the ${profile.source_year} BLS OEWS ${sourceLabel} estimate for ${profile.occupation_title} in ${profile.area_title}. This is guidance, not a required rate.`;
-
-  el('market-pay-card').hidden=false;
-  showMessage('The suggested range was added. You can edit it before publishing.','success');
 }
 
 function buildSalary(){
