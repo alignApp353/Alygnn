@@ -2379,23 +2379,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   async function checkAuth() {
-    // Read the persisted session first. getUser() always requires a network
-    // round trip, and on a freshly signed-in browser that extra request could
-    // fail/lag and incorrectly bounce a valid session back to login.html.
-    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-    let authedUser = sessionData?.session?.user || null;
+    const { data, error } = await sb.auth.getUser();
+    const authedUser = data && data.user;
 
-    // If no local session was available, do one authoritative network check
-    // before deciding the user is signed out.
-    if (!authedUser) {
-      const { data: userData, error: userError } = await sb.auth.getUser();
-      authedUser = userData?.user || null;
-      if ((sessionError || userError) && !authedUser) {
-        console.warn('Employer dashboard auth check failed:', sessionError || userError);
-      }
-    }
-
-    if (!authedUser) {
+    if (error || !authedUser) {
       window.location.replace('login.html?role=employer');
       return;
     }
@@ -2452,26 +2439,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         console.error('Failed to load employer profile:', profileError);
       }
 
-      const role = String(
-        ownerProfile?.role ||
-        authedUser.user_metadata?.role ||
-        authedUser.user_metadata?.account_type ||
-        authedUser.app_metadata?.role ||
-        authedUser.app_metadata?.account_type ||
-        ''
-      ).toLowerCase();
-
-      // Website and app-created accounts have historically used both `role`
-      // and `account_type`. Treat either employer marker as valid. Also accept
-      // an existing employer blueprint/verification as an employer signal so
-      // older accounts cannot get trapped in a login redirect loop.
-      const hasEmployerSignal =
-        role === 'employer' ||
-        ownerProfile?.employer_verified === true ||
-        !!ownerProfile?.hiring_blueprint;
-
-      if (!hasEmployerSignal) {
-        window.location.replace('account.html');
+      const role = String(ownerProfile?.role || authedUser.user_metadata?.role || '').toLowerCase();
+      if (role !== 'employer') {
+        window.location.replace('login.html?role=employer');
         return;
       }
 
@@ -4924,6 +4894,37 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   // ---- AI job description generation ----
+  function formatAiDescriptionAsBullets(raw) {
+    const text = String(raw || '')
+      .replace(/\r/g, '\n')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+
+    if (!text) return '';
+
+    const bulletItems = [];
+
+    text.split('\n').forEach(line => {
+      const cleanedLine = line
+        .replace(/^\s*(?:[-*•▪◦]+|\d+[.)])\s*/, '')
+        .replace(/^#+\s*/, '')
+        .trim();
+
+      if (!cleanedLine) return;
+
+      // AI sometimes returns full paragraphs. Split them into sentence-sized
+      // points so the employer gets a clean, scannable job description.
+      const sentences = cleanedLine.split(/(?<=[.!?])\s+(?=[A-Z0-9])/g);
+
+      sentences.forEach(sentence => {
+        const item = sentence.trim();
+        if (item) bulletItems.push(item);
+      });
+    });
+
+    return bulletItems.map(item => `• ${item}`).join('\n');
+  }
+
   async function generateDescription() {
     const btn = document.getElementById('ai-generate-btn');
     const title = document.getElementById('f-title').value.trim();
@@ -4961,11 +4962,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return;
       }
 
-      // AI output tends to come back with a blank line (double/triple
-      // newline) between every paragraph, which renders in the textarea
-      // as a big empty gap. Collapsing runs of 2+ newlines down to one
-      // keeps paragraphs as separate lines without that gap.
-      const cleanedDescription = String(data.description).replace(/\n{2,}/g, '\n').trim();
+      // Keep AI-generated descriptions easy to scan and edit. The service may
+      // return prose paragraphs, numbered lists, or bullets; normalize all of
+      // those formats into one concise bullet per point.
+      const cleanedDescription = formatAiDescriptionAsBullets(data.description);
 
       document.getElementById('f-desc').value = cleanedDescription;
       updatePreview();
