@@ -12573,10 +12573,14 @@
 
     document.querySelectorAll('[data-jobs-tab]').forEach(button => {
       button.addEventListener('click',() => {
-        jobsStatusTab =
-          button.dataset.jobsTab === 'closed'
-            ? 'closed'
-            : 'open';
+        const requestedTab = String(button.dataset.jobsTab || 'open').toLowerCase();
+        jobsStatusTab = ['open','drafts','closed'].includes(requestedTab)
+          ? requestedTab
+          : 'open';
+
+        try{
+          sessionStorage.setItem('alygnnEmployerJobsTab',jobsStatusTab);
+        }catch(_){}
 
         renderJobs();
       });
