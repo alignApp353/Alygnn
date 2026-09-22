@@ -7513,7 +7513,11 @@
     }
 
     function renderHero(){
-      const scored = state.applications
+      const waitingApplications = state.applications.filter(application =>
+        applicationPipelineStatus(application)==='new'
+      );
+
+      const scored = waitingApplications
         .map(application => Number(application.match_score || application.alygnn_score || 0))
         .filter(score => score > 0);
 
@@ -7521,9 +7525,7 @@
         ? Math.round(scored.reduce((total,score) => total + score,0) / scored.length)
         : 0;
 
-      const fresh = state.applications.filter(application =>
-        applicationPipelineStatus(application)==='new'
-      ).length;
+      const fresh = waitingApplications.length;
 
       els.heroScore.textContent = average || '—';
       els.heroTitle.textContent = fresh
@@ -7796,17 +7798,18 @@
     }
 
     function jobTreatmentBadges(job){
-      const recommended=job?.alygnn_recommended===true;
-      const featured=(job?.featured_employer===true || dashboardPlanAllowsFeatured());
-      const urgent=job?.urgently_hiring===true;
+      const freeSlot=postingAccessType(job)==='free';
+      const recommended=!freeSlot && dashboardPlanAllowsRecommended() && job?.alygnn_recommended===true;
+      const featured=!freeSlot && dashboardPlanAllowsFeatured() && job?.featured_employer===true;
+      const urgent=!freeSlot && dashboardPlanAllowsUrgent() && job?.urgently_hiring===true;
       const badges=[];
 
       if(recommended){
         badges.push('<span class="job-treatment-badge recommended">Alygnn Recommended</span>');
-      }else if(featured){
+      }
+      if(featured){
         badges.push('<span class="job-treatment-badge featured">Featured Employer</span>');
       }
-
       if(urgent){
         badges.push('<span class="job-treatment-badge urgent">Urgently Hiring</span>');
       }
@@ -7817,12 +7820,18 @@
     }
 
     function jobTreatmentClass(job){
-      if(job?.alygnn_recommended===true)return 'plan-recommended';
-      if(job?.featured_employer===true || dashboardPlanAllowsFeatured())return 'plan-featured';
+      if(postingAccessType(job)==='free')return '';
+      if(job?.urgently_hiring===true&&dashboardPlanAllowsUrgent())return 'plan-urgent';
+      if(job?.alygnn_recommended===true&&dashboardPlanAllowsRecommended())return 'plan-recommended';
+      if(job?.featured_employer===true&&dashboardPlanAllowsFeatured())return 'plan-featured';
       return '';
     }
 
     function urgentHiringAction(job){
+      if(postingAccessType(job)==='free'){
+        return '';
+      }
+
       if(!dashboardPlanAllowsUrgent()){
         if(dashboardEffectivePlan()==='launch'){
           return '<button class="mini-btn plan-locked" type="button" disabled>Urgently Hiring · Growth+</button>';
@@ -13233,6 +13242,11 @@
 
 
       if(action==='urgent-on'||action==='urgent-off'){
+        if(postingAccessType(job)==='free'){
+          toast('The included Free Job Slot cannot use Urgently Hiring.');
+          return;
+        }
+
         if(!dashboardPlanAllowsUrgent()){
           toast('Urgently Hiring is available with Growth, Scale, and Enterprise.');
           return;
