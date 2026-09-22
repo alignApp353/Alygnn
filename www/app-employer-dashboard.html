@@ -4644,23 +4644,6 @@
             </div>
           </button>
 
-          <button class="metric" type="button">
-            <div class="metric-icon calendar">□</div>
-            <div>
-              <div class="metric-label">Today’s Interviews</div>
-              <div class="metric-value" id="interviews-today">0</div>
-              <div class="metric-note" id="interview-note">Nothing scheduled</div>
-            </div>
-          </button>
-
-          <button class="metric" type="button">
-            <div class="metric-icon hired">✓</div>
-            <div>
-              <div class="metric-label">Recent Hires</div>
-              <div class="metric-value" id="hired-month">0</div>
-              <div class="metric-note" id="hired-note">Track hires here</div>
-            </div>
-          </button>
         </div>
 
         <section class="section">
@@ -6076,10 +6059,6 @@
       pausedJobs:$('paused-jobs'),
       newApplicants:$('new-applicants'),
       applicantNote:$('applicant-note'),
-      interviewsToday:$('interviews-today'),
-      interviewNote:$('interview-note'),
-      hiredMonth:$('hired-month'),
-      hiredNote:$('hired-note'),
       dashboardJobs:$('dashboard-jobs'),
       bestFits:$('best-fits'),
       activityList:$('activity-list'),
@@ -7567,30 +7546,6 @@
         applicationPipelineStatus(application)==='new'
       ).length;
 
-      const interviews = state.applications.filter(application => {
-        const status = String(application.status || '').toLowerCase();
-        const interviewDate = new Date(
-          application.interview_at ||
-          application.interview_date ||
-          application.updated_at
-        );
-
-        return status.includes('interview') &&
-          !Number.isNaN(interviewDate.getTime()) &&
-          interviewDate.toDateString() === new Date().toDateString();
-      }).length;
-
-      const now = new Date();
-      const hired = state.applications.filter(application => {
-        const status = String(application.status || '').toLowerCase();
-        const hiredDate = new Date(application.hired_at || application.updated_at);
-
-        return status.includes('hire') &&
-          !Number.isNaN(hiredDate.getTime()) &&
-          hiredDate.getMonth() === now.getMonth() &&
-          hiredDate.getFullYear() === now.getFullYear();
-      }).length;
-
       els.activeJobs.textContent = active;
       els.pausedJobs.textContent = paused + ' paused';
       if(els.newApplicants){
@@ -7602,10 +7557,6 @@
           ? fresh + ' waiting for review'
           : 'No new activity';
       }
-      els.interviewsToday.textContent = interviews;
-      els.interviewNote.textContent = interviews ? interviews + ' scheduled today' : 'Nothing scheduled';
-      els.hiredMonth.textContent = hired;
-      els.hiredNote.textContent = hired ? hired + ' this month' : 'Track hires here';
       els.notificationCount.textContent = fresh;
       els.notificationCount.hidden = fresh === 0;
     }
