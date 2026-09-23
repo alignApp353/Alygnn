@@ -140,6 +140,16 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 .job-badge-chip.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
 .job-badge-chip.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
 
+.job-badge-option.included{
+  opacity:1;
+  border-color:#C8D9E8;
+  background:#F7FAFD;
+}
+.job-badge-option.included .job-badge-toggle:disabled{
+  opacity:1;
+}
+
+
 .preview{display:grid;gap:13px}
 .preview-row{padding-bottom:13px;border-bottom:1px solid var(--border)}
 .preview-row:last-child{border-bottom:0;padding-bottom:0}
@@ -1787,54 +1797,72 @@ function currentPostingSlotType(){
 function badgeEligibility(){
   const plan=postingPlanCode();
   const slot=currentPostingSlotType();
-
-  if(slot==='free'){
-    return{
-      featured:false,
-      urgent:false,
-      recommended:false,
-      reason:'The included Free Job Slot does not receive paid-plan badges.'
-    };
-  }
-
   const paidBase=
     postingAccessDetails?.active_paid_plan===true||
     postingAccessDetails?.base_paid_plan===true;
 
-  if(slot==='weekly'&&!paidBase){
-    return{
-      featured:false,
-      urgent:false,
-      recommended:false,
-      reason:'A Weekly Job Slot adds capacity but does not add paid-plan badges.'
-    };
-  }
+  const featuredAuto=
+    paidBase &&
+    ['launch','growth','scale','enterprise','business'].includes(plan);
+
+  const recommendedAuto=
+    paidBase &&
+    ['scale','enterprise'].includes(plan);
+
+  const urgentAllowed=
+    slot!=='free' &&
+    paidBase &&
+    ['growth','scale','enterprise'].includes(plan);
 
   return{
-    featured:['launch','growth','scale','enterprise','business'].includes(plan),
-    urgent:['growth','scale','enterprise'].includes(plan),
-    recommended:['scale','enterprise'].includes(plan),
-    reason:''
+    featuredAuto,
+    recommendedAuto,
+    urgentAllowed,
+    slot,
+    plan
   };
 }
 
-function syncBadgeToggle(id,value,allowed){
+function setAutomaticBadgeToggle(id,on,included){
   const btn=el(id);
   if(!btn)return;
-  btn.disabled=!allowed;
-  btn.setAttribute('aria-pressed',value&&allowed?'true':'false');
+
+  btn.disabled=true;
+  btn.setAttribute('aria-pressed',on?'true':'false');
+
   const row=btn.closest('.job-badge-option');
-  if(row)row.classList.toggle('locked',!allowed);
+  if(row){
+    row.classList.toggle('included',included&&on);
+    row.classList.toggle('locked',!on);
+  }
+}
+
+function setUrgentToggle(on,allowed){
+  const btn=el('urgent-toggle');
+  if(!btn)return;
+
+  btn.hidden=false;
+  btn.disabled=!allowed;
+  btn.setAttribute('aria-pressed',on&&allowed?'true':'false');
+
+  const row=btn.closest('.job-badge-option');
+  if(row){
+    row.classList.toggle('included',false);
+    row.classList.toggle('locked',!allowed);
+  }
 }
 
 function renderBadgeOptions(){
   const eligibility=badgeEligibility();
-  const slot=currentPostingSlotType();
-  const plan=postingPlanCode();
+  const slot=eligibility.slot;
+  const plan=eligibility.plan;
 
-  if(!eligibility.featured)selectedFeaturedBadge=false;
-  if(!eligibility.urgent)selectedUrgentBadge=false;
-  if(!eligibility.recommended)selectedRecommendedBadge=false;
+  selectedFeaturedBadge=eligibility.featuredAuto;
+  selectedRecommendedBadge=eligibility.recommendedAuto;
+
+  if(!eligibility.urgentAllowed){
+    selectedUrgentBadge=false;
+  }
 
   const slotLabels={
     free:'Free Job Slot',
@@ -1848,44 +1876,67 @@ function renderBadgeOptions(){
     el('job-slot-pill').textContent=slotLabels[slot]||'Job Slot';
   }
 
-  if(el('job-badge-options-copy')){
-    const label=plan==='business'
-      ?'Launch'
-      :plan.charAt(0).toUpperCase()+plan.slice(1);
+  const planLabel=plan==='business'
+    ?'Launch'
+    :plan.charAt(0).toUpperCase()+plan.slice(1);
 
+  if(el('job-badge-options-copy')){
     el('job-badge-options-copy').textContent=
-      eligibility.reason ||
-      `Choose the candidate-facing badges for this ${label} job.`;
+      `Badge access for this ${planLabel} job is shown below.`;
   }
 
-  syncBadgeToggle('featured-toggle',selectedFeaturedBadge,eligibility.featured);
-  syncBadgeToggle('urgent-toggle',selectedUrgentBadge,eligibility.urgent);
-  syncBadgeToggle('recommended-toggle',selectedRecommendedBadge,eligibility.recommended);
+  setAutomaticBadgeToggle(
+    'featured-toggle',
+    eligibility.featuredAuto,
+    eligibility.featuredAuto
+  );
+
+  setAutomaticBadgeToggle(
+    'recommended-toggle',
+    eligibility.recommendedAuto,
+    eligibility.recommendedAuto
+  );
+
+  setUrgentToggle(selectedUrgentBadge,eligibility.urgentAllowed);
 
   if(el('featured-option-note')){
-    el('featured-option-note').textContent=eligibility.featured
-      ?'Optional for this job.'
-      :(slot==='free'?'Not available on the Free Job Slot.':'Requires Launch or higher.');
+    el('featured-option-note').textContent=
+      eligibility.featuredAuto
+        ?`Included automatically with ${planLabel}.`
+        :'Not included with this account.';
   }
+
   if(el('urgent-option-note')){
-    el('urgent-option-note').textContent=eligibility.urgent
-      ?'Optional for this job.'
-      :(slot==='free'?'Not available on the Free Job Slot.':'Requires Growth or higher.');
+    if(slot==='free'){
+      el('urgent-option-note').textContent=
+        'Not available on the included Free Job Slot.';
+    }else if(eligibility.urgentAllowed){
+      el('urgent-option-note').textContent=
+        `Included with ${planLabel}. Turn it on only for jobs that are actually urgent.`;
+    }else{
+      el('urgent-option-note').textContent=
+        'Available only with Growth and Scale.';
+    }
   }
+
   if(el('recommended-option-note')){
-    el('recommended-option-note').textContent=eligibility.recommended
-      ?'Optional for this job.'
-      :(slot==='free'?'Not available on the Free Job Slot.':'Requires Scale or Enterprise.');
+    el('recommended-option-note').textContent=
+      eligibility.recommendedAuto
+        ?'Included with Scale and applied automatically by Alygnn.'
+        :'Scale only. Alygnn applies this automatically when eligible.';
   }
 
   const chips=[];
-  if(selectedRecommendedBadge&&eligibility.recommended){
+
+  if(eligibility.recommendedAuto){
     chips.push('<span class="job-badge-chip recommended">Alygnn Recommended</span>');
   }
-  if(selectedUrgentBadge&&eligibility.urgent){
+
+  if(selectedUrgentBadge&&eligibility.urgentAllowed){
     chips.push('<span class="job-badge-chip urgent">Urgently Hiring</span>');
   }
-  if(selectedFeaturedBadge&&eligibility.featured){
+
+  if(eligibility.featuredAuto){
     chips.push('<span class="job-badge-chip featured">Featured Employer</span>');
   }
 
@@ -1897,15 +1948,10 @@ function renderBadgeOptions(){
 function toggleJobBadge(kind){
   const eligibility=badgeEligibility();
 
-  if(kind==='featured'&&eligibility.featured){
-    selectedFeaturedBadge=!selectedFeaturedBadge;
-  }else if(kind==='urgent'&&eligibility.urgent){
+  if(kind==='urgent'&&eligibility.urgentAllowed){
     selectedUrgentBadge=!selectedUrgentBadge;
-  }else if(kind==='recommended'&&eligibility.recommended){
-    selectedRecommendedBadge=!selectedRecommendedBadge;
+    renderBadgeOptions();
   }
-
-  renderBadgeOptions();
 }
 
 function getJob(){
@@ -1926,9 +1972,9 @@ function getJob(){
     requirements: el('requirements').value.trim(),
     benefits: el('benefits').value.trim(),
     posting_access_type: currentPostingSlotType() || null,
-    featured_employer: selectedFeaturedBadge && badgeEligibility().featured,
-    urgently_hiring: selectedUrgentBadge && badgeEligibility().urgent,
-    alygnn_recommended: selectedRecommendedBadge && badgeEligibility().recommended,
+    featured_employer: badgeEligibility().featuredAuto,
+    urgently_hiring: selectedUrgentBadge && badgeEligibility().urgentAllowed,
+    alygnn_recommended: badgeEligibility().recommendedAuto,
     onet_soc_code: selectedOnetCode || null,
     location_city: selectedLocation?.city || null,
     location_state: selectedLocation?.state_code || null,
@@ -2310,9 +2356,9 @@ el('use-role-data-btn').addEventListener('click',async()=>{
 });
 
 
-el('featured-toggle').addEventListener('click',()=>toggleJobBadge('featured'));
+el('featured-toggle').addEventListener('click',()=>{});
 el('urgent-toggle').addEventListener('click',()=>toggleJobBadge('urgent'));
-el('recommended-toggle').addEventListener('click',()=>toggleJobBadge('recommended'));
+el('recommended-toggle').addEventListener('click',()=>{});
 
 el('suggest-pay-btn').addEventListener('click',suggestMarketPay);
 
