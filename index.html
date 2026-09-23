@@ -168,14 +168,16 @@
 
   #nav-auth-link {
     opacity: 0; transition: opacity 0.15s ease;
+    visibility: hidden; pointer-events: none;
     display: inline-block; min-width: 84px;
     text-align: center;
   }
   #nav-cta-btn {
     opacity: 0; transition: opacity 0.15s ease;
+    visibility: hidden; pointer-events: none;
     min-width: 148px;
   }
-  #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; }
+  #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; visibility: visible; pointer-events: auto; }
 
   .hero {
     min-height: calc(100vh - 64px);
@@ -204,20 +206,6 @@
       linear-gradient(90deg, rgba(93,127,163,.045) 1px, transparent 1px);
     background-size: 52px 52px;
     mask-image: linear-gradient(to right, transparent 4%, black 56%, transparent 98%);
-  }
-
-  .hero::after {
-    content: '';
-    position: absolute;
-    width: 500px;
-    height: 500px;
-    border-radius: 50%;
-    right: 4%;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: -1;
-    background: rgba(255,255,255,.56);
-    box-shadow: 0 0 115px rgba(93,127,163,.10);
   }
 
   .hero-text { max-width: 620px; position: relative; z-index: 2; }
@@ -369,23 +357,6 @@
     max-width: 520px;
     position: relative;
     padding: 38px 26px;
-  }
-
-  .hero-orbit {
-    position: absolute;
-    inset: 5% -2% 1%;
-    border: 1px solid rgba(93,127,163,.09);
-    border-radius: 48% 52% 45% 55%;
-    transform: rotate(-7deg);
-  }
-
-  .hero-orbit::after {
-    content: '';
-    position: absolute;
-    inset: 40px -30px -30px 45px;
-    border: 1px solid rgba(140,182,155,.10);
-    border-radius: 54% 46% 51% 49%;
-    transform: rotate(11deg);
   }
 
   .card-stack { position: relative; width: 100%; max-width: 455px; margin: auto; }
@@ -1314,8 +1285,6 @@
 
   <div class="hero-visual">
     <div class="hero-visual-shell">
-      <div class="hero-orbit" aria-hidden="true"></div>
-
       <div class="hero-float-card hero-float-one" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M4 17V7h16v10H4Z"/><path d="M8 7V5h8v2"/><path d="M4 11h16"/></svg>
         <div><strong>Salary aligned</strong><span>Above your target floor</span></div>
@@ -1578,23 +1547,33 @@ const { createClient } = supabase;
     const footerJobseekerAccount = document.getElementById('footer-jobseeker-account');
     const footerMyJobs = document.getElementById('footer-my-jobs');
 
-    // This is the JOB SEEKER homepage.
-    // Employers are allowed to view this page, but we do NOT redirect them
-    // and we do NOT change the top buttons into employer-account buttons.
+    // Resolve the navbar from the locally cached Supabase session first.
+    // This avoids a visible public -> logged-in swap while a profile request is loading.
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) return;
 
-      const { data: profile } = await sb
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .maybeSingle();
+      let role = String(
+        session.user.user_metadata?.role ||
+        session.user.user_metadata?.account_type ||
+        session.user.app_metadata?.role ||
+        session.user.app_metadata?.account_type ||
+        ''
+      ).toLowerCase();
 
-      const role = profile?.role || session.user.user_metadata?.role || 'seeker';
+      // Older accounts may not have role metadata. Only those accounts need
+      // a profile lookup, keeping the normal path fast on every computer.
+      if (!role) {
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        role = String(profile?.role || '').toLowerCase();
+      }
 
-      // Only change the navbar for real job seekers.
-      // If the logged-in user is an employer, keep this page looking like the job seeker homepage.
+      // Only change the navbar for real job seekers. Employers can view this
+      // page without the job-seeker account controls replacing the public nav.
       if (role === 'seeker' || role === 'jobseeker' || role === 'employee') {
         if (authLink) {
           authLink.textContent = 'My account';
@@ -1611,9 +1590,9 @@ const { createClient } = supabase;
         if (footerJobseekerAccount) footerJobseekerAccount.href = 'account.html';
         if (footerMyJobs) footerMyJobs.href = 'my-jobs.html';
       }
+    } catch (error) {
+      console.warn('Could not resolve homepage account navigation:', error);
     } finally {
-      // Whatever happened above — logged out, seeker, or employer — the
-      // text/href is now final, so it's safe to fade the buttons in.
       if (authLink) authLink.classList.add('auth-ready');
       if (ctaBtn) ctaBtn.classList.add('auth-ready');
     }
