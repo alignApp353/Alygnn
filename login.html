@@ -89,6 +89,9 @@
   .msg-box { border-radius: 10px; padding: 11px 15px; font-size: 13px; margin-bottom: 16px; display: none; }
   .msg-box.error { background: rgba(215,154,154,0.15); border: 1px solid rgba(215,154,154,0.4); color: #8a4040; }
   .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
+  .msg-box.info { background: rgba(93,127,163,0.10); border: 1px solid rgba(93,127,163,0.30); color: #36536f; }
+  .account-role-action { display: inline-block; margin-top: 9px; padding: 8px 14px; border: 0; border-radius: 9px; background: var(--brand); color: white; font: 500 12px 'DM Sans', sans-serif; cursor: pointer; }
+  .account-role-action:hover { opacity: 0.9; }
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 7px; }
   .field input { width: 100%; padding: 13px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: white; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
@@ -478,6 +481,27 @@
     const b = document.getElementById('msg-box');
     b.textContent = text; b.className = 'msg-box ' + type; b.style.display = 'block';
   }
+
+  function showEmployerAccountNotice(destination) {
+    const b = document.getElementById('msg-box');
+    b.className = 'msg-box info';
+    b.style.display = 'block';
+    b.textContent = '';
+
+    const message = document.createElement('div');
+    message.textContent = 'This is an employer account. Continue with employer account login.';
+    b.appendChild(message);
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'account-role-action';
+    action.textContent = 'Continue with employer account';
+    action.addEventListener('click', () => {
+      window.location.replace(destination);
+    });
+    b.appendChild(action);
+  }
+
   function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
 
   async function savePendingPreferences(user, fallbackName = '') {
@@ -524,6 +548,16 @@
         return;
       }
 
+      const destination = await redirectForUser(signedInUser, currentRole);
+
+      // If an employer account is entered while the Job Seeker side is selected,
+      // do not silently send the person into the employer flow. Explain the
+      // account type first and let them continue intentionally.
+      if (currentRole === 'seeker' && /\/employer-(?:onboarding|dashboard)\.html(?:$|[?#])/.test(destination)) {
+        showEmployerAccountNotice(destination);
+        return;
+      }
+
       // Preferences are helpful, but they must never trap the user on the login
       // page. Give the save a short window, then continue routing regardless.
       try {
@@ -535,7 +569,6 @@
         console.warn('Pending preferences could not be saved during login:', preferenceError);
       }
 
-      const destination = await redirectForUser(signedInUser, currentRole);
       window.location.replace(destination);
     } catch (error) {
       console.error('Login failed unexpectedly:', error);
