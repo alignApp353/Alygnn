@@ -138,7 +138,6 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 }
 .job-badge-chip.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
 .job-badge-chip.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
-.job-badge-chip.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
 
 .job-badge-option.included{
   opacity:1;
@@ -474,35 +473,7 @@ html[data-theme="dark"] .custom-add-btn{
         </div>
 
         <div class="job-badge-option-list">
-          <div class="job-badge-option" id="featured-option">
-            <div class="job-badge-option-copy">
-              <strong>Featured Employer</strong>
-              <span id="featured-option-note">Available with Launch, Growth, Scale, and Enterprise.</span>
-            </div>
-            <button class="job-badge-toggle" id="featured-toggle" type="button"
-              aria-label="Featured Employer badge" aria-pressed="false"></button>
-          </div>
-
-          <div class="job-badge-option" id="urgent-option">
-            <div class="job-badge-option-copy">
-              <strong>Urgently Hiring</strong>
-              <span id="urgent-option-note">Available with Growth, Scale, and Enterprise.</span>
-            </div>
-            <button class="job-badge-toggle" id="urgent-toggle" type="button"
-              aria-label="Urgently Hiring badge" aria-pressed="false"></button>
-          </div>
-
-          <div class="job-badge-option" id="recommended-option">
-            <div class="job-badge-option-copy">
-              <strong>Alygnn Recommended</strong>
-              <span id="recommended-option-note">Available with Scale and Enterprise.</span>
-            </div>
-            <button class="job-badge-toggle" id="recommended-toggle" type="button"
-              aria-label="Alygnn Recommended badge" aria-pressed="false"></button>
-          </div>
-        </div>
-
-        <div class="job-badge-summary" id="job-badge-summary"></div>
+<div class="job-badge-summary" id="job-badge-summary"></div>
       </div>
 
       <div class="preview">
@@ -569,7 +540,6 @@ let currentCompany = null;
 let slotEntitlement = null;
 let slotUsage = {used:0,limit:1};
 let postingAccessDetails = null;
-let selectedFeaturedBadge = false;
 let selectedUrgentBadge = false;
 let selectedRecommendedBadge = false;
 let activeJobDraftId = sessionStorage.getItem('alygnnActiveJobDraftId') || '';
@@ -1797,13 +1767,10 @@ function currentPostingSlotType(){
 function badgeEligibility(){
   const plan=postingPlanCode();
   const slot=currentPostingSlotType();
+
   const paidBase=
     postingAccessDetails?.active_paid_plan===true||
     postingAccessDetails?.base_paid_plan===true;
-
-  const featuredAuto=
-    paidBase &&
-    ['launch','growth','scale','enterprise','business'].includes(plan);
 
   const recommendedAuto=
     paidBase &&
@@ -1815,7 +1782,6 @@ function badgeEligibility(){
     ['growth','scale','enterprise'].includes(plan);
 
   return{
-    featuredAuto,
     recommendedAuto,
     urgentAllowed,
     slot,
@@ -1823,31 +1789,15 @@ function badgeEligibility(){
   };
 }
 
-function setAutomaticBadgeToggle(id,on,included){
-  const btn=el(id);
-  if(!btn)return;
-
-  btn.disabled=true;
-  btn.setAttribute('aria-pressed',on?'true':'false');
-
-  const row=btn.closest('.job-badge-option');
-  if(row){
-    row.classList.toggle('included',included&&on);
-    row.classList.toggle('locked',!on);
-  }
-}
-
 function setUrgentToggle(on,allowed){
   const btn=el('urgent-toggle');
   if(!btn)return;
 
-  btn.hidden=false;
   btn.disabled=!allowed;
   btn.setAttribute('aria-pressed',on&&allowed?'true':'false');
 
   const row=btn.closest('.job-badge-option');
   if(row){
-    row.classList.toggle('included',false);
     row.classList.toggle('locked',!allowed);
   }
 }
@@ -1857,7 +1807,6 @@ function renderBadgeOptions(){
   const slot=eligibility.slot;
   const plan=eligibility.plan;
 
-  selectedFeaturedBadge=eligibility.featuredAuto;
   selectedRecommendedBadge=eligibility.recommendedAuto;
 
   if(!eligibility.urgentAllowed){
@@ -1885,25 +1834,15 @@ function renderBadgeOptions(){
       `Badge access for this ${planLabel} job is shown below.`;
   }
 
-  setAutomaticBadgeToggle(
-    'featured-toggle',
-    eligibility.featuredAuto,
-    eligibility.featuredAuto
-  );
-
-  setAutomaticBadgeToggle(
-    'recommended-toggle',
-    eligibility.recommendedAuto,
-    eligibility.recommendedAuto
-  );
-
   setUrgentToggle(selectedUrgentBadge,eligibility.urgentAllowed);
 
-  if(el('featured-option-note')){
-    el('featured-option-note').textContent=
-      eligibility.featuredAuto
-        ?`Included automatically with ${planLabel}.`
-        :'Not included with this account.';
+  const urgentOption=el('urgent-option');
+  if(urgentOption){
+    urgentOption.hidden=
+      !eligibility.urgentAllowed &&
+      plan!=='growth' &&
+      plan!=='scale' &&
+      plan!=='enterprise';
   }
 
   if(el('urgent-option-note')){
@@ -1919,11 +1858,14 @@ function renderBadgeOptions(){
     }
   }
 
+  const recommendedOption=el('recommended-option');
+  if(recommendedOption){
+    recommendedOption.hidden=!eligibility.recommendedAuto;
+  }
+
   if(el('recommended-option-note')){
     el('recommended-option-note').textContent=
-      eligibility.recommendedAuto
-        ?'Included with Scale and applied automatically by Alygnn.'
-        :'Scale only. Alygnn applies this automatically when eligible.';
+      'Included automatically with Scale.';
   }
 
   const chips=[];
@@ -1936,12 +1878,15 @@ function renderBadgeOptions(){
     chips.push('<span class="job-badge-chip urgent">Urgently Hiring</span>');
   }
 
-  if(eligibility.featuredAuto){
-    chips.push('<span class="job-badge-chip featured">Featured Employer</span>');
-  }
-
   if(el('job-badge-summary')){
     el('job-badge-summary').innerHTML=chips.join('');
+  }
+
+  const box=el('job-badge-options');
+  if(box){
+    box.hidden=
+      !eligibility.recommendedAuto &&
+      !eligibility.urgentAllowed;
   }
 }
 
@@ -1972,7 +1917,7 @@ function getJob(){
     requirements: el('requirements').value.trim(),
     benefits: el('benefits').value.trim(),
     posting_access_type: currentPostingSlotType() || null,
-    featured_employer: badgeEligibility().featuredAuto,
+    featured_employer: false,
     urgently_hiring: selectedUrgentBadge && badgeEligibility().urgentAllowed,
     alygnn_recommended: badgeEligibility().recommendedAuto,
     onet_soc_code: selectedOnetCode || null,
@@ -2194,7 +2139,6 @@ function restoreDraft(){
     if(draft.pay_min != null) el('pay-min').value = draft.pay_min;
     if(draft.pay_max != null) el('pay-max').value = draft.pay_max;
 
-    selectedFeaturedBadge=draft.featured_employer===true;
     selectedUrgentBadge=draft.urgently_hiring===true;
     selectedRecommendedBadge=draft.alygnn_recommended===true;
 
@@ -2356,9 +2300,7 @@ el('use-role-data-btn').addEventListener('click',async()=>{
 });
 
 
-el('featured-toggle').addEventListener('click',()=>{});
 el('urgent-toggle').addEventListener('click',()=>toggleJobBadge('urgent'));
-el('recommended-toggle').addEventListener('click',()=>{});
 
 el('suggest-pay-btn').addEventListener('click',suggestMarketPay);
 
