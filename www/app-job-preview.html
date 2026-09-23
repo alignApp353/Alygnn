@@ -2901,13 +2901,13 @@ function render(){
     const freeSlot=String(draft.posting_access_type||'').toLowerCase()==='free';
     const badges=[];
 
-    if(!freeSlot&&draft.alygnn_recommended===true){
+    if(draft.alygnn_recommended===true){
       badges.push('<span class="preview-job-badge recommended">Alygnn Recommended</span>');
     }
     if(!freeSlot&&draft.urgently_hiring===true){
       badges.push('<span class="preview-job-badge urgent">Urgently Hiring</span>');
     }
-    if(!freeSlot&&draft.featured_employer===true){
+    if(draft.featured_employer===true){
       badges.push('<span class="preview-job-badge featured">Featured Employer</span>');
     }
 
@@ -3303,9 +3303,9 @@ function baseJobPayload(){
     requirements:draft.requirements,
     benefits:draft.benefits,
     posting_access_type:draft.posting_access_type||null,
-    featured_employer:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.featured_employer===true,
+    featured_employer:draft.featured_employer===true,
     urgently_hiring:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.urgently_hiring===true,
-    alygnn_recommended:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.alygnn_recommended===true,
+    alygnn_recommended:draft.alygnn_recommended===true,
     status:'active',
     created_at:new Date().toISOString()
   };
