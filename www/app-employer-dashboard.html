@@ -7799,8 +7799,8 @@
 
     function jobTreatmentBadges(job){
       const freeSlot=postingAccessType(job)==='free';
-      const recommended=!freeSlot && dashboardPlanAllowsRecommended() && job?.alygnn_recommended===true;
-      const featured=!freeSlot && dashboardPlanAllowsFeatured() && job?.featured_employer===true;
+      const recommended=dashboardPlanAllowsRecommended() && job?.alygnn_recommended===true;
+      const featured=dashboardPlanAllowsFeatured() && job?.featured_employer===true;
       const urgent=!freeSlot && dashboardPlanAllowsUrgent() && job?.urgently_hiring===true;
       const badges=[];
 
@@ -7820,10 +7820,20 @@
     }
 
     function jobTreatmentClass(job){
-      if(postingAccessType(job)==='free')return '';
-      if(job?.urgently_hiring===true&&dashboardPlanAllowsUrgent())return 'plan-urgent';
-      if(job?.alygnn_recommended===true&&dashboardPlanAllowsRecommended())return 'plan-recommended';
-      if(job?.featured_employer===true&&dashboardPlanAllowsFeatured())return 'plan-featured';
+      const freeSlot=postingAccessType(job)==='free';
+
+      if(!freeSlot&&job?.urgently_hiring===true&&dashboardPlanAllowsUrgent()){
+        return 'plan-urgent';
+      }
+
+      if(job?.alygnn_recommended===true&&dashboardPlanAllowsRecommended()){
+        return 'plan-recommended';
+      }
+
+      if(job?.featured_employer===true&&dashboardPlanAllowsFeatured()){
+        return 'plan-featured';
+      }
+
       return '';
     }
 
@@ -7833,9 +7843,6 @@
       }
 
       if(!dashboardPlanAllowsUrgent()){
-        if(dashboardEffectivePlan()==='launch'){
-          return '<button class="mini-btn plan-locked" type="button" disabled>Urgently Hiring · Growth+</button>';
-        }
         return '';
       }
 
@@ -13248,7 +13255,7 @@
         }
 
         if(!dashboardPlanAllowsUrgent()){
-          toast('Urgently Hiring is available with Growth, Scale, and Enterprise.');
+          toast('Urgently Hiring is available only with Growth and Scale.');
           return;
         }
 
