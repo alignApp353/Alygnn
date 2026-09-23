@@ -52,10 +52,10 @@
   }
 
   html { scroll-behavior: smooth; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; padding-top: 64px; }
 
   nav {
-    position: sticky; top: 0; z-index: 100;
+    position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 1000;
     background: rgba(246,248,247,0.92); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px;
@@ -78,10 +78,19 @@
   .mobile-menu a:last-child { border-bottom: none; }
   .nav-signin { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
   .nav-signin:hover { color: var(--text); }
-  /* Reserve space for the longer "My account" swap and center within it,
-     matching index.html's nav so both pages line up the same way. */
-  #nav-auth-link { display: inline-block; min-width: 84px; text-align: center; }
+  /* Keep the employer and job-seeker nav in the same positions and reserve
+     the logged-in labels before auth resolves so nothing jumps on load. */
+  #nav-auth-link {
+    display: inline-block; min-width: 84px; text-align: center;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
   .nav-cta { background: var(--brand); color: white; border: none; border-radius: 100px; padding: 10px 24px; font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.2s; }
+  #nav-cta-btn { min-width: 148px; opacity: 0; visibility: hidden; pointer-events: none; }
+  #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; visibility: visible; pointer-events: auto; }
+  .nav-pricing-slot { min-width: 44px; text-align: center; }
+  #nav-pricing-link { display: inline-block !important; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
+  #nav-pricing-link.auth-ready { visibility: visible; opacity: 1; pointer-events: auto; }
   .nav-cta:hover { opacity: 0.88; }
 
   /* Employer hero — premium first impression only. */
@@ -111,20 +120,6 @@
       linear-gradient(90deg, rgba(93,127,163,.045) 1px, transparent 1px);
     background-size: 52px 52px;
     mask-image: linear-gradient(to right, transparent 4%, black 55%, transparent 98%);
-  }
-  .hero::after {
-    content: '';
-    position: absolute;
-    width: 480px;
-    height: 480px;
-    border-radius: 50%;
-    right: 5%;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: -1;
-    background: rgba(255,255,255,.58);
-    filter: blur(2px);
-    box-shadow: 0 0 110px rgba(93,127,163,.09);
   }
   .hero-text { max-width: 620px; position: relative; z-index: 2; }
   .hero-badge {
@@ -164,8 +159,6 @@
 
   .hero-visual { display: flex; justify-content: center; align-items: center; position: relative; min-height: 520px; }
   .hero-visual-shell { width: 100%; max-width: 520px; position: relative; padding: 42px 24px; }
-  .hero-orbit { position: absolute; inset: 4% -3% 0; border: 1px solid rgba(93,127,163,.09); border-radius: 46% 54% 48% 52%; transform: rotate(-7deg); }
-  .hero-orbit::after { content: ''; position: absolute; inset: 38px -26px -28px 42px; border: 1px solid rgba(140,182,155,.09); border-radius: 52% 48% 44% 56%; transform: rotate(12deg); }
   .rank-card {
     position: relative;
     z-index: 2;
@@ -332,8 +325,7 @@
     .rank-avatar { width: 38px; height: 38px; border-radius: 12px; }
     .rank-card-footer { grid-template-columns: 1fr 1fr; }
     .hero-float-card { display: none; }
-    .hero-orbit { inset: 5% 2%; }
-  }
+}
 
 </style>
 </head>
@@ -343,7 +335,7 @@
   <a class="logo" href="employers.html">Alygnn<span>.</span><span class="logo-tag">for Employers</span></a>
   <ul class="nav-links">
     <li><a href="#how">How it works</a></li>
-    <li><a href="pricing.html" id="nav-pricing-link" style="display:none;">Pricing</a></li>
+    <li class="nav-pricing-slot"><a href="pricing.html" id="nav-pricing-link">Pricing</a></li>
     <li><a href="#faq">FAQ</a></li>
   </ul>
   <div class="nav-right">
@@ -396,8 +388,6 @@
 
   <div class="hero-visual">
     <div class="hero-visual-shell">
-      <div class="hero-orbit" aria-hidden="true"></div>
-
       <div class="hero-float-card hero-float-one" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>
         <div><strong>Fit-first ranking</strong><span>Skills · experience · role</span></div>
@@ -635,47 +625,49 @@
   const footerEmployerAccount = document.getElementById('footer-employer-account');
   const footerEmployerDashboard = document.getElementById('footer-employer-dashboard');
 
-  // Validate the session with Supabase instead of trusting the browser's
-  // cached session object. A stale local session was making signed-out visitors
-  // see My account / Dashboard until those pages rejected the expired session.
-  const { data: { user }, error: userError } = await sb.auth.getUser();
-  if (userError || !user) return;
-
-  let profile = null;
+  // Resolve navigation from the locally cached Supabase session first.
+  // Public labels stay hidden until this finishes, so signed-in employers
+  // never see Sign in / Post a job flash before My account / Dashboard.
   try {
-    const { data, error } = await sb
-      .from('profiles')
-      .select('role, company_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (error) throw error;
-    profile = data;
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session?.user || null;
+    if (!user) return;
+
+    let role = String(
+      user.user_metadata?.role ||
+      user.user_metadata?.account_type ||
+      user.app_metadata?.role ||
+      user.app_metadata?.account_type ||
+      ''
+    ).toLowerCase();
+
+    // Only older accounts without role metadata need a database request.
+    if (!role) {
+      const { data: profile } = await sb
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      role = String(profile?.role || '').toLowerCase();
+    }
+
+    if (role !== 'employer') return;
+
+    if (navAuthLink) { navAuthLink.textContent = 'My account'; navAuthLink.href = 'employer-account.html'; }
+    if (navCtaBtn)   { navCtaBtn.textContent = 'Dashboard'; navCtaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
+    if (heroCta)     { heroCta.textContent = 'Go to dashboard'; heroCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
+    if (bottomCta)   { bottomCta.textContent = 'Go to dashboard'; bottomCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
+    if (navPricingLink) navPricingLink.classList.add('auth-ready');
+    if (mobilePricingLink) { mobilePricingLink.href = 'pricing.html'; mobilePricingLink.style.display = ''; }
+    if (heroPricingBtn)    { heroPricingBtn.style.display = ''; heroPricingBtn.onclick = () => window.location.href = 'pricing.html'; }
+    if (footerEmployerAccount) footerEmployerAccount.href = 'employer-account.html';
+    if (footerEmployerDashboard) footerEmployerDashboard.href = 'employer-dashboard.html';
   } catch (error) {
-    console.warn('Could not verify employer profile:', error);
+    console.warn('Could not resolve employer navigation:', error);
+  } finally {
+    if (navAuthLink) navAuthLink.classList.add('auth-ready');
+    if (navCtaBtn) navCtaBtn.classList.add('auth-ready');
   }
-
-  const role = String(
-    profile?.role ||
-    user.user_metadata?.role ||
-    user.user_metadata?.account_type ||
-    user.app_metadata?.role ||
-    user.app_metadata?.account_type ||
-    ''
-  ).toLowerCase();
-  const isEmployerSession = role === 'employer';
-
-  if (!isEmployerSession) return;
-
-  // Logged-in employer: swap nav to account links
-  if (navAuthLink) { navAuthLink.textContent = 'My account'; navAuthLink.href = 'employer-account.html'; }
-  if (navCtaBtn)   { navCtaBtn.textContent = 'Dashboard'; navCtaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
-  if (heroCta)     { heroCta.textContent = 'Go to dashboard'; heroCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
-  if (bottomCta)   { bottomCta.textContent = 'Go to dashboard'; bottomCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
-  if (navPricingLink)    { navPricingLink.href = 'pricing.html'; navPricingLink.style.display = ''; }
-  if (mobilePricingLink) { mobilePricingLink.href = 'pricing.html'; mobilePricingLink.style.display = ''; }
-  if (heroPricingBtn)    { heroPricingBtn.style.display = ''; heroPricingBtn.onclick = () => window.location.href = 'pricing.html'; }
-  if (footerEmployerAccount) footerEmployerAccount.href = 'employer-account.html';
-  if (footerEmployerDashboard) footerEmployerDashboard.href = 'employer-dashboard.html';
 })();
 </script>
 </body>
