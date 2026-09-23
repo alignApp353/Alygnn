@@ -575,29 +575,89 @@ button{
 .loading{
   position:fixed;
   inset:0;
-  z-index:100;
-  display:grid;
-  place-items:center;
-  background:rgba(245,248,248,.98);
+  z-index:120;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    24px
+    calc(24px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
+    var(--bg);
+  color:var(--text);
+  transition:opacity .18s ease,visibility .18s ease;
 }
 
-.spinner{
-  width:42px;
-  height:42px;
-  margin:auto;
-  border:4px solid #E1E7EB;
-  border-top-color:var(--brand-dark);
-  border-radius:50%;
-  animation:spin .75s linear infinite;
+html[data-theme="dark"] .loading{
+  background:
+    radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
+    var(--bg);
 }
 
-@keyframes spin{to{transform:rotate(360deg)}}
+.alygnn-loader{
+  width:min(360px,88vw);
+  text-align:center;
+  transform:translateY(-3vh);
+}
+
+.alygnn-loader-logo{
+  display:inline-block;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  font-size:clamp(54px,15vw,72px);
+  line-height:.95;
+  letter-spacing:-2px;
+  color:var(--brand);
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+
+.alygnn-loader-logo span{
+  color:var(--sage);
+}
 
 .loading-copy{
-  margin-top:12px;
+  margin-top:18px;
   color:var(--muted);
-  font-size:11px;
-  font-weight:800;
+  font-size:14px;
+  line-height:1.45;
+  font-weight:700;
+  letter-spacing:.01em;
+}
+
+.alygnn-loading-track{
+  position:relative;
+  width:116px;
+  height:3px;
+  margin:25px auto 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:var(--border);
+}
+
+.alygnn-loading-bar{
+  position:absolute;
+  inset:0 auto 0 -48%;
+  width:48%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--brand),var(--sage));
+  animation:alygnn-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
+}
+
+@keyframes alygnn-loading{
+  0%{transform:translateX(0);opacity:.45}
+  45%{opacity:1}
+  100%{transform:translateX(310%);opacity:.55}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .alygnn-loading-bar{
+    left:0;
+    width:100%;
+    animation:none;
+    opacity:.8;
+  }
 }
 
 .error-state{
@@ -2280,10 +2340,13 @@ html[data-theme="dark"] .exit-draft-card{
 
 <body>
 
-<div class="loading" id="loading">
-  <div>
-    <div class="spinner"></div>
-    <div class="loading-copy">Preparing candidate preview…</div>
+<div class="loading" id="loading" aria-label="Alygnn is loading">
+  <div class="alygnn-loader">
+    <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
+    <div class="loading-copy">Preparing your job preview.</div>
+    <div class="alygnn-loading-track" aria-hidden="true">
+      <div class="alygnn-loading-bar"></div>
+    </div>
   </div>
 </div>
 
