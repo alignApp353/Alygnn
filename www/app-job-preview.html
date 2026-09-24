@@ -938,7 +938,6 @@ html[data-theme="dark"] .loading{
 }
 .preview-job-badge.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
 .preview-job-badge.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
-.preview-job-badge.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
 
 .candidate-card-pills{
   display:flex;
@@ -2970,9 +2969,6 @@ function render(){
     if(!freeSlot&&draft.urgently_hiring===true){
       badges.push('<span class="preview-job-badge urgent">Urgently Hiring</span>');
     }
-    if(draft.featured_employer===true){
-      badges.push('<span class="preview-job-badge featured">Featured Employer</span>');
-    }
 
     previewBadges.innerHTML=badges.join('');
     previewBadges.hidden=!badges.length;
@@ -3366,7 +3362,7 @@ function baseJobPayload(){
     requirements:draft.requirements,
     benefits:draft.benefits,
     posting_access_type:draft.posting_access_type||null,
-    featured_employer:draft.featured_employer===true,
+    featured_employer:false,
     urgently_hiring:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.urgently_hiring===true,
     alygnn_recommended:draft.alygnn_recommended===true,
     status:'active',
