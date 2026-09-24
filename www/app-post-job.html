@@ -138,6 +138,7 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
 }
 .job-badge-chip.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
 .job-badge-chip.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
+.job-badge-chip.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
 
 .job-badge-option.included{
   opacity:1;
@@ -473,7 +474,15 @@ html[data-theme="dark"] .custom-add-btn{
         </div>
 
         <div class="job-badge-option-list">
-<div class="job-badge-summary" id="job-badge-summary"></div>
+          <div class="job-badge-option" id="urgent-option">
+            <div class="job-badge-option-copy">
+              <strong>Urgently Hiring</strong>
+              <span id="urgent-option-note">Included with Growth and Scale.</span>
+            </div>
+            <button class="job-badge-toggle" id="urgent-toggle" type="button"
+              aria-label="Urgently Hiring badge" aria-pressed="false"></button>
+          </div>
+        </div>
       </div>
 
       <div class="preview">
@@ -1772,41 +1781,25 @@ function badgeEligibility(){
     postingAccessDetails?.active_paid_plan===true||
     postingAccessDetails?.base_paid_plan===true;
 
-  const recommendedAuto=
-    paidBase &&
-    ['scale','enterprise'].includes(plan);
-
-  const urgentAllowed=
-    slot!=='free' &&
-    paidBase &&
-    ['growth','scale','enterprise'].includes(plan);
-
   return{
-    recommendedAuto,
-    urgentAllowed,
+    plan,
     slot,
-    plan
+    urgentAllowed:
+      slot!=='free' &&
+      paidBase &&
+      ['growth','scale','enterprise'].includes(plan),
+    recommendedAuto:
+      paidBase &&
+      ['scale','enterprise'].includes(plan)
   };
-}
-
-function setUrgentToggle(on,allowed){
-  const btn=el('urgent-toggle');
-  if(!btn)return;
-
-  btn.disabled=!allowed;
-  btn.setAttribute('aria-pressed',on&&allowed?'true':'false');
-
-  const row=btn.closest('.job-badge-option');
-  if(row){
-    row.classList.toggle('locked',!allowed);
-  }
 }
 
 function renderBadgeOptions(){
   const eligibility=badgeEligibility();
   const slot=eligibility.slot;
-  const plan=eligibility.plan;
 
+  // Scale still receives Alygnn Recommended automatically,
+  // but it is not an employer-controlled option on this page.
   selectedRecommendedBadge=eligibility.recommendedAuto;
 
   if(!eligibility.urgentAllowed){
@@ -1825,68 +1818,37 @@ function renderBadgeOptions(){
     el('job-slot-pill').textContent=slotLabels[slot]||'Job Slot';
   }
 
-  const planLabel=plan==='business'
-    ?'Launch'
-    :plan.charAt(0).toUpperCase()+plan.slice(1);
-
   if(el('job-badge-options-copy')){
     el('job-badge-options-copy').textContent=
-      `Badge access for this ${planLabel} job is shown below.`;
+      'Turn on Urgently Hiring only when this opening needs faster attention.';
   }
 
-  setUrgentToggle(selectedUrgentBadge,eligibility.urgentAllowed);
+  const toggle=el('urgent-toggle');
+  const option=el('urgent-option');
 
-  const urgentOption=el('urgent-option');
-  if(urgentOption){
-    urgentOption.hidden=
-      !eligibility.urgentAllowed &&
-      plan!=='growth' &&
-      plan!=='scale' &&
-      plan!=='enterprise';
+  if(toggle){
+    toggle.disabled=!eligibility.urgentAllowed;
+    toggle.setAttribute(
+      'aria-pressed',
+      selectedUrgentBadge&&eligibility.urgentAllowed?'true':'false'
+    );
+  }
+
+  if(option){
+    option.classList.toggle('locked',!eligibility.urgentAllowed);
   }
 
   if(el('urgent-option-note')){
-    if(slot==='free'){
-      el('urgent-option-note').textContent=
-        'Not available on the included Free Job Slot.';
-    }else if(eligibility.urgentAllowed){
-      el('urgent-option-note').textContent=
-        `Included with ${planLabel}. Turn it on only for jobs that are actually urgent.`;
-    }else{
-      el('urgent-option-note').textContent=
-        'Available only with Growth and Scale.';
-    }
-  }
-
-  const recommendedOption=el('recommended-option');
-  if(recommendedOption){
-    recommendedOption.hidden=!eligibility.recommendedAuto;
-  }
-
-  if(el('recommended-option-note')){
-    el('recommended-option-note').textContent=
-      'Included automatically with Scale.';
-  }
-
-  const chips=[];
-
-  if(eligibility.recommendedAuto){
-    chips.push('<span class="job-badge-chip recommended">Alygnn Recommended</span>');
-  }
-
-  if(selectedUrgentBadge&&eligibility.urgentAllowed){
-    chips.push('<span class="job-badge-chip urgent">Urgently Hiring</span>');
-  }
-
-  if(el('job-badge-summary')){
-    el('job-badge-summary').innerHTML=chips.join('');
+    el('urgent-option-note').textContent=
+      eligibility.urgentAllowed
+        ?'Included with Growth and Scale. Turn it on only for jobs that are actually urgent.'
+        :'Available only with Growth and Scale.';
   }
 
   const box=el('job-badge-options');
   if(box){
-    box.hidden=
-      !eligibility.recommendedAuto &&
-      !eligibility.urgentAllowed;
+    // Launch and the included Free Job Slot have no badge control to show.
+    box.hidden=!eligibility.urgentAllowed;
   }
 }
 
@@ -1917,7 +1879,7 @@ function getJob(){
     requirements: el('requirements').value.trim(),
     benefits: el('benefits').value.trim(),
     posting_access_type: currentPostingSlotType() || null,
-    featured_employer: false,
+    featured_employer: badgeEligibility().featuredAuto,
     urgently_hiring: selectedUrgentBadge && badgeEligibility().urgentAllowed,
     alygnn_recommended: badgeEligibility().recommendedAuto,
     onet_soc_code: selectedOnetCode || null,
@@ -2300,7 +2262,9 @@ el('use-role-data-btn').addEventListener('click',async()=>{
 });
 
 
+el('featured-toggle').addEventListener('click',()=>{});
 el('urgent-toggle').addEventListener('click',()=>toggleJobBadge('urgent'));
+el('recommended-toggle').addEventListener('click',()=>{});
 
 el('suggest-pay-btn').addEventListener('click',suggestMarketPay);
 
