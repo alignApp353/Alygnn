@@ -618,7 +618,7 @@
 </div>
 
 <div class="footnote" style="padding-top:0;max-width:860px;">
-  Monthly plans renew monthly and quarterly plans are billed every 3 months in advance until canceled. Upgrades may charge the applicable plan difference immediately; downgrades and cancellations take effect at the next renewal date. When paid capacity ends, Alygnn may close jobs that no longer fit within your remaining active slots while preserving your account data. Your permanent free slot remains available. Checkout requires acceptance of the <a href="terms.html" style="color:var(--brand);">Terms of Service</a> and acknowledgement of the <a href="privacy.html" style="color:var(--brand);">Privacy Policy</a>.
+  Monthly plans renew monthly and quarterly plans are billed every 3 months in advance until canceled. Plan upgrades, downgrades, and billing-cadence changes take effect at the next renewal date; no plan-change charge is taken today. Cancellations also take effect at the next renewal date. When paid capacity ends, Alygnn may close jobs that no longer fit within your remaining active slots while preserving your account data. Your permanent free slot remains available. Checkout requires acceptance of the <a href="terms.html" style="color:var(--brand);">Terms of Service</a> and acknowledgement of the <a href="privacy.html" style="color:var(--brand);">Privacy Policy</a>.
 </div>
 
 <footer class="site-footer">
@@ -1015,6 +1015,19 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
       const params = new URLSearchParams({ plan });
       if(billing) params.set('billing', billing);
+
+      // Existing paid-plan employers are reviewing a change to their current
+      // subscription, not buying a second subscription. Every plan/cadence
+      // change is scheduled for the next renewal date.
+      if(
+        currentAccess?.active_paid_plan===true &&
+        ['launch','growth','scale'].includes(plan)
+      ){
+        params.delete('plan');
+        params.set('action','change_plan');
+        params.set('target_plan',plan);
+      }
+
       window.location.href = 'payment.html?' + params.toString();
     }else{
       try{
