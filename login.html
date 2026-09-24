@@ -486,20 +486,7 @@
     const b = document.getElementById('msg-box');
     b.className = 'msg-box info';
     b.style.display = 'block';
-    b.textContent = '';
-
-    const message = document.createElement('div');
-    message.textContent = 'This is an employer account. Continue with employer account login.';
-    b.appendChild(message);
-
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'account-role-action';
-    action.textContent = 'Continue with employer account';
-    action.addEventListener('click', () => {
-      window.location.replace(destination);
-    });
-    b.appendChild(action);
+    b.textContent = 'This is an employer account. Continue with employer account login.';
   }
 
   function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
