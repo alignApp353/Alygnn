@@ -374,6 +374,28 @@
   async function redirectForUser(user, fallbackRole = currentRole) {
     if (!user?.id) return window.location.origin + '/login.html';
 
+    // Accepted employer team members (admin/recruiter) belong to the owner's
+    // existing company workspace even if their personal profiles.role is still
+    // "seeker". Resolve team membership before normal profile-role routing so
+    // an invited recruiter can never be sent to the candidate account page.
+    try {
+      const { data: teamRuntime, error: teamRuntimeError } = await sb.rpc('get_my_team_operational_state');
+
+      if (
+        !teamRuntimeError &&
+        teamRuntime?.has_company === true &&
+        teamRuntime?.access?.is_owner === false
+      ) {
+        return window.location.origin + '/employer-dashboard.html';
+      }
+
+      if (teamRuntimeError) {
+        console.warn('Could not check employer team membership during login routing:', teamRuntimeError);
+      }
+    } catch (teamRuntimeError) {
+      console.warn('Could not check employer team membership during login routing:', teamRuntimeError);
+    }
+
     // Keep login routing lightweight and resilient. On a fresh computer the
     // first profile request can occasionally be slower than the auth request;
     // the old code waited on multiple database checks before navigating, which
