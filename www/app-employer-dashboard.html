@@ -4648,14 +4648,6 @@
 
         <section class="section">
           <div class="section-head">
-            <h2 class="section-title">My Jobs</h2>
-            <button class="section-link" data-view="jobs" type="button">View all</button>
-          </div>
-          <div id="dashboard-jobs"></div>
-        </section>
-
-        <section class="section">
-          <div class="section-head">
             <h2 class="section-title">Best Fits</h2>
             <button class="section-link" data-view="applicants" data-applicants-scope="all" type="button">View all</button>
           </div>
@@ -6059,7 +6051,6 @@
       pausedJobs:$('paused-jobs'),
       newApplicants:$('new-applicants'),
       applicantNote:$('applicant-note'),
-      dashboardJobs:$('dashboard-jobs'),
       bestFits:$('best-fits'),
       activityList:$('activity-list'),
       jobsList:$('jobs-list'),
@@ -7782,6 +7773,11 @@
       return raw;
     }
 
+    function dashboardPlanAllowsFeatured(){
+      return dashboardBasePaidPlanActive() &&
+        ['launch','growth','scale','enterprise'].includes(dashboardEffectivePlan());
+    }
+
     function dashboardPlanAllowsUrgent(){
       return dashboardBasePaidPlanActive() &&
         ['growth','scale','enterprise'].includes(dashboardEffectivePlan());
@@ -7794,28 +7790,18 @@
 
     function jobTreatmentBadges(job){
       const freeSlot=postingAccessType(job)==='free';
-      const recommended=
-        dashboardPlanAllowsRecommended() &&
-        job?.alygnn_recommended===true;
-
       const urgent=
         !freeSlot &&
         dashboardPlanAllowsUrgent() &&
         job?.urgently_hiring===true;
 
-      const badges=[];
+      if(!urgent)return '';
 
-      if(recommended){
-        badges.push('<span class="job-treatment-badge recommended">Alygnn Recommended</span>');
-      }
-
-      if(urgent){
-        badges.push('<span class="job-treatment-badge urgent">Urgently Hiring</span>');
-      }
-
-      return badges.length
-        ?`<div class="job-treatment-badges">${badges.join('')}</div>`
-        :'';
+      return `
+        <div class="job-treatment-badges">
+          <span class="job-treatment-badge urgent">Urgently Hiring</span>
+        </div>
+      `;
     }
 
     function jobTreatmentClass(job){
@@ -7823,10 +7809,6 @@
 
       if(!freeSlot&&job?.urgently_hiring===true&&dashboardPlanAllowsUrgent()){
         return 'plan-urgent';
-      }
-
-      if(job?.alygnn_recommended===true&&dashboardPlanAllowsRecommended()){
-        return 'plan-recommended';
       }
 
       return '';
@@ -8560,28 +8542,6 @@
         }
       }
 
-      /*
-       * Dashboard home stays focused on published/open hiring.
-       */
-      if(els.dashboardJobs){
-        els.dashboardJobs.innerHTML=
-          sortedOpen.length
-            ?sortedOpen
-              .slice(0,3)
-              .map(job=>
-                safeJobCard(
-                  job,
-                  true
-                )
-              )
-              .join('')
-            :`
-              <div class="empty">
-                <strong>No open jobs yet</strong>
-                Post your first role to start building your candidate pipeline.
-              </div>
-            `;
-      }
     }
 
 
@@ -13264,12 +13224,15 @@
               updated_at:new Date().toISOString()
             })
             .eq('id',id)
-            .select('urgently_hiring,alygnn_recommended')
+            .select('urgently_hiring,featured_employer,alygnn_recommended')
             .single();
 
           if(error)throw error;
 
           job.urgently_hiring=data?.urgently_hiring===true;
+          if(data && 'featured_employer' in data){
+            job.featured_employer=data.featured_employer===true;
+          }
           if(data && 'alygnn_recommended' in data){
             job.alygnn_recommended=data.alygnn_recommended===true;
           }
