@@ -7782,11 +7782,6 @@
       return raw;
     }
 
-    function dashboardPlanAllowsFeatured(){
-      return dashboardBasePaidPlanActive() &&
-        ['launch','growth','scale','enterprise'].includes(dashboardEffectivePlan());
-    }
-
     function dashboardPlanAllowsUrgent(){
       return dashboardBasePaidPlanActive() &&
         ['growth','scale','enterprise'].includes(dashboardEffectivePlan());
@@ -7799,17 +7794,21 @@
 
     function jobTreatmentBadges(job){
       const freeSlot=postingAccessType(job)==='free';
-      const recommended=dashboardPlanAllowsRecommended() && job?.alygnn_recommended===true;
-      const featured=dashboardPlanAllowsFeatured() && job?.featured_employer===true;
-      const urgent=!freeSlot && dashboardPlanAllowsUrgent() && job?.urgently_hiring===true;
+      const recommended=
+        dashboardPlanAllowsRecommended() &&
+        job?.alygnn_recommended===true;
+
+      const urgent=
+        !freeSlot &&
+        dashboardPlanAllowsUrgent() &&
+        job?.urgently_hiring===true;
+
       const badges=[];
 
       if(recommended){
         badges.push('<span class="job-treatment-badge recommended">Alygnn Recommended</span>');
       }
-      if(featured){
-        badges.push('<span class="job-treatment-badge featured">Featured Employer</span>');
-      }
+
       if(urgent){
         badges.push('<span class="job-treatment-badge urgent">Urgently Hiring</span>');
       }
@@ -7828,10 +7827,6 @@
 
       if(job?.alygnn_recommended===true&&dashboardPlanAllowsRecommended()){
         return 'plan-recommended';
-      }
-
-      if(job?.featured_employer===true&&dashboardPlanAllowsFeatured()){
-        return 'plan-featured';
       }
 
       return '';
@@ -13269,15 +13264,12 @@
               updated_at:new Date().toISOString()
             })
             .eq('id',id)
-            .select('urgently_hiring,featured_employer,alygnn_recommended')
+            .select('urgently_hiring,alygnn_recommended')
             .single();
 
           if(error)throw error;
 
           job.urgently_hiring=data?.urgently_hiring===true;
-          if(data && 'featured_employer' in data){
-            job.featured_employer=data.featured_employer===true;
-          }
           if(data && 'alygnn_recommended' in data){
             job.alygnn_recommended=data.alygnn_recommended===true;
           }
