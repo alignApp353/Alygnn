@@ -959,7 +959,7 @@ async function scheduleDowngrade({employerId,ent,sub,currentPlan,targetPlan,bill
     pending_billing_period:billing,
     pending_plan_effective_at:new Date(end*1000).toISOString()
   });
-  return {change:'downgrade_scheduled',effective_at:new Date(end*1000).toISOString(),schedule_id:scheduleId,billing_period:billing};
+  return {change:'plan_change_scheduled',effective_at:new Date(end*1000).toISOString(),schedule_id:scheduleId,billing_period:billing};
 }
 function planLegacyName(plan){
   return plan==='launch'?'business':'enterprise';
@@ -1463,6 +1463,31 @@ async function runManageAction(res,user,input){
     return send(res,400,{error:'Choose Launch, Growth, or Scale with Monthly or Quarterly billing.'});
   }
 
+  // Developer test entitlements mirror the same renewal-only plan-change UX.
+  // They do not have a live Stripe subscription, so store the pending plan and
+  // effective date directly on the entitlement instead of creating a schedule.
+  if(ent?.test_mode===true && currentCatalog?.[current] && entitlementLooksActive(ent)){
+    const effectiveAt=ent?.current_period_end||null;
+    if(!effectiveAt){
+      return send(res,409,{error:'Could not determine the current test-plan renewal date.'});
+    }
+    await patchEntitlement(user.id,{
+      pending_plan:target,
+      pending_billing_period:targetBilling,
+      pending_plan_effective_at:effectiveAt,
+      plan_change_updated_at:new Date().toISOString()
+    });
+    return send(res,200,{
+      ok:true,
+      change:'plan_change_scheduled',
+      effective_at:effectiveAt,
+      billing_period:targetBilling,
+      current_plan:current,
+      target_plan:target,
+      test_mode:true
+    });
+  }
+
   if(!subscriptionIsActive(sub)||!currentCatalog?.[current]){
     return send(res,409,{
       error:'This account does not have a recurring Alygnn plan that can be modified automatically. Choose a plan through secure checkout first.',
@@ -1505,49 +1530,30 @@ async function runManageAction(res,user,input){
     ent=await getEntitlement(user.id);
   }
 
-  const billingChanged=currentBilling!==targetBilling;
-  let result;
+  // Every upgrade, downgrade, and Monthly/Quarterly cadence change is scheduled
+  // for the current subscription renewal. The existing plan/capacity remains
+  // active through the paid period and Stripe charges the new recurring price
+  // only when the next phase begins.
+  const result=await scheduleDowngrade({
+    employerId:user.id,
+    ent,
+    sub,
+    currentPlan:current,
+    targetPlan:target,
+    billing:targetBilling,
+    currentBilling
+  });
 
-  if(billingChanged){
-    // Monthly <-> Quarterly changes always take effect at renewal. This avoids
-    // charging a full new cadence while time remains on the current paid term.
-    result=await scheduleDowngrade({
-      employerId:user.id,
-      ent,
-      sub,
-      currentPlan:current,
-      targetPlan:target,
-      billing:targetBilling,
-      currentBilling
-    });
-    result={
-      ...result,
-      change:'billing_change_scheduled',
-      current_billing_period:currentBilling,
-      target_billing_period:targetBilling
-    };
-  }else if(targetCatalog[target].rank>currentCatalog[current].rank){
-    result=await upgradeNow({
-      employerId:user.id,
-      ent,
-      sub,
-      targetPlan:target,
-      billing:targetBilling,
-      input:{...input,employer_email:user.email||''}
-    });
-  }else{
-    result=await scheduleDowngrade({
-      employerId:user.id,
-      ent,
-      sub,
-      currentPlan:current,
-      targetPlan:target,
-      billing:targetBilling,
-      currentBilling
-    });
-  }
-
-  return send(res,200,{ok:true,...result});
+  return send(res,200,{
+    ok:true,
+    ...result,
+    change:'plan_change_scheduled',
+    current_billing_period:currentBilling,
+    target_billing_period:targetBilling,
+    current_plan:current,
+    target_plan:target,
+    amount_due_now_cents:0
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -1700,7 +1706,7 @@ module.exports = async function handler(req, res) {
 
       // Do not create a second paid plan while an employer already has one active.
       // Existing recurring subscribers change plans through Billing & plan so
-      // upgrades use Alygnn's fixed-difference charge and downgrades wait until renewal.
+      // every plan or billing-cadence change is scheduled for the next renewal.
       if (billing === 'monthly' || billing === 'quarterly') {
         const access = await getEmployerPostingAccess(token);
         const currentPlan = String(access?.plan || '').toLowerCase();
@@ -1711,7 +1717,7 @@ module.exports = async function handler(req, res) {
           ['launch','growth','scale','business','enterprise'].includes(currentPlan)
         ) {
           return send(res, 409, {
-            error: 'You already have an active paid plan. Change it from Settings → Billing & plan so Alygnn can charge the fixed plan difference for upgrades or schedule downgrades correctly.',
+            error: 'You already have an active paid plan. Change it from Pricing or Settings → Billing & plan; the selected plan will take effect at your next renewal and nothing is charged today.',
             manage_plan: true
           });
         }
