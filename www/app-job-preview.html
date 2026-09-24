@@ -2575,7 +2575,7 @@ html[data-theme="dark"] .exit-draft-card{
       </button>
 
       <button class="view" id="view-job-btn" type="button">
-        View Live Job
+        View Published Job
       </button>
     </div>
   </div>
@@ -3698,13 +3698,11 @@ function wire(){
 
   $('view-job-btn').onclick=()=>{
     if(publishedJobId){
-      // Employer live-view is a terminal preview, not another step in the
-      // job-builder history. Replace the success screen and tell the details
-      // page to return directly to My Jobs.
+      // Keep employers inside the employer workspace and open the exact
+      // listing that was just published.
       location.replace(
-        'app-job-details.html?id='+
-        encodeURIComponent(publishedJobId)+
-        '&from=employer-live'
+        'app-employer-dashboard.html?view=jobs&open_job='+
+        encodeURIComponent(publishedJobId)
       );
       return;
     }
