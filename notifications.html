@@ -13,7 +13,8 @@
     --bg:#F6F8F7; --card-bg:#FFFFFF; --border:#E4E8E6; --text:#26302B; --text-muted:#7A8A82;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{ font-family:'DM Sans', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  body{ font-family:'DM Sans', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; visibility:hidden; }
+  body.auth-ready{ visibility:visible; }
   nav{
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 32px; border-bottom:1px solid var(--border); background:var(--card-bg);
@@ -74,12 +75,33 @@
 <script>
   const SUPABASE_URL = 'https://auth.alygnn.com';
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+
+  function alygnnAuthStorageKey() {
+    let tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+    if (!tabId) {
+      tabId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+      window.sessionStorage.setItem('alygnn_auth_tab_id', tabId);
+    }
+    return `alygnn-auth-${tabId}`;
+  }
+
   const { createClient } = supabase;
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      storage: window.sessionStorage,
+      storageKey: alygnnAuthStorageKey(),
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
 
   let allNotifications = [];
   let currentFilter = 'all';
   let currentRole = 'seeker';
+  let currentUserId = null;
 
   function escapeHtml(value) {
     return String(value || '')
@@ -125,43 +147,76 @@
   }
 
   async function markRead(id) {
+    if (!currentUserId) return;
     const n = allNotifications.find(x => x.id === id);
     if (n) n.read_at = n.read_at || new Date().toISOString();
-    await sb.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
+    await sb
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('recipient_id', currentUserId);
   }
 
   async function init() {
-    const { data: userData, error: userError } = await sb.auth.getUser();
-    if (userError || !userData?.user) {
-      window.location.replace('login.html');
-      return;
+    try {
+      // Use the exact same tab-scoped Supabase session as employer-account.html
+      // so View all always opens under the same signed-in account.
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      const user = sessionData?.session?.user || null;
+
+      if (sessionError || !user) {
+        window.location.replace('login.html');
+        return;
+      }
+
+      currentUserId = user.id;
+
+      // Team members may still have a candidate/seeker profile row. Detect the
+      // active employer workspace first so recruiter/admin notification pages
+      // return to the employer side instead of the candidate account.
+      let isEmployerTeamMember = false;
+      try {
+        const { data: teamState, error: teamError } = await sb.rpc('get_my_team_operational_state');
+        if (!teamError && teamState?.has_company && teamState?.access?.is_owner === false) {
+          isEmployerTeamMember = true;
+        }
+      } catch (teamError) {
+        console.warn('Could not check employer team membership:', teamError);
+      }
+
+      const { data: profile } = await sb
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const profileRole = String(profile?.role || user.user_metadata?.role || 'seeker').toLowerCase();
+      currentRole = (isEmployerTeamMember || profileRole === 'employer') ? 'employer' : 'seeker';
+      document.getElementById('back-link').href = currentRole === 'employer' ? 'employer-account.html' : 'account.html';
+
+      // Match the bell dropdown exactly: notifications belong only to the
+      // currently signed-in recipient.
+      const { data, error } = await sb
+        .from('notifications')
+        .select('id, type, title, body, link, read_at, created_at')
+        .eq('recipient_id', currentUserId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('Failed to load notifications:', error);
+        document.getElementById('loading').textContent = 'Could not load notifications right now.';
+        return;
+      }
+
+      allNotifications = data || [];
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notif-list').style.display = 'block';
+      render();
+    } finally {
+      // Prevent the empty/default page from flashing before auth + data resolve.
+      document.body.classList.add('auth-ready');
     }
-
-    const { data: profile } = await sb
-      .from('profiles')
-      .select('role')
-      .eq('id', userData.user.id)
-      .maybeSingle();
-
-    currentRole = String(profile?.role || userData.user.user_metadata?.role || 'seeker').toLowerCase();
-    document.getElementById('back-link').href = currentRole === 'employer' ? 'employer-account.html' : 'account.html';
-
-    const { data, error } = await sb
-      .from('notifications')
-      .select('id, type, title, body, link, read_at, created_at')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (error) {
-      console.error('Failed to load notifications:', error);
-      document.getElementById('loading').textContent = 'Could not load notifications right now.';
-      return;
-    }
-
-    allNotifications = data || [];
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('notif-list').style.display = 'block';
-    render();
   }
 
   init();
