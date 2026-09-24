@@ -1396,23 +1396,50 @@
     cardToSwipe.style.pointerEvents = 'none';
 
     let applicationResult = null;
+    let swipePersisted = direction !== 'right';
+    let visualSwipeFinished = false;
+    let finished = false;
 
-    // Applying is different from passing: we must have a real application
-    // row before showing success or advancing to the next card. The old code
-    // fired the insert in the background and moved on even when Supabase
-    // rejected it, which is why a right swipe could look successful without
-    // appearing under Applications.
+    const finishSwipe = (event) => {
+      if (finished) return;
+      if (event && event.target !== cardToSwipe) return;
+
+      visualSwipeFinished = true;
+      // A right swipe can finish visually before Supabase finishes saving the
+      // application. Keep the next card in place until that save succeeds.
+      if (!swipePersisted) return;
+
+      finished = true;
+      cardToSwipe.removeEventListener('animationend', finishSwipe);
+      clearTimeout(swipeFinishTimer);
+      swipeFinishTimer = null;
+      renderCards();
+    };
+
+    cardToSwipe.addEventListener('animationend', finishSwipe);
+
+    // Start the visual swipe immediately. Previously the right-swipe path
+    // snapped the card back to center while awaiting recordApplication(), then
+    // sent it off-screen after the request finished, causing the visible
+    // "comes back, then disappears" glitch.
+    cardToSwipe.style.transition = '';
+    cardToSwipe.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
+
+    // Applying is different from passing: we must still have a real application
+    // row before permanently advancing to the next card. The visual animation
+    // is allowed to run immediately, but state is committed only after success.
     if (direction === 'right') {
-      cardToSwipe.style.transition = 'transform .18s ease';
-      cardToSwipe.style.transform = '';
       showToast('Sending application…');
 
       try {
         applicationResult = await recordApplication(job);
       } catch (error) {
         console.error('Application failed:', error);
+        cardToSwipe.removeEventListener('animationend', finishSwipe);
+        clearTimeout(swipeFinishTimer);
+        swipeFinishTimer = null;
+        cardToSwipe.classList.remove('swipe-right');
         cardToSwipe.style.pointerEvents = '';
-        cardToSwipe.style.transition = '';
         swipeLocked = false;
         setSwipeControlsLocked(false);
         resetCardToCenter(cardToSwipe);
@@ -1420,9 +1447,6 @@
         return;
       }
     }
-
-    cardToSwipe.style.transition = '';
-    cardToSwipe.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
 
     const historyIndex = currentIndex;
     history.push({
@@ -1443,20 +1467,16 @@
 
     currentIndex = historyIndex + 1;
     updateStats();
+    swipePersisted = true;
 
-    let finished = false;
-    const finishSwipe = (event) => {
-      if (finished) return;
-      if (event && event.target !== cardToSwipe) return;
-      finished = true;
-      cardToSwipe.removeEventListener('animationend', finishSwipe);
-      clearTimeout(swipeFinishTimer);
-      swipeFinishTimer = null;
-      renderCards();
-    };
-
-    cardToSwipe.addEventListener('animationend', finishSwipe);
-    swipeFinishTimer = setTimeout(() => finishSwipe(null), 500);
+    // If the visual animation already finished while the application request
+    // was in flight, render the next card immediately now that persistence is
+    // confirmed. Otherwise animationend will finish the transition normally.
+    if (visualSwipeFinished) {
+      finishSwipe(null);
+    } else {
+      swipeFinishTimer = setTimeout(() => finishSwipe(null), 500);
+    }
   }
 
   function skipCurrent() {
