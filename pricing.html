@@ -366,8 +366,8 @@
 <div class="free-offer">
   <div class="free-offer-card">
     <div class="free-offer-copy">
-      <strong>Your first job slot is free</strong>
-      <p>1 permanent reusable job slot with no plan-based applicant cap. No credit card required. Close or delete the job when you are done, then reuse the same slot for your next opening.</p>
+      <strong id="free-offer-title">Your first job slot is free</strong>
+      <p id="free-offer-copy">1 permanent reusable job slot with no plan-based applicant cap. No credit card required. Close or delete the job when you are done, then reuse the same slot for your next opening.</p>
     </div>
     <button class="plan-cta" id="free-plan-btn" onclick="choosePlan('free')">Use free job slot</button>
   </div>
@@ -760,14 +760,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
       applyAccountPricingRules();
 
-      const freeBtn = document.getElementById('free-plan-btn');
-      if(freeBtn){
-        freeBtn.textContent = 'Use free job slot';
-        freeBtn.disabled = false;
-        freeBtn.style.opacity = '';
-        freeBtn.style.cursor = '';
-      }
-
       const authLink = document.getElementById('nav-auth-link');
       const ctaBtn = document.getElementById('nav-cta-btn');
       if(authLink){
@@ -860,6 +852,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(!currentAccess) return;
 
     const paid=currentAccess.active_paid_plan===true;
+    const used=Math.max(0,Number(currentAccess.active_job_count||0));
+    const limit=Math.max(1,Number(currentAccess.slot_limit||1));
+    const firstFreeSlotHasBeenUsed=freeJobUsed || used>0;
+
     const second=document.getElementById('single-job-slot');
     const boostSection=document.getElementById('job-boost-section');
     const weeklyTab=document.getElementById('tab-weekly');
@@ -868,6 +864,43 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const guidanceTitle=document.getElementById('capacity-guidance-title');
     const guidanceCopy=document.getElementById('capacity-guidance-copy');
     const guidanceBtn=document.getElementById('capacity-guidance-btn');
+    const freeOfferTitle=document.getElementById('free-offer-title');
+    const freeOfferCopy=document.getElementById('free-offer-copy');
+    const freeBtn=document.getElementById('free-plan-btn');
+
+    // The permanent free slot is part of total capacity; it is never an extra
+    // slot sitting outside Launch / Growth / Scale. The first job an employer
+    // posts occupies that free slot automatically.
+    if(paid){
+      if(freeOfferTitle) freeOfferTitle.textContent='Your permanent free slot is included';
+      if(freeOfferCopy) freeOfferCopy.textContent=`Your first slot is already included in your ${limit}-slot capacity. It is not an extra slot on top of the ${limit} shown for your plan.`;
+      if(freeBtn){
+        freeBtn.textContent='Free slot included';
+        freeBtn.disabled=true;
+        freeBtn.style.opacity='.65';
+        freeBtn.style.cursor='default';
+      }
+    }else if(used>=1){
+      if(freeOfferTitle) freeOfferTitle.textContent='Your permanent free slot is in use';
+      if(freeOfferCopy) freeOfferCopy.textContent='Your first active job is using your permanent free slot. Close or delete that job to reuse the slot, or add the Second Job Slot for another active opening.';
+      if(freeBtn){
+        freeBtn.textContent='Free slot in use';
+        freeBtn.disabled=true;
+        freeBtn.style.opacity='.65';
+        freeBtn.style.cursor='default';
+      }
+    }else{
+      if(freeOfferTitle) freeOfferTitle.textContent=firstFreeSlotHasBeenUsed ? 'Your permanent free slot is available again' : 'Your first job slot is free';
+      if(freeOfferCopy) freeOfferCopy.textContent=firstFreeSlotHasBeenUsed
+        ? 'Your permanent free slot is reusable. Post another job in it at no charge.'
+        : 'Your first job automatically uses your permanent free slot. No credit card is required, and you can reuse the slot after closing or deleting the job.';
+      if(freeBtn){
+        freeBtn.textContent=firstFreeSlotHasBeenUsed ? 'Post with free slot' : 'Post first job free';
+        freeBtn.disabled=false;
+        freeBtn.style.opacity='';
+        freeBtn.style.cursor='';
+      }
+    }
 
     // $150 Second Job Slot is visible ONLY on Free.
     if(second) second.style.display=paid?'none':'';
@@ -894,8 +927,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if(!guidanceWrap||!guidanceTitle||!guidanceCopy||!guidanceBtn) return;
 
-    const used=Number(currentAccess.active_job_count||0);
-    const limit=Number(currentAccess.slot_limit||1);
     const weeklyCount=Number(currentAccess.weekly_slot_count||0);
     const recommended=String(currentAccess.recommended_upgrade_plan||'');
 
@@ -914,10 +945,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         guidanceCopy.textContent='You have the Free slot + Second Job Slot = 2 total. If you need more ongoing capacity, Launch gives you 4 total slots.';
         guidanceBtn.textContent='Compare Launch';
         guidanceBtn.onclick=()=>switchView('monthly');
-      }else{
-        guidanceCopy.textContent='Your permanent Free slot is available. If you only need one more job, add the $150/month Second Job Slot; for more capacity, compare Launch.';
+      }else if(used>=1){
+        guidanceCopy.textContent='Your permanent Free slot is in use. Need a second active opening? Add the $150/month Second Job Slot for 2 total jobs.';
         guidanceBtn.textContent='View Second Job Slot';
         guidanceBtn.onclick=()=>document.getElementById('single-job-slot')?.scrollIntoView({behavior:'smooth'});
+      }else{
+        guidanceCopy.textContent='Your permanent Free slot is ready. Your first job uses it automatically at no charge. If you later need a second active opening, the $150/month Second Job Slot is available on Free.';
+        guidanceBtn.textContent='Post first job free';
+        guidanceBtn.onclick=()=>choosePlan('free');
       }
       return;
     }
