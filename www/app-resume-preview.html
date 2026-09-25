@@ -22,9 +22,94 @@ button{font:inherit;cursor:pointer}
 .logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:32px;line-height:1;color:var(--brand)}
 .logo span{color:var(--sage)}
 .page{width:100%;max-width:680px;margin:0 auto;padding:18px 16px 28px;overflow:visible!important}
-.loading{min-height:58vh;display:grid;place-items:center;text-align:center;color:var(--muted);font-weight:800}
-.spinner{width:34px;height:34px;margin:0 auto 12px;border:3px solid #E1E8ED;border-top-color:var(--brand-dark);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.loading{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:28px;
+  background:#F5F8F8;
+  color:#1A2530;
+  text-align:center;
+  transition:opacity .18s ease,visibility .18s ease;
+}
+.loading[hidden]{display:none!important}
+.loading-inner{
+  width:min(330px,86vw);
+  text-align:center;
+}
+.loading-logo{
+  font-family:Georgia,'Times New Roman',serif!important;
+  font-size:48px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:-2.2px;
+  color:#5D7FA3;
+}
+.loading-logo span{color:#8CB69B}
+.loading-text{
+  min-height:42px;
+  margin-top:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#65778A;
+  font-size:13px;
+  line-height:1.45;
+  font-weight:800;
+  letter-spacing:.05px;
+}
+.loading-progress{
+  width:116px;
+  height:3px;
+  margin:18px auto 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(93,127,163,.16);
+}
+.loading-progress::after{
+  content:'';
+  display:block;
+  width:42%;
+  height:100%;
+  border-radius:inherit;
+  background:#5D7FA3;
+  animation:candidateLoadingTrack 1.05s ease-in-out infinite alternate;
+}
+@keyframes candidateLoadingTrack{
+  from{transform:translateX(-8%)}
+  to{transform:translateX(150%)}
+}
+html[data-effective-theme="dark"] .loading,
+html[data-theme="dark"] .loading{
+  background:#061821;
+  color:#F6F8F7;
+}
+html[data-effective-theme="dark"] .loading-text,
+html[data-theme="dark"] .loading-text{
+  color:#B6C4D1;
+}
+html[data-effective-theme="dark"] .loading-progress,
+html[data-theme="dark"] .loading-progress{
+  background:rgba(121,167,213,.20);
+}
+html[data-effective-theme="dark"] .loading-progress::after,
+html[data-theme="dark"] .loading-progress::after{
+  background:#79A7D5;
+}
+
+/* Small spinner is only for rendering PDF pages inside the loaded preview. */
+.pdf-preview-loading .spinner{
+  width:26px;
+  height:26px;
+  margin:0 auto 12px;
+  border:3px solid #E1E8ED;
+  border-top-color:var(--brand-dark);
+  border-radius:50%;
+  animation:pdfSpin .8s linear infinite;
+}
+@keyframes pdfSpin{to{transform:rotate(360deg)}}
 .preview-shell{border:1px solid var(--border);border-radius:26px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
 .preview-head{min-height:66px;padding:15px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
 .preview-title{font-size:15px;font-weight:900;color:var(--text)}
@@ -144,8 +229,12 @@ html[data-effective-theme="dark"] .color-swatch.active{
 </header>
 
 <main class="page">
-  <div class="loading" id="loading">
-    <div><div class="spinner"></div><div>Loading your resume…</div></div>
+  <div class="loading" id="loading" aria-live="polite" aria-label="Loading your resume">
+    <div class="loading-inner">
+      <div class="loading-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
+      <div class="loading-text">Getting your resume ready.</div>
+      <div class="loading-progress" aria-hidden="true"></div>
+    </div>
   </div>
 
   <div id="content" hidden>
