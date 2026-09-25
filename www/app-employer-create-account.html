@@ -980,14 +980,35 @@ async function createEmployerAccount(){
 }
 
 
-async function googleEmployerSignup(){
-  const button=
-    document.getElementById(
-      'google-btn'
-    );
+async function employerGoogleAccountState(user){
+  const role=await googleProfileRole(user);
 
-  const original=
-    button.innerHTML;
+  if(
+    role==='candidate'||
+    role==='seeker'||
+    role==='employee'
+  ){
+    return {kind:'candidate',role};
+  }
+
+  if(
+    role==='employer'||
+    role==='employer_team'||
+    role==='team_member'
+  ){
+    return {kind:'employer',role};
+  }
+
+  if(user?.app_metadata?.alygnn_registered===true){
+    return {kind:'registered_unknown',role};
+  }
+
+  return {kind:'new',role};
+}
+
+async function googleEmployerSignup(){
+  const button=document.getElementById('google-btn');
+  const original=button.innerHTML;
 
   showMessage('','');
   button.disabled=true;
@@ -996,95 +1017,51 @@ async function googleEmployerSignup(){
   let plugin=null;
 
   try{
-    const google=
-      await startNativeGoogleSession();
-
+    const google=await startNativeGoogleSession();
     plugin=google.plugin;
 
     const user=google.user;
     const session=google.session;
+    const state=await employerGoogleAccountState(user);
 
-    /*
-     * A Create Account action must not convert an existing candidate,
-     * employer, or team-member account into a different workspace type.
-     */
-    if(googleAccountWasAlreadyRegistered(user)){
-      const role=
-        await googleProfileRole(user);
-
-      const candidateAccount=
-        role==='candidate'||
-        role==='seeker'||
-        role==='employee';
-
-      localStorage.setItem(
-        'alygnn_account_type',
-        candidateAccount
-          ?'candidate'
-          :'employer'
-      );
-
+    if(state.kind==='candidate'){
+      await signOutGoogleSession(plugin);
       showMessage(
-        candidateAccount
-          ?'Alygnn account found. Opening your candidate workspace…'
-          :'Alygnn account found. Signing you in…',
-        'success'
+        'This Google account is already connected to a candidate account. Please use Candidate Sign In or choose a different Google account.',
+        'error'
       );
-
-      setTimeout(
-        ()=>{
-          location.replace(
-            candidateAccount
-              ?'app-login.html'
-              :'app-employer-login.html'
-          );
-        },
-        250
-      );
-
       return;
     }
 
-    const validation=
-      await validateGoogleIntent(
-        session,
-        'signup'
+    if(
+      state.kind==='employer'||
+      state.kind==='registered_unknown'
+    ){
+      localStorage.setItem('alygnn_account_type','employer');
+      showMessage('Alygnn account found. Signing you in…','success');
+      setTimeout(
+        ()=>location.replace('app-employer-login.html'),
+        250
       );
-
-    if(!validation?.allowed){
-      throw new Error(
-        'Alygnn could not create this Google account.'
-      );
+      return;
     }
 
-    const googleName=
-      String(
-        user.user_metadata?.full_name||
-        user.user_metadata?.name||
-        ''
-      ).trim();
+    const validation=await validateGoogleIntent(session,'signup');
 
-    const typedName=
-      document
-        .getElementById('full-name')
-        .value
-        .trim();
+    if(!validation?.allowed){
+      throw new Error('Alygnn could not create this Google account.');
+    }
 
-    const companyName=
-      document
-        .getElementById('company-name')
-        .value
-        .trim();
+    const googleName=String(
+      user.user_metadata?.full_name||
+      user.user_metadata?.name||
+      ''
+    ).trim();
 
-    const fullName=
-      typedName||
-      googleName;
-
-    const email=
-      String(
-        user.email||
-        ''
-      ).toLowerCase().trim();
+    const typedName=document.getElementById('full-name').value.trim();
+    const companyName=document.getElementById('company-name').value.trim();
+    const fullName=typedName||googleName;
+    const email=String(user.email||'').toLowerCase().trim();
 
     const metadata={
       ...(user.user_metadata||{}),
@@ -1099,111 +1076,60 @@ async function googleEmployerSignup(){
       EmailFlow:'google'
     };
 
-    const {data:updateData,error:updateError}=
-      await sb.auth.updateUser({
-        data:metadata
-      });
+    const {data:updateData,error:updateError}=await sb.auth.updateUser({
+      data:metadata
+    });
 
     if(updateError)throw updateError;
 
-    const savedUser=
-      updateData?.user||
-      user;
+    const savedUser=updateData?.user||user;
 
-    const {error:profileError}=
-      await sb
-        .from('profiles')
-        .upsert(
-          {
-            id:savedUser.id,
-            role:'employer',
-            full_name:fullName
-          },
-          {
-            onConflict:'id'
-          }
-        );
+    const {error:profileError}=await sb
+      .from('profiles')
+      .upsert(
+        {
+          id:savedUser.id,
+          role:'employer',
+          full_name:fullName
+        },
+        {onConflict:'id'}
+      );
 
     if(profileError){
-      console.warn(
-        'Employer Google profile save warning:',
-        profileError
-      );
+      console.warn('Employer Google profile save warning:',profileError);
     }
 
     try{
-      localStorage.setItem(
-        'alygnn_account_type',
-        'employer'
-      );
-
-      localStorage.setItem(
-        'alygnn_employer_domain',
-        getDomain(email)
-      );
+      localStorage.setItem('alygnn_account_type','employer');
+      localStorage.setItem('alygnn_employer_domain',getDomain(email));
 
       if(companyName){
-        localStorage.setItem(
-          'alygnn_pending_company_name',
-          companyName
-        );
+        localStorage.setItem('alygnn_pending_company_name',companyName);
       }else{
-        localStorage.removeItem(
-          'alygnn_pending_company_name'
-        );
+        localStorage.removeItem('alygnn_pending_company_name');
       }
 
       if(fullName){
-        localStorage.setItem(
-          'alygnn_pending_full_name',
-          fullName
-        );
+        localStorage.setItem('alygnn_pending_full_name',fullName);
       }
 
-      localStorage.removeItem(
-        'alygnn_company_id'
-      );
-
-      localStorage.removeItem(
-        'alygnn_company_account_number'
-      );
-
-      localStorage.removeItem(
-        'alygnn_employer_verification_status'
-      );
-
-      localStorage.removeItem(
-        'alygnn_employer_onboarding_draft'
-      );
+      localStorage.removeItem('alygnn_company_id');
+      localStorage.removeItem('alygnn_company_account_number');
+      localStorage.removeItem('alygnn_employer_verification_status');
+      localStorage.removeItem('alygnn_employer_onboarding_draft');
     }catch(_){}
 
-    showMessage(
-      'Google account created. Continuing to company setup…',
-      'success'
-    );
+    showMessage('Google account created. Continuing to company setup…','success');
 
     setTimeout(
-      ()=>{
-        location.replace(
-          'app-employer-onboarding.html'
-        );
-      },
+      ()=>location.replace('app-employer-onboarding.html'),
       300
     );
 
   }catch(error){
-    console.error(
-      'Employer Google signup failed:',
-      error
-    );
+    console.error('Employer Google signup failed:',error);
 
-    const raw=
-      String(
-        error?.message||
-        error||
-        ''
-      ).toLowerCase();
-
+    const raw=String(error?.message||error||'').toLowerCase();
     const cancelled=
       raw.includes('cancel')||
       raw.includes('user_cancelled')||
@@ -1212,10 +1138,7 @@ async function googleEmployerSignup(){
     showMessage(
       cancelled
         ?'Google sign-up was canceled.'
-        :friendlyError(
-          error?.message||
-          'Unable to continue with Google.'
-        ),
+        :friendlyError(error?.message||'Unable to continue with Google.'),
       'error'
     );
 
