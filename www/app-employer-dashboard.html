@@ -4597,6 +4597,63 @@
   }
 </style>
 
+
+<style id="alygnn-settings-scroll-ghost-fix">
+  /*
+   * Android WebView fix:
+   * the translucent/blurred fixed nav could briefly composite an old Settings
+   * row underneath it while the page was rubber-banding at the bottom.
+   * Keep the nav fully opaque and on its own paint layer in BOTH themes.
+   */
+  .bottom-nav{
+    background:#FFFFFF!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    isolation:isolate;
+    contain:paint;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+
+  html[data-theme="dark"] .bottom-nav{
+    background:#121B27!important;
+  }
+
+  /*
+   * Give Settings a clean end above the fixed nav and stop Android's
+   * bottom-edge overscroll from exposing stale composited content.
+   */
+  html,
+  body{
+    overscroll-behavior-y:none;
+  }
+
+  #settings-view{
+    padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;
+    animation:none!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+
+  /*
+   * Paint a solid footer buffer at the end of Settings. This prevents any
+   * previously rendered row (such as Help & support) from flashing through
+   * during the last few pixels of a scroll.
+   */
+  #settings-view::after{
+    content:'';
+    display:block;
+    height:18px;
+    margin-top:8px;
+    background:var(--bg);
+    pointer-events:none;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
