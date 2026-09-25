@@ -1822,7 +1822,11 @@ async function loadCandidateMessageNotificationItems(){
 }
 
 async function refreshCandidateMessageNotifications(){
-  if(candidateMessageNotificationRefreshBusy || !currentUserId)return;
+  if(
+    candidateMessageNotificationRefreshBusy ||
+    !currentUserId ||
+    !candidateNotificationProfileCache
+  )return;
 
   candidateMessageNotificationRefreshBusy = true;
   try{
@@ -1890,11 +1894,16 @@ window.addEventListener('focus',()=>{
 async function loadCandidateNotifications(profile){
   if(!currentUserId) return;
 
-  candidateNotificationProfileCache = profile || null;
+  if(profile){
+    candidateNotificationProfileCache = profile;
+  }
+
+  const effectiveProfile = profile || candidateNotificationProfileCache;
+  if(!effectiveProfile) return;
 
   const items = [];
-  const hasResume = !!(profile?.resume_file_path || profile?.resume_data);
-  const hasPreferences = !!profile?.preferences;
+  const hasResume = !!(effectiveProfile?.resume_file_path || effectiveProfile?.resume_data);
+  const hasPreferences = !!effectiveProfile?.preferences;
 
   const messageItems = await loadCandidateMessageNotificationItems();
   items.push(...messageItems);
@@ -3133,6 +3142,32 @@ async function switchToEmployerMode(){
   window.location.href = 'employer-dashboard.html?mode=employer&team_member=1';
 }
 
+async function loadCandidateProfileForAccount(userId){
+  let lastError = null;
+
+  for(let attempt = 0; attempt < 3; attempt++){
+    const { data, error } = await sb
+      .from('profiles')
+      .select('has_password, role, full_name, resume_file_path, resume_source, resume_data, preferences, is_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if(!error && data){
+      return { profile:data, error:null };
+    }
+
+    if(error && error.code !== 'PGRST116'){
+      lastError = error;
+    }
+
+    if(attempt < 2){
+      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 250 : 650));
+    }
+  }
+
+  return { profile:null, error:lastError };
+}
+
 async function initAccountPage(){
   const {
     data: { session }
@@ -3154,14 +3189,12 @@ async function initAccountPage(){
     showToast('Your account is ready, but we could not attach the resume you uploaded before signup. Please try again.');
   }
 
-  const { data: profile, error } = await sb
-    .from('profiles')
-    .select('has_password, role, full_name, resume_file_path, resume_source, resume_data, preferences, is_admin')
-    .eq('id', currentUserId)
-    .maybeSingle();
+  const { profile, error } = await loadCandidateProfileForAccount(currentUserId);
 
-  if(error && error.code !== 'PGRST116'){
-    console.error('Failed to load profile:', error);
+  if(error){
+    console.error('Failed to load profile after retry:', error);
+    showToast('We could not load your candidate profile. Please refresh and try again.');
+    return;
   }
 
   // An admin account has no real job-seeker profile — send it back to the
