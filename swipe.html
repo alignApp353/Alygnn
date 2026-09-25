@@ -599,6 +599,60 @@
   let skipped = 0;
   let history = [];
   let currentUserId = null;
+
+  // Keep the visible swipe-session counters when the candidate temporarily
+  // leaves swipe.html (for example: View details -> Keep swiping).
+  // sessionStorage is intentionally tab-scoped so separate Alygnn accounts
+  // open in different tabs do not share swipe progress.
+  const SWIPE_SESSION_KEY = 'alygnn_swipe_session_v1';
+
+  function readSwipeSession() {
+    try {
+      const raw = sessionStorage.getItem(SWIPE_SESSION_KEY);
+      if (!raw) return null;
+
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return null;
+
+      // Once we know the signed-in user, never restore another user's counts.
+      if (
+        currentUserId &&
+        saved.userId &&
+        String(saved.userId) !== String(currentUserId)
+      ) {
+        return null;
+      }
+
+      return saved;
+    } catch (error) {
+      console.warn('Could not read swipe session:', error);
+      return null;
+    }
+  }
+
+  function saveSwipeSession() {
+    try {
+      sessionStorage.setItem(
+        SWIPE_SESSION_KEY,
+        JSON.stringify({
+          userId: currentUserId || null,
+          applied: Number(applied) || 0,
+          skipped: Number(skipped) || 0,
+          updatedAt: Date.now()
+        })
+      );
+    } catch (error) {
+      console.warn('Could not save swipe session:', error);
+    }
+  }
+
+  function clearSwipeSession() {
+    try {
+      sessionStorage.removeItem(SWIPE_SESSION_KEY);
+    } catch (error) {
+      console.warn('Could not clear swipe session:', error);
+    }
+  }
   // Tracks which job ids have already had their view counted this session,
   // so re-rendering the same top card (e.g. after undo) doesn't double-count.
   const viewedJobIds = new Set();
@@ -885,10 +939,21 @@
 
       jobs = results;
       currentIndex = 0;
-      applied = 0;
-      skipped = 0;
+
+      // Returning from job-details.html used to wipe these back to zero.
+      // Restore the tab's current swipe-session totals while the actual jobs
+      // list is rebuilt from Supabase (already-applied/skipped jobs are removed
+      // above, so "Left" remains the number of unseen jobs).
+      const savedSwipeSession = readSwipeSession();
+      applied = Math.max(0, Number(savedSwipeSession?.applied) || 0);
+      skipped = Math.max(0, Number(savedSwipeSession?.skipped) || 0);
+
+      // Undo only applies to actions made during the currently loaded page.
+      // We intentionally do not reconstruct old history records from storage.
       history = [];
+
       updateStats();
+      saveSwipeSession();
       renderCards();
       showScreen('swipe');
     } catch (err) {
@@ -997,7 +1062,7 @@
       ${benefitsHTML}
       <div class="card-bottom">
         <div class="posted-time">${timeAgo(job.created_at)}</div>
-        <a class="view-details-link" href="job-details.html?job=${encodeURIComponent(job.id)}&from=swipe">View details →</a>
+        <a class="view-details-link" href="job-details.html?job=${encodeURIComponent(job.id)}&from=swipe" onclick="saveSwipeSession()">View details →</a>
       </div>
     `;
 
@@ -1467,6 +1532,7 @@
 
     currentIndex = historyIndex + 1;
     updateStats();
+    saveSwipeSession();
     swipePersisted = true;
 
     // If the visual animation already finished while the application request
@@ -1528,6 +1594,7 @@
     else skipped = Math.max(0, skipped - 1);
 
     currentIndex = last.index;
+    saveSwipeSession();
     undoPersistedRecord(last);
     renderCards();
     showToast('↩ Undone');
