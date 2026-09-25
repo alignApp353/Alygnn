@@ -6015,15 +6015,260 @@
     }
 
     function resolvedTheme(preference){
-      return preference === 'auto' ? (systemTheme.matches ? 'dark' : 'light') : preference;
+      return preference === 'auto'
+        ? (systemTheme.matches ? 'dark' : 'light')
+        : preference;
+    }
+
+    /*
+     * Android WebView can keep the old button text paint after changing
+     * color-scheme. Paint the Settings controls explicitly whenever the
+     * appearance changes so Dark and Light both update immediately.
+     */
+    function repaintSettingsForTheme(theme){
+      const root=document.getElementById('settings-view');
+      if(!root)return;
+
+      const dark=theme==='dark';
+
+      const colors=dark
+        ?{
+          text:'#F3F7FA',
+          muted:'#A9B5C2',
+          card:'#121B27',
+          field:'#0F1823',
+          border:'#293545',
+          borderSoft:'#202C3A',
+          icon:'#79A7D5',
+          danger:'#EF6B6B'
+        }
+        :{
+          text:'#172333',
+          muted:'#68798B',
+          card:'#FFFFFF',
+          field:'#F8FAFB',
+          border:'#DDE3E8',
+          borderSoft:'#E7ECF0',
+          icon:'#396A9E',
+          danger:'#C74747'
+        };
+
+      root.style.setProperty('color',colors.text,'important');
+      root.style.setProperty('-webkit-text-fill-color',colors.text,'important');
+
+      root.querySelectorAll('.page-title,.settings-copy strong').forEach(node=>{
+        node.style.setProperty('color',colors.text,'important');
+        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
+        node.style.setProperty('opacity','1','important');
+        node.style.setProperty('text-shadow','none','important');
+      });
+
+      root.querySelectorAll(
+        '.page-sub,.preference-note,.section-kicker,.settings-group-title,.settings-copy small,.settings-chevron'
+      ).forEach(node=>{
+        node.style.setProperty('color',colors.muted,'important');
+        node.style.setProperty('-webkit-text-fill-color',colors.muted,'important');
+        node.style.setProperty('opacity','1','important');
+        node.style.setProperty('text-shadow','none','important');
+      });
+
+      root.querySelectorAll('.settings-card,.section').forEach(node=>{
+        node.style.setProperty('background',colors.card,'important');
+        node.style.setProperty('border-color',colors.border,'important');
+      });
+
+      root.querySelectorAll('.settings-link').forEach(node=>{
+        node.style.setProperty('background',colors.card,'important');
+        node.style.setProperty('color',colors.text,'important');
+        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
+        node.style.setProperty('border-color',colors.borderSoft,'important');
+        node.style.setProperty('opacity','1','important');
+        node.style.setProperty('appearance','none','important');
+        node.style.setProperty('-webkit-appearance','none','important');
+      });
+
+      root.querySelectorAll('.settings-icon').forEach(node=>{
+        node.style.setProperty(
+          'background',
+          dark ? '#19283A' : '#EEF4F9',
+          'important'
+        );
+        node.style.setProperty('color',colors.icon,'important');
+        node.style.setProperty('-webkit-text-fill-color',colors.icon,'important');
+      });
+
+      root.querySelectorAll('.appearance-option').forEach(node=>{
+        node.style.setProperty('background',colors.field,'important');
+        node.style.setProperty('border-color',colors.border,'important');
+        node.style.setProperty('color',colors.text,'important');
+        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
+        node.style.setProperty('appearance','none','important');
+        node.style.setProperty('-webkit-appearance','none','important');
+      });
+
+      root.querySelectorAll('.appearance-option.active').forEach(node=>{
+        node.style.setProperty(
+          'background',
+          dark ? '#172A40' : '#EAF2FA',
+          'important'
+        );
+        node.style.setProperty(
+          'border-color',
+          dark ? '#4B78A6' : '#396A9E',
+          'important'
+        );
+        node.style.setProperty(
+          'color',
+          dark ? '#8EB5DF' : '#396A9E',
+          'important'
+        );
+        node.style.setProperty(
+          '-webkit-text-fill-color',
+          dark ? '#8EB5DF' : '#396A9E',
+          'important'
+        );
+      });
+
+      root.querySelectorAll('.appearance-icon').forEach(node=>{
+        node.style.setProperty(
+          'color',
+          dark ? '#79A7D5' : '#396A9E',
+          'important'
+        );
+      });
+
+      const signout=root.querySelector('.settings-signout');
+      if(signout){
+        signout.style.setProperty('color',colors.danger,'important');
+        signout.style.setProperty('-webkit-text-fill-color',colors.danger,'important');
+
+        const title=signout.querySelector('.settings-copy strong');
+        if(title){
+          title.style.setProperty('color',colors.danger,'important');
+          title.style.setProperty('-webkit-text-fill-color',colors.danger,'important');
+        }
+
+        const sub=signout.querySelector('.settings-copy small');
+        if(sub){
+          sub.style.setProperty('color',colors.muted,'important');
+          sub.style.setProperty('-webkit-text-fill-color',colors.muted,'important');
+        }
+      }
+
+      const nav=document.querySelector('.bottom-nav');
+      if(nav && dark){
+        nav.style.setProperty('background','#121B27','important');
+        nav.style.setProperty('border-top-color','#293545','important');
+        nav.style.setProperty('backdrop-filter','none','important');
+        nav.style.setProperty('-webkit-backdrop-filter','none','important');
+      }else if(nav){
+        nav.style.removeProperty('background');
+        nav.style.removeProperty('border-top-color');
+        nav.style.removeProperty('backdrop-filter');
+        nav.style.removeProperty('-webkit-backdrop-filter');
+      }
+
+      // Force one repaint in Android WebView after changing color-scheme.
+      void root.offsetHeight;
     }
 
     function applyTheme(preference,showConfirmation=false){
-      const safePreference = ['auto','light','dark'].includes(preference) ? preference : 'auto';
-      const theme = resolvedTheme(safePreference);
-      document.documentElement.dataset.theme = theme;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme === 'dark' ? '#0B111A' : '#F6F8F7');
-  
+      const safePreference =
+        ['auto','light','dark'].includes(preference)
+          ? preference
+          : 'auto';
+
+      const theme=resolvedTheme(safePreference);
+      const root=document.documentElement;
+
+      root.dataset.theme=theme;
+      root.style.colorScheme=theme;
+      root.style.backgroundColor=
+        theme==='dark'
+          ?'#0B111A'
+          :'#F6F8F7';
+
+      document.querySelector('meta[name="theme-color"]')?.setAttribute(
+        'content',
+        theme==='dark'
+          ?'#0B111A'
+          :'#F6F8F7'
+      );
+
+      document.querySelectorAll('[data-theme-choice]').forEach(button=>{
+        const active=
+          button.dataset.themeChoice===safePreference;
+
+        button.classList.toggle('active',active);
+        button.setAttribute('aria-checked',String(active));
+      });
+
+      repaintSettingsForTheme(theme);
+      requestAnimationFrame(()=>repaintSettingsForTheme(theme));
+
+      if(showConfirmation){
+        toast(
+          (
+            safePreference==='auto'
+              ?'Auto appearance'
+              :safePreference[0].toUpperCase()+
+                safePreference.slice(1)+
+                ' mode'
+          )+
+          ' selected.'
+        );
+      }
+    }
+
+    function setThemePreference(preference){
+      localStorage.setItem(
+        THEME_STORAGE_KEY,
+        preference
+      );
+
+      applyTheme(
+        preference,
+        true
+      );
+    }
+
+    applyTheme(
+      savedThemePreference()
+    );
+
+    systemTheme.addEventListener?.(
+      'change',
+      ()=>{
+        if(savedThemePreference()==='auto'){
+          applyTheme('auto');
+        }
+      }
+    );
+
+    window.addEventListener(
+      'pageshow',
+      ()=>{
+        applyTheme(
+          savedThemePreference()
+        );
+      }
+    );
+
+    document.addEventListener(
+      'visibilitychange',
+      ()=>{
+        if(!document.hidden){
+          applyTheme(
+            savedThemePreference()
+          );
+        }
+      }
+    );
+
+    /*
+     * Keep team permissions outside applyTheme. Previously this listener
+     * was accidentally being added every time the theme changed.
+     */
     document.addEventListener(
       'click',
       event=>{
@@ -6065,34 +6310,6 @@
       },
       true
     );
-
-    document.querySelectorAll('[data-theme-choice]').forEach(button => {
-        const active = button.dataset.themeChoice === safePreference;
-        button.classList.toggle('active',active);
-        button.setAttribute('aria-checked',String(active));
-      });
-      if(showConfirmation) toast((safePreference === 'auto' ? 'Auto appearance' : safePreference[0].toUpperCase()+safePreference.slice(1)+' mode') + ' selected.');
-    }
-
-    function setThemePreference(preference){
-      localStorage.setItem(THEME_STORAGE_KEY,preference);
-      applyTheme(preference,true);
-    }
-
-    applyTheme(savedThemePreference());
-    systemTheme.addEventListener?.('change',() => {
-      if(savedThemePreference() === 'auto') applyTheme('auto');
-    });
-
-    window.addEventListener('pageshow',() => {
-      applyTheme(savedThemePreference());
-    });
-
-    document.addEventListener('visibilitychange',() => {
-      if(!document.hidden){
-        applyTheme(savedThemePreference());
-      }
-    });
 
     const $ = id => document.getElementById(id);
 
