@@ -388,7 +388,7 @@ async function ensureNativeGoogleInitialized(){
   return plugin;
 }
 
-async function validateGoogleIntent(session){
+async function validateGoogleIntent(session,intent='login'){
   if(!session?.access_token)throw new Error('Google sign-in did not create an Alygnn session.');
 
   const response=await fetch(SUPABASE_FUNCTIONS_URL+'/validate-google-login',{
@@ -398,7 +398,9 @@ async function validateGoogleIntent(session){
       'apikey':SUPABASE_PUBLIC_KEY,
       'Authorization':'Bearer '+session.access_token
     },
-    body:JSON.stringify({intent:'login'})
+    body:JSON.stringify({
+      intent:intent==='signup'?'signup':'login'
+    })
   });
 
   let payload={};
@@ -453,8 +455,120 @@ async function candidateGoogleAccessAllowed(user){
   ].includes(role);
 }
 
+async function candidateGoogleAccountState(user){
+  let profile=null;
+
+  try{
+    const {data,error}=await sb
+      .from('profiles')
+      .select('role,resume_file_path,resume_data,preferences')
+      .eq('id',user.id)
+      .maybeSingle();
+
+    if(!error){
+      profile=data||null;
+    }
+  }catch(error){
+    console.warn('Could not read candidate Google profile:',error);
+  }
+
+  const role=String(
+    profile?.role||
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+
+  if(
+    role==='employer'||
+    role==='employer_team'||
+    role==='team_member'
+  ){
+    return {kind:'employer',role};
+  }
+
+  const identities=Array.isArray(user?.identities)?user.identities:[];
+  const hasEmailIdentity=identities.some(identity=>identity?.provider==='email');
+  const registered=user?.app_metadata?.alygnn_registered===true;
+
+  const hasCandidateData=Boolean(
+    profile?.resume_file_path||
+    profile?.resume_data||
+    profile?.preferences
+  );
+
+  const createdAt=Date.parse(user?.created_at||'');
+  const legacyCandidate=
+    Number.isFinite(createdAt) &&
+    Date.now()-createdAt>60*60*1000 &&
+    ['candidate','seeker','employee'].includes(role);
+
+  if(
+    registered||
+    hasEmailIdentity||
+    hasCandidateData||
+    legacyCandidate
+  ){
+    return {kind:'candidate',role};
+  }
+
+  return {kind:'new',role};
+}
+
+async function createCandidateFromGoogle(session,user){
+  const validation=await validateGoogleIntent(session,'signup');
+
+  if(!validation?.allowed){
+    throw new Error('Alygnn could not create your candidate account with Google.');
+  }
+
+  const fullName=String(
+    user?.user_metadata?.full_name||
+    user?.user_metadata?.name||
+    ''
+  ).trim();
+
+  const {data:updateData,error:updateError}=await sb.auth.updateUser({
+    data:{
+      ...(user?.user_metadata||{}),
+      full_name:fullName,
+      name:fullName,
+      account_type:'candidate',
+      role:'candidate',
+      accepted_terms:true,
+      accepted_privacy:true,
+      EmailFlow:'google'
+    }
+  });
+
+  if(updateError)throw updateError;
+
+  const savedUser=updateData?.user||user;
+
+  const {error:profileError}=await sb
+    .from('profiles')
+    .upsert(
+      {
+        id:savedUser.id,
+        role:'candidate',
+        full_name:fullName
+      },
+      {onConflict:'id'}
+    );
+
+  if(profileError){
+    console.warn('Candidate Google profile save warning:',profileError);
+  }
+
+  localStorage.setItem('alygnn_account_type','candidate');
+  return savedUser;
+}
+
 async function nativeGoogleLogin(button){
   const plugin=await ensureNativeGoogleInitialized();
+
   const login=await plugin.login({
     provider:'google',
     options:{
@@ -463,48 +577,51 @@ async function nativeGoogleLogin(button){
   });
 
   const idToken=login?.result?.idToken;
-  if(!idToken)throw new Error('Google did not return a valid sign-in token.');
+  if(!idToken){
+    throw new Error('Google did not return a valid sign-in token.');
+  }
 
   const {data,error}=await sb.auth.signInWithIdToken({
     provider:'google',
     token:idToken
   });
+
   if(error)throw error;
 
-  const session=data?.session || (await sb.auth.getSession()).data?.session;
-  const validation=await validateGoogleIntent(session);
+  const session=
+    data?.session||
+    (await sb.auth.getSession()).data?.session;
 
-  if(!validation?.allowed){
-    await signOutRejectedGoogle(plugin);
-    showMessage(
-      'No Alygnn account was found. Taking you to create one with Google…',
-      'success'
-    );
-    setTimeout(
-      ()=>location.replace('app-create-account.html'),
-      450
-    );
-    return true;
+  const user=data?.user||session?.user;
+
+  if(!session?.user){
+    throw new Error('Google sign-in did not finish. Please try again.');
   }
 
-  const candidateAllowed=
-    await candidateGoogleAccessAllowed(
-      data?.user||
-      session?.user
-    );
+  const state=await candidateGoogleAccountState(user);
 
-  if(!candidateAllowed){
+  if(state.kind==='employer'){
     await signOutRejectedGoogle(plugin);
     showMessage(
-      'This Google account is registered for an employer workspace. Please use Employer Sign In.',
+      'This Google account is connected to an employer workspace. Please use Employer Sign In.',
       'error'
     );
     return false;
   }
 
-  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-  showMessage('Welcome back. Checking your workspaces…','success');
-  setTimeout(()=>location.replace(WORKSPACE_PAGE),250);
+  if(state.kind==='new'){
+    await createCandidateFromGoogle(session,user);
+    showMessage('Google account created. Opening Alygnn…','success');
+  }else{
+    localStorage.setItem('alygnn_account_type','candidate');
+    showMessage('Welcome back. Opening Alygnn…','success');
+  }
+
+  setTimeout(
+    ()=>location.replace(WORKSPACE_PAGE),
+    250
+  );
+
   return true;
 }
 
