@@ -787,21 +787,24 @@ async function fetchCandidatePageUnreadMessages(){
   if(!candidateCanMessage()) return [];
 
   try{
-    const {data:threads,error:threadsError}=await sb
-      .from('message_threads')
-      .select('id,job_id,candidate_id,employer_id')
-      .eq('employer_id',workspaceOwnerId||currentUser.id);
+    const employerId=workspaceOwnerId||currentUser.id;
 
-    if(threadsError) throw threadsError;
+    const {data:conversations,error:conversationsError}=await sb
+      .from('application_conversations')
+      .select('id,application_id,job_id,candidate_id,employer_id,candidate_name,job_title')
+      .eq('employer_id',employerId)
+      .is('employer_hidden_at',null);
 
-    const employerThreads=threads||[];
-    const threadIds=employerThreads.map(t=>t.id).filter(Boolean);
-    if(!threadIds.length) return [];
+    if(conversationsError) throw conversationsError;
+
+    const employerConversations=conversations||[];
+    const conversationIds=employerConversations.map(c=>c.id).filter(Boolean);
+    if(!conversationIds.length) return [];
 
     const {data:messageRows,error:messagesError}=await sb
-      .from('messages')
-      .select('id,thread_id,sender_id,body,created_at,read_at')
-      .in('thread_id',threadIds)
+      .from('application_messages')
+      .select('id,conversation_id,sender_id,body,created_at,read_at')
+      .in('conversation_id',conversationIds)
       .neq('sender_id',currentUser.id)
       .is('read_at',null)
       .order('created_at',{ascending:false})
@@ -809,14 +812,24 @@ async function fetchCandidatePageUnreadMessages(){
 
     if(messagesError) throw messagesError;
 
-    const threadMap=new Map(employerThreads.map(t=>[String(t.id),t]));
-    const jobMap=new Map(jobs.map(job=>[String(job.id),job]));
+    const conversationMap=new Map(
+      employerConversations.map(c=>[String(c.id),c])
+    );
 
     return (messageRows||[]).map(message=>{
-      const thread=threadMap.get(String(message.thread_id))||{};
-      const job=jobMap.get(String(thread.job_id))||{};
-      const candidateName=candidatePageEmployerCandidateName(thread.candidate_id);
-      const jobTitle=String(job.title||'your job').trim();
+      const conversation=conversationMap.get(String(message.conversation_id))||{};
+      const candidateName=String(
+        conversation.candidate_name||
+        candidatePageEmployerCandidateName(conversation.candidate_id)||
+        'Candidate'
+      ).trim();
+
+      const jobTitle=String(
+        conversation.job_title||
+        jobs.find(job=>String(job.id)===String(conversation.job_id))?.title||
+        'your job'
+      ).trim();
+
       const preview=String(message.body||'').trim().replace(/\s+/g,' ');
       const shortPreview=preview.length>90 ? preview.slice(0,87)+'…' : preview;
 
@@ -824,11 +837,11 @@ async function fetchCandidatePageUnreadMessages(){
         id:`message-${message.id}`,
         source:'message',
         message_id:message.id,
-        thread_id:message.thread_id,
+        conversation_id:message.conversation_id,
         type:'message',
         title:`New message from ${candidateName}`,
         body:shortPreview ? `${jobTitle}: ${shortPreview}` : `New reply about ${jobTitle}.`,
-        link:`messages.html?thread=${encodeURIComponent(message.thread_id)}`,
+        link:`messages.html?thread=${encodeURIComponent(message.conversation_id)}`,
         read_at:null,
         created_at:message.created_at
       };
@@ -1008,7 +1021,7 @@ async function handleCandidatePageMessageNotification(event,id){
 
   if(n.message_id){
     const {error}=await sb
-      .from('messages')
+      .from('application_messages')
       .update({read_at:new Date().toISOString()})
       .eq('id',n.message_id)
       .neq('sender_id',currentUser.id)
@@ -1053,7 +1066,7 @@ async function markAllEmployerNotificationsRead(event){
 
     if(messageIds.length&&currentUser?.id){
       const {error}=await sb
-        .from('messages')
+        .from('application_messages')
         .update({read_at:now})
         .in('id',messageIds)
         .neq('sender_id',currentUser.id)
@@ -1105,7 +1118,7 @@ function initCandidatePageNotifications(){
     candidatePageMessageChannel=sb
       .channel('candidate-page-employer-message-notifications-'+currentUser.id)
       .on('postgres_changes',{
-        event:'INSERT',schema:'public',table:'messages'
+        event:'INSERT',schema:'public',table:'application_messages'
       },async payload=>{
         if(payload?.new?.sender_id===currentUser.id) return;
         if(candidatePageNotificationRefreshBusy) return;
