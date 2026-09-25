@@ -412,6 +412,47 @@ async function signOutRejectedGoogle(plugin){
   try{await plugin?.logout?.({provider:'google'})}catch(_){}
 }
 
+async function candidateGoogleAccessAllowed(user){
+  try{
+    const {data,error}=
+      await sb.rpc(
+        'get_my_workspace_context'
+      );
+
+    if(!error && data && typeof data==='object'){
+      if(data.has_candidate===true){
+        return true;
+      }
+
+      if(
+        data.authenticated===true &&
+        data.has_candidate===false
+      ){
+        return false;
+      }
+    }
+  }catch(error){
+    console.warn(
+      'Candidate workspace check failed:',
+      error
+    );
+  }
+
+  const role=String(
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+
+  return ![
+    'employer',
+    'employer_team',
+    'team_member'
+  ].includes(role);
+}
+
 async function nativeGoogleLogin(button){
   const plugin=await ensureNativeGoogleInitialized();
   const login=await plugin.login({
@@ -435,7 +476,29 @@ async function nativeGoogleLogin(button){
 
   if(!validation?.allowed){
     await signOutRejectedGoogle(plugin);
-    showMessage('No Alygnn account was found for that Google account. Create an account first.','error');
+    showMessage(
+      'No Alygnn account was found. Taking you to create one with Google…',
+      'success'
+    );
+    setTimeout(
+      ()=>location.replace('app-create-account.html'),
+      450
+    );
+    return true;
+  }
+
+  const candidateAllowed=
+    await candidateGoogleAccessAllowed(
+      data?.user||
+      session?.user
+    );
+
+  if(!candidateAllowed){
+    await signOutRejectedGoogle(plugin);
+    showMessage(
+      'This Google account is registered for an employer workspace. Please use Employer Sign In.',
+      'error'
+    );
     return false;
   }
 
