@@ -4974,6 +4974,88 @@ html.resume-preview-ready body{
     }
   }
 
+  async function saveDraftToAccount() {
+    const button = document.getElementById('saveDraftBtn');
+    const originalText = button?.textContent || 'Save draft';
+    const data = getFormData();
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Saving...';
+    }
+
+    try {
+      if (STORAGE_KEY) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      const { data: { session }, error: sessionError } = await sb.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      if (!session?.user?.id) {
+        setSaveStatus('Draft saved on this device.', 'success');
+        return;
+      }
+
+      const userId = session.user.id;
+
+      const { data: existingProfile, error: existingProfileError } = await sb
+        .from('profiles')
+        .select('resume_data')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (existingProfileError && existingProfileError.code !== 'PGRST116') {
+        throw existingProfileError;
+      }
+
+      const existingData =
+        existingProfile?.resume_data && typeof existingProfile.resume_data === 'object'
+          ? existingProfile.resume_data
+          : {};
+
+      const existingLibrary =
+        existingData._alygnn_resume_library &&
+        typeof existingData._alygnn_resume_library === 'object'
+          ? existingData._alygnn_resume_library
+          : {};
+
+      // Save the editable Alygnn draft to the account without changing which
+      // resume is selected and without generating/replacing the stored PDF.
+      const accountDraft = {
+        ...data,
+        _alygnn_resume_library: {
+          ...existingLibrary,
+          builder_updated_at: new Date().toISOString()
+        }
+      };
+
+      const { error: saveError } = await sb
+        .from('profiles')
+        .upsert({
+          id: userId,
+          resume_data: accountDraft,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+
+      if (saveError) throw saveError;
+
+      if (STORAGE_KEY) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(accountDraft));
+      }
+
+      setSaveStatus('Draft saved to your Alygnn account.', 'success');
+    } catch (error) {
+      console.error('Resume draft sync failed:', error);
+      setSaveStatus('Draft saved on this device, but account sync failed.', 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+  }
+
   function loadDraft() {
     if (!STORAGE_KEY) return;
     try {
@@ -5879,7 +5961,7 @@ html.resume-preview-ready body{
   });
 
   document.getElementById('clearBtn').addEventListener('click', clearResume);
-  document.getElementById('saveDraftBtn').addEventListener('click', autoSave);
+  document.getElementById('saveDraftBtn').addEventListener('click', saveDraftToAccount);
   document.getElementById('continueBtn').addEventListener('click', saveAndContinue);
 
   (function initBottomActionsVisibility() {
@@ -5909,12 +5991,14 @@ html.resume-preview-ready body{
       ? 'alygnn_resume_builder_draft:' + session.user.id
       : 'alygnn_resume_builder_draft_anon';
 
-    const previewOnly =
-      new URLSearchParams(window.location.search).get('preview') === '1';
+    const resumeParams = new URLSearchParams(window.location.search);
+    const previewOnly = resumeParams.get('preview') === '1';
+    const viewFromAccount = resumeParams.get('view') === '1';
+    const loadSavedAccountResume = previewOnly || viewFromAccount;
 
-    // View should show the saved Alygnn resume, not whatever happens to be in
-    // an old local draft. Pull resume_data from the profile first.
-    if(previewOnly && session?.user?.id){
+    // Preview and Account "View / edit" must both start from the saved Alygnn
+    // account copy, not from an empty/stale browser-only draft.
+    if(loadSavedAccountResume && session?.user?.id){
       const { data: profile, error: profileError } = await sb
         .from('profiles')
         .select('resume_data')
@@ -5922,12 +6006,12 @@ html.resume-preview-ready body{
         .maybeSingle();
 
       if(profileError){
-        console.warn('Could not load saved Alygnn resume for preview:', profileError);
+        console.warn('Could not load saved Alygnn resume from account:', profileError);
       }else if(profile?.resume_data){
         try{
           localStorage.setItem(STORAGE_KEY, JSON.stringify(profile.resume_data));
         }catch(error){
-          console.warn('Could not stage saved resume for preview:', error);
+          console.warn('Could not stage saved Alygnn resume:', error);
         }
       }
     }
