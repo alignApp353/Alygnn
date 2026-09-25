@@ -686,8 +686,15 @@ async function nativeGoogleLogin(){
   const validation=await validateGoogleIntent(session);
   if(!validation?.allowed){
     await signOutRejectedGoogle(plugin);
-    showMessage('No Alygnn account was found for that Google account. Create an account first.','error');
-    return false;
+    showMessage(
+      'No Alygnn employer account was found. Taking you to create one with Google…',
+      'success'
+    );
+    setTimeout(
+      ()=>location.replace('app-employer-create-account.html'),
+      450
+    );
+    return true;
   }
 
   const access=await resolveEmployerLoginAccess(data.user || session?.user);
