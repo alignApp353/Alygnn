@@ -1745,22 +1745,23 @@ async function loadCandidateMessageNotificationItems(){
 
   try{
     const {data:threads,error:threadsError}=await sb
-      .from('message_threads')
-      .select('id,job_id,employer_id,candidate_id')
-      .eq('candidate_id',currentUserId);
+      .from('application_conversations')
+      .select('id,job_id,employer_id,candidate_id,job_title,company_name,candidate_hidden_at')
+      .eq('candidate_id',currentUserId)
+      .is('candidate_hidden_at',null);
 
     if(threadsError)throw threadsError;
 
     const candidateThreads=threads||[];
     if(!candidateThreads.length)return [];
 
-    const threadIds=candidateThreads.map(t=>t.id).filter(Boolean);
-    if(!threadIds.length)return [];
+    const conversationIds=candidateThreads.map(t=>t.id).filter(Boolean);
+    if(!conversationIds.length)return [];
 
     const {data:messageRows,error:messagesError}=await sb
-      .from('messages')
-      .select('id,thread_id,sender_id,body,created_at,read_at')
-      .in('thread_id',threadIds)
+      .from('application_messages')
+      .select('id,conversation_id,sender_id,body,created_at,read_at')
+      .in('conversation_id',conversationIds)
       .neq('sender_id',currentUserId)
       .is('read_at',null)
       .order('created_at',{ascending:false})
@@ -1795,10 +1796,10 @@ async function loadCandidateMessageNotificationItems(){
     );
 
     return unreadMessages.map(message=>{
-      const thread=threadMap.get(String(message.thread_id))||{};
+      const thread=threadMap.get(String(message.conversation_id))||{};
       const job=jobMap.get(String(thread.job_id))||{};
-      const company=String(job.company||'Employer').trim();
-      const jobTitle=String(job.title||'your application').trim();
+      const company=String(thread.company_name||job.company||'Employer').trim();
+      const jobTitle=String(thread.job_title||job.title||'your application').trim();
       const preview=String(message.body||'').trim().replace(/\s+/g,' ');
       const shortPreview=preview.length>90?preview.slice(0,87)+'…':preview;
 
@@ -1811,7 +1812,7 @@ async function loadCandidateMessageNotificationItems(){
           ? `${jobTitle}: ${shortPreview}`
           : `You received a new message about ${jobTitle}.`,
         time:'New',
-        action:`messages.html?thread=${encodeURIComponent(message.thread_id)}`
+        action:`candidate-messages.html?thread=${encodeURIComponent(message.conversation_id)}`
       };
     });
   }catch(error){
@@ -1854,7 +1855,7 @@ function ensureCandidateMessageNotificationRealtime(){
     .on('postgres_changes',{
       event:'INSERT',
       schema:'public',
-      table:'messages'
+      table:'application_messages'
     },async payload=>{
       if(payload?.new?.sender_id===currentUserId)return;
       await refreshCandidateMessageNotifications();
