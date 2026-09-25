@@ -800,13 +800,10 @@ function getParam(name){
 function returnToSwipe(event){
   if(event) event.preventDefault();
 
-  const cameFromSwipe = getParam('from') === 'swipe';
-
-  if(cameFromSwipe && window.history.length > 1){
-    window.history.back();
-    return;
-  }
-
+  // Always return directly to the swipe deck. Using history.back() can send
+  // the candidate to Preferences when that page happens to be the previous
+  // browser-history entry. swipe.html restores the saved swipe-session counts
+  // and rebuilds the remaining deck from Supabase.
   window.location.href = 'swipe.html';
 }
 
