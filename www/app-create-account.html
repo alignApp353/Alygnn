@@ -1322,6 +1322,68 @@ async function resendVerificationCode(){
   }
 }
 
+async function candidateSignupGoogleState(user){
+  let profile=null;
+
+  try{
+    const {data,error}=await sb
+      .from('profiles')
+      .select('role,resume_file_path,resume_data,preferences')
+      .eq('id',user.id)
+      .maybeSingle();
+
+    if(!error){
+      profile=data||null;
+    }
+  }catch(error){
+    console.warn('Could not read candidate Google profile:',error);
+  }
+
+  const role=String(
+    profile?.role||
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+
+  if(
+    role==='employer'||
+    role==='employer_team'||
+    role==='team_member'
+  ){
+    return {kind:'employer',role};
+  }
+
+  const identities=Array.isArray(user?.identities)?user.identities:[];
+  const hasEmailIdentity=identities.some(identity=>identity?.provider==='email');
+  const registered=user?.app_metadata?.alygnn_registered===true;
+
+  const hasCandidateData=Boolean(
+    profile?.resume_file_path||
+    profile?.resume_data||
+    profile?.preferences
+  );
+
+  const createdAt=Date.parse(user?.created_at||'');
+  const legacyCandidate=
+    Number.isFinite(createdAt) &&
+    Date.now()-createdAt>60*60*1000 &&
+    ['candidate','seeker','employee'].includes(role);
+
+  if(
+    registered||
+    hasEmailIdentity||
+    hasCandidateData||
+    legacyCandidate
+  ){
+    return {kind:'candidate',role};
+  }
+
+  return {kind:'new',role};
+}
+
 async function googleSignup(){
   const button=document.getElementById('google-btn');
   const original=button.innerHTML;
@@ -1334,66 +1396,36 @@ async function googleSignup(){
   let plugin=null;
 
   try{
-    const google=
-      await startNativeGoogleSession();
-
+    const google=await startNativeGoogleSession();
     plugin=google.plugin;
 
     const user=google.user;
     const session=google.session;
+    const state=await candidateSignupGoogleState(user);
 
-    /*
-     * CREATE ACCOUNT must never overwrite an existing Alygnn account's
-     * workspace type. If this Google identity is already registered, send
-     * the person back to the proper sign-in screen instead.
-     */
-    if(googleAccountWasAlreadyRegistered(user)){
-      const role=
-        await googleProfileRole(user);
-
-      const employerAccount=
-        role==='employer'||
-        role==='employer_team'||
-        role==='team_member';
-
-      localStorage.setItem(
-        'alygnn_account_type',
-        employerAccount
-          ?'employer'
-          :'candidate'
-      );
-
+    if(state.kind==='employer'){
+      await signOutGoogleSession(plugin);
       setSignupMessage(
-        employerAccount
-          ?'Alygnn account found. Opening your employer workspace…'
-          :'Alygnn account found. Signing you in…',
-        'success'
+        'This Google account is already connected to an employer workspace. Please use Employer Sign In or choose a different Google account.',
+        'error'
       );
-
-      setTimeout(
-        ()=>{
-          location.replace(
-            employerAccount
-              ?'app-employer-login.html'
-              :'app-login.html'
-          );
-        },
-        250
-      );
-
       return;
     }
 
-    const validation=
-      await validateGoogleIntent(
-        session,
-        'signup'
+    if(state.kind==='candidate'){
+      localStorage.setItem('alygnn_account_type','candidate');
+      setSignupMessage('Alygnn account found. Signing you in…','success');
+      setTimeout(
+        ()=>location.replace('app-workspaces.html?after_login=1&preferred=candidate'),
+        250
       );
+      return;
+    }
+
+    const validation=await validateGoogleIntent(session,'signup');
 
     if(!validation?.allowed){
-      throw new Error(
-        'Alygnn could not create this Google account.'
-      );
+      throw new Error('Alygnn could not create this Google account.');
     }
 
     const fullName=String(
@@ -1402,24 +1434,18 @@ async function googleSignup(){
       ''
     ).trim();
 
-    const nameParts=
-      fullName
-        .split(/\s+/)
-        .filter(Boolean);
+    const nameParts=fullName.split(/\s+/).filter(Boolean);
+    const firstName=String(
+      user.user_metadata?.given_name||
+      nameParts[0]||
+      ''
+    ).trim();
 
-    const firstName=
-      String(
-        user.user_metadata?.given_name||
-        nameParts[0]||
-        ''
-      ).trim();
-
-    const lastName=
-      String(
-        user.user_metadata?.family_name||
-        nameParts.slice(1).join(' ')||
-        ''
-      ).trim();
+    const lastName=String(
+      user.user_metadata?.family_name||
+      nameParts.slice(1).join(' ')||
+      ''
+    ).trim();
 
     const metadata={
       ...(user.user_metadata||{}),
@@ -1434,70 +1460,41 @@ async function googleSignup(){
       EmailFlow:'google'
     };
 
-    const {data:updateData,error:updateError}=
-      await sb.auth.updateUser({
-        data:metadata
-      });
+    const {data:updateData,error:updateError}=await sb.auth.updateUser({
+      data:metadata
+    });
 
     if(updateError)throw updateError;
 
-    const savedUser=
-      updateData?.user||
-      user;
+    const savedUser=updateData?.user||user;
 
-    const {error:profileError}=
-      await sb
-        .from('profiles')
-        .upsert(
-          {
-            id:savedUser.id,
-            role:'candidate',
-            full_name:fullName
-          },
-          {
-            onConflict:'id'
-          }
-        );
+    const {error:profileError}=await sb
+      .from('profiles')
+      .upsert(
+        {
+          id:savedUser.id,
+          role:'candidate',
+          full_name:fullName
+        },
+        {onConflict:'id'}
+      );
 
     if(profileError){
-      console.warn(
-        'Candidate Google profile save warning:',
-        profileError
-      );
+      console.warn('Candidate Google profile save warning:',profileError);
     }
 
-    localStorage.setItem(
-      'alygnn_account_type',
-      'candidate'
-    );
-
-    setSignupMessage(
-      'Google account created. Opening Alygnn…',
-      'success'
-    );
+    localStorage.setItem('alygnn_account_type','candidate');
+    setSignupMessage('Google account created. Opening Alygnn…','success');
 
     setTimeout(
-      ()=>{
-        location.replace(
-          'app-workspaces.html?after_login=1&preferred=candidate'
-        );
-      },
+      ()=>location.replace('app-workspaces.html?after_login=1&preferred=candidate'),
       300
     );
 
   }catch(error){
-    console.error(
-      'Candidate Google signup failed:',
-      error
-    );
+    console.error('Candidate Google signup failed:',error);
 
-    const raw=
-      String(
-        error?.message||
-        error||
-        ''
-      ).toLowerCase();
-
+    const raw=String(error?.message||error||'').toLowerCase();
     const cancelled=
       raw.includes('cancel')||
       raw.includes('user_cancelled')||
@@ -1506,8 +1503,7 @@ async function googleSignup(){
     setSignupMessage(
       cancelled
         ?'Google sign-up was canceled.'
-        :(error?.message||
-          'Unable to continue with Google.'),
+        :(error?.message||'Unable to continue with Google.'),
       'error'
     );
 
@@ -1516,6 +1512,7 @@ async function googleSignup(){
     button.innerHTML=original;
   }
 }
+
 
 
 document
