@@ -88,7 +88,7 @@
   .nav-cta { background: var(--brand); color: white; border: none; border-radius: 100px; padding: 10px 24px; font-size: 14px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: opacity 0.2s; }
   #nav-cta-btn { min-width: 148px; opacity: 0; visibility: hidden; pointer-events: none; }
   #nav-auth-link.auth-ready, #nav-cta-btn.auth-ready { opacity: 1; visibility: visible; pointer-events: auto; }
-  .nav-pricing-slot { min-width: 44px; text-align: center; }
+  .nav-pricing-slot { display: none; min-width: 44px; text-align: center; }
   #nav-pricing-link { display: inline-block !important; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
   #nav-pricing-link.auth-ready { visibility: visible; opacity: 1; pointer-events: auto; }
   .nav-cta:hover { opacity: 0.88; }
@@ -665,7 +665,11 @@
     if (navCtaBtn)   { navCtaBtn.textContent = 'Dashboard'; navCtaBtn.onclick = () => window.location.href = 'employer-dashboard.html'; }
     if (heroCta)     { heroCta.textContent = 'Go to dashboard'; heroCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
     if (bottomCta)   { bottomCta.textContent = 'Go to dashboard'; bottomCta.onclick = () => window.location.href = 'employer-dashboard.html'; }
-    if (navPricingLink) navPricingLink.classList.add('auth-ready');
+    if (navPricingLink) {
+      const pricingSlot = navPricingLink.closest('.nav-pricing-slot');
+      if (pricingSlot) pricingSlot.style.display = 'list-item';
+      navPricingLink.classList.add('auth-ready');
+    }
     if (mobilePricingLink) { mobilePricingLink.href = 'pricing.html'; mobilePricingLink.style.display = ''; }
     if (heroPricingBtn)    { heroPricingBtn.style.display = ''; heroPricingBtn.onclick = () => window.location.href = 'pricing.html'; }
     if (footerEmployerAccount) footerEmployerAccount.href = 'employer-account.html';
