@@ -642,8 +642,9 @@ async function ensureNativeGoogleInitialized(){
   return plugin;
 }
 
-async function validateGoogleIntent(session){
+async function validateGoogleIntent(session,intent='login'){
   if(!session?.access_token)throw new Error('Google sign-in did not create an Alygnn session.');
+
   const response=await fetch(SUPABASE_FUNCTIONS_URL+'/validate-google-login',{
     method:'POST',
     headers:{
@@ -651,8 +652,11 @@ async function validateGoogleIntent(session){
       'apikey':SUPABASE_PUBLIC_KEY,
       'Authorization':'Bearer '+session.access_token
     },
-    body:JSON.stringify({intent:'login'})
+    body:JSON.stringify({
+      intent:intent==='signup'?'signup':'login'
+    })
   });
+
   let payload={};
   try{payload=await response.json()}catch(_){}
   if(!response.ok)throw new Error(payload.error||'Could not verify this Google account.');
@@ -664,8 +668,100 @@ async function signOutRejectedGoogle(plugin){
   try{await plugin?.logout?.({provider:'google'})}catch(_){}
 }
 
+async function googleAlygnnRole(user){
+  let profileRole='';
+
+  try{
+    const {data:profile}=await sb
+      .from('profiles')
+      .select('role')
+      .eq('id',user.id)
+      .maybeSingle();
+
+    profileRole=String(profile?.role||'').toLowerCase().trim();
+  }catch(error){
+    console.warn('Could not read Google account role:',error);
+  }
+
+  return String(
+    profileRole||
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+}
+
+async function createEmployerFromGoogle(session,user){
+  const validation=await validateGoogleIntent(session,'signup');
+
+  if(!validation?.allowed){
+    throw new Error('Alygnn could not create your employer account with Google.');
+  }
+
+  const fullName=String(
+    user?.user_metadata?.full_name||
+    user?.user_metadata?.name||
+    ''
+  ).trim();
+
+  const email=String(user?.email||'').toLowerCase().trim();
+  const domain=email.split('@')[1]||'';
+
+  const {data:updateData,error:updateError}=await sb.auth.updateUser({
+    data:{
+      ...(user?.user_metadata||{}),
+      full_name:fullName,
+      name:fullName,
+      account_type:'employer',
+      role:'employer',
+      employer_domain:domain,
+      accepted_terms:true,
+      accepted_privacy:true,
+      EmailFlow:'google'
+    }
+  });
+
+  if(updateError)throw updateError;
+
+  const savedUser=updateData?.user||user;
+
+  const {error:profileError}=await sb
+    .from('profiles')
+    .upsert(
+      {
+        id:savedUser.id,
+        role:'employer',
+        full_name:fullName
+      },
+      {onConflict:'id'}
+    );
+
+  if(profileError){
+    console.warn('Employer Google profile save warning:',profileError);
+  }
+
+  try{
+    localStorage.setItem('alygnn_account_type','employer');
+    localStorage.setItem('alygnn_employer_domain',domain);
+
+    if(fullName){
+      localStorage.setItem('alygnn_pending_full_name',fullName);
+    }
+
+    localStorage.removeItem('alygnn_company_id');
+    localStorage.removeItem('alygnn_company_account_number');
+    localStorage.removeItem('alygnn_employer_verification_status');
+    localStorage.removeItem('alygnn_employer_onboarding_draft');
+  }catch(_){}
+
+  return savedUser;
+}
+
 async function nativeGoogleLogin(){
   const plugin=await ensureNativeGoogleInitialized();
+
   const login=await plugin.login({
     provider:'google',
     options:{
@@ -674,43 +770,64 @@ async function nativeGoogleLogin(){
   });
 
   const idToken=login?.result?.idToken;
-  if(!idToken)throw new Error('Google did not return a valid sign-in token.');
+  if(!idToken){
+    throw new Error('Google did not return a valid sign-in token.');
+  }
 
   const {data,error}=await sb.auth.signInWithIdToken({
     provider:'google',
     token:idToken
   });
+
   if(error)throw error;
 
-  const session=data?.session || (await sb.auth.getSession()).data?.session;
-  const validation=await validateGoogleIntent(session);
-  if(!validation?.allowed){
+  const session=
+    data?.session||
+    (await sb.auth.getSession()).data?.session;
+
+  const user=data?.user||session?.user;
+
+  if(!session?.user){
+    throw new Error('Google sign-in did not finish. Please try again.');
+  }
+
+  const role=await googleAlygnnRole(user);
+
+  if(
+    role==='candidate'||
+    role==='seeker'||
+    role==='employee'
+  ){
     await signOutRejectedGoogle(plugin);
     showMessage(
-      'No Alygnn employer account was found. Taking you to create one with Google…',
-      'success'
+      'This Google account is connected to a candidate account. Please use Candidate Sign In.',
+      'error'
     );
+    return false;
+  }
+
+  const access=await resolveEmployerLoginAccess(user);
+
+  if(access.allowed){
+    localStorage.setItem('alygnn_account_type','employer');
+    showMessage('Welcome back. Opening your employer workspace…','success');
+    setTimeout(()=>location.replace(access.destination),250);
+    return true;
+  }
+
+  if(access.reason==='not_registered'){
+    await createEmployerFromGoogle(session,user);
+    showMessage('Google account created. Opening company setup…','success');
     setTimeout(
-      ()=>location.replace('app-employer-create-account.html'),
-      450
+      ()=>location.replace('app-employer-onboarding.html'),
+      300
     );
     return true;
   }
 
-  const access=await resolveEmployerLoginAccess(data.user || session?.user);
-  if(!access.allowed){
-    await signOutRejectedGoogle(plugin);
-    const message=access.reason==='candidate'
-      ?'This account is registered as a candidate. Please use Candidate Sign In.'
-      :'We could not find an employer workspace for this Google account. Create an employer account first or contact Alygnn support.';
-    showMessage(message,'error');
-    return false;
-  }
-
-  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-  showMessage('Welcome back. Opening your employer workspace…','success');
-  setTimeout(()=>location.replace(access.destination),250);
-  return true;
+  await signOutRejectedGoogle(plugin);
+  showMessage('We could not continue with this Google account. Please try again.','error');
+  return false;
 }
 
 async function googleLogin(){
