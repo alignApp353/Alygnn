@@ -715,6 +715,11 @@ const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error-state');
 const pageEl = document.getElementById('page');
 
+const swipeReturnBtn = document.getElementById('swipe-return-btn');
+if(swipeReturnBtn){
+  swipeReturnBtn.addEventListener('click', returnToSwipe);
+}
+
 function escapeHtml(value){
   return String(value || '')
     .replaceAll('&', '&amp;')
@@ -787,6 +792,22 @@ function renderListOrText(value){
 
 function getParam(name){
   return new URLSearchParams(window.location.search).get(name);
+}
+
+// When Job details was opened from the swipe deck, prefer browser history so
+// the exact live deck can be restored from the back/forward cache. If history
+// is unavailable, swipe.html still restores the counters from sessionStorage.
+function returnToSwipe(event){
+  if(event) event.preventDefault();
+
+  const cameFromSwipe = getParam('from') === 'swipe';
+
+  if(cameFromSwipe && window.history.length > 1){
+    window.history.back();
+    return;
+  }
+
+  window.location.href = 'swipe.html';
 }
 
 
