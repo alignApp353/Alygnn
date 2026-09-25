@@ -1172,6 +1172,25 @@ function parseResume(profile){
   }catch(e){ return {}; }
 }
 
+function selectedResumeFilePath(profile){
+  const resumeData=parseResume(profile);
+  const library=
+    resumeData?._alygnn_resume_library &&
+    typeof resumeData._alygnn_resume_library==='object'
+      ? resumeData._alygnn_resume_library
+      : {};
+
+  const active=String(library.active||profile?.resume_source||'').toLowerCase();
+  const builderPath=library.builder_file_path||null;
+  const uploadedPath=library.uploaded_file_path||null;
+
+  if(active==='builder' && builderPath) return builderPath;
+  if(active==='uploaded' && uploadedPath) return uploadedPath;
+
+  // Compatibility fallback for older profiles that only have resume_file_path.
+  return profile?.resume_file_path || builderPath || uploadedPath || null;
+}
+
 function normalizeWord(word){
   return String(word||'').toLowerCase()
     .replace(/[^a-z0-9+#.]/g,'')
@@ -1535,7 +1554,7 @@ async function loadData(){
   if(candidateIds.length){
     const result=await sb
       .from('profiles')
-      .select('id,full_name,resume_file_path,resume_data')
+      .select('id,full_name,resume_file_path,resume_source,resume_data')
       .in('id',candidateIds);
     if(result.error)console.error(result.error);
     profilesData=result.data||[];
@@ -1944,6 +1963,7 @@ function openProfile(applicationId){
   const summary=typeof resume.summary==='string'?resume.summary:'';
   const email=resume.email||'';
   const phone=resume.phone||'';
+  const selectedResumePath=selectedResumeFilePath(c.profile);
   const [statusText,statusClass]=statusLabel(c.status);
   const isDecided=['accepted','rejected'].includes(String(c.status||'').toLowerCase());
 
@@ -2012,8 +2032,8 @@ function openProfile(applicationId){
     ${eduHtml}
 
     <div class="section-title">Resume</div>
-    ${c.profile.resume_file_path
-      ? `<button class="resume-btn" id="resume-btn-${escapeHtml(c.applicationId)}" onclick="openResume('${escapeHtml(c.profile.resume_file_path)}',this)">View resume</button>`
+    ${selectedResumePath
+      ? `<button class="resume-btn" id="resume-btn-${escapeHtml(c.applicationId)}" onclick="openResume('${escapeHtml(selectedResumePath)}',this)">View resume</button>`
       : '<div class="profile-text" style="color:var(--muted)">No resume file uploaded.</div>'}
 
     <div class="profile-actions">
