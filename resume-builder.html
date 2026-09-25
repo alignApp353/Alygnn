@@ -3220,7 +3220,7 @@ html.resume-preview-ready body{
           <article class="resume-paper template-classic" id="resumePaper" data-template="classic">
             <header class="resume-header">
               <div class="resume-name" id="previewName">Your Name</div>
-              <div class="resume-title" id="previewTitle">Professional Title</div>
+              <div class="resume-title" id="previewTitle" style="display:none;"></div>
               <div class="resume-contact" id="previewContact">City, State · email@example.com · (000) 000-0000</div>
             </header>
 
@@ -4790,7 +4790,9 @@ html.resume-preview-ready body{
     const data = getFormData();
 
     document.getElementById('previewName').textContent = data.name || 'Your Name';
-    document.getElementById('previewTitle').textContent = data.title || 'Professional Title';
+    const previewTitle = document.getElementById('previewTitle');
+    previewTitle.textContent = data.title || '';
+    previewTitle.style.display = data.title ? '' : 'none';
 
     const contactParts = [data.location, data.email, data.phone].filter(Boolean);
     document.getElementById('previewContact').textContent =
