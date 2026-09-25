@@ -4413,7 +4413,8 @@
 <style id="alygnn-settings-polish-v2">
   /* Settings: current Alygnn mobile workspace treatment */
   #settings-view{
-    padding-bottom:18px;
+    /* Keep the final Settings rows fully above the fixed bottom nav. */
+    padding-bottom:calc(104px + env(safe-area-inset-bottom));
     scroll-margin-top:0;
   }
   .settings-page-head{
@@ -4479,6 +4480,8 @@
     min-height:62px;
     padding:8px 12px;
     gap:10px;
+    color:var(--text);
+    -webkit-text-fill-color:var(--text);
   }
   #settings-view .settings-icon-label{
     min-width:0;
@@ -4509,13 +4512,23 @@
     min-width:0;
   }
   #settings-view .settings-copy strong{
+    display:block;
     font-size:12.5px;
     line-height:1.25;
+    color:var(--text);
+    -webkit-text-fill-color:var(--text);
+    opacity:1;
+    text-shadow:none;
   }
   #settings-view .settings-copy small{
+    display:block;
     margin-top:4px;
     font-size:9.5px;
     line-height:1.35;
+    color:var(--muted);
+    -webkit-text-fill-color:var(--muted);
+    opacity:1;
+    text-shadow:none;
   }
   #settings-view .settings-chevron{
     color:var(--muted);
@@ -4528,13 +4541,54 @@
   }
   #settings-view .settings-signout{
     color:var(--danger)!important;
+    -webkit-text-fill-color:var(--danger)!important;
+  }
+  #settings-view .settings-signout .settings-copy strong{
+    color:var(--danger)!important;
+    -webkit-text-fill-color:var(--danger)!important;
+  }
+  #settings-view .settings-signout .settings-copy small{
+    color:var(--muted)!important;
+    -webkit-text-fill-color:var(--muted)!important;
   }
   #settings-view .settings-signout .settings-icon{
     background:var(--danger-bg);
     color:var(--danger);
   }
+
+  /* Android WebView can otherwise keep the light-mode button text paint
+     when the page switches to dark mode. Force the intended colors. */
+  html[data-theme="dark"] #settings-view .settings-link{
+    color:#F3F7FA!important;
+    -webkit-text-fill-color:#F3F7FA!important;
+  }
+  html[data-theme="dark"] #settings-view .settings-copy strong{
+    color:#F3F7FA!important;
+    -webkit-text-fill-color:#F3F7FA!important;
+  }
+  html[data-theme="dark"] #settings-view .settings-copy small,
+  html[data-theme="dark"] #settings-view .preference-note,
+  html[data-theme="dark"] #settings-view .section-kicker,
+  html[data-theme="dark"] #settings-view .settings-group-title{
+    color:#A9B5C2!important;
+    -webkit-text-fill-color:#A9B5C2!important;
+    opacity:1!important;
+  }
+  html[data-theme="dark"] #settings-view .settings-signout,
+  html[data-theme="dark"] #settings-view .settings-signout .settings-copy strong{
+    color:#EF6B6B!important;
+    -webkit-text-fill-color:#EF6B6B!important;
+  }
   html[data-theme="dark"] #settings-view .settings-link:active{
     background:#172334;
+  }
+
+  /* Keep Android's compositor from showing/ghosting Settings content
+     around the fixed navigation bar in dark mode. */
+  html[data-theme="dark"] .bottom-nav{
+    background:#121B27!important;
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
   }
   @media(max-width:390px){
     #settings-view .settings-link{padding-left:10px;padding-right:10px}
