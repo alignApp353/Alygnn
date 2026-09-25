@@ -1054,6 +1054,7 @@ async function markThreadRead(threadId){
 async function openThread(threadId){
   activeThreadId=threadId;
   await markThreadRead(threadId);
+  if(currentRole==='employer') await refreshMessagesEmployerNotifications();
   await loadMessages(threadId);
   const d=threadDetails.get(threadId);
   if(d)d.unread=0;
@@ -1491,21 +1492,86 @@ function messagesNotificationTimeAgo(iso){
   return new Date(iso).toLocaleDateString();
 }
 
+async function fetchMessagesEmployerUnreadMessages(){
+  if(!currentUser?.id || currentRole!=='employer') return [];
+
+  try{
+    const employerId=workspaceOwnerId||currentUser.id;
+
+    const {data:conversations,error:conversationsError}=await sb
+      .from('application_conversations')
+      .select('id,job_id,candidate_id,employer_id,candidate_name,job_title')
+      .eq('employer_id',employerId)
+      .is('employer_hidden_at',null);
+
+    if(conversationsError) throw conversationsError;
+
+    const employerConversations=conversations||[];
+    const conversationIds=employerConversations.map(c=>c.id).filter(Boolean);
+    if(!conversationIds.length) return [];
+
+    const {data:messageRows,error:messagesError}=await sb
+      .from('application_messages')
+      .select('id,conversation_id,sender_id,body,created_at,read_at')
+      .in('conversation_id',conversationIds)
+      .neq('sender_id',currentUser.id)
+      .is('read_at',null)
+      .order('created_at',{ascending:false})
+      .limit(20);
+
+    if(messagesError) throw messagesError;
+
+    const conversationMap=new Map(
+      employerConversations.map(c=>[String(c.id),c])
+    );
+
+    return (messageRows||[]).map(message=>{
+      const conversation=conversationMap.get(String(message.conversation_id))||{};
+      const candidateName=String(conversation.candidate_name||'Candidate').trim();
+      const jobTitle=String(conversation.job_title||'your job').trim();
+      const preview=String(message.body||'').trim().replace(/\s+/g,' ');
+      const shortPreview=preview.length>90 ? preview.slice(0,87)+'…' : preview;
+
+      return {
+        id:`message-${message.id}`,
+        source:'message',
+        message_id:message.id,
+        conversation_id:message.conversation_id,
+        type:'message',
+        title:`New message from ${candidateName}`,
+        body:shortPreview ? `${jobTitle}: ${shortPreview}` : `New reply about ${jobTitle}.`,
+        link:`messages.html?thread=${encodeURIComponent(message.conversation_id)}`,
+        read_at:null,
+        created_at:message.created_at
+      };
+    });
+  }catch(error){
+    console.warn('Could not load unread employer messages:',error);
+    return [];
+  }
+}
+
 async function fetchMessagesEmployerNotifications(){
   if(!currentUser?.id) return [];
 
-  const {data,error}=await sb
-    .from('notifications')
-    .select('id,type,title,body,link,read_at,created_at')
-    .order('created_at',{ascending:false})
-    .limit(20);
+  const [{data,error},messageItems]=await Promise.all([
+    sb
+      .from('notifications')
+      .select('id,type,title,body,link,read_at,created_at')
+      .order('created_at',{ascending:false})
+      .limit(20),
+    fetchMessagesEmployerUnreadMessages()
+  ]);
 
   if(error){
     console.warn('Could not load employer notifications:',error);
-    return [];
   }
 
-  return data||[];
+  const regularItems=error?[]:(data||[]);
+
+  return [...messageItems,...regularItems]
+    .sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))
+    .slice(0,20);
 }
 
 function renderMessagesEmployerNotifications(items){
@@ -1550,12 +1616,23 @@ async function handleMessagesEmployerNotification(event,id){
   const item=messagesEmployerNotificationItems.find(n=>String(n.id)===String(id));
   if(!item) return;
 
-  if(!item.read_at){
-    const now=new Date().toISOString();
+  const now=new Date().toISOString();
+
+  if(item.source==='message' && item.message_id){
+    const {error}=await sb
+      .from('application_messages')
+      .update({read_at:now})
+      .eq('id',item.message_id)
+      .neq('sender_id',currentUser.id)
+      .is('read_at',null);
+
+    if(error) console.warn('Could not mark message notification read:',error);
+  }else if(!item.read_at){
     const {error}=await sb
       .from('notifications')
       .update({read_at:now})
       .eq('id',id);
+
     if(error) console.warn('Could not mark notification read:',error);
   }
 
@@ -1581,18 +1658,33 @@ async function markAllMessagesEmployerNotificationsRead(event){
     btn.textContent='Marking…';
   }
 
-  const unreadIds=messagesEmployerNotificationItems
-    .filter(n=>!n.read_at&&n.id)
+  const now=new Date().toISOString();
+  const regularIds=messagesEmployerNotificationItems
+    .filter(n=>n.source!=='message'&&!n.read_at&&n.id)
     .map(n=>n.id);
+  const messageIds=messagesEmployerNotificationItems
+    .filter(n=>n.source==='message'&&n.message_id)
+    .map(n=>n.message_id);
 
   try{
-    if(unreadIds.length){
+    if(regularIds.length){
       const {error}=await sb
         .from('notifications')
-        .update({read_at:new Date().toISOString()})
-        .in('id',unreadIds);
+        .update({read_at:now})
+        .in('id',regularIds);
       if(error) console.warn('Could not mark notifications read:',error);
     }
+
+    if(messageIds.length&&currentUser?.id){
+      const {error}=await sb
+        .from('application_messages')
+        .update({read_at:now})
+        .in('id',messageIds)
+        .neq('sender_id',currentUser.id)
+        .is('read_at',null);
+      if(error) console.warn('Could not mark message notifications read:',error);
+    }
+
     await refreshMessagesEmployerNotifications();
   }finally{
     if(btn){
@@ -1622,6 +1714,27 @@ function initMessagesEmployerNotifications(){
       dropdown.style.display='none';
     }
   });
+
+  // Keep the employer bell live when a candidate replies.
+  sb.channel('messages-page-employer-message-notifications-'+currentUser.id)
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'application_messages'
+    },async payload=>{
+      if(String(payload?.new?.sender_id)===String(currentUser.id)) return;
+      await refreshMessagesEmployerNotifications();
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED') refreshMessagesEmployerNotifications();
+    });
+
+  // Fallback in case a realtime event is missed.
+  window.setInterval(()=>{
+    if(document.visibilityState==='visible'){
+      refreshMessagesEmployerNotifications();
+    }
+  },5000);
 
   sb.channel('messages-page-employer-notifications-'+currentUser.id)
     .on('postgres_changes',{
