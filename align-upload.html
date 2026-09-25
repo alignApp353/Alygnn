@@ -1113,11 +1113,39 @@
     try {
       setProgress(20, 'Reading your resume...', 'Securely loading your file');
 
-      const fileData = await extractTextFromFile(file);
-      currentResumeText = String(fileData?.content || '').trim();
+      const extension = String(file?.name || '').split('.').pop().toLowerCase();
+      let parserPayload = {};
 
-      if (!currentResumeText) {
-        throw new Error('No readable text was found in this resume.');
+      if (extension === 'pdf') {
+        // First try normal PDF.js text extraction. If the PDF is scanned or
+        // image-based and has no embedded text, fall back to sending the
+        // original PDF directly to the backend parser.
+        try {
+          const fileData = await extractTextFromFile(file);
+          currentResumeText = String(fileData?.content || '').trim();
+        } catch (pdfTextError) {
+          console.warn('PDF text extraction failed; using direct PDF parsing:', pdfTextError);
+          currentResumeText = '';
+        }
+
+        if (currentResumeText) {
+          parserPayload = { resumeText: currentResumeText };
+        } else {
+          const resumeBase64 = await fileToBase64(file);
+          parserPayload = {
+            resumeBase64,
+            resumeType: 'application/pdf'
+          };
+        }
+      } else {
+        const fileData = await extractTextFromFile(file);
+        currentResumeText = String(fileData?.content || '').trim();
+
+        if (!currentResumeText) {
+          throw new Error('No readable text was found in this resume.');
+        }
+
+        parserPayload = { resumeText: currentResumeText };
       }
 
       setProgress(
@@ -1129,7 +1157,7 @@
       const response = await fetch('/api/parse-resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText: currentResumeText }),
+        body: JSON.stringify(parserPayload),
       });
 
       const rawResponse = await response.text();
@@ -1187,6 +1215,19 @@
         alert(message);
       }, 700);
     }
+  }
+
+  async function fileToBase64(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const chunkSize = 0x8000;
+    let binary = '';
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+
+    return btoa(binary);
   }
 
   async function extractTextFromFile(file) {
