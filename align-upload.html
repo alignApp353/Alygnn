@@ -1112,23 +1112,80 @@
   async function readAndParseResume(file) {
     try {
       setProgress(20, 'Reading your resume...', 'Securely loading your file');
+
       const fileData = await extractTextFromFile(file);
       currentResumeText = String(fileData?.content || '').trim();
-      setProgress(50, 'AI is analyzing your resume...', 'Extracting skills, experience, and more');
+
+      if (!currentResumeText) {
+        throw new Error('No readable text was found in this resume.');
+      }
+
+      setProgress(
+        50,
+        'AI is analyzing your resume...',
+        'Extracting skills, experience, and more'
+      );
+
       const response = await fetch('/api/parse-resume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText: fileData.content }),
+        body: JSON.stringify({ resumeText: currentResumeText }),
       });
+
+      const rawResponse = await response.text();
+      let result = {};
+
+      try {
+        result = rawResponse ? JSON.parse(rawResponse) : {};
+      } catch (_) {
+        if (!response.ok) {
+          throw new Error(
+            `Resume parser endpoint failed with status ${response.status}.`
+          );
+        }
+
+        throw new Error('Resume parser returned an invalid response.');
+      }
+
+      if (!response.ok || !result.success || !result.data) {
+        const details =
+          typeof result?.details === 'string'
+            ? result.details
+            : '';
+
+        throw new Error(
+          result.error ||
+          details ||
+          `Alygnn could not extract the resume details (${response.status}).`
+        );
+      }
+
       setProgress(85, 'Finalizing your profile...', 'Almost there!');
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error || 'Parse failed');
       setProgress(100, 'Done!', 'Your resume has been parsed');
+
       setTimeout(() => showConfirm(result.data), 400);
     } catch (err) {
-      console.error('Parse error:', err);
-      setProgress(100, 'Done!', 'Profile ready');
-      setTimeout(() => showConfirm(null), 400);
+      console.error('Resume upload/parse error:', err);
+
+      const message =
+        err?.message ||
+        'Alygnn could not read that resume. Please try another PDF or DOCX file.';
+
+      setProgress(
+        100,
+        'We could not finish this resume',
+        message
+      );
+
+      // Never show the "AI parsed" review card unless parsing actually succeeded.
+      setTimeout(() => {
+        uploadingScreen.style.display = 'none';
+        confirmScreen.style.display = 'none';
+        uploadScreen.style.display = 'block';
+        uploadScreen.style.animation = 'fadeUp 0.35s ease both';
+
+        alert(message);
+      }, 700);
     }
   }
 
@@ -1207,10 +1264,23 @@
         entry.organization ||
         '';
 
+      const startYear =
+        entry.startYear ||
+        entry.start_year ||
+        entry.start ||
+        '';
+
+      const endYear =
+        entry.endYear ||
+        entry.end_year ||
+        entry.end ||
+        '';
+
       const dates =
         entry.dates ||
         entry.date_range ||
         entry.duration ||
+        [startYear, endYear].filter(Boolean).join(' – ') ||
         '';
 
       const main = [title, company].filter(Boolean).join(' — ');
@@ -1237,11 +1307,24 @@
         entry.university ||
         '';
 
+      const startYear =
+        entry.startYear ||
+        entry.start_year ||
+        entry.start ||
+        '';
+
+      const endYear =
+        entry.endYear ||
+        entry.end_year ||
+        entry.end ||
+        '';
+
       const dates =
         entry.dates ||
         entry.date_range ||
         entry.graduation_date ||
         entry.expected_graduation ||
+        [startYear, endYear].filter(Boolean).join(' – ') ||
         '';
 
       const study = [degree, field].filter(Boolean).join(', ');
@@ -1452,10 +1535,32 @@
       if (infoItems[2]) infoItems[2].textContent = data.location || '—';
       if (infoItems[3]) infoItems[3].textContent = data.email || '—';
 
-      if (data.skills && data.skills.length > 0) {
-        const skillsWrap = document.querySelector('.skills-wrap');
-        skillsWrap.innerHTML = data.skills.slice(0, 8).map(s => '<span class="skill-tag">' + s + '</span>').join('');
+      const skillsWrap = document.querySelector('.skills-wrap');
+      if (skillsWrap) {
+        skillsWrap.innerHTML = '';
+
+        const skills = Array.isArray(data.skills)
+          ? data.skills
+              .map(skill => String(skill || '').trim())
+              .filter(Boolean)
+              .slice(0, 8)
+          : [];
+
+        if (skills.length) {
+          skills.forEach(skill => {
+            const tag = document.createElement('span');
+            tag.className = 'skill-tag';
+            tag.textContent = skill;
+            skillsWrap.appendChild(tag);
+          });
+        } else {
+          const tag = document.createElement('span');
+          tag.className = 'skill-tag';
+          tag.textContent = 'No skills detected';
+          skillsWrap.appendChild(tag);
+        }
       }
+
       savePendingResumeData(data);
       saveResumeIfLoggedIn(data);
     }
