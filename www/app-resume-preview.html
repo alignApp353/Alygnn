@@ -18,7 +18,29 @@ body{width:100%;min-height:100vh;height:auto!important;overflow-x:hidden!importa
 button{font:inherit;cursor:pointer}
 [hidden]{display:none!important}
 .header{position:sticky;top:0;z-index:40;min-height:94px;padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:grid;grid-template-columns:46px 1fr 46px;align-items:center;background:rgba(245,248,248,.96);border-bottom:1px solid var(--border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
-.back{width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--text);font-size:19px;display:grid;place-items:center}
+.back{
+  width:42px;
+  height:42px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:#fff;
+  color:var(--text);
+  display:grid;
+  place-items:center;
+  appearance:none;
+  -webkit-appearance:none;
+}
+.back svg{
+  width:18px;
+  height:18px;
+  display:block;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  fill:none;
+}
 .logo{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:32px;line-height:1;color:var(--brand)}
 .logo span{color:var(--sage)}
 .page{width:100%;max-width:680px;margin:0 auto;padding:18px 16px 28px;overflow:visible!important}
@@ -223,7 +245,11 @@ html[data-effective-theme="dark"] .color-swatch.active{
 </head>
 <body data-resume-preview-build="89">
 <header class="header">
-  <button class="back" id="backBtn" type="button" aria-label="Edit resume">←</button>
+  <button class="back" id="backBtn" type="button" aria-label="Edit resume">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M15 18l-6-6 6-6"></path>
+    </svg>
+  </button>
   <div class="logo">Alygnn<span>.</span></div>
   <div></div>
 </header>
