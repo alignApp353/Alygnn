@@ -1313,6 +1313,172 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   };
 }
 
+
+async function syncCompletedPlanCheckout(user,sessionId){
+  const id=String(sessionId||'').trim();
+  if(!/^cs_/.test(id)){
+    const error=new Error('A valid Stripe Checkout Session ID is required.');
+    error.status=400;
+    throw error;
+  }
+
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(id),
+    {'expand[]':'subscription'}
+  );
+
+  const meta=session?.metadata||{};
+  const employerId=String(meta.employer_id||'');
+  const product=String(meta.product||'').toLowerCase();
+  const plan=String(meta.plan||'').toLowerCase();
+  const billing=String(meta.billing||'').toLowerCase();
+
+  if(employerId!==String(user.id)){
+    const error=new Error('This checkout does not belong to the signed-in employer.');
+    error.status=403;
+    throw error;
+  }
+
+  if(product!=='job_plan' || !['launch','growth','scale'].includes(plan)){
+    const error=new Error('This checkout is not an Alygnn employer plan purchase.');
+    error.status=400;
+    throw error;
+  }
+
+  if(!['monthly','quarterly'].includes(billing)){
+    const error=new Error('This checkout has an invalid billing period.');
+    error.status=400;
+    throw error;
+  }
+
+  if(String(session?.status||'').toLowerCase()!=='complete'){
+    const error=new Error('Stripe has not completed this checkout yet.');
+    error.status=409;
+    throw error;
+  }
+
+  let subscription=session?.subscription||null;
+  if(typeof subscription==='string'){
+    subscription=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  if(!subscription?.id){
+    const error=new Error('Stripe did not return the completed plan subscription.');
+    error.status=409;
+    throw error;
+  }
+
+  const status=String(subscription.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Stripe subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const catalog=MANAGE_CATALOG[billing]?.[plan];
+  if(!catalog){
+    const error=new Error('Could not match this Stripe subscription to an Alygnn plan.');
+    error.status=400;
+    throw error;
+  }
+
+  const row={
+    employer_id:user.id,
+    plan:planLegacyName(plan),
+    subscription_status:status,
+    current_period_end:subscription.current_period_end
+      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+      :null,
+    slot_limit:Number(catalog.slots||0),
+    billing_period:billing,
+    test_mode:false,
+    test_plan:plan,
+    urgently_hiring:['growth','scale'].includes(plan),
+    plan_amount_cents:Number(catalog.cents||0),
+    stripe_plan_subscription_id:subscription.id,
+    stripe_plan_customer_id:
+      typeof subscription.customer==='string'
+        ?subscription.customer
+        :(subscription.customer?.id||null),
+    stripe_plan_schedule_id:
+      typeof subscription.schedule==='string'
+        ?subscription.schedule
+        :(subscription.schedule?.id||null),
+    updated_at:new Date().toISOString()
+  };
+
+  const entitlementUrl=new URL(manageBase()+'/rest/v1/employer_entitlements');
+  entitlementUrl.searchParams.set('employer_id','eq.'+user.id);
+
+  let response=await fetch(entitlementUrl,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(row)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync the completed plan to Alygnn: '+await response.text());
+  }
+
+  const updatedRows=await response.json().catch(()=>[]);
+  if(!Array.isArray(updatedRows)||updatedRows.length===0){
+    response=await fetch(manageBase()+'/rest/v1/employer_entitlements',{
+      method:'POST',
+      headers:manageServiceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify(row)
+    });
+
+    if(!response.ok){
+      throw new Error('Could not create the completed Alygnn plan entitlement: '+await response.text());
+    }
+  }
+
+  // Mirror the existing webhook behavior exactly for active plan jobs.
+  const jobsUrl=new URL(manageBase()+'/rest/v1/jobs');
+  jobsUrl.searchParams.set('employer_id','eq.'+user.id);
+  jobsUrl.searchParams.set('status','eq.active');
+  jobsUrl.searchParams.set('posting_access_type','eq.plan');
+
+  const badgeResponse=await fetch(jobsUrl,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=minimal'}),
+    body:JSON.stringify({
+      urgently_hiring:['growth','scale'].includes(plan),
+      alygnn_recommended:['growth','scale'].includes(plan)
+    })
+  });
+
+  if(!badgeResponse.ok){
+    console.warn(
+      'Plan synced, but job badges could not be refreshed:',
+      await badgeResponse.text()
+    );
+  }
+
+  return{
+    synced:true,
+    plan,
+    billing,
+    subscription_status:status,
+    slot_limit:Number(catalog.slots||0)+1
+  };
+}
+
+function checkoutSuccessWithSessionId(url){
+  const value=String(url||'');
+  if(!value || value.includes('session_id={CHECKOUT_SESSION_ID}')) return value;
+
+  const hashIndex=value.indexOf('#');
+  const base=hashIndex>=0?value.slice(0,hashIndex):value;
+  const hash=hashIndex>=0?value.slice(hashIndex):'';
+  return base+(base.includes('?')?'&':'?')+'session_id={CHECKOUT_SESSION_ID}'+hash;
+}
+
 async function runManageAction(res,user,input){
   const action=String(input.action||'summary').toLowerCase();
 
@@ -1360,6 +1526,11 @@ async function runManageAction(res,user,input){
     });
 
     return send(res,200,{ok:true,url:portal.url});
+  }
+
+  if(action==='sync_checkout_session'){
+    const result=await syncCompletedPlanCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
   }
 
   if(action==='summary'){
@@ -1579,7 +1750,8 @@ module.exports = async function handler(req, res) {
       'resume_plan',
       'cancel_second_slot',
       'resume_second_slot',
-      'billing_portal'
+      'billing_portal',
+      'sync_checkout_session'
     ].includes(billingAction)) {
       return await runManageAction(res, user, input);
     }
@@ -1779,7 +1951,9 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: successUrl,
+      success_url: product === 'job_plan'
+        ? checkoutSuccessWithSessionId(successUrl)
+        : successUrl,
       cancel_url: cancelUrl,
       customer_email: user.email || undefined,
       'line_items[0][price]': priceId,
