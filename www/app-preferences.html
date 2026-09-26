@@ -503,13 +503,11 @@ html[data-effective-theme="dark"] .salary-handle-max{
   border:1px solid var(--border);
   border-radius:16px;
   background:#fff;
-  color:var(--text);
   text-align:left;
 }
 .benefit.active{
-  border-color:var(--brand-dark);
-  background:var(--brand-dark);
-  color:#fff;
+  border-color:var(--mint);
+  background:var(--mint-soft);
 }
 .check{
   width:23px;height:23px;
@@ -526,10 +524,8 @@ html[data-effective-theme="dark"] .salary-handle-max{
   border-color:var(--mint);
   color:#fff;
 }
-.benefit-name{display:block;font-size:12px;font-weight:900;color:inherit}
+.benefit-name{display:block;font-size:12px;font-weight:900}
 .benefit-copy{display:block;margin-top:2px;color:var(--muted);font-size:10px;line-height:1.35}
-.benefit.active .benefit-name{color:#fff}
-.benefit.active .benefit-copy{color:rgba(255,255,255,.84)}
 
 /* Job type */
 .job-grid{
@@ -680,70 +676,69 @@ html[data-effective-theme="dark"] .salary-handle-max{
 
 
 
-
-
 /* =========================================================
-   V83 — ANDROID-SAFE SINGLE SCROLL CONTAINER
-   The WebView document itself does not scroll.
-   Only <main> scrolls. Header, progress and save button stay put.
-   This avoids Android WebView root-scroll snap-back.
+   V79 — Stable Capacitor scroll layout
+   Header/progress and save button are layout rows.
+   ONLY <main> scrolls. No body scroll, no nested full-page
+   scroll surface, no sticky/fixed element fighting WebView.
    ========================================================= */
 
 html,
 body{
-  width:100%!important;
-  height:100%!important;
-  min-height:100%!important;
-  margin:0!important;
+  width:100%;
+  height:100%;
+  min-height:100%;
+  margin:0;
   overflow:hidden!important;
-  overscroll-behavior:none!important;
 }
 
 body{
-  padding:0!important;
+  padding-bottom:0!important;
 }
 
 .app{
-  display:flex!important;
-  flex-direction:column!important;
-  width:100%!important;
-  max-width:560px!important;
-  height:100vh!important;
+  width:100%;
+  max-width:560px;
   height:100dvh!important;
   min-height:0!important;
-  margin:0 auto!important;
+  margin:0 auto;
   padding:0!important;
+  display:flex!important;
+  flex-direction:column!important;
   overflow:hidden!important;
 }
 
+/* These rows stay visible because main is the only scroll area. */
 .topbar{
   position:relative!important;
   top:auto!important;
-  z-index:100!important;
   flex:0 0 auto!important;
 }
 
 .stage{
-  position:relative!important;
-  z-index:90!important;
   flex:0 0 auto!important;
-  overflow:visible!important;
 }
 
+/* This is the ONE and ONLY vertical scroll container. */
 main{
   display:block!important;
   flex:1 1 auto!important;
-  width:100%!important;
-  height:auto!important;
   min-height:0!important;
+  height:auto!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
-  overscroll-behavior-y:contain!important;
-  -webkit-overflow-scrolling:touch!important;
-  touch-action:pan-y!important;
-  padding-bottom:28px!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+  padding-bottom:26px!important;
+  scrollbar-width:none;
 }
 
+main::-webkit-scrollbar{
+  display:none;
+}
+
+/* Never turn content cards into competing scroll surfaces. */
 .intro,
 .section,
 .card,
@@ -753,23 +748,23 @@ main{
 .job-grid,
 .chips,
 .industry-search{
-  overflow:visible!important;
+  overflow:visible;
 }
 
-/* Save bar is a normal flex child instead of a fixed overlay. */
+/* The save bar is now the final flex row, not position:fixed. */
 .bottom-save{
   position:relative!important;
   left:auto!important;
   right:auto!important;
   bottom:auto!important;
-  z-index:120!important;
   flex:0 0 auto!important;
-  width:100%!important;
+  width:100%;
   max-width:none!important;
   margin:0!important;
+  z-index:120;
 }
 
-/* Vertical gestures belong to the main form scroller. */
+/* Normal page swipes remain vertical. */
 main,
 .intro,
 .section,
@@ -780,14 +775,14 @@ main,
 .job-grid,
 .chips,
 .industry-search{
-  touch-action:pan-y!important;
+  touch-action:pan-y;
 }
 
-/* Salary slider gets horizontal drag while still allowing vertical page scroll. */
+/* Slider itself can own the drag gesture, but nowhere else. */
 .range-wrap,
 .range-inputs,
 .range-inputs input{
-  touch-action:pan-y!important;
+  touch-action:none;
 }
 
 </style>
@@ -795,10 +790,10 @@ main,
 <script src="app-candidate-theme.js"></script>
 <link rel="stylesheet" href="app-candidate-theme.css">
 </head>
-<body data-preferences-build="83">
+<body data-preferences-build="79">
 <div class="app">
   <header class="topbar">
-    <a class="back" id="backLink" href="app-resume-preview.html">← Back</a>
+    <button class="back" type="button" onclick="goBack()">← Resume</button>
     <div class="logo">Alygnn<span>.</span></div>
     <div class="header-spacer"></div>
   </header>
@@ -1028,11 +1023,6 @@ let selectedLocation='';
 let locationStateHint='';
 let selectedRole='';
 const EDIT_MODE=new URLSearchParams(window.location.search).get('edit')==='1';
-const backLink=document.getElementById('backLink');
-if(backLink && EDIT_MODE){
-  backLink.href='app-account.html';
-}
-
 
 const COMPENSATION_CONFIG={
   yearly:{
@@ -2241,17 +2231,10 @@ async function savePreferences(){
 
     if(error)throw error;
 
-    try{
-      const cacheKey=`alygnn_candidate_setup_${user.id}`;
-      let cached={};
-      try{cached=JSON.parse(localStorage.getItem(cacheKey)||'{}')||{};}catch(_error){}
-      localStorage.setItem(cacheKey,JSON.stringify({...cached,hasResume:true,previewReviewed:true,preferencesComplete:true,updatedAt:Date.now()}));
-    }catch(_error){}
-
-    showMessage(EDIT_MODE?'Preferences saved.':'Preferences saved. Your job matching is ready.','success');
+    showMessage('Preferences saved. Your job matching is ready.','success');
 
     setTimeout(()=>{
-      window.location.href=EDIT_MODE?'app-account.html':'app-swipe.html';
+      window.location.replace('app-swipe.html');
     },450);
   }catch(error){
     console.error(error);
@@ -2262,7 +2245,6 @@ async function savePreferences(){
 }
 
 async function initialize(){
-  if(EDIT_MODE && $('saveBtn'))$('saveBtn').textContent='Save Preferences';
   setCompensationType('yearly',false);
 
   const {data,error}=await sb.auth.getSession();
@@ -2302,7 +2284,7 @@ async function initialize(){
   );
 
   if(!hasResume){
-    window.location.replace('app-account.html?setup=required');
+    window.location.replace('app-align-upload.html');
     return;
   }
 
@@ -2328,9 +2310,47 @@ async function initialize(){
   updateProgress();
 }
 
+function goBack(){
+  window.location.replace(
+    onboardingMode
+      ?'app-resume-preview.html'
+      :'app-account.html'
+  );
+}
+
 $('saveBtn').addEventListener('click',savePreferences);
 
 initialize();
 </script>
+
+
+
+<script>
+(function(){
+  function preparePreferencesScroll(){
+    const main=document.querySelector('main');
+    if(!main) return;
+
+    main.style.setProperty('overflow-y','auto','important');
+    main.style.setProperty('overflow-x','hidden','important');
+    main.style.setProperty('-webkit-overflow-scrolling','touch');
+    main.style.setProperty('touch-action','pan-y');
+
+    /* Start at the top only when this document is first created.
+       Do not run on scroll/touch/pageshow, preventing snap-back. */
+    if(!main.dataset.scrollInitialized){
+      main.dataset.scrollInitialized='1';
+      main.scrollTop=0;
+    }
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',preparePreferencesScroll,{once:true});
+  }else{
+    preparePreferencesScroll();
+  }
+})();
+</script>
+
 </body>
 </html>
