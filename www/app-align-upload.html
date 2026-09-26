@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
 :root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#05080D;--card-bg:rgba(18,24,36,.94);--text:#FFFFFF;--border:rgba(255,255,255,.12);--text-muted:#A7B0BC;--mint:#6FBF8F;--rose:#D79A9A;}
 *{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}html,body{margin:0;min-height:100%;background:#05080D;color:var(--text)}body{min-height:100vh;background:radial-gradient(circle at top,rgba(93,127,163,.28),transparent 34%),linear-gradient(180deg,#05080D,#0A0F17)}button,input{font:inherit}.screen{width:100%;max-width:520px;min-height:100vh;margin:auto;padding:28px 22px 110px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px}.back{color:var(--brand);font-weight:900;cursor:pointer}.logo{font-size:28px;font-weight:900;color:var(--brand);letter-spacing:-1px}.title{margin-top:28px;font-size:38px;font-weight:900;line-height:1.05}.subtitle{margin-top:10px;color:var(--text-muted);font-size:16px;line-height:1.55}.message{display:none;margin-top:18px;padding:14px 16px;border-radius:16px;font-size:14px;font-weight:800;line-height:1.45}.message.error{display:block;color:var(--rose);background:rgba(215,154,154,.10);border:1px solid rgba(215,154,154,.28)}.message.success{display:block;color:var(--mint);background:rgba(111,191,143,.10);border:1px solid rgba(111,191,143,.28)}.card{margin-top:20px;background:var(--card-bg);border:1px solid var(--border);border-radius:28px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.22)}.status-card{display:flex;align-items:center;gap:16px}.status-icon{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(93,127,163,.16);color:var(--brand);font-size:25px;font-weight:900}.status-title{font-size:18px;font-weight:900}.status-sub{margin-top:4px;color:var(--text-muted);font-size:14px;line-height:1.45}.option-grid{display:grid;gap:16px;margin-top:20px}.option-card{width:100%;border:1px solid var(--border);border-radius:24px;padding:22px;background:var(--card-bg);color:var(--text);text-align:left;cursor:pointer;transition:.2s ease}.option-card:active{transform:scale(.985)}.option-card:hover{border-color:var(--brand)}.option-icon{width:54px;height:54px;border-radius:17px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:24px}.upload-icon{background:rgba(93,127,163,.16);color:var(--brand)}.builder-icon{background:rgba(140,182,155,.16);color:var(--sage)}.option-title{font-size:20px;font-weight:900}.option-copy{margin-top:8px;color:var(--text-muted);font-size:14px;line-height:1.55}.option-action{margin-top:18px;display:flex;justify-content:space-between;align-items:center;color:var(--brand);font-weight:900}.hidden-input{display:none}.upload-panel{display:none}.upload-panel.open{display:block}.drop-zone{margin-top:16px;border:2px dashed var(--border);border-radius:22px;padding:30px 20px;text-align:center;cursor:pointer;background:rgba(255,255,255,.02)}.drop-zone.drag{border-color:var(--brand);background:rgba(93,127,163,.10)}.drop-title{font-size:17px;font-weight:900}.drop-sub{margin-top:8px;color:var(--text-muted);font-size:14px;line-height:1.5}.file-name{margin-top:14px;color:var(--mint);font-size:14px;font-weight:800}.primary-btn,.secondary-btn{width:100%;min-height:56px;border-radius:18px;font-size:17px;font-weight:900;cursor:pointer;margin-top:14px}.primary-btn{border:none;background:var(--brand);color:white}.primary-btn:disabled{opacity:.65;cursor:not-allowed}.secondary-btn{border:1px solid var(--border);background:transparent;color:var(--text)}.current-actions{display:none;gap:10px;margin-top:16px}.current-actions.show{display:grid;grid-template-columns:1fr 1fr}.small-btn{border:1px solid var(--border);border-radius:16px;padding:14px;background:rgba(255,255,255,.03);color:var(--text);font-weight:900;cursor:pointer}.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(18,24,36,.97);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:12px 10px 20px;backdrop-filter:blur(12px)}.nav-item{color:var(--text-muted);font-size:13px;font-weight:800;cursor:pointer}.nav-item.active{color:var(--brand)}@media(min-width:700px){.option-grid{grid-template-columns:1fr 1fr}}
@@ -263,6 +263,16 @@
   }
   .resume-flow-topbar .logo{
     text-align:center!important;
+    font-family:'DM Serif Display',Georgia,serif!important;
+    font-size:32px!important;
+    line-height:1!important;
+    font-weight:400!important;
+    letter-spacing:-.7px!important;
+    color:var(--brand)!important;
+  }
+  .resume-flow-topbar .logo span{
+    color:var(--sage)!important;
+    font-family:'DM Serif Display',Georgia,serif!important;
   }
   .resume-flow-spacer{
     width:42px;
@@ -319,7 +329,7 @@
 <div class="screen">
 <div class="topbar resume-flow-topbar">
   <div class="resume-flow-spacer" aria-hidden="true"></div>
-  <div class="logo">Alygnn.</div>
+  <div class="logo">Alygnn<span>.</span></div>
   <div class="resume-flow-spacer" aria-hidden="true"></div>
 </div>
 
