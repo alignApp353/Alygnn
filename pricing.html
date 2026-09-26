@@ -796,11 +796,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const ent=currentEntitlement||{};
     const testPlan=normalizedPaidPlan(ent.test_plan);
     const storedPlan=normalizedPaidPlan(ent.plan);
-    const plan=testPlan||storedPlan;
+    const plan=ent.test_mode===true ? '' : (testPlan||storedPlan);
     const billing=String(ent.billing_period||currentAccess?.billing_period||'').toLowerCase();
     const status=String(ent.subscription_status||'').toLowerCase();
-    const testActive=ent.test_mode===true && !!testPlan;
-    const paidActive=!!plan && (testActive || ['active','trialing','past_due'].includes(status) || currentAccess?.active_paid_plan===true);
+    const paidActive=ent.test_mode!==true && !!plan && (['active','trialing','past_due'].includes(status) || currentAccess?.active_paid_plan===true);
 
     document.querySelectorAll('.plan-card[data-plan][data-billing]').forEach(card=>{
       const button=card.querySelector('.plan-cta');
