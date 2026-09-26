@@ -173,14 +173,35 @@ async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscr
     updated_at: new Date().toISOString()
   };
 
-  const response = await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?on_conflict=employer_id`, {
-    method: 'POST',
-    headers: serviceHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+  // Update the existing entitlement row first. This avoids depending on a
+  // database UNIQUE constraint for employer_id. If the row does not exist yet,
+  // create it as a fallback.
+  const updateUrl = new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  updateUrl.searchParams.set('employer_id', 'eq.' + employerId);
+
+  let response = await fetch(updateUrl, {
+    method: 'PATCH',
+    headers: serviceHeaders({ Prefer: 'return=representation' }),
     body: JSON.stringify(row)
   });
+
   if (!response.ok) {
     const text = await response.text();
     throw new Error('Could not update employer plan entitlement: ' + text);
+  }
+
+  const updatedRows = await response.json().catch(() => []);
+  if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+    response = await fetch(`${supabaseBase()}/rest/v1/employer_entitlements`, {
+      method: 'POST',
+      headers: serviceHeaders({ Prefer: 'return=minimal' }),
+      body: JSON.stringify(row)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error('Could not create employer plan entitlement: ' + text);
+    }
   }
 
   // Keep the job-level badge state consistent with the current plan.
@@ -557,6 +578,7 @@ module.exports = async function handler(req, res) {
         }
         break;
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated':
         await fulfillSubscription(event.data.object);
         break;
