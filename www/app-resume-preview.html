@@ -242,17 +242,71 @@ html[data-effective-theme="dark"] .color-swatch.active{
 </style>
 
 <script src="app-candidate-theme.js"></script>
+
+<style id="alygnn-resume-preview-flow-v1">
+  .resume-preview-stage{
+    padding:15px 16px 2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:800;
+    background:var(--bg);
+  }
+  .resume-preview-stage-item{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap;
+  }
+  .resume-preview-stage-dot{
+    width:21px;
+    height:21px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#E7EDF1;
+    color:var(--muted);
+  }
+  .resume-preview-stage-item.active{
+    color:var(--text);
+  }
+  .resume-preview-stage-item.active .resume-preview-stage-dot{
+    background:var(--brand-dark);
+    color:#fff;
+  }
+  .resume-preview-stage-line{
+    width:22px;
+    height:1px;
+    background:var(--border);
+  }
+  html[data-effective-theme="dark"] .resume-preview-stage,
+  html[data-theme="dark"] .resume-preview-stage{
+    background:#071A26;
+  }
+  html[data-effective-theme="dark"] .resume-preview-stage-dot,
+  html[data-theme="dark"] .resume-preview-stage-dot{
+    background:#1D2A36;
+  }
+</style>
+
 </head>
 <body data-resume-preview-build="89">
 <header class="header">
-  <button class="back" id="backBtn" type="button" aria-label="Edit resume">
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M15 18l-6-6 6-6"></path>
-    </svg>
-  </button>
+  <div aria-hidden="true"></div>
   <div class="logo">Alygnn<span>.</span></div>
-  <div></div>
+  <div aria-hidden="true"></div>
 </header>
+
+<div class="resume-preview-stage" aria-label="Candidate setup progress">
+  <div class="resume-preview-stage-item active"><span class="resume-preview-stage-dot">1</span><span>Resume</span></div>
+  <span class="resume-preview-stage-line"></span>
+  <div class="resume-preview-stage-item"><span class="resume-preview-stage-dot">2</span><span>Preferences</span></div>
+  <span class="resume-preview-stage-line"></span>
+  <div class="resume-preview-stage-item"><span class="resume-preview-stage-dot">3</span><span>Matches</span></div>
+</div>
 
 <main class="page">
   <div class="loading" id="loading" aria-live="polite" aria-label="Loading your resume">
@@ -809,7 +863,6 @@ function preferencesAreComplete(){
 function configureResumeFlow(){
   const complete=preferencesAreComplete();
   $('continueBtn').textContent=complete?'Go to Preferences':'Continue to Preferences';
-  $('backBtn').setAttribute('aria-label','Back to dashboard');
 }
 
 function setupCacheKey(userId){
@@ -824,12 +877,8 @@ function writeSetupCache(userId,state){
   }catch(_error){}
 }
 
-function goBackFromResume(){
-  window.location.href='app-account.html';
-}
-
 function editResume(){
-  window.location.href='app-resume-builder.html?edit=1';
+  window.location.replace('app-align-upload.html');
 }
 
 
@@ -859,7 +908,7 @@ async function initialize(){
   configureResumeFlow();
 
   if(!hasResume()){
-    window.location.replace('app-account.html?setup=required');
+    window.location.replace('app-align-upload.html');
     return;
   }
 
@@ -894,7 +943,7 @@ async function continueToPreferences(){
 
     profile.resume_data=resumeData;
     writeSetupCache(user.id,{hasResume:true,previewReviewed:true,preferencesComplete});
-    window.location.href=preferencesComplete?'app-preferences.html?edit=1':'app-preferences.html';
+    window.location.replace(preferencesComplete?'app-preferences.html?edit=1':'app-preferences.html');
   }catch(error){
     console.error(error);
     showError(error?.message||'We could not save your resume review. Please try again.');
@@ -903,7 +952,6 @@ async function continueToPreferences(){
   }
 }
 
-$('backBtn').onclick=goBackFromResume;
 $('editBtn').onclick=editResume;
 $('continueBtn').onclick=continueToPreferences;
 if($('saveTemplateBtn')) $('saveTemplateBtn').onclick=saveTemplateChoice;
