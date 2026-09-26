@@ -3006,16 +3006,29 @@
     errorElement.classList.toggle('show', Boolean(message));
   }
 
-  // Requires "City, ST" — a real city name (letters, spaces, periods,
-  // hyphens, apostrophes only) followed by a 2-letter US state code.
-  // This is what stops garbage like "Durham,sankckD" from being saved
-  // as if it were a real location.
-  function isValidLocation(value) {
-    const cleaned = value.trim();
+  // Location must be a real U.S. city/state.
+  // Exact Alygnn city-list matches work, and Google Places selections work.
+  // A typo with a valid state code does not pass.
+  function isValidLocation(value, input = null) {
+    const cleaned = String(value || '').trim();
     const match = cleaned.match(/^([A-Za-z][A-Za-z .'-]{1,48}),\s*([A-Za-z]{2})$/);
     if (!match) return false;
+
     const state = match[2].toUpperCase();
-    return US_STATE_CODES.has(state);
+    if (!US_STATE_CODES.has(state)) return false;
+
+    const normalized = normalizeCityState(cleaned);
+    const exactLocalMatch = US_CITIES.some(
+      city => normalizeCityState(city) === normalized
+    );
+
+    if (exactLocalMatch) return true;
+
+    return Boolean(
+      input &&
+      input.dataset.cityVerified === 'true' &&
+      input.dataset.cityVerifiedValue === normalized
+    );
   }
 
   const US_STATE_CODES = new Set([
@@ -3037,9 +3050,9 @@
       return;
     }
 
-    if (!isValidLocation(value)) {
+    if (!isValidLocation(value, locationInput)) {
       locationInput.classList.add('invalid');
-      hint.textContent = 'Enter a real location as "City, State" (e.g. Raleigh, NC).';
+      hint.textContent = 'Choose a real city from the suggestions (e.g. Raleigh, NC).';
       hint.classList.add('error');
     } else {
       locationInput.classList.remove('invalid');
@@ -3112,7 +3125,233 @@
     return { monthSelect, yearSelect, hidden, sync };
   }
 
-  const US_CITIES = ['Albuquerque, NM','Alexandria, VA','Anaheim, CA','Anchorage, AK','Arlington, TX','Arlington, VA','Atlanta, GA','Augusta, GA','Austin, TX','Baltimore, MD','Baton Rouge, LA','Birmingham, AL','Boise, ID','Boston, MA','Buffalo, NY','Burlington, VT','Cary, NC','Charleston, SC','Charlotte, NC','Chattanooga, TN','Chicago, IL','Cincinnati, OH','Cleveland, OH','Colorado Springs, CO','Columbia, SC','Columbus, OH','Dallas, TX','Denver, CO','Des Moines, IA','Detroit, MI','Durham, NC','El Paso, TX','Fayetteville, NC','Fort Lauderdale, FL','Fort Worth, TX','Fresno, CA','Greensboro, NC','Greenville, SC','Hartford, CT','Henderson, NV','Honolulu, HI','Houston, TX','Indianapolis, IN','Irvine, CA','Jackson, MS','Jacksonville, FL','Kansas City, MO','Knoxville, TN','Las Vegas, NV','Lexington, KY','Little Rock, AR','Long Beach, CA','Los Angeles, CA','Louisville, KY','Madison, WI','Memphis, TN','Mesa, AZ','Miami, FL','Milwaukee, WI','Minneapolis, MN','Nashville, TN','New Orleans, LA','New York, NY','Newark, NJ','Norfolk, VA','Oakland, CA','Oklahoma City, OK','Omaha, NE','Orlando, FL','Philadelphia, PA','Phoenix, AZ','Pittsburgh, PA','Plano, TX','Portland, ME','Portland, OR','Providence, RI','Raleigh, NC','Reno, NV','Richmond, VA','Rochester, NY','Sacramento, CA','Salt Lake City, UT','San Antonio, TX','San Diego, CA','San Francisco, CA','San Jose, CA','Savannah, GA','Seattle, WA','St. Louis, MO','St. Petersburg, FL','Syracuse, NY','Tallahassee, FL','Tampa, FL','Toledo, OH','Tucson, AZ','Tulsa, OK','Virginia Beach, VA','Washington, DC','Wilmington, NC','Winston-Salem, NC'];
+  // Google Places (New) city search.
+  // Keep Alygnn's local U.S. city list as a fallback if Google is unavailable.
+  const GOOGLE_MAPS_API_KEY = 'AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
+  let googleMapsLoadPromise = null;
+  let googlePlacesLibraryPromise = null;
+
+  function loadGooglePlacesForResume() {
+    if (window.google?.maps?.importLibrary) {
+      if (!googlePlacesLibraryPromise) {
+        googlePlacesLibraryPromise = window.google.maps.importLibrary('places');
+      }
+      return googlePlacesLibraryPromise;
+    }
+
+    if (!googleMapsLoadPromise) {
+      googleMapsLoadPromise = new Promise((resolve, reject) => {
+        const existing =
+          document.getElementById('google-maps-script') ||
+          document.getElementById('google-places-script');
+
+        if (existing) {
+          if (window.google?.maps?.importLibrary) {
+            resolve();
+            return;
+          }
+
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener(
+            'error',
+            () => reject(new Error('Google Maps JavaScript API failed to load.')),
+            { once: true }
+          );
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'google-maps-script';
+        script.src =
+          `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly&loading=async`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () =>
+          reject(new Error('Google Maps JavaScript API failed to load.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    return googleMapsLoadPromise.then(() => {
+      if (!window.google?.maps?.importLibrary) {
+        throw new Error('Google Maps importLibrary is unavailable.');
+      }
+
+      if (!googlePlacesLibraryPromise) {
+        googlePlacesLibraryPromise = window.google.maps.importLibrary('places');
+      }
+
+      return googlePlacesLibraryPromise;
+    });
+  }
+
+  const US_CITIES = [
+    'Aberdeen, SD','Abilene, TX','Aiken, SC','Akron, OH','Albany, GA',
+    'Albany, NY','Albemarle, NC','Albuquerque, NM','Alexandria, LA','Alexandria, VA',
+    'Allentown, PA','Alpharetta, GA','Amarillo, TX','Ames, IA','Anaheim, CA',
+    'Anchorage, AK','Anderson, SC','Ann Arbor, MI','Annapolis, MD','Apex, NC',
+    'Appleton, WI','Arlington, TX','Arlington, VA','Arvada, CO','Asheboro, NC',
+    'Asheville, NC','Athens, GA','Atlanta, GA','Atlantic City, NJ','Auburn, AL',
+    'Augusta, GA','Augusta, ME','Aurora, CO','Aurora, IL','Austin, TX',
+    'Avondale, AZ','Bakersfield, CA','Baltimore, MD','Bangor, ME','Barre, VT',
+    'Baton Rouge, LA','Bayamón, PR','Beaufort, SC','Beaumont, TX','Beaverton, OR',
+    'Bellevue, NE','Bellevue, WA','Bellingham, WA','Bend, OR','Bentonville, AR',
+    'Berkeley, CA','Bethesda, MD','Bethlehem, PA','Billings, MT','Biloxi, MS',
+    'Binghamton, NY','Birmingham, AL','Bismarck, ND','Blacksburg, VA','Bloomington, IL',
+    'Bloomington, IN','Bloomington, MN','Boca Raton, FL','Boise, ID','Bonita Springs, FL',
+    'Boone, NC','Bossier City, LA','Boston, MA','Boulder, CO','Bowie, MD',
+    'Bowling Green, KY','Bozeman, MT','Bradenton, FL','Brattleboro, VT','Bridgeport, CT',
+    'Brockton, MA','Broken Arrow, OK','Brookhaven, GA','Brookings, SD','Brooklyn, NY',
+    'Broomfield, CO','Brownsville, TX','Buffalo, NY','Burbank, CA','Burlington, NC',
+    'Burlington, VT','Butner, NC','Butte, MT','Caldwell, ID','Cambridge, MA','Camden, NJ',
+    'Canton, OH','Cape Coral, FL','Carlsbad, CA','Carmel, IN','Carrboro, NC',
+    'Carrollton, TX','Carson City, NV','Cary, NC','Casper, WY','Castle Rock, CO',
+    'Cedar Rapids, IA','Centennial, CO','Champaign, IL','Chandler, AZ','Chapel Hill, NC',
+    'Charleston, SC','Charleston, WV','Charlotte, NC','Charlottesville, VA','Chattanooga, TN',
+    'Chesapeake, VA','Cheyenne, WY','Chicago, IL','Chula Vista, CA','Cincinnati, OH',
+    'Clarksville, TN','Clayton, NC','Clearwater, FL','Cleveland, OH','Clifton, NJ',
+    "Coeur d'Alene, ID",'College Station, TX','Colorado Springs, CO','Columbia, MD','Columbia, MO',
+    'Columbia, SC','Columbus, GA','Columbus, OH','Concord, CA','Concord, NC',
+    'Concord, NH','Conway, AR','Cookeville, TN','Coral Gables, FL','Coral Springs, FL',
+    'Corona, CA','Corpus Christi, TX','Corvallis, OR','Costa Mesa, CA','Council Bluffs, IA',
+    'Covington, KY','Cranston, RI','Dallas, TX','Daly City, CA','Danbury, CT',
+    'Davenport, IA','Dayton, OH','Daytona Beach, FL','Dearborn, MI','Decatur, AL',
+    'Decatur, GA','Decatur, IL','Delray Beach, FL','Denton, TX','Denver, CO',
+    'Des Moines, IA','Detroit, MI','Dickinson, ND','Dothan, AL','Dover, DE',
+    'Dover, NH','Dublin, OH','Dubuque, IA','Duluth, GA','Duluth, MN',
+    'Durham, NC','Eagan, MN','Eau Claire, WI','Eden Prairie, MN','Edison, NJ',
+    'Edmond, OK','El Paso, TX','Elgin, IL','Elizabeth, NJ','Elizabeth City, NC',
+    'Erie, PA','Escondido, CA','Eugene, OR','Evanston, IL','Evansville, IN',
+    'Everett, WA','Fairbanks, AK','Fairfax, VA','Fargo, ND','Farmington, NM',
+    'Fayetteville, AR','Fayetteville, NC','Federal Way, WA','Fishers, IN','Flagstaff, AZ',
+    'Flint, MI','Florence, AL','Florence, KY','Florence, SC','Fontana, CA',
+    'Fort Collins, CO','Fort Lauderdale, FL','Fort Myers, FL','Fort Smith, AR','Fort Wayne, IN',
+    'Fort Worth, TX','Framingham, MA','Frankfort, KY','Franklin, TN','Frederick, MD',
+    'Fredericksburg, VA','Fremont, CA','Fresno, CA','Frisco, TX','Fullerton, CA',
+    'Fuquay-Varina, NC','Gadsden, AL','Gainesville, FL','Gainesville, GA','Gaithersburg, MD',
+    'Galveston, TX','Garland, TX','Garner, NC','Gary, IN','Gastonia, NC',
+    'Gatlinburg, TN','Gilbert, AZ','Gillette, WY','Glendale, AZ','Glendale, CA',
+    'Goldsboro, NC','Goodyear, AZ','Grand Forks, ND','Grand Island, NE','Grand Prairie, TX',
+    'Grand Rapids, MI','Great Falls, MT','Greeley, CO','Green Bay, WI','Greensboro, NC',
+    'Greenville, NC','Greenville, SC','Greenwich, CT','Greenwood, SC','Gresham, OR',
+    'Gulfport, MS','Hagerstown, MD','Hamilton, OH','Hampton, VA','Harrisburg, PA',
+    'Harrisonburg, VA','Hartford, CT','Hattiesburg, MS','Hayward, CA','Helena, MT',
+    'Henderson, NC','Henderson, NV','Hendersonville, NC','Hendersonville, TN','Hickory, NC',
+    'High Point, NC','Hillsboro, OR','Hilo, HI','Hilton Head Island, SC','Hoboken, NJ',
+    'Holly Springs, NC','Hollywood, FL','Honolulu, HI','Hoover, AL','Hot Springs, AR',
+    'Houma, LA','Houston, TX','Huntersville, NC','Huntington, WV','Huntington Beach, CA',
+    'Huntsville, AL','Idaho Falls, ID','Independence, MO','Indian Trail, NC','Indianapolis, IN',
+    'Iowa City, IA','Irvine, CA','Irving, TX','Ithaca, NY','Jackson, MS',
+    'Jacksonville, FL','Jacksonville, NC','Jefferson City, MO','Jersey City, NJ','Johns Creek, GA',
+    'Johnson City, TN','Joliet, IL','Jonesboro, AR','Joplin, MO','Juneau, AK',
+    'Kailua, HI','Kalamazoo, MI','Kaneohe, HI','Kannapolis, NC','Kansas City, MO',
+    'Kapolei, HI','Kearney, NE','Kenai, AK','Kennesaw, GA','Kenosha, WI',
+    'Kent, WA','Kernersville, NC','Ketchikan, AK','Kettering, OH','Killeen, TX',
+    'Kingsport, TN','Kinston, NC','Kirkland, WA','Kissimmee, FL','Knightdale, NC',
+    'Knoxville, TN','La Crosse, WI','Lafayette, IN','Lafayette, LA','Lake Charles, LA',
+    'Lake Havasu City, AZ','Lakeland, FL','Lakewood, CO','Lancaster, CA','Lancaster, PA',
+    'Lansing, MI','Laramie, WY','Laredo, TX','Las Cruces, NM','Las Vegas, NV',
+    'Laurinburg, NC','Lawrence, KS','Lawton, OK','League City, TX',"Lee's Summit, MO",
+    'Leesburg, VA','Lehi, UT','Leland, NC','Lenexa, KS','Lewiston, ME',
+    'Lexington, KY','Lexington, NC','Lincoln, NE','Little Rock, AR','Littleton, CO',
+    'Livonia, MI','Logan, UT','Long Beach, CA','Longmont, CO','Lorain, OH',
+    'Los Angeles, CA','Louisville, KY','Loveland, CO','Lowell, MA','Lubbock, TX',
+    'Lumberton, NC','Lynchburg, VA','Lynn, MA','Macon, GA','Madison, WI',
+    'Manassas, VA','Manchester, NH','Manhattan, KS','Mankato, MN','Mansfield, OH',
+    'Maple Grove, MN','Marietta, GA','Martinsburg, WV','Matthews, NC','McAllen, TX',
+    'McKinney, TX','Mebane, NC','Medford, OR','Melbourne, FL','Memphis, TN',
+    'Meridian, ID','Meridian, MS','Mesa, AZ','Metairie, LA','Miami, FL',
+    'Middletown, DE','Midland, TX','Milwaukee, WI','Minneapolis, MN','Minot, ND',
+    'Missoula, MT','Mobile, AL','Modesto, CA','Monroe, LA','Monroe, NC',
+    'Montgomery, AL','Montpelier, VT','Moore, OK','Mooresville, NC','Moreno Valley, CA',
+    'Morganton, NC','Morgantown, WV','Morrisville, NC','Mountain View, CA','Muncie, IN',
+    'Murfreesboro, TN','Myrtle Beach, SC','Nampa, ID','Naperville, IL','Naples, FL',
+    'Nashua, NH','Nashville, TN','New Bedford, MA','New Bern, NC','New Britain, CT',
+    'New Brunswick, NJ','New Haven, CT','New Orleans, LA','New Rochelle, NY','New York, NY',
+    'Newark, DE','Newark, NJ','Newport, RI','Newport News, VA','Newton, MA',
+    'Niagara Falls, NY','Norfolk, VA','Normal, IL','Norman, OK','North Charleston, SC',
+    'North Las Vegas, NV','North Little Rock, AR','Norwalk, CT','Novi, MI',"O'Fallon, MO",
+    'Oak Park, IL','Oakland, CA','Ocala, FL','Oceanside, CA','Odessa, TX',
+    'Ogden, UT','Oklahoma City, OK','Olathe, KS','Olive Branch, MS','Olympia, WA',
+    'Omaha, NE','Ontario, CA','Orange, CA','Orem, UT','Orlando, FL',
+    'Oshkosh, WI','Overland Park, KS','Owensboro, KY','Oxford, MS','Oxford, NC',
+    'Oxnard, CA','Paducah, KY','Palm Bay, FL','Palm Beach Gardens, FL','Palm Springs, CA',
+    'Palmer, AK','Park City, UT','Parkersburg, WV','Parma, OH','Pasadena, CA',
+    'Pasadena, TX','Paterson, NJ','Pawtucket, RI','Pearl City, HI','Pearland, TX',
+    'Pensacola, FL','Peoria, AZ','Peoria, IL','Philadelphia, PA','Phoenix, AZ',
+    'Pigeon Forge, TN','Pine Bluff, AR','Pinehurst, NC','Pittsburgh, PA','Plano, TX',
+    'Plantation, FL','Plymouth, MN','Pocatello, ID','Pompano Beach, FL','Ponce, PR',
+    'Pontiac, MI','Port St. Lucie, FL','Portland, ME','Portland, OR','Portsmouth, NH',
+    'Poughkeepsie, NY','Prescott, AZ','Princeton, NJ','Providence, RI','Provo, UT',
+    'Pueblo, CO','Queens, NY','Quincy, MA','Racine, WI','Raleigh, NC',
+    'Rancho Cucamonga, CA','Rapid City, SD','Reading, PA','Redding, CA','Redmond, WA',
+    'Redwood City, CA','Rehoboth Beach, DE','Reno, NV','Renton, WA','Reston, VA',
+    'Richardson, TX','Richmond, VA','Rio Rancho, NM','Riverside, CA','Roanoke, VA',
+    'Roanoke Rapids, NC','Rochester, MN','Rochester, NY','Rochester Hills, MI','Rock Hill, SC',
+    'Rock Springs, WY','Rockford, IL','Rockville, MD','Rocky Mount, NC','Rogers, AR',
+    'Roseville, CA','Roswell, GA','Roswell, NM','Round Rock, TX','Royal Oak, MI',
+    'Rutland, VT','Sacramento, CA','Salem, MA','Salem, OR','Salina, KS',
+    'Salinas, CA','Salisbury, NC','Salt Lake City, UT','San Antonio, TX','San Bernardino, CA',
+    'San Diego, CA','San Francisco, CA','San Jose, CA','San Juan, PR','San Luis Obispo, CA',
+    'San Marcos, TX','San Mateo, CA','Sandy, UT','Sandy Springs, GA','Sanford, NC',
+    'Santa Ana, CA','Santa Barbara, CA','Santa Clara, CA','Santa Clarita, CA','Santa Cruz, CA',
+    'Santa Fe, NM','Santa Monica, CA','Santa Rosa, CA','Sarasota, FL','Savannah, GA',
+    'Schaumburg, IL','Schenectady, NY','Scottsdale, AZ','Scranton, PA','Seattle, WA',
+    'Selma, NC','Shelby, NC','Shreveport, LA','Silver Spring, MD','Sioux City, IA',
+    'Sioux Falls, SD','Sitka, AK','Slidell, LA','Smithfield, NC','Smyrna, GA',
+    'Somerville, MA','South Bend, IN','South Burlington, VT','South Portland, ME','Southaven, MS',
+    'Southern Pines, NC','Sparks, NV','Spartanburg, SC','Spokane, WA','Springdale, AR',
+    'Springfield, IL','Springfield, MA','Springfield, MO','Springfield, OH','Springfield, OR',
+    'St. Charles, MO','St. Cloud, MN','St. George, UT','St. Louis, MO','St. Paul, MN',
+    'St. Petersburg, FL','Stamford, CT','State College, PA','Staten Island, NY','Statesville, NC',
+    'Staunton, VA','Sterling Heights, MI','Stillwater, OK','Stockton, CA','Suffolk, VA',
+    'Sugar Land, TX','Summerville, SC','Sunnyvale, CA','Surprise, AZ','Syracuse, NY',
+    'Tacoma, WA','Tallahassee, FL','Tampa, FL','Tempe, AZ','Temple, TX',
+    'Terre Haute, IN','The Woodlands, TX','Thomasville, NC','Thornton, CO','Thousand Oaks, CA',
+    'Toledo, OH','Toms River, NJ','Topeka, KS','Torrance, CA','Towson, MD',
+    'Trenton, NJ','Troy, MI','Tucson, AZ','Tulsa, OK','Tupelo, MS',
+    'Tuscaloosa, AL','Twin Falls, ID','Tyler, TX','Valdosta, GA','Vallejo, CA',
+    'Vancouver, WA','Ventura, CA','Virginia Beach, VA','Visalia, CA','Waco, TX',
+    'Wake Forest, NC','Warner Robins, GA','Warren, MI','Warwick, RI','Washington, DC',
+    'Washington, NC','Wasilla, AK','Waterbury, CT','Waterloo, IA','Waukesha, WI',
+    'Waynesville, NC','Wendell, NC','West Chester, PA','West Des Moines, IA','West Jordan, UT',
+    'West Palm Beach, FL','West Valley City, UT','Westminster, CO','Wheeling, WV','White Plains, NY',
+    'Wichita, KS','Wilmington, DE','Wilmington, NC','Wilson, NC','Winston-Salem, NC',
+    'Worcester, MA','Yakima, WA','Yonkers, NY','York, PA','Youngstown, OH',
+    'Yuma, AZ','Zebulon, NC'
+  ];
+
+
+  function normalizeCityState(value) {
+    return String(value || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*/, ', ')
+      .toLowerCase();
+  }
+
+  function seedCityVerification(input) {
+    if (!input) return;
+    const normalized = normalizeCityState(input.value);
+    const exactMatch = US_CITIES.some(
+      city => normalizeCityState(city) === normalized
+    );
+    input.dataset.cityVerified = exactMatch ? 'true' : 'false';
+    input.dataset.cityVerifiedValue = exactMatch ? normalized : '';
+  }
+
+  function markCityVerified(input) {
+    if (!input) return;
+    input.dataset.cityVerified = 'true';
+    input.dataset.cityVerifiedValue = normalizeCityState(input.value);
+  }
+
+  function clearCityVerification(input) {
+    if (!input) return;
+    input.dataset.cityVerified = 'false';
+    input.dataset.cityVerifiedValue = '';
+  }
 
   // A representative (not exhaustive) list of US colleges/universities —
   // major national universities, state flagships, and common NC-area
@@ -3120,8 +3359,6 @@
   // This is assistive, not restrictive: attachLocationAutocomplete never
   // blocks someone from typing a school that isn't in this list.
   const US_UNIVERSITIES = ['Appalachian State University','Arizona State University','Auburn University','Baylor University','Boston College','Boston University','Bowdoin College','Brown University','California Institute of Technology','Cape Fear Community College','Carnegie Mellon University','Case Western Reserve University','Central Piedmont Community College','Clemson University','Colgate University','Colorado State University','Columbia University','Cornell University','Dartmouth College','Duke University','Durham Technical Community College','East Carolina University','Emory University','Fayetteville State University','Fayetteville Technical Community College','Florida State University','Georgetown University','George Mason University','Georgia Institute of Technology','Georgia State University','Guilford Technical Community College','Harvard University','Indiana University Bloomington','Iowa State University','Johns Hopkins University','Louisiana State University','Massachusetts Institute of Technology','Miami Dade College','Michigan State University','New York University','North Carolina A&T State University','North Carolina Central University','North Carolina State University','Northeastern University','Northwestern University','Ohio State University','Oregon State University','Penn State University','Pitt Community College','Princeton University','Purdue University','Rice University','Rutgers University','Stanford University','Syracuse University','Temple University','Texas A&M University','The University of Alabama','Tufts University','Tulane University','UC Berkeley','UC Davis','UC Irvine','UC Los Angeles (UCLA)','UC San Diego','UC Santa Barbara','University of Arizona','University of Central Florida','University of Chicago','University of Cincinnati','University of Colorado Boulder','University of Connecticut','University of Delaware','University of Florida','University of Georgia','University of Houston','University of Illinois Urbana-Champaign','University of Iowa','University of Kansas','University of Kentucky','University of Maryland','University of Massachusetts Amherst','University of Miami','University of Michigan','University of Minnesota','University of Missouri','University of Nebraska-Lincoln','University of North Carolina at Chapel Hill','University of North Carolina at Charlotte','University of North Carolina at Greensboro','University of North Carolina Wilmington','University of Notre Dame','University of Oklahoma','University of Oregon','University of Pennsylvania','University of Pittsburgh','University of South Carolina','University of South Florida','University of Southern California','University of Tennessee','University of Texas at Austin','University of Utah','University of Virginia','University of Washington','University of Wisconsin-Madison','Vanderbilt University','Virginia Tech','Wake Forest University','Wake Technical Community College','Wayne Community College','Western Carolina University','Yale University'];
-
-  const UNIVERSITY_LOCATIONS = Object.freeze({"Appalachian State University":"Boone, NC","Arizona State University":"Tempe, AZ","Auburn University":"Auburn, AL","Baylor University":"Waco, TX","Boston College":"Chestnut Hill, MA","Boston University":"Boston, MA","Bowdoin College":"Brunswick, ME","Brown University":"Providence, RI","California Institute of Technology":"Pasadena, CA","Cape Fear Community College":"Wilmington, NC","Carnegie Mellon University":"Pittsburgh, PA","Case Western Reserve University":"Cleveland, OH","Central Piedmont Community College":"Charlotte, NC","Clemson University":"Clemson, SC","Colgate University":"Hamilton, NY","Colorado State University":"Fort Collins, CO","Columbia University":"New York, NY","Cornell University":"Ithaca, NY","Dartmouth College":"Hanover, NH","Duke University":"Durham, NC","Durham Technical Community College":"Durham, NC","East Carolina University":"Greenville, NC","Emory University":"Atlanta, GA","Fayetteville State University":"Fayetteville, NC","Fayetteville Technical Community College":"Fayetteville, NC","Florida State University":"Tallahassee, FL","Georgetown University":"Washington, DC","George Mason University":"Fairfax, VA","Georgia Institute of Technology":"Atlanta, GA","Georgia State University":"Atlanta, GA","Guilford Technical Community College":"Jamestown, NC","Harvard University":"Cambridge, MA","Indiana University Bloomington":"Bloomington, IN","Iowa State University":"Ames, IA","Johns Hopkins University":"Baltimore, MD","Louisiana State University":"Baton Rouge, LA","Massachusetts Institute of Technology":"Cambridge, MA","Miami Dade College":"Miami, FL","Michigan State University":"East Lansing, MI","New York University":"New York, NY","North Carolina A&T State University":"Greensboro, NC","North Carolina Central University":"Durham, NC","North Carolina State University":"Raleigh, NC","Northeastern University":"Boston, MA","Northwestern University":"Evanston, IL","Ohio State University":"Columbus, OH","Oregon State University":"Corvallis, OR","Penn State University":"University Park, PA","Pitt Community College":"Winterville, NC","Princeton University":"Princeton, NJ","Purdue University":"West Lafayette, IN","Rice University":"Houston, TX","Rutgers University":"New Brunswick, NJ","Stanford University":"Stanford, CA","Syracuse University":"Syracuse, NY","Temple University":"Philadelphia, PA","Texas A&M University":"College Station, TX","The University of Alabama":"Tuscaloosa, AL","Tufts University":"Medford, MA","Tulane University":"New Orleans, LA","UC Berkeley":"Berkeley, CA","UC Davis":"Davis, CA","UC Irvine":"Irvine, CA","UC Los Angeles (UCLA)":"Los Angeles, CA","UC San Diego":"La Jolla, CA","UC Santa Barbara":"Santa Barbara, CA","University of Arizona":"Tucson, AZ","University of Central Florida":"Orlando, FL","University of Chicago":"Chicago, IL","University of Cincinnati":"Cincinnati, OH","University of Colorado Boulder":"Boulder, CO","University of Connecticut":"Storrs, CT","University of Delaware":"Newark, DE","University of Florida":"Gainesville, FL","University of Georgia":"Athens, GA","University of Houston":"Houston, TX","University of Illinois Urbana-Champaign":"Champaign, IL","University of Iowa":"Iowa City, IA","University of Kansas":"Lawrence, KS","University of Kentucky":"Lexington, KY","University of Maryland":"College Park, MD","University of Massachusetts Amherst":"Amherst, MA","University of Miami":"Coral Gables, FL","University of Michigan":"Ann Arbor, MI","University of Minnesota":"Minneapolis, MN","University of Missouri":"Columbia, MO","University of Nebraska-Lincoln":"Lincoln, NE","University of North Carolina at Chapel Hill":"Chapel Hill, NC","University of North Carolina at Charlotte":"Charlotte, NC","University of North Carolina at Greensboro":"Greensboro, NC","University of North Carolina Wilmington":"Wilmington, NC","University of Notre Dame":"Notre Dame, IN","University of Oklahoma":"Norman, OK","University of Oregon":"Eugene, OR","University of Pennsylvania":"Philadelphia, PA","University of Pittsburgh":"Pittsburgh, PA","University of South Carolina":"Columbia, SC","University of South Florida":"Tampa, FL","University of Southern California":"Los Angeles, CA","University of Tennessee":"Knoxville, TN","University of Texas at Austin":"Austin, TX","University of Utah":"Salt Lake City, UT","University of Virginia":"Charlottesville, VA","University of Washington":"Seattle, WA","University of Wisconsin-Madison":"Madison, WI","Vanderbilt University":"Nashville, TN","Virginia Tech":"Blacksburg, VA","Wake Forest University":"Winston-Salem, NC","Wake Technical Community College":"Raleigh, NC","Wayne Community College":"Goldsboro, NC","Western Carolina University":"Cullowhee, NC","Yale University":"New Haven, CT"});
 
   // A representative list of common job titles — assistive, not
   // restrictive, same as the city and university lists above. Covers
@@ -3159,7 +3396,7 @@
 
   function renderLocationSuggestions(input) {
     const query = input.value.trim().toLowerCase();
-    if (query.length < 3) return closeLocationSuggestions();
+    if (query.length < 2) return closeLocationSuggestions();
     const list = input._suggestionList || US_CITIES;
     const matches = list.filter(c => c.toLowerCase().includes(query)).slice(0, 8);
     if (!matches.length) return closeLocationSuggestions();
@@ -3171,32 +3408,250 @@
     locationSuggestBox.classList.add('show');
   }
 
-  // Generic autocomplete attacher — used for city fields (US_CITIES) and
-  // school fields (US_UNIVERSITIES). This never restricts what someone can
-  // actually type or save; picking a suggestion is just a shortcut. Anyone
-  // whose real city or school isn't in the list can still type their own.
+  function bindFallbackAutocomplete(input, list, onPick) {
+    input._suggestionList = list;
+    input._onLocationPick = onPick;
+    input.addEventListener('input', () => {
+      if (list === US_CITIES) clearCityVerification(input);
+      renderLocationSuggestions(input);
+    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLocationSuggestions(); });
+    input.addEventListener('focus', () => {
+      if (input.value.trim().length >= 2) renderLocationSuggestions(input);
+    });
+  }
+
+  function cityStateFromGooglePlace(place, fallbackValue) {
+    const parts = place?.addressComponents || place?.address_components || [];
+    const getPart = (types) => {
+      const part = parts.find(component =>
+        types.some(type => component.types?.includes(type))
+      );
+      return part || null;
+    };
+
+    const cityPart = getPart([
+      'locality',
+      'postal_town',
+      'administrative_area_level_3'
+    ]);
+    const statePart = getPart(['administrative_area_level_1']);
+
+    const city =
+      cityPart?.longText ||
+      cityPart?.long_name ||
+      place?.displayName ||
+      place?.name ||
+      '';
+
+    const state =
+      statePart?.shortText ||
+      statePart?.short_name ||
+      '';
+
+    if (city && state) return `${city}, ${state}`;
+
+    return String(
+      place?.formattedAddress ||
+      place?.formatted_address ||
+      place?.displayName ||
+      place?.name ||
+      fallbackValue ||
+      ''
+    )
+      .replace(/,\s*USA$/i, '')
+      .trim();
+  }
+
+  async function attachGoogleCityAutocomplete(input, onPick) {
+    input._onLocationPick = onPick;
+    input._suggestionList = US_CITIES;
+
+    try {
+      const {
+        AutocompleteSuggestion,
+        AutocompleteSessionToken
+      } = await loadGooglePlacesForResume();
+
+      if (
+        !AutocompleteSuggestion?.fetchAutocompleteSuggestions ||
+        !AutocompleteSessionToken
+      ) {
+        throw new Error('Google Places (New) autocomplete is unavailable.');
+      }
+
+      if (input._googleCityAutocompleteReady) return;
+      input._googleCityAutocompleteReady = true;
+
+      let requestNumber = 0;
+      let debounceTimer = null;
+
+      const useFallbackForCurrentValue = () => {
+        input._googleCityUseFallback = true;
+        renderLocationSuggestions(input);
+      };
+
+      const requestGoogleSuggestions = async () => {
+        const query = input.value.trim();
+
+        if (query.length < 2) {
+          if (activeLocationInput === input) closeLocationSuggestions();
+          return;
+        }
+
+        if (input._googleCityUseFallback) {
+          renderLocationSuggestions(input);
+          return;
+        }
+
+        if (!input._googleCitySessionToken) {
+          input._googleCitySessionToken = new AutocompleteSessionToken();
+        }
+
+        const thisRequest = ++requestNumber;
+
+        try {
+          const { suggestions } =
+            await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+              input: query,
+              includedPrimaryTypes: ['(cities)'],
+              includedRegionCodes: ['us'],
+              language: 'en-US',
+              region: 'us',
+              sessionToken: input._googleCitySessionToken
+            });
+
+          if (thisRequest !== requestNumber || input.value.trim() !== query) {
+            return;
+          }
+
+          const predictions = (suggestions || [])
+            .map(suggestion => suggestion.placePrediction)
+            .filter(Boolean)
+            .slice(0, 8);
+
+          if (!predictions.length) {
+            closeLocationSuggestions();
+            return;
+          }
+
+          input._googleCityPredictions = predictions;
+          activeLocationInput = input;
+          positionLocationSuggestions();
+
+          locationSuggestBox.innerHTML =
+            predictions.map((prediction, index) => `
+              <button
+                type="button"
+                class="location-suggestion"
+                data-google-index="${index}"
+              >${escapeHtml(String(prediction.text || ''))}</button>
+            `).join('') +
+            `<div style="display:flex;justify-content:flex-end;align-items:center;padding:7px 10px 3px;">
+              <img
+                src="https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-white3.png"
+                alt="Powered by Google"
+                style="display:block;height:14px;width:auto;"
+              >
+            </div>`;
+
+          locationSuggestBox.classList.add('show');
+        } catch (error) {
+          console.warn(
+            'Google Places (New) city search unavailable. Using Alygnn fallback city suggestions.',
+            error
+          );
+          useFallbackForCurrentValue();
+        }
+      };
+
+      input.addEventListener('input', () => {
+        clearCityVerification(input);
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(requestGoogleSuggestions, 180);
+      });
+
+      input.addEventListener('focus', () => {
+        if (input.value.trim().length >= 2) {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(requestGoogleSuggestions, 0);
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLocationSuggestions();
+      });
+    } catch (error) {
+      console.warn(
+        'Google Places (New) failed to initialize. Using Alygnn fallback city list.',
+        error
+      );
+      bindFallbackAutocomplete(input, US_CITIES, onPick);
+    }
+  }
+
+  // Generic autocomplete attacher. City fields use Google Places so the
+  // suggestions cover small U.S. cities/towns instead of being limited to a
+  // hand-maintained array. School/title fields keep their existing lists.
   function attachLocationAutocomplete(input, list, onPick) {
     if (!input || input.dataset.autocompleteBound) return;
     input.dataset.autocompleteBound = 'true';
-    input._suggestionList = list;
-    input.addEventListener('input', () => renderLocationSuggestions(input));
-    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLocationSuggestions(); });
-    input.addEventListener('focus', () => {
-      if (input.value.trim().length >= 3) renderLocationSuggestions(input);
-    });
-    // Store the pick callback on the element itself so the single shared
-    // click handler below knows what to do for whichever field is active.
-    input._onLocationPick = onPick;
+
+    if (list === US_CITIES) {
+      seedCityVerification(input);
+      attachGoogleCityAutocomplete(input, onPick);
+      return;
+    }
+
+    bindFallbackAutocomplete(input, list, onPick);
   }
 
   window.addEventListener('scroll', () => { if (locationSuggestBox.classList.contains('show')) positionLocationSuggestions(); }, true);
   window.addEventListener('resize', () => { if (locationSuggestBox.classList.contains('show')) positionLocationSuggestions(); });
 
-  locationSuggestBox.addEventListener('click', (e) => {
+  locationSuggestBox.addEventListener('click', async (e) => {
     const btn = e.target.closest('.location-suggestion');
     if (!btn || !activeLocationInput) return;
+
     const input = activeLocationInput;
-    input.value = btn.textContent;
+    const googleIndex = btn.dataset.googleIndex;
+
+    if (googleIndex !== undefined) {
+      const prediction = input._googleCityPredictions?.[Number(googleIndex)];
+      if (!prediction) return;
+
+      const fallbackText = String(prediction.text || input.value || '')
+        .replace(/,\s*USA$/i, '')
+        .trim();
+
+      closeLocationSuggestions();
+
+      try {
+        const place = prediction.toPlace();
+        await place.fetchFields({
+          fields: ['displayName', 'formattedAddress', 'addressComponents']
+        });
+
+        input.value = cityStateFromGooglePlace(place, fallbackText);
+        markCityVerified(input);
+      } catch (error) {
+        console.warn(
+          'Could not load Google place details. Using the selected city text.',
+          error
+        );
+        input.value = fallbackText;
+        markCityVerified(input);
+      }
+
+      input._googleCityPredictions = [];
+      input._googleCitySessionToken = null;
+
+      if (input._onLocationPick) input._onLocationPick();
+      return;
+    }
+
+    input.value = btn.textContent.trim();
+    markCityVerified(input);
     closeLocationSuggestions();
     if (input._onLocationPick) input._onLocationPick();
   });
@@ -3586,9 +4041,17 @@
       element.addEventListener('input', handleChange);
     });
 
-    attachLocationAutocomplete(item.querySelector('.exp-location'), US_CITIES, () => {
+    const expLocationInput = item.querySelector('.exp-location');
+    attachLocationAutocomplete(expLocationInput, US_CITIES, () => {
       autoSave();
       updatePreview();
+    });
+    expLocationInput.addEventListener('blur', () => {
+      expLocationInput.classList.toggle(
+        'invalid',
+        Boolean(expLocationInput.value.trim()) &&
+        !isValidLocation(expLocationInput.value, expLocationInput)
+      );
     });
 
     const description = item.querySelector('.exp-description');
@@ -3704,9 +4167,17 @@
       element.addEventListener('input', handleChange);
     });
 
-    attachLocationAutocomplete(item.querySelector('.edu-location'), US_CITIES, () => {
+    const eduLocationInput = item.querySelector('.edu-location');
+    attachLocationAutocomplete(eduLocationInput, US_CITIES, () => {
       autoSave();
       updatePreview();
+    });
+    eduLocationInput.addEventListener('blur', () => {
+      eduLocationInput.classList.toggle(
+        'invalid',
+        Boolean(eduLocationInput.value.trim()) &&
+        !isValidLocation(eduLocationInput.value, eduLocationInput)
+      );
     });
 
     const schoolInput = item.querySelector('.edu-school');
@@ -3732,6 +4203,7 @@
       // The candidate can still edit the location afterward if needed.
       if (matchedLocation && educationLocationInput) {
         educationLocationInput.value = matchedLocation;
+        seedCityVerification(educationLocationInput);
       }
 
       validateSchoolField();
@@ -4307,7 +4779,7 @@
     if (fullName.value.trim().length < 2) add('Enter your full name.', fullName);
     if (!email.value.trim() || !email.checkValidity()) add('Enter a valid email address.', email);
     if (!isValidPhone(phone.value)) add('Enter a valid phone number.', phone);
-    if (!isValidLocation(location.value)) add('Enter your location as City, State.', location);
+    if (!isValidLocation(location.value, location)) add('Choose a real city from the location suggestions.', location);
 
     const summaryMessage = validateProfessionalText(summaryInput.value, { min: 80, max: 500, required: true });
     if (summaryMessage) add('Write a professional summary of at least 80 characters.', summaryInput);
@@ -4344,7 +4816,7 @@
       }
       if (!start.value.trim() || !/^[A-Z][a-z]{2} \d{4}$/.test(start.value.trim())) add(`Choose a start month and year for Experience ${index + 1}.`, item.querySelector('.exp-start-month'));
       if (!current.checked && (!end.value.trim() || !/^[A-Z][a-z]{2} \d{4}$/.test(end.value.trim()))) add(`Choose an end month and year for Experience ${index + 1}, or mark it current.`, item.querySelector('.exp-end-month'));
-      if (!isValidLocation(expLocation.value)) add(`Enter a City, State location for Experience ${index + 1}.`, expLocation);
+      if (!isValidLocation(expLocation.value, expLocation)) add(`Choose a real city for Experience ${index + 1}.`, expLocation);
       const descMessage = validateProfessionalText(description.value, { min: 40, max: 800, required: true });
       if (descMessage) add(`Write at least 40 characters of achievements for Experience ${index + 1}.`, description);
     });
@@ -4362,7 +4834,7 @@
         if (school.value.trim().length < 2) add(`Complete the school for Education ${index + 1}.`, school);
         if (degree.value.trim().length < 2) add(`Complete the degree or program for Education ${index + 1}.`, degree);
         if (!date.value.trim() || !/^[A-Z][a-z]{2} \d{4}$/.test(date.value.trim())) add(`Choose a graduation month and year for Education ${index + 1}.`, item.querySelector('.edu-date-month'));
-        if (!isValidLocation(eduLocation.value)) add(`Enter a City, State location for Education ${index + 1}.`, eduLocation);
+        if (!isValidLocation(eduLocation.value, eduLocation)) add(`Choose a real city for Education ${index + 1}.`, eduLocation);
       });
     }
 
