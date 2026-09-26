@@ -59,13 +59,28 @@ button{cursor:pointer}
   -webkit-backdrop-filter:blur(18px);
 }
 .back{
-  border:0;
-  background:transparent;
-  color:var(--brand-dark);
-  padding:10px 0;
-  text-align:left;
-  font-weight:900;
-  font-size:14px;
+  width:42px;
+  height:42px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--card);
+  color:var(--text);
+  display:grid;
+  place-items:center;
+  appearance:none;
+  -webkit-appearance:none;
+  box-shadow:0 5px 16px rgba(26,44,66,.05);
+}
+.back svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 .logo{
   text-align:center;
@@ -793,7 +808,11 @@ main,
 <body data-preferences-build="79">
 <div class="app">
   <header class="topbar">
-    <button class="back" type="button" onclick="goBack()">← Resume</button>
+    <button class="back" type="button" onclick="goBack()" aria-label="Back to resume">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </button>
     <div class="logo">Alygnn<span>.</span></div>
     <div class="header-spacer"></div>
   </header>
