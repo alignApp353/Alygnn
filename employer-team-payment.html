@@ -139,7 +139,7 @@ h1{font-size:38px;margin:8px 0 12px}h2{font-size:24px;margin:0 0 8px}
 <script>
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-const TEST_MODE_EMAILS=['simoninn18@gmail.com','laurenge2345@gmail.com','larauyr@hotmail.com'];
+const TEST_MODE_EMAILS=[]; // Production: developer team-seat bypass disabled for every account.
 function alygnnAuthStorageKey(){let t=sessionStorage.getItem('alygnn_auth_tab_id');if(!t){t=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;sessionStorage.setItem('alygnn_auth_tab_id',t)}return `alygnn-auth-${t}`}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:sessionStorage,storageKey:alygnnAuthStorageKey(),persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
