@@ -2403,10 +2403,10 @@
             <div class="field">
               <label for="location">Location <span aria-hidden="true">*</span></label>
               <div class="suggest-wrap">
-                <input id="location" type="text" placeholder="Type 3 letters, e.g. Ral" autocomplete="off" required>
+                <input id="location" type="text" placeholder="Type your city" autocomplete="off" required>
                 <div id="location-suggestions" class="location-suggestions"></div>
               </div>
-              <p class="field-hint" id="location-hint">Format: City, State (e.g. Raleigh, NC)</p>
+              <p class="field-hint" id="location-hint">Start typing your city and choose from the suggestions</p>
             </div>
           </div>
         </div>
@@ -3045,18 +3045,18 @@
 
     if (!value) {
       locationInput.classList.remove('invalid');
-      hint.textContent = 'Format: City, State (e.g. Raleigh, NC)';
+      hint.textContent = 'Start typing your city and choose from the suggestions';
       hint.classList.remove('error');
       return;
     }
 
     if (!isValidLocation(value, locationInput)) {
       locationInput.classList.add('invalid');
-      hint.textContent = 'Choose a real city from the suggestions (e.g. Raleigh, NC).';
+      hint.textContent = 'Choose a real city from the suggestions.';
       hint.classList.add('error');
     } else {
       locationInput.classList.remove('invalid');
-      hint.textContent = 'Format: City, State (e.g. Raleigh, NC)';
+      hint.textContent = 'Start typing your city and choose from the suggestions';
       hint.classList.remove('error');
     }
   }
@@ -4021,7 +4021,7 @@
         <div class="field full">
           <label>Location *</label>
           <div class="suggest-wrap">
-            <input class="exp-location" type="text" required placeholder="Raleigh, NC" value="${escapeHtml(data.location)}" autocomplete="off">
+            <input class="exp-location" type="text" required placeholder="Type your city" value="${escapeHtml(data.location)}" autocomplete="off">
           </div>
         </div>
 
@@ -4157,7 +4157,7 @@
         <div class="field">
           <label>Location *</label>
           <div class="suggest-wrap">
-            <input class="edu-location" type="text" required placeholder="Raleigh, NC" value="${escapeHtml(data.location)}" autocomplete="off">
+            <input class="edu-location" type="text" required placeholder="Type your city" value="${escapeHtml(data.location)}" autocomplete="off">
           </div>
         </div>
       </div>
