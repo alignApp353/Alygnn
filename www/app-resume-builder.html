@@ -2319,6 +2319,35 @@
   }
 
 </style>
+
+<style id="alygnn-app-builder-seamless-surface">
+  html,
+  body{
+    width:100%;
+    min-height:100%;
+    background:var(--bg)!important;
+    overflow-x:hidden;
+  }
+
+  main{
+    background:var(--bg);
+  }
+
+  @media (max-width:680px){
+    nav.app-nav{
+      background:var(--bg)!important;
+      border-bottom:1px solid var(--border)!important;
+      box-shadow:none!important;
+    }
+
+    .bottom-actions{
+      background:var(--bg)!important;
+      border-top:1px solid var(--border)!important;
+      box-shadow:none!important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -2355,9 +2384,9 @@
             </div>
 
             <div class="field">
-              <label for="jobTitle">Professional title <span aria-hidden="true">*</span></label>
+              <label for="jobTitle">Professional title <span class="optional">(optional)</span></label>
               <div class="suggest-wrap">
-                <input id="jobTitle" type="text" placeholder="Type 3 letters, e.g. Cus" autocomplete="off" required>
+                <input id="jobTitle" type="text" placeholder="Customer Success Specialist" autocomplete="off">
               </div>
             </div>
 
@@ -2624,7 +2653,7 @@
           <article class="resume-paper template-classic" id="resumePaper" data-template="classic">
             <header class="resume-header">
               <div class="resume-name" id="previewName">Your Name</div>
-              <div class="resume-title" id="previewTitle">Professional Title</div>
+              <div class="resume-title" id="previewTitle" style="display:none;"></div>
               <div class="resume-contact" id="previewContact">City, State · email@example.com · (000) 000-0000</div>
             </header>
 
@@ -3902,7 +3931,10 @@
     const data = getFormData();
 
     document.getElementById('previewName').textContent = data.name || 'Your Name';
-    document.getElementById('previewTitle').textContent = data.title || 'Professional Title';
+
+    const previewTitle = document.getElementById('previewTitle');
+    previewTitle.textContent = data.title || '';
+    previewTitle.style.display = data.title ? '' : 'none';
 
     const contactParts = [data.location, data.email, data.phone].filter(Boolean);
     document.getElementById('previewContact').textContent =
@@ -4273,7 +4305,6 @@
     const location = document.getElementById('location');
 
     if (fullName.value.trim().length < 2) add('Enter your full name.', fullName);
-    if (jobTitle.value.trim().length < 2) add('Enter your professional title.', jobTitle);
     if (!email.value.trim() || !email.checkValidity()) add('Enter a valid email address.', email);
     if (!isValidPhone(phone.value)) add('Enter a valid phone number.', phone);
     if (!isValidLocation(location.value)) add('Enter your location as City, State.', location);
