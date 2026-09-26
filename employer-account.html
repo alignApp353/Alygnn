@@ -2033,10 +2033,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const activePaid =
       ['active', 'trialing', 'past_due'].includes(status) &&
       (status === 'past_due' || accountEntitlementNotExpired(ent)) &&
-      (
-        (ent.test_mode === true && Number(ent.slot_limit || 0) > 0) ||
-        ['launch','growth','scale','weekly_slot','business','enterprise'].includes(plan)
-      );
+      ent.test_mode !== true &&
+      ['launch','growth','scale','weekly_slot','business','enterprise'].includes(plan);
 
     let limit = activePaid ? accountPaidLimit(ent) : 1;
     const used = accountActiveSlotCount();
@@ -2048,11 +2046,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (!accessResult.error && accessResult.data) {
       const serverLimit = Math.max(0, Number(accessResult.data.slot_limit || limit));
 
-      // Test packages must reflect the current canonical plan, not stale
-      // temporary/add-on capacity from an older test configuration.
-      limit = ent.test_mode === true && ['launch','growth','scale','business','enterprise'].includes(plan)
-        ? accountPaidLimit(ent)
-        : serverLimit;
+      limit = ent.test_mode === true ? 1 : serverLimit;
 
       serverAllowed = typeof accessResult.data.can_post === 'boolean' ? accessResult.data.can_post : null;
       serverReason = accessResult.data.reason || null;
