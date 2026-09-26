@@ -2922,11 +2922,15 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     const next = !(job.urgently_hiring === true);
 
-    const { error } = await sb
+    // Update ONLY the per-job Urgently Hiring flag. In particular, do not
+    // rewrite the free-slot job's other fields while toggling this badge.
+    const { data, error } = await sb
       .from('jobs')
-      .update({ urgently_hiring: next, updated_at: new Date().toISOString() })
+      .update({ urgently_hiring: next })
       .eq('id', jobId)
-      .eq('employer_id', workspaceOwnerId);
+      .eq('employer_id', workspaceOwnerId)
+      .select('id, urgently_hiring')
+      .maybeSingle();
 
     if (error) {
       console.error('Failed to toggle Urgently Hiring:', error);
@@ -2934,9 +2938,19 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    job.urgently_hiring = next;
+    // Supabase can return no error when an UPDATE matched zero rows under RLS.
+    // Never pretend the badge was saved unless the database returned this job.
+    if (!data || String(data.id) !== String(jobId)) {
+      console.error('Urgently Hiring update did not persist for job:', jobId);
+      showToast('Could not save Urgently Hiring. Please try again.');
+      return;
+    }
+
+    // Use the value returned by Supabase so the dashboard matches what survives
+    // a reload, including the permanent first/free job.
+    job.urgently_hiring = data.urgently_hiring === true;
     renderJobs();
-    showToast(next ? 'Urgently Hiring badge added.' : 'Urgently Hiring badge removed.');
+    showToast(job.urgently_hiring ? 'Urgently Hiring badge added.' : 'Urgently Hiring badge removed.');
   }
 
   function updatePostingAccessUI() {
