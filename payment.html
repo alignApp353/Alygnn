@@ -226,7 +226,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   const TERMS_VERSION = '2026-08-26';
 
   // Developer-only checkout bypass. Keep this allowlist limited to test accounts.
-  const TEST_MODE_EMAILS = ['simoninn18@gmail.com','laurenge2345@gmail.com','larauyr@hotmail.com'];
+  const TEST_MODE_EMAILS = []; // Production: developer checkout bypass disabled for every account.
   let developerTestMode = false;
 
   const CATALOG = {
@@ -919,7 +919,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       selectedPlan=planChangeTarget;
       selectedBilling=planChangeBilling;
 
-      if(postingAccess?.active_paid_plan!==true && currentEntitlement?.test_mode!==true){
+      if(postingAccess?.active_paid_plan!==true){
         showMessage('An active paid plan is required before you can change plans.','error');
         document.body.classList.add('ready');
         return;
