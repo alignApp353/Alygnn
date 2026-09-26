@@ -3871,6 +3871,25 @@ function renderCandidateOnboardingGate({hasResume,previewReviewed,preferencesCom
   /* Old dashboard 2-step onboarding is retired. */
   document.body.dataset.profileComplete='false';
 
+  /* Let an intentional Back action escape setup without forcing a redirect loop. */
+  const setupBack=
+    new URLSearchParams(window.location.search)
+      .get('setup_back')==='1';
+
+  if(setupBack){
+    try{
+      history.replaceState(null,'','app-account.html');
+    }catch(_){}
+
+    if(panel)panel.hidden=true;
+    if(hero)hero.hidden=false;
+    if(snapshot)snapshot.hidden=false;
+    if(profileSection)profileSection.hidden=false;
+    if(setup)setup.hidden=false;
+
+    return false;
+  }
+
   let destination='app-align-upload.html';
   if(hasResume && !previewReviewed){
     destination='app-resume-preview.html';
