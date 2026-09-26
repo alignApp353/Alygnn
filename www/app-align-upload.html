@@ -131,11 +131,46 @@
 }
 .preview-modal-title{font-size:18px;font-weight:900}
 .preview-close{
-  width:38px;height:38px;border-radius:50%;
+  width:40px;
+  height:40px;
+  padding:0;
+  border-radius:50%;
   border:1px solid var(--border);
-  background:rgba(255,255,255,.04);
-  color:#fff;font-size:20px;cursor:pointer
+  background:var(--card-bg);
+  color:var(--text);
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  flex:0 0 40px;
+  appearance:none;
+  -webkit-appearance:none;
 }
+.preview-close svg{
+  width:18px;
+  height:18px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.preview-modal-actions{
+  display:grid;
+  grid-template-columns:1fr 1.15fr;
+  gap:10px;
+  margin-top:14px;
+}
+.preview-modal-cancel{
+  min-height:56px;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:transparent;
+  color:var(--text);
+  font-weight:800;
+  cursor:pointer;
+}
+.preview-modal-actions .primary-btn{margin-top:0}
 .preview-modal .resume-sheet{
   min-height:500px;
   padding:26px 24px;
@@ -508,14 +543,18 @@
 </div>
 
 
-<div id="templatePreviewModal" class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="templatePreviewTitle">
+<div id="templatePreviewModal" class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="templatePreviewTitle" onclick="if(event.target===this)closeTemplatePreview()">
   <div class="preview-modal-card">
     <div class="preview-modal-top">
       <div>
         <div id="templatePreviewTitle" class="preview-modal-title">Alygnn Resume Preview</div>
         <div class="status-sub">This is the layout candidates will create with Alygnn.</div>
       </div>
-      <button class="preview-close" type="button" onclick="closeTemplatePreview()" aria-label="Close preview">×</button>
+      <button class="preview-close" type="button" onclick="closeTemplatePreview()" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M6 6l12 12M18 6L6 18"></path>
+        </svg>
+      </button>
     </div>
 
     <div class="resume-sheet">
@@ -551,7 +590,10 @@
       </div>
     </div>
 
-    <button class="primary-btn" type="button" onclick="window.location.href='app-resume-builder.html'">Build This Resume</button>
+    <div class="preview-modal-actions">
+      <button class="preview-modal-cancel" type="button" onclick="closeTemplatePreview()">Close Preview</button>
+      <button class="primary-btn" type="button" onclick="window.location.href='app-resume-builder.html'">Build This Resume</button>
+    </div>
   </div>
 </div>
 
@@ -566,7 +608,12 @@ function closeTemplatePreview(){
   document.body.style.overflow='';
 }
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape')closeTemplatePreview();
+  if(
+    event.key==='Escape' &&
+    document.getElementById('templatePreviewModal')?.classList.contains('open')
+  ){
+    closeTemplatePreview();
+  }
 });
 
 const SUPABASE_URL='https://auth.alygnn.com';
