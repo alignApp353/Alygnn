@@ -407,6 +407,27 @@
   }
 </style>
 
+
+<style id="alygnn-resume-setup-no-bottom-nav">
+  /* Resume setup is a focused 3-step flow, so hide app-level navigation here. */
+  .bottom-nav,
+  .app-bottom-nav,
+  .mobile-nav,
+  .bottom-tabs,
+  .tab-bar{
+    display:none!important;
+  }
+
+  body{
+    padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+  }
+
+  .screen,
+  main{
+    padding-bottom:calc(34px + env(safe-area-inset-bottom))!important;
+  }
+</style>
+
 </head>
 <body>
 <div class="alygnn-loader" id="alygnn-loader" aria-live="polite" aria-label="Loading resume">
@@ -485,12 +506,7 @@
 </div>
 <div id="uploadPanel" class="card upload-panel"><div class="status-title">Upload your resume</div><div class="status-sub">Accepted formats: PDF, DOC, and DOCX. Maximum size: 10MB.</div><input id="fileInput" class="hidden-input" type="file" accept=".pdf,.doc,.docx"><div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()"><div class="drop-title">Tap to choose a file</div><div class="drop-sub">You can also drag and drop a file here.</div><div id="fileName" class="file-name"></div></div><button id="uploadBtn" class="primary-btn" onclick="uploadResume()" disabled>Upload Resume</button><button class="secondary-btn" onclick="closeUploadPanel()">Cancel</button></div>
 </div>
-<nav class="bottom-nav" aria-label="Candidate navigation">
-  <button class="nav-item active" type="button" onclick="window.location.replace('app-account.html?setup_back=1')"><span class="nav-icon">◉</span><span>My Profile</span></button>
-  <button class="nav-item" type="button" onclick="window.location.href='app-swipe.html'"><span class="nav-icon">◇</span><span>Swipe</span></button>
-  <button class="nav-item" type="button" onclick="window.location.href='app-applied.html'"><span class="nav-icon">▣</span><span>My Jobs</span></button>
-  <button class="nav-item" type="button" onclick="window.location.href='app-account.html#settings'"><span class="nav-icon">⚙</span><span>Settings</span></button>
-</nav>
+
 
 <div id="templatePreviewModal" class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="templatePreviewTitle">
   <div class="preview-modal-card">
