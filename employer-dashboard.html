@@ -2378,6 +2378,50 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (box) box.classList.remove('show');
   }
 
+
+  async function syncCompletedPlanCheckoutOnReturn() {
+    if (isTeamMember) return false;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'success') return false;
+
+    const checkoutSessionId = String(params.get('session_id') || '').trim();
+    if (!checkoutSessionId) return false;
+
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) return false;
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.access_token
+        },
+        body: JSON.stringify({
+          action: 'sync_checkout_session',
+          checkout_session_id: checkoutSessionId
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.synced !== true) {
+        throw new Error(result?.error || 'Could not sync the completed Stripe checkout.');
+      }
+
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('session_id');
+      history.replaceState({}, '', clean.pathname + clean.search + (window.location.hash || '#jobs'));
+      return true;
+    } catch (error) {
+      // The normal Stripe webhook is still the primary fulfillment path.
+      // If this recovery request fails, keep the dashboard usable and let the
+      // webhook/reload path finish normally.
+      console.warn('Completed checkout sync fallback failed:', error);
+      return false;
+    }
+  }
+
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
     const authedUser = data && data.user;
@@ -2500,6 +2544,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       candidatesLoaded = true;
     }
 
+    // Stripe webhook remains the primary fulfillment path. This secure return
+    // sync is a fallback so both full-price and coupon-discounted plan checkouts
+    // are reflected immediately when the employer comes back to Alygnn.
+    await syncCompletedPlanCheckoutOnReturn();
     await loadBillingEntitlement();
     renderJobs();
     updatePostingAccessUI();
