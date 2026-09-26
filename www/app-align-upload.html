@@ -253,6 +253,60 @@
 
 <script src="app-candidate-theme.js"></script>
 <link rel="stylesheet" href="app-candidate-theme.css">
+
+<style id="alygnn-candidate-resume-flow-v1">
+  .resume-flow-topbar{
+    display:grid!important;
+    grid-template-columns:42px 1fr 42px!important;
+    align-items:center!important;
+    gap:12px!important;
+  }
+  .resume-flow-topbar .logo{
+    text-align:center!important;
+  }
+  .resume-flow-spacer{
+    width:42px;
+    height:42px;
+  }
+  .resume-flow-stage{
+    margin:22px 0 6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    color:var(--text-muted);
+    font-size:10px;
+    font-weight:800;
+  }
+  .resume-flow-stage-item{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap;
+  }
+  .resume-flow-dot{
+    width:21px;
+    height:21px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:rgba(93,127,163,.15);
+    color:var(--text-muted);
+  }
+  .resume-flow-stage-item.active{
+    color:var(--text);
+  }
+  .resume-flow-stage-item.active .resume-flow-dot{
+    background:var(--brand);
+    color:#fff;
+  }
+  .resume-flow-line{
+    width:22px;
+    height:1px;
+    background:var(--border);
+  }
+</style>
+
 </head>
 <body>
 <div class="alygnn-loader" id="alygnn-loader" aria-live="polite" aria-label="Loading resume">
@@ -263,7 +317,19 @@
   </div>
 </div>
 <div class="screen">
-<div class="topbar"><div class="back" onclick="window.location.replace('app-account.html?setup_back=1')">← Back</div><div class="logo">Alygnn.</div></div>
+<div class="topbar resume-flow-topbar">
+  <div class="resume-flow-spacer" aria-hidden="true"></div>
+  <div class="logo">Alygnn.</div>
+  <div class="resume-flow-spacer" aria-hidden="true"></div>
+</div>
+
+<div class="resume-flow-stage" aria-label="Candidate setup progress">
+  <div class="resume-flow-stage-item active"><span class="resume-flow-dot">1</span><span>Resume</span></div>
+  <span class="resume-flow-line"></span>
+  <div class="resume-flow-stage-item"><span class="resume-flow-dot">2</span><span>Preferences</span></div>
+  <span class="resume-flow-line"></span>
+  <div class="resume-flow-stage-item"><span class="resume-flow-dot">3</span><span>Matches</span></div>
+</div>
 <div class="title">Your Resume</div>
 <div class="subtitle">Upload a resume you already have, or build one with Alygnn in a few guided steps.</div>
 <div id="message" class="message"></div>
@@ -518,7 +584,7 @@ async function uploadResume(){
 
     setTimeout(
       ()=>{
-        window.location.href='app-resume-preview.html?source=upload';
+        window.location.replace('app-resume-preview.html?source=upload');
       },
       350
     );
@@ -531,7 +597,7 @@ async function uploadResume(){
     uploadButton.textContent='Upload Resume';
   }
 }
-function viewCurrentResume(){window.location.href='app-resume-preview.html';}
+function viewCurrentResume(){window.location.replace('app-resume-preview.html');}
 initializePage();
 </script>
 </body>
