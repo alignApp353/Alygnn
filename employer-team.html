@@ -550,8 +550,15 @@ async function loadTeam(){
  clearMsg('page-message');
  try{
   const {data:a,error:e1}=await sb.rpc('get_my_team_access');if(e1)throw e1;access=a||{};
+
+  // Start loading the company name immediately once the workspace/owner
+  // is known, instead of waiting for the full team roster to finish.
+  const headerNamePromise=loadHeaderCompanyName();
+
   const {data:r,error:e2}=await sb.rpc('get_my_team_roster');if(e2)throw e2;roster=r||{members:[],invites:[],access};if(r?.access)access=r.access;
-  renderAccess();renderRoster();await loadHeaderCompanyName();
+  renderAccess();renderRoster();
+
+  await headerNamePromise;
  }catch(e){console.error(e);showMsg('page-message',e.message||'Could not load team access. Make sure the Alygnn team SQL has been installed.')}
 }
 function openInvite(){
