@@ -292,10 +292,76 @@ html[data-effective-theme="dark"] .color-swatch.active{
   }
 </style>
 
+
+<style id="alygnn-resume-profile-view-mode">
+  .profile-view-back{
+    width:42px;
+    height:42px;
+    padding:0;
+    border:1px solid var(--border);
+    border-radius:50%;
+    background:var(--card-bg);
+    color:var(--text);
+    display:grid;
+    place-items:center;
+    appearance:none;
+    -webkit-appearance:none;
+    box-shadow:0 4px 14px rgba(25,40,60,.05);
+  }
+
+  .profile-view-back[hidden]{
+    display:none!important;
+  }
+
+  .profile-view-back svg{
+    width:18px;
+    height:18px;
+    display:block;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2.2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  body.profile-view-mode .resume-preview-stage{
+    display:none!important;
+  }
+
+  body.profile-view-mode .footer-inner{
+    grid-template-columns:1fr!important;
+  }
+
+  body.profile-view-mode #editBtn{
+    display:none!important;
+  }
+
+  body.profile-view-mode .page{
+    padding-top:18px;
+  }
+
+  html[data-effective-theme="dark"] .profile-view-back,
+  html[data-theme="dark"] .profile-view-back{
+    background:#0B1D26;
+    border-color:#2B3946;
+    color:#F3F6F8;
+  }
+</style>
+
 </head>
-<body data-resume-preview-build="89">
+<body data-resume-preview-build="90-profile-view-mode">
 <header class="header">
-  <div aria-hidden="true"></div>
+  <button
+    class="profile-view-back"
+    id="profileViewBack"
+    type="button"
+    aria-label="Back to My Profile"
+    hidden
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M15 18l-6-6 6-6"></path>
+    </svg>
+  </button>
   <div class="logo">Alygnn<span>.</span></div>
   <div aria-hidden="true"></div>
 </header>
@@ -860,8 +926,41 @@ function preferencesAreComplete(){
   );
 }
 
+
+function isProfileResumeView(){
+  const params=new URLSearchParams(window.location.search);
+  return params.get('view')==='profile';
+}
+
+function exitResumeView(){
+  window.location.replace('app-account.html');
+}
+
 function configureResumeFlow(){
+  const profileView=isProfileResumeView();
   const complete=preferencesAreComplete();
+
+  if(profileView){
+    document.body.classList.add('profile-view-mode');
+
+    const back=$('profileViewBack');
+    if(back){
+      back.hidden=false;
+      back.onclick=exitResumeView;
+    }
+
+    $('editBtn').hidden=true;
+    $('continueBtn').textContent='Done';
+    $('continueBtn').onclick=exitResumeView;
+    return;
+  }
+
+  document.body.classList.remove('profile-view-mode');
+
+  const back=$('profileViewBack');
+  if(back)back.hidden=true;
+
+  $('editBtn').hidden=false;
   $('continueBtn').textContent=complete?'Go to Preferences':'Continue to Preferences';
 }
 
@@ -928,6 +1027,11 @@ async function initialize(){
 }
 
 async function continueToPreferences(){
+  if(isProfileResumeView()){
+    exitResumeView();
+    return;
+  }
+
   const preferencesComplete=preferencesAreComplete();
   const button=$('continueBtn');
   button.disabled=true;
@@ -953,7 +1057,9 @@ async function continueToPreferences(){
 }
 
 $('editBtn').onclick=editResume;
-$('continueBtn').onclick=continueToPreferences;
+if(!isProfileResumeView()){
+  $('continueBtn').onclick=continueToPreferences;
+}
 if($('saveTemplateBtn')) $('saveTemplateBtn').onclick=saveTemplateChoice;
 
 initialize();
