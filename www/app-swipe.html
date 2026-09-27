@@ -1838,9 +1838,229 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-clean-mobile-discover-card">
+  /* Remove the previous experimental card treatment. */
+  .app-native-facts,
+  .app-native-summary,
+  .app-native-urgent{
+    display:none!important;
+  }
+
+  .card-stack{
+    height:min(410px,calc(100vh - 350px))!important;
+  }
+
+  .job-card{
+    padding:21px 22px 18px!important;
+    border-radius:28px!important;
+    overflow:hidden!important;
+  }
+
+  .job-card.alygnn-recommended-card:first-child{
+    padding-top:50px!important;
+  }
+
+  .card-toolbar{
+    margin-bottom:14px!important;
+  }
+
+  .match{
+    padding:8px 12px!important;
+    font-size:12px!important;
+    box-shadow:none!important;
+  }
+
+  .card-actions-mini{
+    gap:7px!important;
+  }
+
+  .icon-btn,
+  .save-btn{
+    width:37px!important;
+    height:37px!important;
+    background:var(--card-bg)!important;
+    box-shadow:none!important;
+  }
+
+  .card-top{
+    align-items:center!important;
+    gap:13px!important;
+    margin-bottom:14px!important;
+  }
+
+  .company-logo{
+    width:58px!important;
+    height:58px!important;
+    border-radius:18px!important;
+  }
+
+  .job-title{
+    font-size:27px!important;
+    line-height:1.04!important;
+    letter-spacing:-.35px!important;
+  }
+
+  .company-name{
+    font-size:14px!important;
+  }
+
+  .clean-urgent{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    align-self:flex-start;
+    margin:0 0 13px;
+    padding:7px 11px;
+    border:1px solid rgba(215,154,154,.42);
+    border-radius:999px;
+    background:rgba(215,154,154,.10);
+    color:#914747;
+    font-size:11px;
+    line-height:1;
+    font-weight:800;
+  }
+
+  .clean-urgent span{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#D79A9A;
+    box-shadow:0 0 0 3px rgba(215,154,154,.14);
+  }
+
+  .clean-meta{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    margin-top:2px;
+  }
+
+  .clean-meta-item{
+    min-width:0;
+    padding:12px 12px 11px 0;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .clean-meta-item:nth-child(odd){
+    border-right:1px solid var(--border);
+    padding-right:14px;
+  }
+
+  .clean-meta-item:nth-child(even){
+    padding-left:14px;
+    padding-right:0;
+  }
+
+  .clean-meta-item:nth-child(-n+2){
+    border-bottom:1px solid var(--border);
+  }
+
+  .clean-meta-label{
+    color:var(--text-muted);
+    font-size:9px;
+    line-height:1;
+    font-weight:800;
+    letter-spacing:.75px;
+    text-transform:uppercase;
+  }
+
+  .clean-meta strong{
+    min-width:0;
+    color:var(--text);
+    font-size:13px;
+    line-height:1.25;
+    font-weight:800;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .clean-pay strong{
+    color:var(--brand-dark);
+  }
+
+  .clean-card-bottom{
+    margin-top:auto!important;
+    padding-top:12px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+  }
+
+  .clean-view-details{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:7px!important;
+    border:0!important;
+    background:transparent!important;
+    padding:7px 0!important;
+    color:var(--brand-dark)!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:12px!important;
+    font-weight:900!important;
+    cursor:pointer!important;
+  }
+
+  .posted-time{
+    font-size:11px!important;
+  }
+
+  /* Keep actions clearly separate from the card instead of colliding with it. */
+  .action-buttons{
+    margin-top:18px!important;
+    position:relative!important;
+    z-index:10!important;
+    box-shadow:0 10px 26px rgba(27,43,63,.07)!important;
+  }
+
+  @media(max-height:820px){
+    .card-stack{
+      height:min(390px,calc(100vh - 340px))!important;
+    }
+    .job-card{
+      padding:18px 19px 16px!important;
+    }
+    .job-card.alygnn-recommended-card:first-child{
+      padding-top:47px!important;
+    }
+    .company-logo{
+      width:52px!important;
+      height:52px!important;
+    }
+    .job-title{
+      font-size:24px!important;
+    }
+    .clean-meta-item{
+      padding-top:10px;
+      padding-bottom:9px;
+    }
+    .action-buttons{
+      margin-top:14px!important;
+    }
+  }
+
+  body[data-theme="dark"] .clean-urgent,
+  html[data-effective-theme="dark"] .clean-urgent{
+    color:#E9B7B7;
+    background:rgba(215,154,154,.10);
+    border-color:rgba(215,154,154,.30);
+  }
+
+  body[data-theme="dark"] .clean-pay strong,
+  html[data-effective-theme="dark"] .clean-pay strong,
+  body[data-theme="dark"] .clean-view-details,
+  html[data-effective-theme="dark"] .clean-view-details{
+    color:#8EB4DA!important;
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-app-native-card">
+<body data-swipe-build="2026-09-27-clean-mobile-card">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -2726,46 +2946,37 @@ function buildCard(job,index){
     </div>
 
     ${job.urgently_hiring===true
-      ?'<div class="app-native-urgent"><span></span>Urgently Hiring</div>'
+      ?'<div class="clean-urgent"><span></span>Urgently Hiring</div>'
       :''}
 
-    <div class="quick-facts app-native-facts">
-      <div class="fact">
-        <div class="fact-label">Location</div>
-        <div class="fact-value">${escapeHtml(location)}</div>
+    <div class="clean-meta">
+      <div class="clean-meta-item">
+        <span class="clean-meta-label">Location</span>
+        <strong>${escapeHtml(location)}</strong>
       </div>
-      <div class="fact">
-        <div class="fact-label">Job type</div>
-        <div class="fact-value">${escapeHtml(type)}</div>
+      <div class="clean-meta-item">
+        <span class="clean-meta-label">Job type</span>
+        <strong>${escapeHtml(type)}</strong>
       </div>
-      <div class="fact">
-        <div class="fact-label">Work style</div>
-        <div class="fact-value">${escapeHtml(style||'Flexible')}</div>
+      <div class="clean-meta-item">
+        <span class="clean-meta-label">Work style</span>
+        <strong>${escapeHtml(style||'Flexible')}</strong>
       </div>
-      <div class="fact">
-        <div class="fact-label">Pay</div>
-        <div class="fact-value">${escapeHtml(salaryText(job))}</div>
+      <div class="clean-meta-item clean-pay">
+        <span class="clean-meta-label">Pay</span>
+        <strong>${escapeHtml(salaryText(job))}</strong>
       </div>
     </div>
 
-    <div class="app-native-summary">
-      <div class="app-native-summary-title">About this role</div>
-      <div class="card-desc">${escapeHtml(
-        (job.description||'').trim()
-          ? String(job.description).trim().split(/\n+/)[0]
-          : 'Open the full job ad to see responsibilities, qualifications, and benefits.'
-      )}</div>
-    </div>
-
-    <div class="card-bottom app-native-card-bottom">
+    <div class="card-bottom clean-card-bottom">
       <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
       <button
-        class="view-full-ad apply-link"
+        class="view-full-ad clean-view-details"
         type="button"
         aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
       >
-        <span>Full job ad</span>
-        <span class="view-full-ad-arrow">→</span>
+        <span>View details</span>
+        <span aria-hidden="true">→</span>
       </button>
     </div>
   `;
