@@ -2058,9 +2058,354 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-balanced-mobile-fit">
+  /* ----- page chrome ----- */
+  .top-header{
+    min-height:74px!important;
+    padding:calc(8px + env(safe-area-inset-top)) 18px 8px!important;
+  }
+  .top-header .logo{
+    font-size:29px!important;
+  }
+
+  .progress-shell{
+    padding:8px 18px 0!important;
+  }
+  .progress-card{
+    min-height:54px!important;
+    padding:8px 12px!important;
+    border-radius:18px!important;
+    box-shadow:0 5px 16px rgba(25,40,60,.045)!important;
+  }
+  .stat-val{
+    font-size:16px!important;
+  }
+  .stat-label{
+    font-size:8px!important;
+  }
+  .progress-copy{
+    margin-bottom:4px!important;
+    font-size:10px!important;
+  }
+  .progress-track{
+    height:5px!important;
+  }
+
+  /* ----- discover canvas ----- */
+  .swipe-area{
+    height:calc(100dvh - 74px - 63px - 78px)!important;
+    min-height:520px!important;
+    justify-content:flex-start!important;
+    padding:10px 18px 8px!important;
+  }
+
+  .card-stack{
+    width:100%!important;
+    max-width:430px!important;
+    height:min(420px,calc(100dvh - 300px))!important;
+    min-height:380px!important;
+  }
+
+  .job-card{
+    padding:20px 22px 17px!important;
+    border-radius:27px!important;
+  }
+
+  .job-card.alygnn-recommended-card:first-child{
+    padding-top:46px!important;
+  }
+
+  .alygnn-recommended-banner{
+    min-height:32px!important;
+    padding:0 15px!important;
+    border-radius:0 26px 0 13px!important;
+    font-size:9.5px!important;
+    letter-spacing:.65px!important;
+    box-shadow:0 5px 14px rgba(93,127,163,.20)!important;
+  }
+
+  .card-toolbar{
+    margin-bottom:12px!important;
+  }
+
+  .match{
+    padding:7px 11px!important;
+    font-size:11px!important;
+    font-weight:800!important;
+  }
+
+  .icon-btn,
+  .save-btn{
+    width:35px!important;
+    height:35px!important;
+    font-size:16px!important;
+  }
+
+  .card-top{
+    align-items:center!important;
+    gap:12px!important;
+    margin-bottom:12px!important;
+  }
+
+  .company-logo{
+    width:54px!important;
+    height:54px!important;
+    border-radius:17px!important;
+  }
+
+  .job-title{
+    font-size:25px!important;
+    line-height:1.04!important;
+    letter-spacing:-.4px!important;
+  }
+
+  .company-name{
+    font-size:13px!important;
+  }
+
+  /* ----- compact app-native job info ----- */
+  .clean-urgent,
+  .clean-meta,
+  .app-native-facts,
+  .app-native-summary,
+  .app-native-urgent{
+    display:none!important;
+  }
+
+  .mobile-job-tags{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin:1px 0 13px;
+  }
+
+  .mobile-tag{
+    display:inline-flex;
+    align-items:center;
+    min-height:28px;
+    max-width:100%;
+    padding:0 10px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:rgba(248,250,252,.78);
+    color:var(--text-muted);
+    font-size:10.5px;
+    line-height:1;
+    font-weight:750;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .mobile-tag.pay{
+    background:rgba(93,127,163,.09);
+    border-color:rgba(93,127,163,.20);
+    color:var(--brand-dark);
+    font-weight:850;
+  }
+
+  .mobile-tag.urgent{
+    border-color:rgba(215,154,154,.42);
+    background:rgba(215,154,154,.10);
+    color:#914747;
+    font-weight:850;
+  }
+
+  .urgent-dot{
+    width:6px;
+    height:6px;
+    margin-right:6px;
+    border-radius:50%;
+    background:#D79A9A;
+    box-shadow:0 0 0 3px rgba(215,154,154,.13);
+    flex:0 0 6px;
+  }
+
+  .mobile-role-preview{
+    color:var(--text-muted);
+    font-size:12.5px;
+    line-height:1.5;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    margin:0;
+  }
+
+  .mobile-card-bottom{
+    margin-top:auto!important;
+    padding-top:11px!important;
+    border-top:1px solid var(--border)!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+  }
+
+  .mobile-view-details{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:7px!important;
+    border:0!important;
+    background:transparent!important;
+    padding:5px 0!important;
+    color:var(--brand-dark)!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:11.5px!important;
+    font-weight:850!important;
+    cursor:pointer!important;
+  }
+
+  .posted-time{
+    font-size:10.5px!important;
+  }
+
+  /* ----- actions: individual buttons, no giant white container ----- */
+  .action-buttons{
+    width:100%!important;
+    max-width:430px!important;
+    grid-template-columns:72px minmax(0,1fr) minmax(0,1.35fr)!important;
+    gap:9px!important;
+    margin-top:12px!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  .action-btn{
+    height:58px!important;
+    border-radius:17px!important;
+    box-shadow:0 5px 14px rgba(27,43,63,.055)!important;
+  }
+
+  .action-undo-icon{
+    font-size:18px!important;
+  }
+
+  .action-main{
+    font-size:11.5px!important;
+  }
+
+  .action-sub{
+    margin-top:2px!important;
+    font-size:8.5px!important;
+  }
+
+  .btn-apply{
+    box-shadow:0 7px 18px rgba(53,103,154,.20)!important;
+  }
+
+  /* ----- bottom navigation ----- */
+  .bottom-nav{
+    min-height:68px!important;
+    padding:7px 10px calc(10px + env(safe-area-inset-bottom))!important;
+  }
+
+  .bottom-nav .nav,
+  .bottom-nav .nav-item,
+  .bottom-nav .nav-link{
+    font-size:9px!important;
+    gap:3px!important;
+  }
+
+  .bottom-nav svg,
+  .bottom-nav .nav-icon{
+    width:19px!important;
+    height:19px!important;
+  }
+
+  /* ----- dark mode ----- */
+  html[data-effective-theme="dark"] .mobile-tag,
+  body[data-theme="dark"] .mobile-tag{
+    background:#0D202A;
+    border-color:var(--border);
+    color:var(--text-muted);
+  }
+
+  html[data-effective-theme="dark"] .mobile-tag.pay,
+  body[data-theme="dark"] .mobile-tag.pay{
+    background:rgba(93,127,163,.15);
+    color:#8EB4DA;
+  }
+
+  html[data-effective-theme="dark"] .mobile-tag.urgent,
+  body[data-theme="dark"] .mobile-tag.urgent{
+    background:rgba(215,154,154,.10);
+    border-color:rgba(215,154,154,.30);
+    color:#E5B1B1;
+  }
+
+  html[data-effective-theme="dark"] .mobile-view-details,
+  body[data-theme="dark"] .mobile-view-details{
+    color:#8EB4DA!important;
+  }
+
+  /* Very short Android displays still keep everything on-screen. */
+  @media(max-height:800px){
+    .top-header{
+      min-height:68px!important;
+      padding-top:calc(6px + env(safe-area-inset-top))!important;
+      padding-bottom:6px!important;
+    }
+    .progress-shell{
+      padding-top:6px!important;
+    }
+    .progress-card{
+      min-height:49px!important;
+      padding:6px 10px!important;
+    }
+    .swipe-area{
+      height:calc(100dvh - 68px - 57px - 72px)!important;
+      min-height:485px!important;
+      padding-top:8px!important;
+    }
+    .card-stack{
+      height:min(390px,calc(100dvh - 285px))!important;
+      min-height:350px!important;
+    }
+    .job-card{
+      padding:17px 19px 14px!important;
+    }
+    .job-card.alygnn-recommended-card:first-child{
+      padding-top:43px!important;
+    }
+    .job-title{
+      font-size:23px!important;
+    }
+    .company-logo{
+      width:50px!important;
+      height:50px!important;
+    }
+    .mobile-job-tags{
+      margin-bottom:10px!important;
+      gap:6px!important;
+    }
+    .mobile-tag{
+      min-height:25px!important;
+      font-size:9.7px!important;
+    }
+    .mobile-role-preview{
+      -webkit-line-clamp:2!important;
+      font-size:11.7px!important;
+    }
+    .action-buttons{
+      margin-top:9px!important;
+    }
+    .action-btn{
+      height:54px!important;
+    }
+    .bottom-nav{
+      min-height:64px!important;
+      padding-top:6px!important;
+    }
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-clean-mobile-card">
+<body data-swipe-build="2026-09-27-balanced-fit">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -2945,33 +3290,28 @@ function buildCard(job,index){
       </div>
     </div>
 
-    ${job.urgently_hiring===true
-      ?'<div class="clean-urgent"><span></span>Urgently Hiring</div>'
-      :''}
-
-    <div class="clean-meta">
-      <div class="clean-meta-item">
-        <span class="clean-meta-label">Location</span>
-        <strong>${escapeHtml(location)}</strong>
-      </div>
-      <div class="clean-meta-item">
-        <span class="clean-meta-label">Job type</span>
-        <strong>${escapeHtml(type)}</strong>
-      </div>
-      <div class="clean-meta-item">
-        <span class="clean-meta-label">Work style</span>
-        <strong>${escapeHtml(style||'Flexible')}</strong>
-      </div>
-      <div class="clean-meta-item clean-pay">
-        <span class="clean-meta-label">Pay</span>
-        <strong>${escapeHtml(salaryText(job))}</strong>
-      </div>
+    <div class="mobile-job-tags">
+      ${job.urgently_hiring===true
+        ?'<span class="mobile-tag urgent"><span class="urgent-dot"></span>Urgently Hiring</span>'
+        :''}
+      <span class="mobile-tag">${escapeHtml(location)}</span>
+      <span class="mobile-tag">${escapeHtml(type)}</span>
+      ${style?`<span class="mobile-tag">${escapeHtml(style)}</span>`:''}
+      <span class="mobile-tag pay">${escapeHtml(salaryText(job))}</span>
     </div>
 
-    <div class="card-bottom clean-card-bottom">
+    <div class="mobile-role-preview">
+      ${escapeHtml(
+        (job.description||'').trim()
+          ? String(job.description).trim().replace(/\s+/g,' ')
+          : 'Open the full job ad to see responsibilities, qualifications, and benefits.'
+      )}
+    </div>
+
+    <div class="card-bottom mobile-card-bottom">
       <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
       <button
-        class="view-full-ad clean-view-details"
+        class="view-full-ad mobile-view-details"
         type="button"
         aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
       >
