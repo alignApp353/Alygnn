@@ -2917,6 +2917,82 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-no-jobs-state">
+  .empty-screen{
+    display:none;
+    min-height:calc(100dvh - 210px);
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    text-align:center;
+    padding:34px 24px 110px;
+  }
+
+  .no-jobs-icon{
+    font-size:46px;
+    line-height:1;
+    margin-bottom:15px;
+  }
+
+  .empty-title{
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:22px!important;
+    line-height:1.2;
+    font-weight:850;
+    color:var(--text);
+    margin-bottom:9px!important;
+  }
+
+  .empty-sub{
+    max-width:330px!important;
+    color:var(--text-muted)!important;
+    font-size:14px;
+    line-height:1.55!important;
+  }
+
+  .no-jobs-actions{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    max-width:250px;
+    margin-top:22px;
+  }
+
+  .no-jobs-primary,
+  .no-jobs-secondary{
+    width:100%;
+    min-height:48px;
+    border-radius:999px;
+    font-family:'DM Sans',Arial,sans-serif;
+    font-size:13px;
+    font-weight:850;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .no-jobs-primary{
+    border:1px solid var(--brand);
+    background:var(--brand);
+    color:#fff;
+    box-shadow:0 7px 18px rgba(93,127,163,.18);
+  }
+
+  .no-jobs-secondary{
+    border:1.5px solid var(--brand);
+    background:transparent;
+    color:var(--brand-dark);
+  }
+
+  html[data-effective-theme="dark"] .no-jobs-secondary,
+  body[data-theme="dark"] .no-jobs-secondary{
+    color:#8EB4DA;
+    border-color:#5D7FA3;
+  }
+</style>
+
 </head>
 
 <body data-swipe-build="2026-09-27-equal-buttons">
@@ -2982,9 +3058,14 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 </main>
 
 <section class="empty-screen" id="empty-screen">
-  <div class="empty-title">You're all caught up</div>
+  <div class="no-jobs-icon" aria-hidden="true">😕</div>
+  <div class="empty-title">Couldn't load jobs</div>
   <div class="empty-sub">
-    You went through all your matches. More jobs will appear as Alygnn finds better fits for you.
+    No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.
+  </div>
+  <div class="no-jobs-actions">
+    <button class="no-jobs-primary" type="button" onclick="loadJobs()">Try again</button>
+    <button class="no-jobs-secondary" type="button" onclick="window.location.href='app-preferences.html?edit=1'">Set preferences again</button>
   </div>
 </section>
 
@@ -4224,9 +4305,9 @@ function updateStats(){
 
   document.getElementById('stat-applied').textContent=applied;
   document.getElementById('stat-skipped').textContent=skipped;
-  document.getElementById('stat-remaining').textContent=remaining;
-  document.getElementById('job-progress-copy').textContent=`Job ${position} of ${jobs.length}`;
-  document.getElementById('progress-fill').style.width=progress+'%';
+  document.getElementById('stat-remaining').textContent=jobs.length ? remaining : '—';
+  document.getElementById('job-progress-copy').textContent=jobs.length ? `Job ${position} of ${jobs.length}` : '';
+  document.getElementById('progress-fill').style.width=jobs.length ? progress+'%' : '0%';
 }
 
 function showToast(message){
