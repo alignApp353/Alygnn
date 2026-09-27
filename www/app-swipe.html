@@ -2867,9 +2867,59 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-equal-swipe-buttons">
+  .old-action-layout{
+    align-items:flex-start!important;
+    gap:24px!important;
+  }
+
+  .old-action-layout .action-wrap{
+    width:64px!important;
+    align-items:center!important;
+  }
+
+  .old-action-layout .btn-undo,
+  .old-action-layout .btn-skip,
+  .old-action-layout .btn-apply{
+    width:60px!important;
+    height:60px!important;
+    min-width:60px!important;
+    min-height:60px!important;
+    max-width:60px!important;
+    max-height:60px!important;
+    flex:0 0 60px!important;
+    border-radius:50%!important;
+  }
+
+  .old-action-layout .btn-undo{font-size:19px!important;}
+  .old-action-layout .btn-skip{font-size:25px!important;}
+  .old-action-layout .btn-apply{font-size:27px!important;}
+
+  .old-action-layout .action-label{
+    width:64px!important;
+    text-align:center!important;
+    line-height:1.2!important;
+  }
+
+  @media(max-height:820px){
+    .old-action-layout .btn-undo,
+    .old-action-layout .btn-skip,
+    .old-action-layout .btn-apply{
+      width:58px!important;
+      height:58px!important;
+      min-width:58px!important;
+      min-height:58px!important;
+      max-width:58px!important;
+      max-height:58px!important;
+      flex:0 0 58px!important;
+    }
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-old-layout-restored">
+<body data-swipe-build="2026-09-27-equal-buttons">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
