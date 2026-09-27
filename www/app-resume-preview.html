@@ -329,11 +329,12 @@ html[data-effective-theme="dark"] .color-swatch.active{
   }
 
   body.profile-view-mode .footer-inner{
-    grid-template-columns:1fr!important;
+    grid-template-columns:1fr 1.35fr!important;
+    gap:10px!important;
   }
 
   body.profile-view-mode #editBtn{
-    display:none!important;
+    display:block!important;
   }
 
   body.profile-view-mode .page{
@@ -349,7 +350,7 @@ html[data-effective-theme="dark"] .color-swatch.active{
 </style>
 
 </head>
-<body data-resume-preview-build="90-profile-view-mode">
+<body data-resume-preview-build="91-profile-view-edit">
 <header class="header">
   <button
     class="profile-view-back"
@@ -949,7 +950,12 @@ function configureResumeFlow(){
       back.onclick=exitResumeView;
     }
 
-    $('editBtn').hidden=true;
+    $('editBtn').hidden=false;
+    $('editBtn').textContent='Edit Resume';
+    $('editBtn').onclick=()=>{
+      window.location.href='app-resume-builder.html';
+    };
+
     $('continueBtn').textContent='Done';
     $('continueBtn').onclick=exitResumeView;
     return;
@@ -1013,7 +1019,9 @@ async function initialize(){
 
   const source=currentSource();
   $('sourceBadge').textContent=source==='builder'?'Resume template':'Uploaded resume';
-  $('editBtn').textContent='Change Resume';
+  if(!isProfileResumeView()){
+    $('editBtn').textContent='Change Resume';
+  }
 
   if(source==='builder'){
     renderBuilderResume();
@@ -1056,8 +1064,8 @@ async function continueToPreferences(){
   }
 }
 
-$('editBtn').onclick=editResume;
 if(!isProfileResumeView()){
+  $('editBtn').onclick=editResume;
   $('continueBtn').onclick=continueToPreferences;
 }
 if($('saveTemplateBtn')) $('saveTemplateBtn').onclick=saveTemplateChoice;
