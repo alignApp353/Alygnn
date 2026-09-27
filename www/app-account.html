@@ -4365,44 +4365,131 @@ async function loadCandidateWorkspace(options={}){
   }
 }
 
-function switchToEmployerMode(){
-  try{
-    localStorage.setItem('alygnn_active_mode','employer');
-    sessionStorage.setItem('alygnn_active_mode','employer');
-  }catch(_){}
+function hasEmployerWorkspaceAccess(access){
+  const role=String(
+    access?.team_role ||
+    access?.role ||
+    ''
+  ).toLowerCase().trim();
 
-  window.location.href='app-employer-dashboard.html?mode=employer';
+  const validTeamRole=new Set([
+    'owner',
+    'admin',
+    'hiring_manager',
+    'recruiter'
+  ]).has(role);
+
+  return Boolean(
+    access?.has_company===true &&
+    access?.company_id &&
+    (
+      access?.is_owner===true ||
+      validTeamRole
+    )
+  );
+}
+
+function clearStaleEmployerMode(){
+  try{
+    if(localStorage.getItem('alygnn_active_mode')==='employer'){
+      localStorage.removeItem('alygnn_active_mode');
+    }
+
+    if(sessionStorage.getItem('alygnn_active_mode')==='employer'){
+      sessionStorage.removeItem('alygnn_active_mode');
+    }
+  }catch(_){}
+}
+
+async function switchToEmployerMode(){
+  const card=$('candidate-workspace-mode-card');
+
+  // Never trust the fact that the button is visible by itself.
+  // Re-check live team access before opening an employer workspace.
+  try{
+    const sessionResult=await sb.auth.getSession();
+    const userId=sessionResult?.data?.session?.user?.id;
+
+    if(!userId){
+      clearStaleEmployerMode();
+      if(card) card.hidden=true;
+      return;
+    }
+
+    const {data,error}=await sb.rpc('get_my_team_access');
+
+    if(error){
+      throw error;
+    }
+
+    const access=data||{};
+
+    if(!hasEmployerWorkspaceAccess(access)){
+      clearStaleEmployerMode();
+      if(card) card.hidden=true;
+
+      showSettingsMessage(
+        'Recruiter mode is only available after you create an employer workspace or accept a team invitation.',
+        'info'
+      );
+      return;
+    }
+
+    try{
+      localStorage.setItem('alygnn_active_mode','employer');
+      sessionStorage.setItem('alygnn_active_mode','employer');
+    }catch(_){}
+
+    window.location.href='app-employer-dashboard.html?mode=employer';
+  }catch(error){
+    console.warn('Employer workspace access check failed:',error);
+    clearStaleEmployerMode();
+    if(card) card.hidden=true;
+
+    showSettingsMessage(
+      'Alygnn could not verify recruiter access right now.',
+      'error'
+    );
+  }
 }
 
 async function configureWorkspaceModeSwitch(){
   const card=$('candidate-workspace-mode-card');
   if(!card || typeof sb==='undefined') return;
 
+  // Hidden by default. It is shown only after the server confirms that this
+  // login owns a company or is an ACTIVE accepted teammate.
   card.hidden=true;
 
   try{
     const sessionResult=await sb.auth.getSession();
     const userId=sessionResult?.data?.session?.user?.id;
-    if(!userId) return;
 
-    const {data,error}=await sb.rpc('get_my_team_access');
-    if(error){
-      console.warn('Workspace mode check unavailable:',error);
+    if(!userId){
+      clearStaleEmployerMode();
       return;
     }
 
-    const access=data||{};
-    const canUseEmployerWorkspace=Boolean(
-      access.is_owner===true ||
-      access.company_id ||
-      access.owner_user_id ||
-      access.team_role ||
-      access.role
-    );
+    const {data,error}=await sb.rpc('get_my_team_access');
+
+    if(error){
+      console.warn('Workspace mode check unavailable:',error);
+      clearStaleEmployerMode();
+      return;
+    }
+
+    const canUseEmployerWorkspace=
+      hasEmployerWorkspaceAccess(data||{});
 
     card.hidden=!canUseEmployerWorkspace;
+
+    if(!canUseEmployerWorkspace){
+      clearStaleEmployerMode();
+    }
   }catch(error){
     console.warn('Could not configure workspace mode switch:',error);
+    clearStaleEmployerMode();
+    card.hidden=true;
   }
 }
 
