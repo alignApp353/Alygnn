@@ -2993,9 +2993,88 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-no-jobs-render-fix">
+  /* IMPORTANT: the restored swipe layout uses display:flex!important.
+     These classes intentionally override that when there are no jobs. */
+  #swipe-area.is-hidden-for-empty{
+    display:none!important;
+  }
+
+  #empty-screen{
+    display:none!important;
+  }
+
+  #empty-screen.is-visible{
+    display:flex!important;
+    min-height:calc(100dvh - 210px)!important;
+    padding:28px 24px calc(96px + env(safe-area-inset-bottom))!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+
+  /* Match the reference empty state: keep the three counters,
+     remove the unused "Job 0 of 0" progress section entirely. */
+  body.no-jobs-mode .progress-card{
+    grid-template-columns:repeat(3,1fr)!important;
+    max-width:330px!important;
+  }
+
+  body.no-jobs-mode .job-progress{
+    display:none!important;
+  }
+
+  body.no-jobs-mode #stat-remaining{
+    font-size:0!important;
+  }
+
+  body.no-jobs-mode #stat-remaining::after{
+    content:'—';
+    font-size:18px;
+    font-weight:900;
+    color:var(--text);
+  }
+
+  body.no-jobs-mode .no-jobs-icon{
+    display:block!important;
+    font-size:44px!important;
+    line-height:1!important;
+    margin:0 0 16px!important;
+  }
+
+  body.no-jobs-mode .empty-title{
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:22px!important;
+    line-height:1.2!important;
+    font-weight:850!important;
+    margin:0 0 10px!important;
+  }
+
+  body.no-jobs-mode .empty-sub{
+    max-width:320px!important;
+    font-size:14px!important;
+    line-height:1.55!important;
+    margin:0!important;
+  }
+
+  body.no-jobs-mode .no-jobs-actions{
+    display:flex!important;
+    width:100%!important;
+    max-width:240px!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    margin-top:22px!important;
+  }
+
+  body.no-jobs-mode .no-jobs-primary,
+  body.no-jobs-mode .no-jobs-secondary{
+    min-height:46px!important;
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-equal-buttons">
+<body data-swipe-build="2026-09-27-no-jobs-visible">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -3978,19 +4057,25 @@ function buildCard(job,index){
 
 function renderCards(){
   const stack=document.getElementById('card-stack');
+  const swipeArea=document.getElementById('swipe-area');
+  const emptyScreen=document.getElementById('empty-screen');
+
   stack.innerHTML='';
 
   const remaining=jobs.slice(currentIndex,currentIndex+3);
+  const noJobs=!remaining.length;
 
-  if(!remaining.length){
-    document.getElementById('swipe-area').style.display='none';
-    document.getElementById('empty-screen').style.display='flex';
+  document.body.classList.toggle('no-jobs-mode',noJobs);
+
+  if(noJobs){
+    swipeArea.classList.add('is-hidden-for-empty');
+    emptyScreen.classList.add('is-visible');
     updateStats();
     return;
   }
 
-  document.getElementById('swipe-area').style.display='flex';
-  document.getElementById('empty-screen').style.display='none';
+  swipeArea.classList.remove('is-hidden-for-empty');
+  emptyScreen.classList.remove('is-visible');
 
   remaining.forEach((job,i)=>{
     stack.appendChild(buildCard(job,currentIndex+i));
