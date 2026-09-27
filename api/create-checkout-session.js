@@ -1490,6 +1490,94 @@ async function syncCompletedPlanCheckout(user,sessionId){
 }
 
 
+
+async function syncCompletedTeamSeatCheckout(user,sessionId){
+  const id=String(sessionId||'').trim();
+
+  if(!/^cs_/.test(id)){
+    const error=new Error('A valid Stripe Checkout Session ID is required.');
+    error.status=400;
+    throw error;
+  }
+
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(id),
+    {'expand[]':'subscription'}
+  );
+
+  const meta=session?.metadata||{};
+  const employerId=String(meta.employer_id||'');
+  const product=String(meta.product||'').toLowerCase();
+
+  if(employerId!==String(user.id)){
+    const error=new Error('This checkout does not belong to the signed-in employer.');
+    error.status=403;
+    throw error;
+  }
+
+  if(product!=='team_seat'){
+    const error=new Error('This checkout is not an Alygnn team-seat purchase.');
+    error.status=400;
+    throw error;
+  }
+
+  if(String(session?.status||'').toLowerCase()!=='complete'){
+    const error=new Error('Stripe has not completed this team-seat checkout yet.');
+    error.status=409;
+    throw error;
+  }
+
+  let subscription=session?.subscription||null;
+
+  if(typeof subscription==='string'){
+    subscription=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  if(!subscription?.id){
+    const error=new Error('Stripe did not return the completed team-seat subscription.');
+    error.status=409;
+    throw error;
+  }
+
+  const status=String(subscription.status||'').toLowerCase();
+
+  if(!['active','trialing'].includes(status)){
+    const error=new Error('The team-seat subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const unitAmount=Number(
+    subscription?.items?.data?.[0]?.price?.unit_amount ??
+    meta.unit_amount_cents ??
+    0
+  );
+
+  const result=await manageRpc('sync_team_seat_subscription',{
+    p_employer_id:user.id,
+    p_stripe_subscription_id:subscription.id,
+    p_status:status,
+    p_expires_at:subscription.current_period_end
+      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+      :null,
+    p_payment_reference:session.id,
+    p_amount_cents:Number.isFinite(unitAmount)?unitAmount:0
+  });
+
+  return{
+    synced:true,
+    subscription_id:subscription.id,
+    subscription_status:status,
+    team_seat:true,
+    result:result||null
+  };
+}
+
 async function syncCompletedBoostCheckout(user,sessionId){
   const id=String(sessionId||'').trim();
   if(!/^cs_/.test(id)){
@@ -1620,6 +1708,11 @@ async function runManageAction(res,user,input){
 
   if(action==='sync_boost_checkout'){
     const result=await syncCompletedBoostCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
+  if(action==='sync_team_seat_checkout'){
+    const result=await syncCompletedTeamSeatCheckout(user,input.checkout_session_id);
     return send(res,200,{ok:true,...result});
   }
 
@@ -1842,7 +1935,8 @@ module.exports = async function handler(req, res) {
       'resume_second_slot',
       'billing_portal',
       'sync_checkout_session',
-      'sync_boost_checkout'
+      'sync_boost_checkout',
+      'sync_team_seat_checkout'
     ].includes(billingAction)) {
       return await runManageAction(res, user, input);
     }
@@ -2042,7 +2136,7 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: (product === 'job_plan' || product === 'job_boost')
+      success_url: (product === 'job_plan' || product === 'job_boost' || product === 'team_seat')
         ? checkoutSuccessWithSessionId(successUrl)
         : successUrl,
       cancel_url: cancelUrl,
