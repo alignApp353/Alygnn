@@ -966,7 +966,7 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   <div class="stat"><div id="appliedCount" class="stat-number">0</div><div class="stat-label">Applied</div></div>
   <div class="stat"><div id="acceptedCount" class="stat-number">0</div><div class="stat-label">Accepted</div></div>
   <div class="stat"><div id="notSelectedCount" class="stat-number">0</div><div class="stat-label">Not Selected</div></div>
-  <div class="stat"><div id="skipCount" class="stat-number">0</div><div class="stat-label">Skip</div></div>
+  <div class="stat"><div id="skipCount" class="stat-number">0</div><div class="stat-label">Skipped</div></div>
 </div>
 <div class="tabs">
   <button class="tab active" id="appliedTab" onclick="filterApps('applied',this)">Applied</button>
@@ -1208,7 +1208,7 @@ function updateCounts(){
     `Not Selected (${apps.filter(row=>row.canonical_status==='not_selected').length})`;
 
   document.getElementById('skipTab').textContent=
-    `Skip (${passedJobs.length})`;
+    `Skipped (${passedJobs.length})`;
 }
 
 function renderSkipped(){
@@ -1252,7 +1252,7 @@ function renderSkipped(){
                 <div class="company">${esc(company)}</div>
               </div>
 
-              <div class="status skip">Skip</div>
+              <div class="status skip">Skipped</div>
             </div>
 
             <div class="meta">
