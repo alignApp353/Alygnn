@@ -2352,7 +2352,7 @@
 
 <body>
 <nav class="app-nav">
-  <a href="app-align-upload.html" class="nav-back">← Back</a>
+  <a href="app-align-upload.html" class="nav-back" id="resumeBuilderBack">← Back</a>
   <a href="app-account.html" class="logo" aria-label="Alygnn profile">Alygnn<span>.</span></a>
   <div class="nav-spacer" aria-hidden="true"></div>
 </nav>
@@ -2715,6 +2715,43 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
   const { createClient } = supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function isExistingResumeEditMode() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'edit';
+  }
+
+  function resumeBuilderReturnTarget() {
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('return');
+
+    if (returnTo === 'preview') {
+      return 'app-resume-preview.html?view=profile';
+    }
+
+    if (returnTo === 'profile') {
+      return 'app-account.html';
+    }
+
+    return isExistingResumeEditMode()
+      ? 'app-account.html'
+      : 'app-align-upload.html';
+  }
+
+  function configureExistingResumeEditMode() {
+    const back = document.getElementById('resumeBuilderBack');
+    if (back) back.href = resumeBuilderReturnTarget();
+
+    if (!isExistingResumeEditMode()) return;
+
+    const continueButton = document.getElementById('continueBtn');
+    if (continueButton) continueButton.textContent = 'Save changes';
+
+    const completionStatus = document.getElementById('completionStatus');
+    if (completionStatus && !completionStatus.classList.contains('error')) {
+      completionStatus.textContent = 'Update your resume and save your changes.';
+    }
+  }
 
   let STORAGE_KEY = null;
 
@@ -4925,10 +4962,16 @@
     // Keep the button clickable. If something is missing, clicking it will
     // highlight every missing/invalid field in bold red.
     button.disabled = false;
-    button.textContent = 'Save & continue →';
+    button.textContent = isExistingResumeEditMode()
+      ? 'Save changes'
+      : 'Save & continue →';
 
     completionStatus.textContent = complete
-      ? 'Resume complete — you can continue.'
+      ? (
+          isExistingResumeEditMode()
+            ? 'Resume ready — save your changes when finished.'
+            : 'Resume complete — you can continue.'
+        )
       : `${issues.length} item${issues.length === 1 ? '' : 's'} still need attention.`;
     completionStatus.classList.toggle('ready', complete);
     completionStatus.classList.toggle('error', !complete);
@@ -5335,16 +5378,22 @@
             localStorage.setItem(cacheKey, JSON.stringify({
               ...previous,
               hasResume: true,
-              previewReviewed: false,
+              previewReviewed: isExistingResumeEditMode()
+                ? true
+                : false,
               updatedAt: Date.now()
             }));
           }
         } catch (_cacheError) {}
       }
 
-      // Replace the builder in history so Android Back cannot dump the candidate
-      // back into the completed form after the resume has already been saved.
-      window.location.replace('app-resume-preview.html?source=builder&saved=1');
+      // New-account setup continues through Resume -> Preferences -> Matches.
+      // Existing-account edits return to the completed profile/view flow instead.
+      if (isExistingResumeEditMode()) {
+        window.location.replace(resumeBuilderReturnTarget());
+      } else {
+        window.location.replace('app-resume-preview.html?source=builder&saved=1');
+      }
     } catch (error) {
       console.error('Resume save failed:', error);
 
@@ -5370,7 +5419,7 @@
         'error'
       );
       button.disabled = false;
-      button.textContent = 'Save & continue →';
+      button.textContent = isExistingResumeEditMode() ? 'Save changes' : 'Save & continue →';
     }
   }
 
@@ -5527,6 +5576,7 @@
 document.getElementById('clearBtn').addEventListener('click', clearResume);
   document.getElementById('saveDraftBtn').addEventListener('click', autoSave);
   document.getElementById('continueBtn').addEventListener('click', saveAndContinue);
+  configureExistingResumeEditMode();
 
   (function initBottomActionsVisibility() {
     const bar = document.querySelector('.bottom-actions');
