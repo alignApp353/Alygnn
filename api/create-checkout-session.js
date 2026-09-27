@@ -634,6 +634,26 @@ function subscriptionBilling(ent,sub){
   return ['monthly','quarterly'].includes(fromStripe)?fromStripe:billingPeriod(ent);
 }
 
+async function manageRpc(name, body) {
+  const response = await fetch(
+    manageBase() + '/rest/v1/rpc/' + encodeURIComponent(name),
+    {
+      method: 'POST',
+      headers: manageServiceHeaders(),
+      body: JSON.stringify(body || {})
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      (data && (data.message || data.error)) ||
+      ('Supabase RPC ' + name + ' failed.')
+    );
+  }
+  return data;
+}
+
 async function manageStripe(method,path,params){
   const secret=process.env.STRIPE_SECRET_KEY;
   if(!secret)throw new Error('STRIPE_SECRET_KEY is not configured.');
