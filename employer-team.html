@@ -1244,6 +1244,57 @@ const escapeHtml = esc;
     window.addEventListener('focus',()=>refreshNotifications());
   }
 
+
+async function syncCompletedTeamSeatOnReturn(){
+  const q=new URLSearchParams(location.search);
+
+  if(q.get('team_seat')!=='success'){
+    return {attempted:false,synced:false};
+  }
+
+  const checkoutSessionId=String(q.get('session_id')||'').trim();
+
+  if(!checkoutSessionId){
+    return {attempted:false,synced:false};
+  }
+
+  try{
+    const response=await fetch('/api/create-checkout-session',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+session.access_token
+      },
+      body:JSON.stringify({
+        action:'sync_team_seat_checkout',
+        checkout_session_id:checkoutSessionId
+      })
+    });
+
+    const result=await response.json().catch(()=>({}));
+
+    if(!response.ok||result?.synced!==true){
+      throw new Error(
+        result?.error||
+        'The completed team-seat purchase could not be synced.'
+      );
+    }
+
+    const clean=new URL(location.href);
+    clean.searchParams.delete('session_id');
+    history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+
+    return {attempted:true,synced:true,result};
+  }catch(error){
+    console.error('Team seat checkout sync failed:',error);
+    return {
+      attempted:true,
+      synced:false,
+      error
+    };
+  }
+}
+
 async function signOut(){await sb.auth.signOut();location.href='login.html?role=employer'}
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&$('invite-overlay')?.classList.contains('show')){
@@ -1256,8 +1307,39 @@ document.addEventListener('keydown',event=>{
  currentUserId=s.user.id;
  initNotifications();
  try{await sb.rpc('accept_my_pending_team_invite')}catch(_){}
+
+ const q=new URLSearchParams(location.search);
+ const teamSeatReturn=q.get('team_seat')==='success';
+ const teamSeatSync=teamSeatReturn
+   ?await syncCompletedTeamSeatOnReturn()
+   :{attempted:false,synced:false};
+
  await loadTeam();
- const q=new URLSearchParams(location.search);if(q.get('team_seat')==='success')showMsg('page-message','Team seat activated. You can invite another teammate now.','success');
+
+ if(teamSeatReturn){
+   const paidSeats=Number(access?.paid_seats||0);
+   const availableSeats=Number(access?.available_seats||0);
+
+   if(teamSeatSync.synced===true && paidSeats>0){
+     showMsg(
+       'page-message',
+       'Team seat activated. You can invite another teammate now.',
+       'success'
+     );
+   }else if(teamSeatSync.attempted===true){
+     showMsg(
+       'page-message',
+       'Payment completed, but the team seat has not synced yet. Refresh in a moment.',
+       'info'
+     );
+   }else if(paidSeats>0 || availableSeats>0){
+     showMsg(
+       'page-message',
+       'Team seat is active. You can invite another teammate now.',
+       'success'
+     );
+   }
+ }
 })();
 </script>
 </body>
