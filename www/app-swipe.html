@@ -2592,9 +2592,284 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-old-swipe-layout-restored">
+  /* Restore the older centered Discover composition. */
+  .top-header{
+    min-height:92px!important;
+    padding:calc(10px + env(safe-area-inset-top)) 18px 10px!important;
+  }
+
+  .top-header .logo{
+    font-size:30px!important;
+  }
+
+  .progress-shell{
+    padding:10px 18px 0!important;
+  }
+
+  .progress-card{
+    min-height:60px!important;
+    padding:10px 14px!important;
+    border-radius:20px!important;
+  }
+
+  .swipe-area{
+    height:calc(100dvh - 92px - 70px - 72px)!important;
+    min-height:0!important;
+    padding:16px 18px 10px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    overflow:visible!important;
+  }
+
+  .card-stack{
+    width:100%!important;
+    max-width:430px!important;
+    height:min(455px,calc(100dvh - 355px))!important;
+    min-height:405px!important;
+    max-height:455px!important;
+    margin:0!important;
+  }
+
+  .job-card{
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:22px!important;
+    border-radius:28px!important;
+  }
+
+  .job-card.alygnn-recommended-card:first-child{
+    padding-top:47px!important;
+  }
+
+  .alygnn-recommended-banner{
+    min-height:32px!important;
+    padding:0 15px!important;
+    border-radius:0 26px 0 13px!important;
+    font-size:9.5px!important;
+  }
+
+  .card-toolbar{
+    margin-bottom:14px!important;
+  }
+
+  .match{
+    padding:8px 13px!important;
+    font-size:12px!important;
+  }
+
+  .card-top{
+    gap:13px!important;
+    margin-bottom:14px!important;
+  }
+
+  .company-logo{
+    width:55px!important;
+    height:55px!important;
+    border-radius:18px!important;
+  }
+
+  .job-title{
+    font-size:25px!important;
+    line-height:1.05!important;
+  }
+
+  .company-name{
+    font-size:13px!important;
+  }
+
+  .mobile-job-tags{
+    gap:7px!important;
+    margin:0 0 12px!important;
+  }
+
+  .mobile-tag{
+    min-height:27px!important;
+    padding:0 10px!important;
+    font-size:10px!important;
+  }
+
+  .mobile-role-preview{
+    font-size:12.3px!important;
+    line-height:1.52!important;
+    -webkit-line-clamp:3!important;
+  }
+
+  .mobile-card-bottom{
+    margin-top:auto!important;
+    padding-top:12px!important;
+  }
+
+  /* Old circular swipe controls. */
+  .old-action-layout{
+    width:auto!important;
+    max-width:none!important;
+    display:flex!important;
+    grid-template-columns:none!important;
+    align-items:flex-end!important;
+    justify-content:center!important;
+    gap:28px!important;
+    margin-top:20px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  .old-action-layout .action-wrap{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    gap:6px!important;
+  }
+
+  .old-action-layout .action-label{
+    display:block!important;
+    color:var(--text-muted)!important;
+    font-size:10px!important;
+    font-weight:800!important;
+  }
+
+  .old-action-layout .action-btn{
+    min-width:0!important;
+    padding:0!important;
+    border-radius:50%!important;
+    display:grid!important;
+    place-items:center!important;
+    background:#fff!important;
+    border:1.5px solid var(--border)!important;
+    box-shadow:0 5px 16px rgba(27,43,63,.10)!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+  }
+
+  .old-action-layout .btn-undo{
+    width:48px!important;
+    height:48px!important;
+    color:var(--text)!important;
+    font-size:19px!important;
+  }
+
+  .old-action-layout .btn-skip{
+    width:60px!important;
+    height:60px!important;
+    color:#D25B67!important;
+    font-size:27px!important;
+  }
+
+  .old-action-layout .btn-apply{
+    width:70px!important;
+    height:70px!important;
+    background:var(--brand)!important;
+    border-color:var(--brand)!important;
+    color:#fff!important;
+    font-size:30px!important;
+    box-shadow:0 8px 22px rgba(53,103,154,.22)!important;
+  }
+
+  .old-action-layout .action-main,
+  .old-action-layout .action-sub,
+  .old-action-layout .action-arrow,
+  .old-action-layout .action-undo-icon{
+    display:none!important;
+  }
+
+  /* Keep the newer 5-tab candidate nav. */
+  .bottom-nav{
+    min-height:72px!important;
+    padding:9px 10px calc(12px + env(safe-area-inset-bottom))!important;
+  }
+
+  /* Shorter devices: preserve the old feel without clipping. */
+  @media(max-height:820px){
+    .top-header{
+      min-height:82px!important;
+      padding-top:calc(8px + env(safe-area-inset-top))!important;
+      padding-bottom:8px!important;
+    }
+
+    .progress-card{
+      min-height:55px!important;
+      padding:8px 12px!important;
+    }
+
+    .swipe-area{
+      height:calc(100dvh - 82px - 65px - 68px)!important;
+      padding-top:12px!important;
+    }
+
+    .card-stack{
+      height:min(410px,calc(100dvh - 330px))!important;
+      min-height:365px!important;
+    }
+
+    .job-card{
+      padding:19px!important;
+    }
+
+    .job-card.alygnn-recommended-card:first-child{
+      padding-top:44px!important;
+    }
+
+    .company-logo{
+      width:50px!important;
+      height:50px!important;
+    }
+
+    .job-title{
+      font-size:23px!important;
+    }
+
+    .mobile-role-preview{
+      -webkit-line-clamp:2!important;
+      font-size:11.6px!important;
+    }
+
+    .old-action-layout{
+      margin-top:15px!important;
+      gap:24px!important;
+    }
+
+    .old-action-layout .btn-undo{
+      width:44px!important;
+      height:44px!important;
+    }
+
+    .old-action-layout .btn-skip{
+      width:56px!important;
+      height:56px!important;
+    }
+
+    .old-action-layout .btn-apply{
+      width:64px!important;
+      height:64px!important;
+    }
+
+    .bottom-nav{
+      min-height:68px!important;
+    }
+  }
+
+  html[data-effective-theme="dark"] .old-action-layout .action-btn,
+  body[data-theme="dark"] .old-action-layout .action-btn{
+    background:#0B1D26!important;
+    border-color:var(--border)!important;
+  }
+
+  html[data-effective-theme="dark"] .old-action-layout .btn-apply,
+  body[data-theme="dark"] .old-action-layout .btn-apply{
+    background:var(--brand)!important;
+    border-color:var(--brand)!important;
+    color:#fff!important;
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-lowered-no-card-actions">
+<body data-swipe-build="2026-09-27-old-layout-restored">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -2638,22 +2913,21 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 <main class="swipe-area" id="swipe-area">
   <div class="card-stack" id="card-stack"></div>
 
-  <div class="action-buttons">
-    <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">
-      <span class="action-undo-icon">↶</span>
-      <span class="action-main">Undo</span>
-    </button>
+  <div class="action-buttons old-action-layout">
+    <div class="action-wrap">
+      <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">↩</button>
+      <div class="action-label">Undo</div>
+    </div>
 
-    <button class="action-btn btn-skip" id="skip-button" type="button" aria-label="Not for me">
-      <span class="action-main">Not for me</span>
-      <span class="action-sub">Skip this job</span>
-    </button>
+    <div class="action-wrap">
+      <button class="action-btn btn-skip" id="skip-button" type="button" aria-label="Pass on this job">✕</button>
+      <div class="action-label">Pass</div>
+    </div>
 
-    <button class="action-btn btn-apply" id="apply-button" type="button" aria-label="Apply now">
-      <span class="action-main">Apply now</span>
-      <span class="action-sub">Send my application</span>
-      <span class="action-arrow">→</span>
-    </button>
+    <div class="action-wrap">
+      <button class="action-btn btn-apply" id="apply-button" type="button" aria-label="Apply now">✓</button>
+      <div class="action-label">Apply</div>
+    </div>
   </div>
 </main>
 
