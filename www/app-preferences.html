@@ -804,6 +804,66 @@ main,
 
 <script src="app-candidate-theme.js"></script>
 <link rel="stylesheet" href="app-candidate-theme.css">
+
+<style id="alygnn-job-type-selection-fix">
+  #jobTypeOptions .job-type{
+    position:relative;
+    min-height:64px;
+    border:1px solid var(--border)!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    transition:
+      background .15s ease,
+      border-color .15s ease,
+      color .15s ease,
+      box-shadow .15s ease,
+      transform .08s ease;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+
+  #jobTypeOptions .job-type:active{
+    transform:scale(.985);
+  }
+
+  #jobTypeOptions .job-type.active{
+    border-color:var(--brand-dark)!important;
+    background:var(--brand-dark)!important;
+    color:#fff!important;
+    box-shadow:0 6px 16px rgba(57,106,158,.20)!important;
+  }
+
+  #jobTypeOptions .job-type.active::after{
+    content:'✓';
+    position:absolute;
+    top:8px;
+    right:10px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:rgba(255,255,255,.18);
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    line-height:1;
+  }
+
+  html[data-theme="dark"] #jobTypeOptions .job-type,
+  html[data-effective-theme="dark"] #jobTypeOptions .job-type{
+    background:var(--card)!important;
+    color:var(--text)!important;
+  }
+
+  html[data-theme="dark"] #jobTypeOptions .job-type.active,
+  html[data-effective-theme="dark"] #jobTypeOptions .job-type.active{
+    background:#4B78A6!important;
+    border-color:#79A7D5!important;
+    color:#fff!important;
+  }
+</style>
+
 </head>
 <body data-preferences-build="79">
 <div class="app">
@@ -909,7 +969,7 @@ main,
       <div class="section-head">
         <div class="section-num">03 — Location</div>
         <div class="section-title">Where do you want to work?</div>
-        <div class="section-copy">Type 3 letters to search. Small cities work too — use City, ST.</div>
+        <div class="section-copy">Start typing your city and choose from the suggestions.</div>
       </div>
       <div class="card">
         <div class="field">
@@ -917,7 +977,7 @@ main,
           <input
   id="locationInput"
   class="input"
-  placeholder="e.g. Raleigh, Seven Springs, Remote"
+  placeholder="Type your city"
   autocomplete="off"
   autocorrect="off"
   spellcheck="false"
@@ -925,7 +985,7 @@ main,
   onfocus="handleLocationPreferenceInput()"
 >
           <div id="locationSuggestions" class="suggestions"></div>
-          <div id="locationError" class="field-error">Enter or choose a valid City, ST location.</div>
+          <div id="locationError" class="field-error">Choose a city from the suggestions or enter City, ST.</div>
         </div>
       </div>
     </section>
@@ -1877,8 +1937,14 @@ document.querySelectorAll('#benefitOptions .benefit').forEach(button=>{
 
 /* Multi-select job types */
 document.querySelectorAll('#jobTypeOptions .job-type').forEach(button=>{
+  button.setAttribute(
+    'aria-pressed',
+    String(button.classList.contains('active'))
+  );
+
   button.onclick=()=>{
-    button.classList.toggle('active');
+    const active=button.classList.toggle('active');
+    button.setAttribute('aria-pressed',String(active));
     updateProgress();
   };
 });
@@ -2052,7 +2118,7 @@ function validate(){
       selectedLocation=custom;
       $('locationInput').value=custom;
     }else{
-      $('locationError').textContent='Enter a city and state, such as Garner, NC.';
+      $('locationError').textContent='Choose a city from the suggestions or enter City, ST.';
       $('locationError').classList.add('show');
       $('locationSection').scrollIntoView({behavior:'smooth',block:'start'});
       return false;
@@ -2196,11 +2262,15 @@ function prefill(saved){
 
   if(Array.isArray(saved.jobTypes)){
     document.querySelectorAll('#jobTypeOptions .job-type').forEach(button=>{
-      button.classList.toggle('active',saved.jobTypes.includes(button.dataset.value));
+      const active=saved.jobTypes.includes(button.dataset.value);
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
     });
   }else if(saved.jobType){
     document.querySelectorAll('#jobTypeOptions .job-type').forEach(button=>{
-      button.classList.toggle('active',button.dataset.value===saved.jobType);
+      const active=button.dataset.value===saved.jobType;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
     });
   }
 
