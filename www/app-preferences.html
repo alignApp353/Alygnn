@@ -864,6 +864,102 @@ main,
   }
 </style>
 
+
+<style id="alygnn-preferences-selection-visibility-fix">
+  /* Work style: Remote / Hybrid / On-site */
+  #workStyleOptions .choice{
+    position:relative;
+    border:1px solid var(--border)!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    transition:
+      background .15s ease,
+      border-color .15s ease,
+      color .15s ease,
+      box-shadow .15s ease,
+      transform .08s ease;
+  }
+
+  #workStyleOptions .choice:active{
+    transform:scale(.985);
+  }
+
+  #workStyleOptions .choice.active{
+    border-color:var(--brand-dark)!important;
+    background:var(--brand-dark)!important;
+    color:#fff!important;
+    box-shadow:0 7px 18px rgba(57,106,158,.20)!important;
+  }
+
+  #workStyleOptions .choice.active .choice-name,
+  #workStyleOptions .choice.active .choice-sub,
+  #workStyleOptions .choice.active .choice-icon{
+    color:#fff!important;
+  }
+
+  #workStyleOptions .choice.active::after{
+    content:'✓';
+    position:absolute;
+    top:8px;
+    right:9px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:rgba(255,255,255,.20);
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    line-height:1;
+  }
+
+  /* Preferred industries */
+  #industryOptions .ind-chip{
+    position:relative;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    transition:
+      background .15s ease,
+      border-color .15s ease,
+      color .15s ease,
+      box-shadow .15s ease,
+      transform .08s ease;
+  }
+
+  #industryOptions .ind-chip:active{
+    transform:scale(.97);
+  }
+
+  #industryOptions .ind-chip.active{
+    border-color:var(--brand-dark)!important;
+    background:var(--brand-dark)!important;
+    color:#fff!important;
+    box-shadow:0 4px 12px rgba(57,106,158,.16)!important;
+  }
+
+  html[data-theme="dark"] #workStyleOptions .choice,
+  html[data-effective-theme="dark"] #workStyleOptions .choice,
+  html[data-theme="dark"] #industryOptions .ind-chip,
+  html[data-effective-theme="dark"] #industryOptions .ind-chip{
+    background:var(--card)!important;
+    color:var(--text)!important;
+  }
+
+  html[data-theme="dark"] #workStyleOptions .choice.active,
+  html[data-effective-theme="dark"] #workStyleOptions .choice.active,
+  html[data-theme="dark"] #industryOptions .ind-chip.active,
+  html[data-effective-theme="dark"] #industryOptions .ind-chip.active{
+    background:#4B78A6!important;
+    border-color:#79A7D5!important;
+    color:#fff!important;
+  }
+</style>
+
 </head>
 <body data-preferences-build="79">
 <div class="app">
@@ -1920,9 +2016,19 @@ $('salaryMax').addEventListener('input',()=>{
 
 /* Single-select work style */
 document.querySelectorAll('#workStyleOptions .choice').forEach(button=>{
+  button.setAttribute(
+    'aria-pressed',
+    String(button.classList.contains('active'))
+  );
+
   button.onclick=()=>{
-    document.querySelectorAll('#workStyleOptions .choice').forEach(c=>c.classList.remove('active'));
+    document.querySelectorAll('#workStyleOptions .choice').forEach(choice=>{
+      choice.classList.remove('active');
+      choice.setAttribute('aria-pressed','false');
+    });
+
     button.classList.add('active');
+    button.setAttribute('aria-pressed','true');
     updateProgress();
   };
 });
@@ -1971,6 +2077,7 @@ function addExtraIndustry(value){
 
   if(builtIn){
     builtIn.classList.add('active');
+    builtIn.setAttribute('aria-pressed','true');
     return true;
   }
 
@@ -1991,8 +2098,14 @@ function addExtraIndustry(value){
   return true;
 }
 document.querySelectorAll('#industryOptions .ind-chip').forEach(button=>{
+  button.setAttribute(
+    'aria-pressed',
+    String(button.classList.contains('active'))
+  );
+
   button.onclick=()=>{
-    button.classList.toggle('active');
+    const active=button.classList.toggle('active');
+    button.setAttribute('aria-pressed',String(active));
     updateProgress();
   };
 });
@@ -2256,7 +2369,9 @@ function prefill(saved){
 
   if(saved.workStyle){
     document.querySelectorAll('#workStyleOptions .choice').forEach(button=>{
-      button.classList.toggle('active',button.dataset.value===saved.workStyle);
+      const active=button.dataset.value===saved.workStyle;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
     });
   }
 
@@ -2281,7 +2396,10 @@ function prefill(saved){
   }
 
   if(Array.isArray(saved.industries)){
-    document.querySelectorAll('#industryOptions .ind-chip').forEach(button=>button.classList.remove('active'));
+    document.querySelectorAll('#industryOptions .ind-chip').forEach(button=>{
+      button.classList.remove('active');
+      button.setAttribute('aria-pressed','false');
+    });
     $('extraIndustries').innerHTML='';
 
     saved.industries
