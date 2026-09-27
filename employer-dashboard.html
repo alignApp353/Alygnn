@@ -2422,6 +2422,46 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+
+  async function syncCompletedBoostCheckoutOnReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('boost') !== 'success') return null;
+
+    const checkoutSessionId = String(params.get('session_id') || '').trim();
+    if (!checkoutSessionId) return null;
+
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.access_token) return null;
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.access_token
+        },
+        body: JSON.stringify({
+          action: 'sync_boost_checkout',
+          checkout_session_id: checkoutSessionId
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.synced !== true) {
+        throw new Error(result?.error || 'Could not sync the completed Job Boost.');
+      }
+
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('session_id');
+      history.replaceState({}, '', clean.pathname + clean.search + (window.location.hash || '#jobs'));
+
+      return result;
+    } catch (error) {
+      console.warn('Completed Job Boost sync failed:', error);
+      return null;
+    }
+  }
+
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
     const authedUser = data && data.user;
@@ -2534,6 +2574,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       await activatePendingJobsIfApproved();
     }
 
+    // If Stripe just returned from a Job Boost checkout, fulfill/verify that
+    // exact completed session before loading jobs. The webhook remains primary,
+    // and the database RPC is idempotent, so this is safe if both arrive.
+    await syncCompletedBoostCheckoutOnReturn();
+
     await loadJobs();
     await syncCompanyLogoToJobs(currentProfile?.company_logo_url || '');
 
@@ -2587,12 +2632,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const boostedJobId = boostParams.get('job');
       const selectedDays = Math.max(0, Number.parseInt(boostParams.get('days') || '0', 10) || 0);
       const boostedJob = jobs.find(item => item.id === boostedJobId);
-      const untilCopy = boostedJob?.boosted_until ? formatBoostUntil(boostedJob.boosted_until) : '';
-      const durationCopy = selectedDays
-        ? `${selectedDays}-day Job Boost activated`
-        : 'Job Boost activated';
+      const actuallyBoosted = jobBoostIsActive(boostedJob);
 
-      showToast(`${durationCopy}${untilCopy ? ` · active until ${untilCopy}` : ''}.`);
+      if (actuallyBoosted) {
+        const untilCopy = formatBoostUntil(boostedJob.boosted_until);
+        const durationCopy = selectedDays
+          ? `${selectedDays}-day Job Boost activated`
+          : 'Job Boost activated';
+        showToast(`${durationCopy}${untilCopy ? ` · active until ${untilCopy}` : ''}.`);
+      } else {
+        showToast('Payment completed, but the Job Boost has not synced yet. Refresh in a moment.');
+      }
 
       const url = new URL(window.location.href);
       url.searchParams.delete('boost');
