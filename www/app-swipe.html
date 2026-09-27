@@ -1730,9 +1730,117 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
 </style>
 
+
+<style id="alygnn-app-native-discover-card">
+  /* App-only flashcard treatment. Keep the website-style content out of Discover. */
+  .app-native-urgent{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    width:max-content;
+    max-width:100%;
+    margin:-2px 0 16px;
+    padding:7px 11px;
+    border-radius:999px;
+    border:1px solid rgba(215,154,154,.45);
+    background:rgba(215,154,154,.11);
+    color:#914747;
+    font-size:11px;
+    line-height:1;
+    font-weight:800;
+  }
+  .app-native-urgent > span{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#D79A9A;
+    box-shadow:0 0 0 3px rgba(215,154,154,.14);
+    flex:0 0 7px;
+  }
+
+  .app-native-facts{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+    margin:0 0 16px!important;
+  }
+  .app-native-facts .fact{
+    min-width:0;
+    padding:11px 12px;
+    border-radius:15px;
+    background:#F8FAFB;
+  }
+  .app-native-facts .fact-value{
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
+    word-break:break-word;
+    font-size:12px;
+    line-height:1.28;
+  }
+
+  .app-native-summary{
+    margin-top:1px;
+    padding:15px 16px;
+    border:1px solid var(--border);
+    border-radius:16px;
+    background:rgba(248,250,252,.72);
+  }
+  .app-native-summary-title{
+    margin-bottom:7px;
+    font-size:10px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+    color:var(--brand-dark);
+  }
+  .app-native-summary .card-desc{
+    margin:0;
+    -webkit-line-clamp:3;
+    font-size:13px;
+    line-height:1.55;
+  }
+
+  .app-native-card-bottom{
+    margin-top:auto;
+    padding-top:14px;
+  }
+  .app-native-card-bottom .view-full-ad{
+    border:0;
+    background:transparent;
+    padding:5px 0;
+    font:inherit;
+    cursor:pointer;
+  }
+
+  /* The app card should not use the website pill strip / website quick-overview block. */
+  .job-card .card-pills,
+  .job-card .card-overview{
+    display:none!important;
+  }
+
+  body[data-theme="dark"] .app-native-facts .fact,
+  html[data-effective-theme="dark"] .app-native-facts .fact,
+  body[data-theme="dark"] .app-native-summary,
+  html[data-effective-theme="dark"] .app-native-summary{
+    background:#0B1D26;
+    border-color:var(--border);
+  }
+  body[data-theme="dark"] .app-native-summary-title,
+  html[data-effective-theme="dark"] .app-native-summary-title{
+    color:#8EB4DA;
+  }
+  body[data-theme="dark"] .app-native-urgent,
+  html[data-effective-theme="dark"] .app-native-urgent{
+    background:rgba(215,154,154,.12);
+    color:#E1AAAA;
+    border-color:rgba(215,154,154,.30);
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-mobile-restored">
+<body data-swipe-build="2026-09-27-app-native-card">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -2617,28 +2725,46 @@ function buildCard(job,index){
       </div>
     </div>
 
-    <div class="card-pills">
-      ${job.urgently_hiring===true?'<span class="pill urgent">Urgently Hiring</span>':''}
-      <span class="pill">⌖ ${escapeHtml(location)}</span>
-      <span class="pill">▣ ${escapeHtml(type)}</span>
-      ${style?`<span class="pill">⌂ ${escapeHtml(style)}</span>`:''}
-      <span class="pill salary">$ ${escapeHtml(salaryText(job))}</span>
-    </div>
+    ${job.urgently_hiring===true
+      ?'<div class="app-native-urgent"><span></span>Urgently Hiring</div>'
+      :''}
 
-    <div class="card-overview">
-      <div class="card-overview-label">Quick overview</div>
-      <div class="card-desc">
-        ${escapeHtml(job.description||'Open the full job ad to review responsibilities, requirements, and company details.')}
+    <div class="quick-facts app-native-facts">
+      <div class="fact">
+        <div class="fact-label">Location</div>
+        <div class="fact-value">${escapeHtml(location)}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-label">Job type</div>
+        <div class="fact-value">${escapeHtml(type)}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-label">Work style</div>
+        <div class="fact-value">${escapeHtml(style||'Flexible')}</div>
+      </div>
+      <div class="fact">
+        <div class="fact-label">Pay</div>
+        <div class="fact-value">${escapeHtml(salaryText(job))}</div>
       </div>
     </div>
 
-    <div class="card-bottom">
+    <div class="app-native-summary">
+      <div class="app-native-summary-title">About this role</div>
+      <div class="card-desc">${escapeHtml(
+        (job.description||'').trim()
+          ? String(job.description).trim().split(/\n+/)[0]
+          : 'Open the full job ad to see responsibilities, qualifications, and benefits.'
+      )}</div>
+    </div>
+
+    <div class="card-bottom app-native-card-bottom">
+      <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
       <button
         class="view-full-ad apply-link"
         type="button"
         aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
       >
-        <span>View full job ad</span>
+        <span>Full job ad</span>
         <span class="view-full-ad-arrow">→</span>
       </button>
     </div>
