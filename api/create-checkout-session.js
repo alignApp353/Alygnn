@@ -1469,6 +1469,71 @@ async function syncCompletedPlanCheckout(user,sessionId){
   };
 }
 
+
+async function syncCompletedBoostCheckout(user,sessionId){
+  const id=String(sessionId||'').trim();
+  if(!/^cs_/.test(id)){
+    const error=new Error('A valid Stripe Checkout Session ID is required.');
+    error.status=400;
+    throw error;
+  }
+
+  const session=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(id));
+  const meta=session?.metadata||{};
+  const employerId=String(meta.employer_id||'');
+  const product=String(meta.product||'').toLowerCase();
+  const jobId=String(meta.job_id||'').trim();
+  const days=Math.max(1,Math.min(30,Number.parseInt(meta.days||'1',10)||1));
+
+  if(employerId!==String(user.id)){
+    const error=new Error('This checkout does not belong to the signed-in employer.');
+    error.status=403;
+    throw error;
+  }
+
+  if(product!=='job_boost'||!jobId){
+    const error=new Error('This checkout is not an Alygnn Job Boost purchase.');
+    error.status=400;
+    throw error;
+  }
+
+  if(String(session?.status||'').toLowerCase()!=='complete'){
+    const error=new Error('Stripe has not completed this Job Boost checkout yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const paymentStatus=String(session?.payment_status||'').toLowerCase();
+  if(!['paid','no_payment_required'].includes(paymentStatus)){
+    const error=new Error('Stripe has not confirmed this Job Boost purchase.');
+    error.status=409;
+    throw error;
+  }
+
+  const paymentReference=
+    typeof session.payment_intent==='string'
+      ? session.payment_intent
+      : (session.payment_intent?.id||session.id);
+
+  const result=await manageRpc('activate_paid_job_boost',{
+    p_employer_id:user.id,
+    p_job_id:jobId,
+    p_days:days,
+    p_payment_reference:paymentReference,
+    p_amount_cents:Number.isFinite(Number(session.amount_total))
+      ? Number(session.amount_total)
+      : null
+  });
+
+  return{
+    synced:true,
+    job_id:jobId,
+    days,
+    boosted_until:result?.boosted_until||null,
+    duplicate:result?.duplicate===true
+  };
+}
+
 function checkoutSuccessWithSessionId(url){
   const value=String(url||'');
   if(!value || value.includes('session_id={CHECKOUT_SESSION_ID}')) return value;
@@ -1530,6 +1595,11 @@ async function runManageAction(res,user,input){
 
   if(action==='sync_checkout_session'){
     const result=await syncCompletedPlanCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
+  if(action==='sync_boost_checkout'){
+    const result=await syncCompletedBoostCheckout(user,input.checkout_session_id);
     return send(res,200,{ok:true,...result});
   }
 
@@ -1751,7 +1821,8 @@ module.exports = async function handler(req, res) {
       'cancel_second_slot',
       'resume_second_slot',
       'billing_portal',
-      'sync_checkout_session'
+      'sync_checkout_session',
+      'sync_boost_checkout'
     ].includes(billingAction)) {
       return await runManageAction(res, user, input);
     }
@@ -1951,7 +2022,7 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: product === 'job_plan'
+      success_url: (product === 'job_plan' || product === 'job_boost')
         ? checkoutSuccessWithSessionId(successUrl)
         : successUrl,
       cancel_url: cancelUrl,
