@@ -3072,9 +3072,62 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-empty-topbar-job-count">
+  .progress-card,
+  body.no-jobs-mode .progress-card{
+    width:100%!important;
+    max-width:none!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) minmax(92px,1.15fr)!important;
+    align-items:center!important;
+    row-gap:0!important;
+    padding:10px 12px!important;
+  }
+
+  .progress-card .stat{
+    min-width:0!important;
+  }
+
+  .job-progress,
+  body.no-jobs-mode .job-progress{
+    display:block!important;
+    grid-column:auto!important;
+    width:auto!important;
+    margin:0!important;
+    padding:0 0 0 12px!important;
+    border-top:0!important;
+    border-left:1px solid var(--border)!important;
+  }
+
+  .progress-copy,
+  body.no-jobs-mode .progress-copy{
+    margin:0 0 6px!important;
+    text-align:center!important;
+    font-size:9.5px!important;
+    line-height:1.1!important;
+    font-weight:800!important;
+    color:var(--text)!important;
+    white-space:nowrap!important;
+  }
+
+  .progress-track{
+    width:100%!important;
+    height:5px!important;
+  }
+
+  body.no-jobs-mode #stat-remaining{
+    font-size:18px!important;
+  }
+
+  body.no-jobs-mode #stat-remaining::after{
+    content:none!important;
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-no-jobs-visible">
+<body data-swipe-build="2026-09-27-empty-topbar-job-count">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -4390,8 +4443,9 @@ function updateStats(){
 
   document.getElementById('stat-applied').textContent=applied;
   document.getElementById('stat-skipped').textContent=skipped;
-  document.getElementById('stat-remaining').textContent=jobs.length ? remaining : '—';
-  document.getElementById('job-progress-copy').textContent=jobs.length ? `Job ${position} of ${jobs.length}` : '';
+  document.getElementById('stat-remaining').textContent=jobs.length ? remaining : 0;
+  document.getElementById('job-progress-copy').textContent=
+    jobs.length ? `Job ${position} of ${jobs.length}` : 'Job 0 of 0';
   document.getElementById('progress-fill').style.width=jobs.length ? progress+'%' : '0%';
 }
 
