@@ -350,7 +350,7 @@ html[data-effective-theme="dark"] .color-swatch.active{
 </style>
 
 </head>
-<body data-resume-preview-build="91-profile-view-edit">
+<body data-resume-preview-build="92-existing-edit-return">
 <header class="header">
   <button
     class="profile-view-back"
@@ -953,7 +953,7 @@ function configureResumeFlow(){
     $('editBtn').hidden=false;
     $('editBtn').textContent='Edit Resume';
     $('editBtn').onclick=()=>{
-      window.location.href='app-resume-builder.html';
+      window.location.href='app-resume-builder.html?mode=edit&return=preview';
     };
 
     $('continueBtn').textContent='Done';
