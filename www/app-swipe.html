@@ -2403,9 +2403,198 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-swipe-lowered-cleanup">
+  /* The swipe card itself should stay focused. Share/save live in View Details. */
+  .swipe-card-toolbar{
+    justify-content:flex-start!important;
+    min-height:auto!important;
+    margin-bottom:12px!important;
+  }
+
+  .swipe-card-toolbar .match{
+    margin:0!important;
+  }
+
+  /* Give the stats/card breathing room instead of pinning the card right below it. */
+  .swipe-area{
+    padding-top:22px!important;
+  }
+
+  .card-stack{
+    height:365px!important;
+    min-height:365px!important;
+    max-height:365px!important;
+  }
+
+  .job-card{
+    height:365px!important;
+    min-height:365px!important;
+    padding:19px 21px 16px!important;
+  }
+
+  .job-card.alygnn-recommended-card:first-child{
+    padding-top:43px!important;
+  }
+
+  .alygnn-recommended-banner{
+    min-height:31px!important;
+    padding:0 14px!important;
+    font-size:9.3px!important;
+    letter-spacing:.58px!important;
+  }
+
+  .card-top{
+    margin-bottom:11px!important;
+  }
+
+  .company-logo{
+    width:51px!important;
+    height:51px!important;
+    border-radius:16px!important;
+  }
+
+  .job-title{
+    font-size:24px!important;
+    line-height:1.05!important;
+  }
+
+  .company-name{
+    font-size:12.5px!important;
+  }
+
+  .mobile-job-tags{
+    gap:6px!important;
+    margin:0 0 10px!important;
+  }
+
+  .mobile-tag{
+    min-height:25px!important;
+    padding:0 9px!important;
+    font-size:9.7px!important;
+  }
+
+  .mobile-role-preview{
+    font-size:11.8px!important;
+    line-height:1.46!important;
+    -webkit-line-clamp:2!important;
+  }
+
+  .mobile-card-bottom{
+    padding-top:9px!important;
+  }
+
+  .posted-time,
+  .mobile-view-details{
+    font-size:10.5px!important;
+  }
+
+  /* Put the controls close enough to the card, but never overlapping it. */
+  .action-buttons{
+    margin-top:13px!important;
+  }
+
+  .action-btn{
+    height:56px!important;
+  }
+
+  /* Full job details: two clear actions on the right. */
+  .details-header{
+    grid-template-columns:44px 1fr auto!important;
+    gap:10px!important;
+  }
+
+  .details-header-actions{
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+
+  .details-action{
+    width:40px;
+    height:40px;
+    padding:0;
+    border:1px solid var(--border);
+    border-radius:50%;
+    background:#fff;
+    color:var(--text);
+    display:grid;
+    place-items:center;
+    appearance:none;
+    -webkit-appearance:none;
+  }
+
+  .details-share svg{
+    width:18px;
+    height:18px;
+    display:block;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  /* No dead card-action space remains after share/save were removed. */
+  .card-actions-mini{
+    display:none!important;
+  }
+
+  /* On shorter Android screens, lower it slightly less but keep the same proportions. */
+  @media(max-height:800px){
+    .swipe-area{
+      padding-top:17px!important;
+    }
+
+    .card-stack,
+    .job-card{
+      height:345px!important;
+      min-height:345px!important;
+      max-height:345px!important;
+    }
+
+    .job-card{
+      padding:17px 19px 14px!important;
+    }
+
+    .job-card.alygnn-recommended-card:first-child{
+      padding-top:40px!important;
+    }
+
+    .company-logo{
+      width:47px!important;
+      height:47px!important;
+    }
+
+    .job-title{
+      font-size:22px!important;
+    }
+
+    .mobile-role-preview{
+      -webkit-line-clamp:2!important;
+      font-size:11.2px!important;
+    }
+
+    .action-buttons{
+      margin-top:10px!important;
+    }
+
+    .action-btn{
+      height:53px!important;
+    }
+  }
+
+  body[data-theme="dark"] .details-action,
+  html[data-effective-theme="dark"] .details-action{
+    background:#0B1D26;
+    border-color:var(--border);
+    color:var(--text);
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-balanced-fit">
+<body data-swipe-build="2026-09-27-lowered-no-card-actions">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -2539,7 +2728,15 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
     <header class="details-header">
       <button class="details-close" id="details-close" type="button" aria-label="Close job details">←</button>
       <div class="details-header-title">Full job ad</div>
-      <button class="details-save" id="details-save" type="button" aria-label="Save job">♡</button>
+      <div class="details-header-actions">
+        <button class="details-action details-save" id="details-save" type="button" aria-label="Save job">♡</button>
+        <button class="details-action details-share" id="details-share" type="button" aria-label="Share job">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 5l5 5-5 5"></path>
+            <path d="M19 10H9a4 4 0 0 0-4 4v5"></path>
+          </svg>
+        </button>
+      </div>
     </header>
     <div class="details-scroll" id="details-scroll"></div>
     <footer class="details-footer">
@@ -3199,6 +3396,50 @@ function openJobDetails(index){
   overlay.setAttribute('aria-hidden','false');
 }
 
+
+async function shareDetailsJob(){
+  if(detailsJobIndex===null)return;
+
+  const job=jobs[detailsJobIndex];
+  if(!job)return;
+
+  const title=String(job.title||'Job Opportunity').trim();
+  const company=String(job.company||job.company_name||'Alygnn').trim();
+  const id=String(job.id||job.job_id||'').trim();
+
+  const shareUrl=id
+    ?`https://alygnn.com/job-details.html?id=${encodeURIComponent(id)}`
+    :'https://alygnn.com';
+
+  const shareData={
+    title:`${title} at ${company}`,
+    text:`Check out ${title} at ${company} on Alygnn.`,
+    url:shareUrl
+  };
+
+  try{
+    if(navigator.share){
+      await navigator.share(shareData);
+      return;
+    }
+
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(
+        `${shareData.text}\n${shareData.url}`
+      );
+      showToast('Job link copied');
+      return;
+    }
+
+    showToast('Sharing is not available on this device');
+  }catch(error){
+    if(error?.name!=='AbortError'){
+      console.error('Could not share job',error);
+      showToast('Could not share this job');
+    }
+  }
+}
+
 function closeJobDetails(){
   const overlay=document.getElementById('job-details-overlay');
   overlay.classList.remove('open');
@@ -3271,12 +3512,8 @@ function buildCard(job,index){
     <div class="stamp stamp-skip">PASS</div>
     ${recommendedBanner}
 
-    <div class="card-toolbar">
+    <div class="card-toolbar swipe-card-toolbar">
       <div class="match">★ ${escapeHtml(match)}</div>
-      <div class="card-actions-mini">
-        <button class="icon-btn share-btn" type="button" aria-label="Share job">↗</button>
-        <button class="save-btn" type="button" aria-label="Save job">♡</button>
-      </div>
     </div>
 
     <div class="card-top">
@@ -3804,6 +4041,7 @@ document.addEventListener('click',event=>{
 
 
 document.getElementById('details-close').addEventListener('click',closeJobDetails);
+document.getElementById('details-share').addEventListener('click',shareDetailsJob);
 document.getElementById('details-apply').addEventListener('click',applyFromDetails);
 document.getElementById('details-save').addEventListener('click',event=>{
   const button=event.currentTarget;
