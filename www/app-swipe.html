@@ -3157,9 +3157,110 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-one-discover-layout">
+  /* One top-bar layout everywhere: Applied | Passed | Left | Job progress */
+  .progress-card,
+  body.no-jobs-mode .progress-card{
+    width:100%!important;
+    max-width:none!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) minmax(92px,1.15fr)!important;
+    align-items:center!important;
+    row-gap:0!important;
+    padding:10px 12px!important;
+  }
+
+  .progress-card .stat{
+    min-width:0!important;
+  }
+
+  .job-progress,
+  body.no-jobs-mode .job-progress{
+    display:block!important;
+    grid-column:auto!important;
+    width:auto!important;
+    margin:0!important;
+    padding:0 0 0 12px!important;
+    border-top:0!important;
+    border-left:1px solid var(--border)!important;
+  }
+
+  .progress-copy,
+  body.no-jobs-mode .progress-copy{
+    margin:0 0 6px!important;
+    text-align:center!important;
+    font-size:9.5px!important;
+    line-height:1.1!important;
+    font-weight:800!important;
+    color:var(--text)!important;
+    white-space:nowrap!important;
+  }
+
+  .progress-track{
+    width:100%!important;
+    height:5px!important;
+  }
+
+  body.no-jobs-mode #stat-remaining{
+    font-size:18px!important;
+  }
+
+  body.no-jobs-mode #stat-remaining::after{
+    content:none!important;
+  }
+
+  /* Keep the emoji, just make it feel intentional instead of floating/oversized. */
+  .no-jobs-icon,
+  body.no-jobs-mode .no-jobs-icon{
+    width:54px!important;
+    height:54px!important;
+    margin:0 0 16px!important;
+    border-radius:18px!important;
+    background:rgba(93,127,163,.08)!important;
+    box-shadow:
+      inset 0 0 0 1px rgba(93,127,163,.08),
+      0 5px 16px rgba(26,37,48,.04)!important;
+    display:grid!important;
+    place-items:center!important;
+    font-size:0!important;
+  }
+
+  .no-jobs-icon span{
+    display:block!important;
+    font-size:27px!important;
+    line-height:1!important;
+    transform:translateY(1px);
+  }
+
+  /* Remove the search-icon styling from the previous version. */
+  .no-jobs-icon svg{
+    display:none!important;
+  }
+
+  html[data-effective-theme="dark"] .no-jobs-icon,
+  body[data-theme="dark"] .no-jobs-icon{
+    background:rgba(93,127,163,.12)!important;
+    box-shadow:inset 0 0 0 1px rgba(121,167,213,.10)!important;
+  }
+
+  /* Slightly tighten the empty state so it reads as one clean screen. */
+  #empty-screen.is-visible{
+    padding-top:22px!important;
+  }
+
+  body.no-jobs-mode .empty-title{
+    margin-bottom:8px!important;
+  }
+
+  body.no-jobs-mode .no-jobs-actions{
+    margin-top:20px!important;
+  }
+</style>
+
 </head>
 
-<body data-swipe-build="2026-09-27-consistent-stats-no-emoji">
+<body data-swipe-build="2026-09-27-one-layout-better-emoji">
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -3222,13 +3323,7 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 </main>
 
 <section class="empty-screen" id="empty-screen">
-  <div class="no-jobs-icon" aria-hidden="true">
-    <svg viewBox="0 0 24 24" focusable="false">
-      <circle cx="10.5" cy="10.5" r="5.5"></circle>
-      <path d="M14.5 14.5 19 19"></path>
-      <path d="M8 10.5h5"></path>
-    </svg>
-  </div>
+  <div class="no-jobs-icon" aria-hidden="true"><span>😕</span></div>
   <div class="empty-title">Couldn't load jobs</div>
   <div class="empty-sub">
     No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.
@@ -4483,7 +4578,7 @@ function updateStats(){
   document.getElementById('stat-skipped').textContent=skipped;
   document.getElementById('stat-remaining').textContent=jobs.length ? remaining : '—';
   document.getElementById('job-progress-copy').textContent=
-    jobs.length ? `Job ${position} of ${jobs.length}` : 'No jobs available';
+    jobs.length ? `Job ${position} of ${jobs.length}` : 'No jobs';
   document.getElementById('progress-fill').style.width=jobs.length ? progress+'%' : '0%';
 }
 
