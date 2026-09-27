@@ -2400,6 +2400,26 @@ body[data-theme="dark"]{
   background-image:none!important;
 }
 </style>
+
+<style id="alygnn-account-security-inline">
+  .settings-inline-panel{
+    padding:16px;
+    border-top:1px solid var(--border);
+    background:rgba(93,127,163,.035);
+  }
+  .settings-inline-panel[hidden]{display:none!important;}
+  .settings-inline-title{
+    margin-bottom:6px;
+    font-size:15px;
+    font-weight:800;
+    color:var(--text);
+  }
+  html[data-effective-theme="dark"] .settings-inline-panel,
+  body[data-theme="dark"] .settings-inline-panel{
+    background:rgba(93,127,163,.06);
+  }
+</style>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -2867,18 +2887,6 @@ body[data-theme="dark"]{
   </section>
 
   <section class="settings-card">
-    <div class="settings-card-title">Change Password</div>
-    <p class="settings-card-copy">Choose a new password with at least 8 characters.</p>
-
-    <input id="settings-new-password" class="settings-input" type="password" autocomplete="new-password" placeholder="New password">
-    <input id="settings-confirm-password" class="settings-input" type="password" autocomplete="new-password" placeholder="Confirm password">
-
-    <button id="settings-password-btn" class="settings-primary-btn" type="button" onclick="changeCandidatePassword()">
-      Update Password
-    </button>
-  </section>
-
-  <section class="settings-card">
     <div class="settings-card-title">Notifications</div>
 
     <button class="settings-row" type="button" onclick="toggleCandidateSetting('job_alerts', this)">
@@ -2920,6 +2928,26 @@ body[data-theme="dark"]{
       </span>
       <span class="settings-arrow">›</span>
     </button>
+
+    <button class="settings-row" type="button" onclick="toggleCandidateSecurityPanel()">
+      <span class="settings-row-copy">
+        <strong>Account &amp; Security</strong>
+        <small>Email, password, and sign-in security</small>
+      </span>
+      <span class="settings-arrow" id="candidate-security-arrow">›</span>
+    </button>
+
+    <div id="candidate-security-panel" class="settings-inline-panel" hidden>
+      <div class="settings-inline-title">Change Password</div>
+      <p class="settings-card-copy">Choose a new password with at least 8 characters.</p>
+
+      <input id="settings-new-password" class="settings-input" type="password" autocomplete="new-password" placeholder="New password">
+      <input id="settings-confirm-password" class="settings-input" type="password" autocomplete="new-password" placeholder="Confirm password">
+
+      <button id="settings-password-btn" class="settings-primary-btn" type="button" onclick="changeCandidatePassword()">
+        Update Password
+      </button>
+    </div>
 
     <button class="settings-row" type="button" onclick="showSettingsMessage('Privacy settings are coming soon.','info')">
       <span class="settings-row-copy">
@@ -3731,6 +3759,24 @@ function openCandidateDestination(url){
     panel.scrollIntoView({behavior:'smooth',block:'start'});
   }
   showOnboardingMessage('Complete your resume and job preferences to unlock job matches.');
+}
+
+function toggleCandidateSecurityPanel(){
+  const panel=document.getElementById('candidate-security-panel');
+  const arrow=document.getElementById('candidate-security-arrow');
+  if(!panel)return;
+
+  const opening=panel.hasAttribute('hidden');
+
+  if(opening){
+    panel.removeAttribute('hidden');
+  }else{
+    panel.setAttribute('hidden','');
+  }
+
+  if(arrow){
+    arrow.textContent=opening?'⌄':'›';
+  }
 }
 
 function openPreferencesFromSettings(){
