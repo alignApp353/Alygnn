@@ -372,28 +372,19 @@ async function fulfillCheckout(session) {
   }
 
   if (product === 'job_boost') {
-    // Hosted Stripe Checkout can complete in two valid ways:
-    // 1) normal payment -> payment_intent exists
-    // 2) 100% promotion code -> no payment_intent is created
-    //
-    // Use the PaymentIntent ID when there is one so payment_intent.succeeded
-    // and checkout.session.completed share the SAME idempotency reference.
-    // For a $0 coupon checkout, fall back to the Checkout Session ID.
     const paymentReference =
       typeof session.payment_intent === 'string'
         ? session.payment_intent
         : (session.payment_intent?.id || session.id);
-
-    const amountCents = Number.isFinite(Number(session.amount_total))
-      ? Number(session.amount_total)
-      : null;
 
     await rpc('activate_paid_job_boost', {
       p_employer_id: employerId,
       p_job_id: meta.job_id,
       p_days: Math.max(1, Math.min(30, Number.parseInt(meta.days || '1', 10) || 1)),
       p_payment_reference: paymentReference,
-      p_amount_cents: amountCents
+      p_amount_cents: Number.isFinite(Number(session.amount_total))
+        ? Number(session.amount_total)
+        : null
     });
     return;
   }
@@ -592,9 +583,6 @@ module.exports = async function handler(req, res) {
         const checkout = event.data.object;
         const paymentStatus = String(checkout.payment_status || '').toLowerCase();
 
-        // A 100%-off promotion code completes a one-time Checkout Session with
-        // payment_status="no_payment_required". That is still a successfully
-        // completed Stripe Checkout and must fulfill the purchased product.
         if (
           paymentStatus === 'paid' ||
           paymentStatus === 'no_payment_required' ||
