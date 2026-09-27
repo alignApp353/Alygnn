@@ -2920,11 +2920,25 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    const next = !(job.urgently_hiring === true);
+    // Read the saved value first instead of trusting the in-memory card state.
+    // This matters for the permanent first/free job, which can otherwise have a
+    // stale local value after plan/slot state refreshes.
+    const { data: currentRow, error: readError } = await sb
+      .from('jobs')
+      .select('id, urgently_hiring')
+      .eq('id', jobId)
+      .eq('employer_id', workspaceOwnerId)
+      .maybeSingle();
 
-    // Update ONLY the per-job Urgently Hiring flag. In particular, do not
-    // rewrite the free-slot job's other fields while toggling this badge.
-    const { data, error } = await sb
+    if (readError || !currentRow) {
+      console.error('Failed to read Urgently Hiring state:', readError);
+      showToast('Could not update Urgently Hiring.');
+      return;
+    }
+
+    const next = currentRow.urgently_hiring !== true;
+
+    const { data: savedRow, error: updateError } = await sb
       .from('jobs')
       .update({ urgently_hiring: next })
       .eq('id', jobId)
@@ -2932,23 +2946,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       .select('id, urgently_hiring')
       .maybeSingle();
 
-    if (error) {
-      console.error('Failed to toggle Urgently Hiring:', error);
+    if (updateError || !savedRow) {
+      console.error('Failed to save Urgently Hiring:', updateError);
       showToast('Could not update Urgently Hiring.');
       return;
     }
 
-    // Supabase can return no error when an UPDATE matched zero rows under RLS.
-    // Never pretend the badge was saved unless the database returned this job.
-    if (!data || String(data.id) !== String(jobId)) {
-      console.error('Urgently Hiring update did not persist for job:', jobId);
-      showToast('Could not save Urgently Hiring. Please try again.');
-      return;
-    }
-
-    // Use the value returned by Supabase so the dashboard matches what survives
-    // a reload, including the permanent first/free job.
-    job.urgently_hiring = data.urgently_hiring === true;
+    job.urgently_hiring = savedRow.urgently_hiring === true;
     renderJobs();
     showToast(job.urgently_hiring ? 'Urgently Hiring badge added.' : 'Urgently Hiring badge removed.');
   }
