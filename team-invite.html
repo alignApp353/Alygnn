@@ -127,6 +127,7 @@ h2{font-size:25px;margin:0 0 8px}
             <div class="field"><label>Email</label><input id="signin-email" type="email" readonly></div>
             <div class="field"><label>Password</label><div class="password-wrap"><input id="signin-password" type="password" autocomplete="current-password" placeholder="Enter your password"><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePassword('signin-password',this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.7"></circle></svg></button></div></div>
             <div class="field"><label>Confirm password</label><div class="password-wrap"><input id="signin-confirm" type="password" autocomplete="current-password" placeholder="Re-enter your password"><button class="password-toggle" type="button" aria-label="Show confirm password" aria-pressed="false" onclick="togglePassword('signin-confirm',this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.7"></circle></svg></button></div></div>
+            <label class="terms"><input id="signin-terms" type="checkbox"><span>I agree to Alygnn’s <a href="terms.html" target="_blank">Terms of Service</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</span></label>
             <button class="action" id="signin-btn" type="button" onclick="signIn()">Continue</button>
           </div>
 
@@ -345,6 +346,7 @@ async function signIn(){
   const fullName=$('signin-name').value.trim();
   const password=$('signin-password').value;
   const confirm=$('signin-confirm').value;
+  const terms=$('signin-terms').checked;
 
   if(fullName.length<2){
     showMessage('auth-message','Enter your full name.');
@@ -363,6 +365,11 @@ async function signIn(){
 
   if(password!==confirm){
     showMessage('auth-message','Your passwords do not match.');
+    return;
+  }
+
+  if(!terms){
+    showMessage('auth-message','Please agree to the Terms of Service and Privacy Policy.');
     return;
   }
 
