@@ -881,6 +881,298 @@ html[data-effective-theme="dark"] .toast{
   }
 </style>
 
+
+<style id="alygnn-simple-job-details">
+  /* Simple candidate job-details layout — styling only. */
+  body{
+    background:var(--bg)!important;
+  }
+
+  .header{
+    min-height:72px!important;
+    padding:calc(9px + env(safe-area-inset-top)) 16px 9px!important;
+    border-bottom:1px solid var(--border)!important;
+    background:var(--bg)!important;
+  }
+
+  .logo{
+    font-size:27px!important;
+  }
+
+  .circle-btn{
+    width:40px!important;
+    height:40px!important;
+    border-radius:50%!important;
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    box-shadow:none!important;
+  }
+
+  .page{
+    max-width:620px!important;
+    padding:16px 16px 34px!important;
+  }
+
+  /* Keep the duplicate overview/match breakdown hidden. */
+  #job-overview-section,
+  #match-detail-section{
+    display:none!important;
+  }
+
+  /* One clean white job header. */
+  .hero{
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    border-radius:18px!important;
+    padding:18px!important;
+    box-shadow:none!important;
+    color:var(--text)!important;
+  }
+
+  .top-row{
+    margin:0 0 14px!important;
+  }
+
+  .match-badge{
+    padding:7px 10px!important;
+    background:#EEF8F2!important;
+    border:1px solid #D7EEE0!important;
+    color:#2E8358!important;
+    border-radius:999px!important;
+    font-size:11px!important;
+    font-weight:800!important;
+  }
+
+  .verified-badge{
+    display:none!important;
+  }
+
+  .identity{
+    gap:12px!important;
+    align-items:center!important;
+  }
+
+  .company-logo{
+    width:50px!important;
+    height:50px!important;
+    flex:0 0 50px!important;
+    border-radius:14px!important;
+    background:#F5F8FA!important;
+    border:1px solid var(--border)!important;
+    color:var(--brand-dark)!important;
+    box-shadow:none!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:17px!important;
+    font-weight:800!important;
+  }
+
+  .job-title{
+    margin:0!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:22px!important;
+    line-height:1.15!important;
+    font-weight:850!important;
+    letter-spacing:-.25px!important;
+    color:var(--text)!important;
+  }
+
+  .company{
+    margin-top:4px!important;
+    color:var(--text-muted)!important;
+    font-size:13px!important;
+    font-weight:650!important;
+  }
+
+  .check{
+    width:15px!important;
+    height:15px!important;
+    font-size:8px!important;
+  }
+
+  .pills{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:7px!important;
+    margin-top:15px!important;
+  }
+
+  .pill{
+    padding:7px 9px!important;
+    border-radius:999px!important;
+    background:#F8FAFB!important;
+    border:1px solid var(--border)!important;
+    color:var(--text)!important;
+    font-size:10.5px!important;
+    line-height:1!important;
+    font-weight:750!important;
+  }
+
+  .pill.salary{
+    background:#F3F7FB!important;
+    color:var(--brand-dark)!important;
+  }
+
+  /* Only keep posted time — remove extra promotional copy. */
+  .hero-note{
+    display:block!important;
+    margin-top:15px!important;
+    padding-top:13px!important;
+    border-top:1px solid var(--border)!important;
+    color:var(--text-muted)!important;
+    font-size:10.5px!important;
+    font-weight:650!important;
+  }
+
+  .hero-note span:last-child{
+    display:none!important;
+  }
+
+  /* Simple content, no stack of oversized cards. */
+  .section{
+    margin-top:0!important;
+    padding:20px 2px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+
+  .section-title{
+    margin:0!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:18px!important;
+    line-height:1.2!important;
+    font-weight:850!important;
+    letter-spacing:-.15px!important;
+    color:var(--text)!important;
+  }
+
+  .section-sub{
+    margin-top:5px!important;
+    font-size:12px!important;
+  }
+
+  .body-copy{
+    margin-top:10px!important;
+    color:var(--text-muted)!important;
+    font-size:13px!important;
+    line-height:1.6!important;
+  }
+
+  .list{
+    margin-top:11px!important;
+    gap:9px!important;
+  }
+
+  .list-item{
+    align-items:flex-start!important;
+    gap:8px!important;
+    color:var(--text-muted)!important;
+    font-size:13px!important;
+    line-height:1.5!important;
+  }
+
+  .list-icon{
+    width:auto!important;
+    height:auto!important;
+    flex:0 0 auto!important;
+    border:0!important;
+    background:transparent!important;
+    color:var(--brand)!important;
+    font-size:12px!important;
+    margin-top:1px!important;
+  }
+
+  .company-card{
+    margin-top:12px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    gap:10px!important;
+  }
+
+  .company-card-logo{
+    width:44px!important;
+    height:44px!important;
+    border-radius:12px!important;
+    background:#F5F8FA!important;
+    border:1px solid var(--border)!important;
+    box-shadow:none!important;
+    color:var(--brand-dark)!important;
+    font-size:15px!important;
+  }
+
+  .company-card-name{
+    font-size:14px!important;
+    font-weight:800!important;
+  }
+
+  .company-card-meta{
+    margin-top:2px!important;
+    font-size:10.5px!important;
+    color:var(--text-muted)!important;
+  }
+
+  .company-links{
+    margin-top:12px!important;
+    gap:7px!important;
+  }
+
+  .company-link{
+    padding:7px 10px!important;
+    border-radius:10px!important;
+    box-shadow:none!important;
+  }
+
+  /* Bottom actions stay simple and obvious. */
+  .apply-bar{
+    background:rgba(246,248,247,.96)!important;
+    border-top:1px solid var(--border)!important;
+    padding:9px 14px calc(9px + env(safe-area-inset-bottom))!important;
+    box-shadow:none!important;
+  }
+
+  .apply-inner{
+    max-width:620px!important;
+    grid-template-columns:128px 1fr!important;
+    gap:9px!important;
+  }
+
+  .secondary-btn,
+  .primary-btn{
+    min-height:50px!important;
+    border-radius:14px!important;
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:13px!important;
+    font-weight:800!important;
+    box-shadow:none!important;
+  }
+
+  .secondary-btn{
+    background:#fff!important;
+  }
+
+  @media(max-width:420px){
+    .page{
+      padding-left:14px!important;
+      padding-right:14px!important;
+    }
+
+    .hero{
+      padding:16px!important;
+    }
+
+    .job-title{
+      font-size:21px!important;
+    }
+
+    .apply-inner{
+      grid-template-columns:118px 1fr!important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
