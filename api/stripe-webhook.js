@@ -129,6 +129,46 @@ async function rpc(name, body) {
   return data;
 }
 
+async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
+  const normalized=String(status||'').toLowerCase();
+  const active=['active','trialing','past_due'].includes(normalized);
+  const patch={
+    addon_slot_count:active?1:0,
+    addon_slots_expires_at:active?(expiresAt||null):null,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:serviceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(patch)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(active&&(!Array.isArray(rows)||rows.length===0)){
+    response=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements`,{
+      method:'POST',
+      headers:serviceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({
+        employer_id:employerId,
+        addon_slot_count:1,
+        addon_slots_expires_at:expiresAt||null,
+        updated_at:new Date().toISOString()
+      })
+    });
+    if(!response.ok){
+      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
+    }
+  }
+}
+
 function planInfo(plan) {
   const key = String(plan || '').toLowerCase();
   return {
@@ -351,13 +391,22 @@ async function fulfillCheckout(session) {
     // so this subscription gives the employer 2 total reusable active slots.
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
-      await rpc('sync_second_job_slot_subscription', {
-        p_employer_id: employerId,
-        p_status: normalizedSubscriptionStatus(subscription),
-        p_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
-        p_payment_reference: session.id,
-        p_amount_cents: session.amount_total || 15000
-      });
+      const status=normalizedSubscriptionStatus(subscription);
+      const expiresAt=subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+      try {
+        await rpc('sync_second_job_slot_subscription', {
+          p_employer_id: employerId,
+          p_status: status,
+          p_expires_at: expiresAt,
+          p_payment_reference: session.id,
+          p_amount_cents: Number.isFinite(Number(session.amount_total)) ? Number(session.amount_total) : 15000
+        });
+      } catch (error) {
+        console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:', error?.message || error);
+      }
+      await ensureSecondSlotEntitlementRow(employerId,status,expiresAt);
       return;
     }
 
@@ -487,15 +536,21 @@ async function fulfillSubscription(subscription, forceStatus) {
   if(status==='incomplete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    await rpc('sync_second_job_slot_subscription', {
-      p_employer_id: employerId,
-      p_status: status,
-      p_expires_at: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null,
-      p_payment_reference: null,
-      p_amount_cents: subscriptionUnitAmount(subscription, 15000)
-    });
+    const expiresAt=subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
+    try {
+      await rpc('sync_second_job_slot_subscription', {
+        p_employer_id: employerId,
+        p_status: status,
+        p_expires_at: expiresAt,
+        p_payment_reference: null,
+        p_amount_cents: subscriptionUnitAmount(subscription, 15000)
+      });
+    } catch (error) {
+      console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:', error?.message || error);
+    }
+    await ensureSecondSlotEntitlementRow(employerId,status,expiresAt);
     return;
   }
 
