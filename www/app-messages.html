@@ -17,6 +17,14 @@
     try{
       const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();
       if(requested==='employer'||requested==='candidate') return requested;
+
+      const active=String(
+        sessionStorage.getItem('alygnn_active_workspace')||
+        localStorage.getItem('alygnn_active_workspace')||
+        ''
+      ).toLowerCase();
+      if(active==='employer'||active==='candidate') return active;
+
       const stored=String(localStorage.getItem('alygnn_account_type')||'').toLowerCase();
       return stored==='employer'?'employer':'candidate';
     }catch(_error){
@@ -1540,18 +1548,95 @@ function applicationName(application={}){
   );
 }
 
+function normalizeWorkspaceRole(value){
+  const normalized=String(value||'').toLowerCase().trim();
+
+  return (
+    normalized==='employer'||
+    normalized==='candidate'
+  )
+    ?normalized
+    :'';
+}
+
+function rememberWorkspaceRole(nextRole){
+  const normalized=
+    normalizeWorkspaceRole(nextRole);
+
+  if(!normalized)return;
+
+  try{
+    sessionStorage.setItem(
+      'alygnn_active_workspace',
+      normalized
+    );
+
+    localStorage.setItem(
+      'alygnn_active_workspace',
+      normalized
+    );
+  }catch(_error){}
+}
+
 async function resolveRole(){
   const requested=
-    new URLSearchParams(
-      location.search
-    ).get('role');
+    normalizeWorkspaceRole(
+      new URLSearchParams(
+        location.search
+      ).get('role')
+    );
 
-  if(
-    requested==='employer'||
-    requested==='candidate'
-  ){
+  if(requested){
+    rememberWorkspaceRole(requested);
     return requested;
   }
+
+  /*
+   * Android/WebView can restore this page without the original query string.
+   * Keep the user in the workspace they actually came from instead of
+   * accidentally falling back to the candidate side.
+   */
+  try{
+    const referrer=
+      String(
+        document.referrer||
+        ''
+      ).toLowerCase();
+
+    if(
+      referrer.includes(
+        'app-employer-dashboard.html'
+      )
+    ){
+      rememberWorkspaceRole('employer');
+      return 'employer';
+    }
+
+    if(
+      referrer.includes('app-account.html')||
+      referrer.includes('app-swipe.html')||
+      referrer.includes('app-applied.html')
+    ){
+      rememberWorkspaceRole('candidate');
+      return 'candidate';
+    }
+  }catch(_error){}
+
+  try{
+    const remembered=
+      normalizeWorkspaceRole(
+        sessionStorage.getItem(
+          'alygnn_active_workspace'
+        )||
+        localStorage.getItem(
+          'alygnn_active_workspace'
+        )
+      );
+
+    if(remembered){
+      return remembered;
+    }
+  }catch(_error){}
 
   try{
     const {data}=await sb
@@ -1566,6 +1651,7 @@ async function resolveRole(){
         ''
       ).toLowerCase()==='employer'
     ){
+      rememberWorkspaceRole('employer');
       return 'employer';
     }
   }catch(_error){}
@@ -1578,9 +1664,13 @@ async function resolveRole(){
       ''
     ).toLowerCase();
 
-  return meta==='employer'
-    ?'employer'
-    :'candidate';
+  const resolved=
+    meta==='employer'
+      ?'employer'
+      :'candidate';
+
+  rememberWorkspaceRole(resolved);
+  return resolved;
 }
 
 function archiveField(){
@@ -2496,9 +2586,18 @@ function openConversation(id){
 
   if(!row)return;
 
+  const conversationRole=
+    role==='employer'
+      ?'employer'
+      :'candidate';
+
+  rememberWorkspaceRole(
+    conversationRole
+  );
+
   const params=
     new URLSearchParams({
-      role,
+      role:conversationRole,
       conversation:row.id
     });
 
@@ -2720,6 +2819,38 @@ $('employer-header-notification').onclick=()=>{
 
     session=data.session;
     role=await resolveRole();
+    rememberWorkspaceRole(role);
+
+    /*
+     * Put the resolved workspace back into the URL if Android restored the
+     * page without it. Every thread click now carries the same role forward.
+     */
+    try{
+      const currentParams=
+        new URLSearchParams(
+          location.search
+        );
+
+      if(
+        currentParams.get('role')!==
+        role
+      ){
+        currentParams.set(
+          'role',
+          role
+        );
+
+        history.replaceState(
+          null,
+          '',
+          location.pathname+
+          '?'+
+          currentParams.toString()+
+          location.hash
+        );
+      }
+    }catch(_error){}
+
     document.body.classList.toggle('candidate-mode',role==='candidate');
     document.body.classList.toggle('employer-mode',role==='employer');
     if(role==='employer') applyEmployerMessagesTheme();
