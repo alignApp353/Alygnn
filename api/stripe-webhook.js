@@ -129,6 +129,64 @@ async function rpc(name, body) {
   return data;
 }
 
+async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
+  const normalized=String(status||'').toLowerCase();
+  const active=['active','trialing','past_due'].includes(normalized);
+
+  const readUrl=new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  readUrl.searchParams.set('employer_id','eq.'+employerId);
+  readUrl.searchParams.set('select','slot_limit');
+
+  const read=await fetch(readUrl,{headers:serviceHeaders()});
+  const existingRows=await read.json().catch(()=>[]);
+  if(!read.ok){
+    throw new Error('Could not read Second Job Slot entitlement: '+JSON.stringify(existingRows));
+  }
+
+  const current=Array.isArray(existingRows)?existingRows[0]:null;
+  const currentLimit=Math.max(1,Number(current?.slot_limit||1));
+
+  const patch={
+    addon_slot_count:active?1:0,
+    addon_slots_expires_at:active?(expiresAt||null):null,
+    slot_limit:active?Math.max(2,currentLimit):currentLimit,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:serviceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(patch)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(active&&(!Array.isArray(rows)||rows.length===0)){
+    response=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements`,{
+      method:'POST',
+      headers:serviceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({
+        employer_id:employerId,
+        plan:'free',
+        subscription_status:'inactive',
+        slot_limit:2,
+        addon_slot_count:1,
+        addon_slots_expires_at:expiresAt||null,
+        updated_at:new Date().toISOString()
+      })
+    });
+    if(!response.ok){
+      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
+    }
+  }
+}
+
 function planInfo(plan) {
   const key = String(plan || '').toLowerCase();
   return {
@@ -335,24 +393,6 @@ async function fulfillPaidPlanUpgrade(session){
   await clearPendingIfApplied(employerId,targetPlan);
 }
 
-async function ensureSecondSlotEntitlement(employerId, expiresAt) {
-  if (!employerId) return;
-  const url = new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
-  url.searchParams.set('employer_id', 'eq.' + employerId);
-  const response = await fetch(url, {
-    method: 'PATCH',
-    headers: serviceHeaders({ Prefer: 'return=minimal' }),
-    body: JSON.stringify({
-      addon_slot_count: 1,
-      addon_slots_expires_at: expiresAt || null,
-      updated_at: new Date().toISOString()
-    })
-  });
-  if (!response.ok) {
-    throw new Error('Could not activate Second Job Slot entitlement: ' + await response.text());
-  }
-}
-
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
@@ -369,21 +409,22 @@ async function fulfillCheckout(session) {
     // so this subscription gives the employer 2 total reusable active slots.
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
-      const expiresAt = subscription.current_period_end
+      const status=normalizedSubscriptionStatus(subscription);
+      const expiresAt=subscription.current_period_end
         ? new Date(subscription.current_period_end * 1000).toISOString()
         : null;
-      // amount_total can legitimately be 0 when a 100% promotion code is used.
-      // Do not turn that 0 back into the $150 list price.
-      const checkoutAmount = Number(session.amount_total);
-      const amountCents = Number.isFinite(checkoutAmount) ? checkoutAmount : 15000;
-      await rpc('sync_second_job_slot_subscription', {
-        p_employer_id: employerId,
-        p_status: normalizedSubscriptionStatus(subscription),
-        p_expires_at: expiresAt,
-        p_payment_reference: session.id,
-        p_amount_cents: amountCents
-      });
-      await ensureSecondSlotEntitlement(employerId, expiresAt);
+      try {
+        await rpc('sync_second_job_slot_subscription', {
+          p_employer_id: employerId,
+          p_status: status,
+          p_expires_at: expiresAt,
+          p_payment_reference: session.id,
+          p_amount_cents: Number.isFinite(Number(session.amount_total)) ? Number(session.amount_total) : 15000
+        });
+      } catch (error) {
+        console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:', error?.message || error);
+      }
+      await ensureSecondSlotEntitlementRow(employerId,status,expiresAt);
       return;
     }
 
@@ -513,15 +554,21 @@ async function fulfillSubscription(subscription, forceStatus) {
   if(status==='incomplete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    await rpc('sync_second_job_slot_subscription', {
-      p_employer_id: employerId,
-      p_status: status,
-      p_expires_at: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null,
-      p_payment_reference: null,
-      p_amount_cents: subscriptionUnitAmount(subscription, 15000)
-    });
+    const expiresAt=subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
+    try {
+      await rpc('sync_second_job_slot_subscription', {
+        p_employer_id: employerId,
+        p_status: status,
+        p_expires_at: expiresAt,
+        p_payment_reference: null,
+        p_amount_cents: subscriptionUnitAmount(subscription, 15000)
+      });
+    } catch (error) {
+      console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:', error?.message || error);
+    }
+    await ensureSecondSlotEntitlementRow(employerId,status,expiresAt);
     return;
   }
 
