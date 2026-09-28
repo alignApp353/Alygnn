@@ -1334,6 +1334,79 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
 }
 
 
+async function reconcileSecondSlotCheckout(user){
+  let subscription=null;
+
+  // Stripe Search can take a moment to index a brand-new subscription.
+  // Retry briefly so a completed checkout can be reflected immediately.
+  for(let attempt=0;attempt<4;attempt+=1){
+    subscription=await resolveSecondSlotSubscription(user.id);
+    if(subscription)break;
+    if(attempt<3)await new Promise(resolve=>setTimeout(resolve,700));
+  }
+
+  if(!subscription?.id){
+    const error=new Error('Stripe has not exposed the completed Second Job Slot subscription yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const status=String(subscription.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Second Job Slot subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  // Recover the Checkout Session that created this subscription so the same
+  // payment reference is used by both the webhook and this return fallback.
+  const sessions=await manageStripe('GET','checkout/sessions',{
+    subscription:subscription.id,
+    limit:10
+  });
+
+  const checkoutSession=(sessions?.data||[]).find(row=>{
+    const meta=row?.metadata||{};
+    return (
+      String(row?.status||'').toLowerCase()==='complete' &&
+      String(meta.employer_id||'')===String(user.id) &&
+      ['additional_slot','single_job'].includes(String(meta.product||'').toLowerCase())
+    );
+  })||null;
+
+  if(!checkoutSession?.id){
+    const error=new Error('The completed Second Job Slot checkout is still syncing with Stripe.');
+    error.status=409;
+    throw error;
+  }
+
+  const unitAmount=Number(
+    subscription?.items?.data?.[0]?.price?.unit_amount ??
+    checkoutSession?.metadata?.unit_amount_cents ??
+    15000
+  );
+
+  const result=await manageRpc('sync_second_job_slot_subscription',{
+    p_employer_id:user.id,
+    p_status:status,
+    p_expires_at:subscription.current_period_end
+      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+      :null,
+    p_payment_reference:checkoutSession.id,
+    p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
+  });
+
+  return{
+    synced:true,
+    reconciled:true,
+    second_job_slot:true,
+    checkout_session_id:checkoutSession.id,
+    subscription_id:subscription.id,
+    subscription_status:status,
+    result:result||null
+  };
+}
+
 async function syncCompletedSecondSlotCheckout(user,sessionId){
   const id=String(sessionId||'').trim();
   if(!/^cs_/.test(id)){
@@ -1791,6 +1864,11 @@ async function runManageAction(res,user,input){
 
   if(action==='sync_second_slot_checkout'){
     const result=await syncCompletedSecondSlotCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
+  if(action==='reconcile_second_slot_checkout'){
+    const result=await reconcileSecondSlotCheckout(user);
     return send(res,200,{ok:true,...result});
   }
 
