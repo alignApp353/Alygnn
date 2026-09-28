@@ -1465,6 +1465,21 @@ function renderBillingOverview(context){
 }
 
 function renderPending(){
+  /*
+   * A pending downgrade/cancellation only makes sense while a paid plan
+   * is actually current. Old pending_plan fields can survive a canceled
+   * test subscription, so do not present them as a real upcoming charge.
+   */
+  const {
+    item:currentItem
+  }=currentContext();
+
+  if(!currentItem){
+    $('pending-card').hidden=true;
+    $('cancel-pending').dataset.pendingAction='';
+    return;
+  }
+
   const cancelScheduled=
     summary?.cancel_at_period_end===true;
 
