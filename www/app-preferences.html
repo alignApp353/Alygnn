@@ -960,8 +960,92 @@ main,
   }
 </style>
 
+
+<style id="alygnn-preferences-hydration-fix">
+  body.prefs-hydrating .stage,
+  body.prefs-hydrating main,
+  body.prefs-hydrating .bottom-save{
+    visibility:hidden!important;
+  }
+
+  .prefs-hydration{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:80;
+    pointer-events:none;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:var(--bg);
+  }
+
+  body.prefs-hydrating .prefs-hydration{
+    display:flex;
+  }
+
+  .prefs-hydration-inner{
+    width:min(210px,62vw);
+    text-align:center;
+    transform:translateY(-8px);
+  }
+
+  .prefs-hydration-logo{
+    font-family:Georgia,'Times New Roman',serif;
+    font-size:34px;
+    line-height:1;
+    color:var(--brand);
+    margin-bottom:16px;
+  }
+
+  .prefs-hydration-logo span{
+    color:var(--sage);
+  }
+
+  .prefs-hydration-text{
+    color:var(--text-muted);
+    font-size:13px;
+    font-weight:700;
+    margin-bottom:12px;
+  }
+
+  .prefs-hydration-track{
+    height:3px;
+    overflow:hidden;
+    border-radius:999px;
+    background:var(--border);
+  }
+
+  .prefs-hydration-bar{
+    width:45%;
+    height:100%;
+    border-radius:inherit;
+    background:var(--brand);
+    animation:prefsHydrate 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes prefsHydrate{
+    from{transform:translateX(-15%)}
+    to{transform:translateX(135%)}
+  }
+
+  html[data-theme="dark"] .prefs-hydration,
+  html[data-effective-theme="dark"] .prefs-hydration{
+    background:var(--bg);
+  }
+</style>
+
 </head>
-<body data-preferences-build="79">
+<body class="prefs-hydrating" data-preferences-build="80">
+
+<div class="prefs-hydration" id="prefsHydration" aria-live="polite">
+  <div class="prefs-hydration-inner">
+    <div class="prefs-hydration-logo">Alygnn<span>.</span></div>
+    <div class="prefs-hydration-text">Loading your preferences…</div>
+    <div class="prefs-hydration-track"><div class="prefs-hydration-bar"></div></div>
+  </div>
+</div>
+
 <div class="app">
   <header class="topbar">
     <button class="back" type="button" onclick="goBack()" aria-label="Back to resume">
@@ -2321,18 +2405,41 @@ function prefill(saved){
     }
   }
 
-  const savedCompensationType=
-    // Older profiles may still contain "commission"; because that option
-    // has been removed, the config check below will fall back to yearly.
-    saved.compensation_type ||
+  // Prefer the current Alygnn field first. Some older profiles can contain
+  // stale/conflicting pay-type keys from earlier builds.
+  let savedCompensationType=
     saved.compensationType ||
-    saved.pay_type ||
+    saved.compensation_type ||
     'yearly';
 
-  setCompensationType(
-    COMPENSATION_CONFIG[savedCompensationType] ? savedCompensationType : 'yearly',
-    false
-  );
+  savedCompensationType=String(savedCompensationType||'yearly').toLowerCase();
+
+  // Guard against old corrupted combinations such as type=monthly while
+  // the stored range is clearly an annual range.
+  const savedSalaryMin=Number(saved.salary_min);
+  const savedSalaryMax=Number(saved.salary_max);
+
+  if(
+    savedCompensationType==='monthly' &&
+    Number.isFinite(savedSalaryMax) &&
+    savedSalaryMax>COMPENSATION_CONFIG.monthly.max
+  ){
+    savedCompensationType='yearly';
+  }
+
+  if(
+    savedCompensationType==='hourly' &&
+    Number.isFinite(savedSalaryMax) &&
+    savedSalaryMax>COMPENSATION_CONFIG.hourly.max
+  ){
+    savedCompensationType='yearly';
+  }
+
+  if(!COMPENSATION_CONFIG[savedCompensationType]){
+    savedCompensationType='yearly';
+  }
+
+  setCompensationType(savedCompensationType,false);
 
   const config=COMPENSATION_CONFIG[compensationType];
 
@@ -2452,69 +2559,77 @@ async function savePreferences(){
 }
 
 async function initialize(){
-  setCompensationType('yearly',false);
-
-  const {data,error}=await sb.auth.getSession();
-  if(error||!data.session){
-    window.location.replace('app-login.html');
-    return;
+  try{
+      setCompensationType('yearly',false);
+    
+      const {data,error}=await sb.auth.getSession();
+      if(error||!data.session){
+        window.location.replace('app-login.html');
+        return;
+      }
+    
+      currentSession=data.session;
+    
+      const {data:loadedProfile,error:profileError}=await sb
+        .from('profiles')
+        .select('*')
+        .eq('id',currentSession.user.id)
+        .maybeSingle();
+    
+      if(profileError){
+        console.error(profileError);
+        showMessage('We could not load your saved preferences, but you can still enter them again.');
+        return;
+      }
+    
+      profile=loadedProfile||{};
+    
+      const resumeData=
+        profile?.resume_data && typeof profile.resume_data==='object'
+          ?profile.resume_data
+          :{};
+    
+      const hasResume=Boolean(
+        profile?.resume_file_path ||
+        profile?.resume_url ||
+        profile?.resume_text ||
+        resumeData?.personal ||
+        (Array.isArray(resumeData?.experience)&&resumeData.experience.length) ||
+        (Array.isArray(resumeData?.skills)&&resumeData.skills.length)
+      );
+    
+      if(!hasResume){
+        window.location.replace('app-align-upload.html');
+        return;
+      }
+    
+      const saved=
+        profile?.preferences && typeof profile.preferences==='object'
+          ?profile.preferences
+          :{};
+    
+      onboardingMode=!Boolean(saved.preferences_complete);
+    
+      const resumeOnboarding=
+        resumeData?._alygnn_onboarding && typeof resumeData._alygnn_onboarding==='object'
+          ?resumeData._alygnn_onboarding
+          :{};
+    
+      if(onboardingMode && resumeOnboarding.preview_reviewed!==true){
+        window.location.replace('app-resume-preview.html');
+        return;
+      }
+    
+      if(profile?.preferences)prefill(profile.preferences);
+    
+      updateProgress();
+  }finally{
+    // Reveal only after the saved preference data has been resolved.
+    requestAnimationFrame(()=>{
+      document.body.classList.remove('prefs-hydrating');
+      document.body.classList.add('prefs-ready');
+    });
   }
-
-  currentSession=data.session;
-
-  const {data:loadedProfile,error:profileError}=await sb
-    .from('profiles')
-    .select('*')
-    .eq('id',currentSession.user.id)
-    .maybeSingle();
-
-  if(profileError){
-    console.error(profileError);
-    showMessage('We could not load your saved preferences, but you can still enter them again.');
-    return;
-  }
-
-  profile=loadedProfile||{};
-
-  const resumeData=
-    profile?.resume_data && typeof profile.resume_data==='object'
-      ?profile.resume_data
-      :{};
-
-  const hasResume=Boolean(
-    profile?.resume_file_path ||
-    profile?.resume_url ||
-    profile?.resume_text ||
-    resumeData?.personal ||
-    (Array.isArray(resumeData?.experience)&&resumeData.experience.length) ||
-    (Array.isArray(resumeData?.skills)&&resumeData.skills.length)
-  );
-
-  if(!hasResume){
-    window.location.replace('app-align-upload.html');
-    return;
-  }
-
-  const saved=
-    profile?.preferences && typeof profile.preferences==='object'
-      ?profile.preferences
-      :{};
-
-  onboardingMode=!Boolean(saved.preferences_complete);
-
-  const resumeOnboarding=
-    resumeData?._alygnn_onboarding && typeof resumeData._alygnn_onboarding==='object'
-      ?resumeData._alygnn_onboarding
-      :{};
-
-  if(onboardingMode && resumeOnboarding.preview_reviewed!==true){
-    window.location.replace('app-resume-preview.html');
-    return;
-  }
-
-  if(profile?.preferences)prefill(profile.preferences);
-
-  updateProgress();
 }
 
 function goBack(){
