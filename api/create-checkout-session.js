@@ -1337,16 +1337,14 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
 async function reconcileSecondSlotCheckout(user){
   let subscription=null;
 
-  // Stripe Search can take a moment to index a brand-new subscription.
-  // Retry briefly so a completed checkout can be reflected immediately.
-  for(let attempt=0;attempt<4;attempt+=1){
+  for(let attempt=0;attempt<5;attempt+=1){
     subscription=await resolveSecondSlotSubscription(user.id);
     if(subscription)break;
-    if(attempt<3)await new Promise(resolve=>setTimeout(resolve,700));
+    if(attempt<4)await new Promise(resolve=>setTimeout(resolve,800));
   }
 
   if(!subscription?.id){
-    const error=new Error('Stripe has not exposed the completed Second Job Slot subscription yet.');
+    const error=new Error('The completed Second Job Slot subscription is still syncing with Stripe.');
     error.status=409;
     throw error;
   }
@@ -1358,8 +1356,6 @@ async function reconcileSecondSlotCheckout(user){
     throw error;
   }
 
-  // Recover the Checkout Session that created this subscription so the same
-  // payment reference is used by both the webhook and this return fallback.
   const sessions=await manageStripe('GET','checkout/sessions',{
     subscription:subscription.id,
     limit:10
@@ -1398,10 +1394,10 @@ async function reconcileSecondSlotCheckout(user){
 
   return{
     synced:true,
-    reconciled:true,
     second_job_slot:true,
-    checkout_session_id:checkoutSession.id,
+    reconciled:true,
     subscription_id:subscription.id,
+    checkout_session_id:checkoutSession.id,
     subscription_status:status,
     result:result||null
   };
@@ -2102,6 +2098,7 @@ module.exports = async function handler(req, res) {
       'billing_portal',
       'sync_checkout_session',
       'sync_second_slot_checkout',
+      'reconcile_second_slot_checkout',
       'sync_boost_checkout',
       'sync_team_seat_checkout'
     ].includes(billingAction)) {
