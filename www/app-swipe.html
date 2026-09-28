@@ -3391,6 +3391,94 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-full-job-company-links-fix">
+  .details-close{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0!important;
+    line-height:0!important;
+    font-size:0!important;
+  }
+
+  .details-close-icon{
+    display:block!important;
+    width:20px!important;
+    height:20px!important;
+    flex:0 0 20px!important;
+    fill:none!important;
+    stroke:currentColor!important;
+    stroke-width:2!important;
+    stroke-linecap:round!important;
+    stroke-linejoin:round!important;
+    transform:none!important;
+  }
+
+  .details-company-links-label{
+    margin-top:18px;
+    color:var(--text);
+    font-size:11px;
+    line-height:1.2;
+    font-weight:900;
+  }
+
+  .details-company-links{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    margin-top:9px!important;
+  }
+
+  .details-company-link{
+    min-height:38px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:6px!important;
+    padding:0 12px!important;
+    border-radius:12px!important;
+    border:1px solid var(--border)!important;
+    background:#F8FAFB!important;
+    color:var(--brand-dark)!important;
+    font-size:11px!important;
+    line-height:1!important;
+    font-weight:850!important;
+    text-decoration:none!important;
+    -webkit-tap-highlight-color:transparent!important;
+  }
+
+  .details-company-link:active{
+    transform:scale(.97);
+    background:var(--brand-light)!important;
+  }
+
+  .details-company-link-icon{
+    width:13px;
+    height:13px;
+    flex:0 0 13px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.9;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  body[data-theme="dark"] .details-company-links-label{
+    color:var(--text)!important;
+  }
+
+  body[data-theme="dark"] .details-company-link{
+    background:#0B1D26!important;
+    border-color:var(--border)!important;
+    color:#8EB4DA!important;
+  }
+
+  body[data-theme="dark"] .details-company-link:active{
+    background:rgba(93,127,163,.18)!important;
+  }
+</style>
+
 </head>
 
 <body data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -3529,7 +3617,11 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   <section class="job-details-sheet" id="job-details-sheet" role="dialog" aria-modal="true" aria-labelledby="details-job-title">
     <div class="details-grip"></div>
     <header class="details-header">
-      <button class="details-close" id="details-close" type="button" aria-label="Close job details">←</button>
+      <button class="details-close" id="details-close" type="button" aria-label="Close job details">
+        <svg class="details-close-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6"></path>
+        </svg>
+      </button>
       <div class="details-header-title">Full job ad</div>
       <div class="details-header-actions">
         <button class="details-action details-save" id="details-save" type="button" aria-label="Save job">♡</button>
@@ -4073,41 +4165,186 @@ function candidateCompanyLogoHtml(job,company){
 
 async function attachEmployerLogos(jobRows){
   const rows=Array.isArray(jobRows)?jobRows:[];
-  const employerIds=[...new Set(rows.map(job=>job.employer_id).filter(Boolean).map(String))];
+  const employerIds=[
+    ...new Set(
+      rows
+        .map(job=>job.employer_id)
+        .filter(Boolean)
+        .map(String)
+    )
+  ];
+
   if(!employerIds.length)return rows;
 
-  const logoByEmployer=new Map();
-  await Promise.all(employerIds.map(async employerId=>{
-    let logoUrl='';
-    try{
-      const {data,error}=await sb.rpc('get_public_employer_profile',{target_employer:employerId});
-      if(!error){
-        const profile=Array.isArray(data)?(data[0]||null):(data||null);
-        logoUrl=candidateExternalUrl(profile?.company_logo_url);
-      }
-    }catch(_error){}
+  const publicProfileByEmployer=new Map();
 
-    if(!logoUrl){
+  await Promise.all(employerIds.map(async employerId=>{
+    let publicProfile={};
+
+    try{
+      const {data,error}=await sb.rpc(
+        'get_public_employer_profile',
+        {target_employer:employerId}
+      );
+
+      if(!error){
+        const profile=Array.isArray(data)
+          ?(data[0]||null)
+          :(data||null);
+
+        if(profile&&typeof profile==='object'){
+          publicProfile={
+            company_name:profile.company_name||'',
+            company_headline:profile.company_headline||'',
+            company_logo_url:candidateExternalUrl(
+              profile.company_logo_url||
+              profile.company_logo||
+              profile.logo_url
+            ),
+            company_website:candidateExternalUrl(
+              profile.company_website||
+              profile.public_website_url||
+              profile.website
+            ),
+            company_linkedin_url:candidateExternalUrl(
+              profile.linkedin_url||
+              profile.company_linkedin_url
+            ),
+            company_instagram_url:candidateExternalUrl(
+              profile.instagram_url||
+              profile.company_instagram_url
+            ),
+            company_facebook_url:candidateExternalUrl(
+              profile.facebook_url||
+              profile.company_facebook_url
+            ),
+            company_x_url:candidateExternalUrl(
+              profile.x_url||
+              profile.company_x_url
+            ),
+            media_kit_url:candidateExternalUrl(profile.media_kit_url)
+          };
+        }
+      }
+    }catch(error){
+      console.warn('Could not load public employer profile:',employerId,error);
+    }
+
+    // Keep the existing logo fallback for older profiles/RPC versions.
+    if(!publicProfile.company_logo_url){
       try{
-        const {data}=await sb.from('profiles').select('company_logo_url').eq('id',employerId).maybeSingle();
-        logoUrl=candidateExternalUrl(data?.company_logo_url);
+        const {data}=await sb
+          .from('profiles')
+          .select('company_logo_url')
+          .eq('id',employerId)
+          .maybeSingle();
+
+        publicProfile.company_logo_url=
+          candidateExternalUrl(data?.company_logo_url);
       }catch(_error){}
     }
 
-    if(logoUrl)logoByEmployer.set(employerId,logoUrl);
+    publicProfileByEmployer.set(employerId,publicProfile);
   }));
 
-  return rows.map(job=>({
-    ...job,
-    company_logo_url:candidateExternalUrl(job.company_logo_url||job.company_logo||job.logo_url)||
-      logoByEmployer.get(String(job.employer_id||''))||''
-  }));
+  return rows.map(job=>{
+    const profile=
+      publicProfileByEmployer.get(String(job.employer_id||''))||
+      {};
+
+    return {
+      ...job,
+
+      company:
+        job.company||
+        job.company_name||
+        profile.company_name||
+        '',
+
+      company_name:
+        job.company_name||
+        job.company||
+        profile.company_name||
+        '',
+
+      company_logo_url:
+        candidateExternalUrl(
+          job.company_logo_url||
+          job.company_logo||
+          job.logo_url
+        )||
+        profile.company_logo_url||
+        '',
+
+      company_headline:
+        job.company_headline||
+        profile.company_headline||
+        '',
+
+      company_website:
+        candidateExternalUrl(
+          job.company_website||
+          job.website||
+          job.public_website_url
+        )||
+        profile.company_website||
+        '',
+
+      company_linkedin_url:
+        candidateExternalUrl(
+          job.company_linkedin_url||
+          job.linkedin_url
+        )||
+        profile.company_linkedin_url||
+        '',
+
+      company_instagram_url:
+        candidateExternalUrl(
+          job.company_instagram_url||
+          job.instagram_url
+        )||
+        profile.company_instagram_url||
+        '',
+
+      company_facebook_url:
+        candidateExternalUrl(
+          job.company_facebook_url||
+          job.facebook_url
+        )||
+        profile.company_facebook_url||
+        '',
+
+      company_x_url:
+        candidateExternalUrl(
+          job.company_x_url||
+          job.x_url
+        )||
+        profile.company_x_url||
+        ''
+    };
+  });
 }
 
 function candidateCompanyLink(label,value){
   const url=candidateExternalUrl(value);
   if(!url)return '';
-  return `<a class="details-company-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+
+  return `
+    <a
+      class="details-company-link"
+      href="${escapeHtml(url)}"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Open ${escapeHtml(label)}"
+    >
+      <span>${escapeHtml(label)}</span>
+      <svg class="details-company-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 5h5v5"></path>
+        <path d="M10 14L19 5"></path>
+        <path d="M19 13v6H5V5h6"></path>
+      </svg>
+    </a>
+  `;
 }
 
 function openJobDetails(index){
@@ -4179,13 +4416,24 @@ function openJobDetails(index){
 
       <div class="details-copy">${escapeHtml(companyAbout||'Company information has not been added yet.')}</div>
 
-      <div class="details-company-links">
-        ${candidateCompanyLink('Website',job.company_website)}
-        ${candidateCompanyLink('LinkedIn',job.company_linkedin_url)}
-        ${candidateCompanyLink('Instagram',job.company_instagram_url)}
-        ${candidateCompanyLink('Facebook',job.company_facebook_url)}
-        ${candidateCompanyLink('X',job.company_x_url)}
-      </div>
+      ${(()=>{
+        const links=[
+          candidateCompanyLink('Website',job.company_website),
+          candidateCompanyLink('LinkedIn',job.company_linkedin_url),
+          candidateCompanyLink('Instagram',job.company_instagram_url),
+          candidateCompanyLink('Facebook',job.company_facebook_url),
+          candidateCompanyLink('X',job.company_x_url)
+        ].filter(Boolean);
+
+        if(!links.length)return '';
+
+        return `
+          <div class="details-company-links-label">Website & socials</div>
+          <div class="details-company-links">
+            ${links.join('')}
+          </div>
+        `;
+      })()}
     </section>
   `;
 
