@@ -2,5026 +2,1877 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<script id="alygnn-candidate-theme-critical">
+<title>Alygnn — Chat</title>
+
+
+<script id="alygnn-chat-theme-critical">
 (function(){
   const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
-  function normalize(v){
-    v=String(v||'').toLowerCase().trim();
-    if(v==='auto'||v==='system-default'||v==='default') return 'system';
-    return ['system','light','dark'].includes(v)?v:'system';
+
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='auto'||value==='system-default'||value==='default') return 'system';
+    return ['system','light','dark'].includes(value)?value:'system';
   }
-  function pref(){
-    return normalize(
-      localStorage.getItem('alygnnTheme') ||
-      localStorage.getItem('alygnnEmployerTheme') ||
-      localStorage.getItem('alygnn_candidate_theme') ||
-      localStorage.getItem('alygnn-theme') ||
-      'system'
-    );
-  }
-  function apply(){
-    const p=pref();
-    const theme=p==='system' ? (media&&media.matches?'dark':'light') : p;
-    const root=document.documentElement;
-    root.dataset.theme=theme;
-    root.dataset.effectiveTheme=theme;
-    root.style.colorScheme=theme;
-    let meta=document.querySelector('meta[name="theme-color"]');
-    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta);}
-    meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
-    if(document.body){
-      document.body.dataset.theme=theme;
-      document.body.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+
+  function role(){
+    try{
+      const requested=
+        String(
+          new URLSearchParams(
+            location.search
+          ).get('role')||
+          ''
+        ).toLowerCase();
+
+      if(
+        requested==='employer'||
+        requested==='candidate'
+      ){
+        return requested;
+      }
+
+      const remembered=
+        String(
+          sessionStorage.getItem(
+            'alygnn_active_workspace'
+          )||
+          localStorage.getItem(
+            'alygnn_active_workspace'
+          )||
+          ''
+        ).toLowerCase();
+
+      return remembered==='employer'
+        ?'employer'
+        :'candidate';
+    }catch(_){
+      return 'candidate';
     }
   }
-  apply();
-  window.__alygnnApplyCandidateGlobalTheme=apply;
-  window.addEventListener('pageshow',apply);
-  window.addEventListener('storage',apply);
-  if(media){
-    if(typeof media.addEventListener==='function') media.addEventListener('change',()=>{ if(pref()==='system') apply(); });
-    else if(typeof media.addListener==='function') media.addListener(()=>{ if(pref()==='system') apply(); });
+
+  function preference(){
+    try{
+      if(role()==='employer'){
+        return normalize(
+          localStorage.getItem('alygnnEmployerTheme') ||
+          localStorage.getItem('alygnnTheme') ||
+          localStorage.getItem('alygnn_candidate_theme') ||
+          localStorage.getItem('alygnn-theme') ||
+          'system'
+        );
+      }
+
+      return normalize(
+        localStorage.getItem('alygnnTheme') ||
+        localStorage.getItem('alygnn_candidate_theme') ||
+        localStorage.getItem('alygnn-theme') ||
+        localStorage.getItem('alygnnEmployerTheme') ||
+        'system'
+      );
+    }catch(_){
+      return 'system';
+    }
   }
+
+  const pref=preference();
+  const theme=pref==='system'
+    ?(media&&media.matches?'dark':'light')
+    :pref;
+
+  const root=document.documentElement;
+  root.dataset.theme=theme;
+  root.dataset.effectiveTheme=theme;
+  root.style.colorScheme=theme;
+
+  let meta=document.querySelector('meta[name="theme-color"]');
+  if(!meta){
+    meta=document.createElement('meta');
+    meta.name='theme-color';
+    document.head.appendChild(meta);
+  }
+
+  meta.setAttribute(
+    'content',
+    theme==='dark'
+      ?(role()==='employer'?'#0B111A':'#061821')
+      :'#F6F8F7'
+  );
 })();
 </script>
-<title>Alygnn — Swipe Jobs</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
 <style>
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:'DM Sans',Arial,sans-serif!important;
-}
-
+*{box-sizing:border-box;font-family:'DM Sans',Arial,sans-serif!important}
 :root{
   --brand:#5D7FA3;
   --brand-dark:#345F91;
   --sage:#8CB69B;
   --bg:#F6F8F7;
-  --card-bg:#FFFFFF;
+  --card:#fff;
   --text:#172333;
+  --muted:#647282;
   --border:#DDE3E8;
-  --mint:#6FBF8F;
-  --rose:#D79A9A;
-  --text-muted:#56677B;
-  --brand-light:rgba(93,127,163,.10);
-  --mint-light:rgba(111,191,143,.15);
-  --rose-light:rgba(215,154,154,.16);
+  --soft:#EAF0F6;
+  --danger:#C74747;
+  --danger-bg:#FCECEC;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#061821;
+    --card:#10232D;
+    --text:#F3F7FA;
+    --muted:#A9B8C5;
+    --border:#29404C;
+    --soft:#172A40;
+    --danger-bg:#3B1E22;
+  }
 }
 
 html,body{
-  width:100%;
-  min-height:100%;
-}
-
-body{
-  background:
-    radial-gradient(circle at top,rgba(93,127,163,.09),transparent 30%),
-    var(--bg);
+  margin:0;
+  height:100%;
+  background:var(--bg);
   color:var(--text);
-  min-height:100vh;
+}
+body{
   overflow:hidden;
 }
-
-/* HEADER */
-.top-header{
-  min-height:112px;
-  padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
-  display:grid;
-  grid-template-columns:92px 1fr 92px;
-  align-items:center;
-  background:rgba(246,248,247,.96);
-  border-bottom:1px solid var(--border);
-  backdrop-filter:blur(16px);
+button,textarea{
+  font:inherit;
 }
-
-.back-btn{
-  min-height:44px;
-  border:none;
-  border-radius:999px;
-  background:rgba(93,127,163,.09);
-  color:var(--text);
-  padding:0 15px;
-  font-size:14px;
-  font-weight:800;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
+button{
   cursor:pointer;
 }
 
-.brand-block{
-  text-align:center;
+.app{
+  height:100dvh;
+  display:grid;
+  grid-template-rows:auto auto 1fr auto;
 }
-
-.logo{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px;
+.header{
+  position:relative;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display:grid;
+  grid-template-columns:46px 1fr 46px;
+  align-items:center;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+}
+.back,
+.more{
+  width:42px;
+  height:42px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--card);
+  color:var(--text);
+  font-size:21px;
+}
+.more{
+  font-size:24px;
+  font-weight:800;
   line-height:1;
-  color:var(--brand);
 }
-
+.logo{
+  text-align:center;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  color:var(--brand);
+  font-size:29px;
+  letter-spacing:-.2px;
+}
 .logo span{
   color:var(--sage);
 }
 
-.tagline{
-  margin-top:5px;
-  font-size:11px;
-  color:var(--text-muted);
-  font-weight:600;
-}
-
-.profile-chip{
-  justify-self:end;
-  width:46px;
-  height:46px;
-  border:none;
-  border-radius:50%;
-  background:linear-gradient(145deg,var(--brand),#6E95BE);
-  color:#fff;
-  font-size:14px;
-  font-weight:900;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-/* PROGRESS */
-.progress-shell{
-  padding:12px 18px 0;
-}
-
-.progress-card{
-  max-width:430px;
-  margin:0 auto;
-  background:rgba(255,255,255,.88);
+.chat-menu{
+  position:absolute;
+  z-index:50;
+  right:14px;
+  top:calc(58px + env(safe-area-inset-top));
+  width:190px;
+  padding:7px;
   border:1px solid var(--border);
-  border-radius:20px;
-  padding:12px 14px;
-  display:grid;
-  grid-template-columns:repeat(3,1fr) 1.4fr;
-  gap:8px;
-  align-items:center;
-  box-shadow:0 8px 22px rgba(25,40,60,.05);
+  border-radius:15px;
+  background:var(--card);
+  box-shadow:0 18px 46px rgba(15,30,45,.16);
 }
-
-.stat{
-  text-align:center;
-}
-
-.stat-val{
-  font-size:18px;
-  font-weight:900;
+.chat-menu[hidden]{display:none}
+.menu-action{
+  width:100%;
+  min-height:40px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
   color:var(--text);
-}
-
-.stat-label{
-  margin-top:2px;
-  font-size:9px;
-  color:var(--text-muted);
-  text-transform:uppercase;
-  letter-spacing:.8px;
-  font-weight:800;
-}
-
-.job-progress{
-  border-left:1px solid var(--border);
-  padding-left:12px;
-}
-
-.progress-copy{
+  text-align:left;
+  padding:0 11px;
   font-size:11px;
   font-weight:800;
-  color:var(--text);
+}
+.menu-action:hover{background:var(--soft)}
+.menu-action.danger{color:var(--danger)}
+
+.context{
+  padding:12px 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--card);
+}
+.person{
+  font-size:16px;
+  font-weight:900;
+}
+.job{
+  margin-top:3px;
+  color:var(--muted);
+  font-size:11px;
+}
+.rule{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+}
+
+.messages{
+  overflow-y:auto;
+  padding:18px 16px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.bubble{
+  max-width:82%;
+  padding:11px 13px;
+  border-radius:17px;
+  font-size:13px;
+  line-height:1.45;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.mine{
+  align-self:flex-end;
+  background:var(--brand-dark);
+  color:#fff;
+  border-bottom-right-radius:5px;
+}
+.theirs{
+  align-self:flex-start;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-bottom-left-radius:5px;
+}
+.stamp{
+  display:block;
+  margin-top:5px;
+  font-size:8px;
+  opacity:.65;
+}
+
+.empty{
+  margin:auto;
+  padding:28px 20px;
   text-align:center;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+}
+.empty strong{
+  display:block;
+  color:var(--text);
+  font-size:16px;
   margin-bottom:6px;
 }
 
-.progress-track{
-  width:100%;
-  height:7px;
-  background:#E8EDF2;
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.progress-fill{
-  height:100%;
-  width:0;
-  background:var(--brand);
-  border-radius:inherit;
-  transition:width .25s ease;
-}
-
-/* MAIN */
-.swipe-area{
-  height:calc(100vh - 112px - 84px);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:14px 18px calc(92px + env(safe-area-inset-bottom));
-}
-
-.card-stack{
-  position:relative;
-  width:100%;
-  max-width:430px;
-  height:min(440px,calc(100vh - 345px));
-}
-
-.job-card{
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.08),transparent 28%),
-    var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:30px;
-  padding:24px;
-  box-shadow:0 22px 60px rgba(27,43,63,.12);
-  display:flex;
-  flex-direction:column;
-  cursor:grab;
-  user-select:none;
-  touch-action:none;
-  transform-origin:center bottom;
-  transition:transform .22s ease,box-shadow .22s ease;
-}
-
-.job-card:nth-child(2){
-  transform:scale(.97) translateY(10px);
-  z-index:1;
-  pointer-events:none;
-}
-
-.job-card:nth-child(3){
-  transform:scale(.94) translateY(20px);
-  z-index:0;
-  pointer-events:none;
-}
-
-/* Background cards are only visual stack shells.
-   Hiding their children prevents duplicate footer/text from showing below
-   the active card. */
-.job-card:nth-child(n+2) > *{
-  visibility:hidden !important;
-}
-
-.job-card:first-child{
-  z-index:2;
-}
-
-.job-card.is-dragging{
-  transition:none;
-  box-shadow:0 22px 55px rgba(27,43,63,.17);
-}
-
-.job-card.swipe-left{animation:swipeLeft .35s ease forwards}
-.job-card.swipe-right{animation:swipeRight .35s ease forwards}
-
-.stamp{
-  position:absolute;
-  top:24px;
-  padding:7px 16px;
-  border-radius:10px;
-  font-size:19px;
-  font-weight:900;
-  letter-spacing:2px;
-  opacity:0;
-  border:3px solid;
-  pointer-events:none;
-}
-
-.stamp-apply{
-  right:24px;
-  color:var(--mint);
-  border-color:var(--mint);
-  transform:rotate(12deg);
-}
-
-.stamp-skip{
-  left:24px;
-  color:var(--rose);
-  border-color:var(--rose);
-  transform:rotate(-12deg);
-}
-
-.card-toolbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:18px;
-}
-
-.match{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  width:max-content;
-  background:linear-gradient(180deg,#EDF8F1,#E4F3EA);
-  color:#257B52;
-  padding:9px 14px;
-  border-radius:999px;
-  border:1px solid rgba(111,191,143,.28);
-  font-size:13px;
-  font-weight:900;
-}
-
-.save-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  font-size:19px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.card-top{
-  display:flex;
-  gap:15px;
-  margin-bottom:18px;
-  align-items:flex-start;
-}
-
-.company-logo{
-  width:68px;
-  height:68px;
-  border-radius:22px;
-  background:linear-gradient(145deg,#F5F8FA,#E5ECF2);
-  border:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:23px;
-  font-weight:900;
-  color:var(--brand-dark);
-  flex-shrink:0;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
-}
-
-.job-title{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px;
-  line-height:1.02;
-  letter-spacing:-.4px;
-  color:var(--text);
-  text-transform:none;
-}
-
-.company-line{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin-top:6px;
-}
-
-.company-name{
-  font-size:15px;
-  color:var(--text-muted);
-}
-
-.verified{
-  width:17px;
-  height:17px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:var(--brand);
-  color:white;
-  font-size:10px;
-  font-weight:900;
-}
-
-.card-pills{
-  display:flex;
-  flex-wrap:wrap;
+.composer{
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  display:grid;
+  grid-template-columns:1fr auto;
   gap:8px;
-  margin-bottom:18px;
-}
-
-.pill{
-  font-size:12px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  color:var(--text-muted);
-  background:rgba(250,252,253,.92);
-  font-weight:800;
-}
-
-.salary{
-  background:var(--brand-light);
-  color:var(--brand-dark);
-}
-
-
-/* Candidate-facing plan treatments */
-.pill.urgent{
-  color:#914747;
-  background:linear-gradient(180deg,rgba(215,154,154,.20),rgba(215,154,154,.10));
-  border-color:rgba(215,154,154,.48);
-  font-weight:900;
-}
-.pill.urgent::before{
-  content:'';
-  display:inline-block;
-  width:6px;
-  height:6px;
-  margin-right:6px;
-  border-radius:50%;
-  background:#D79A9A;
-  box-shadow:0 0 0 3px rgba(215,154,154,.14);
-  vertical-align:1px;
-}
-
-.company-logo{overflow:hidden}
-.company-logo img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  padding:7px;
-  background:#fff;
-  display:block;
-}
-
-.job-card.alygnn-recommended-card:first-child{
-  border-left:4px solid var(--brand);
-  border-right:4px solid var(--brand);
-  padding-top:54px;
-  box-shadow:
-    0 22px 60px rgba(27,43,63,.12),
-    -9px 0 24px -18px rgba(93,127,163,.85),
-    9px 0 24px -18px rgba(93,127,163,.85);
-}
-.alygnn-recommended-banner{
-  display:none;
-  position:absolute;
-  top:-1px;
-  right:-1px;
-  z-index:8;
-  min-height:35px;
-  padding:0 16px;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  border-radius:0 27px 0 14px;
-  background:var(--brand);
-  color:#fff;
-  box-shadow:0 7px 18px rgba(93,127,163,.24);
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-  white-space:nowrap;
-  pointer-events:none;
-}
-.job-card.alygnn-recommended-card:first-child .alygnn-recommended-banner{display:inline-flex}
-.alygnn-recommended-mark{
-  width:18px;
-  height:18px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:50%;
-  background:rgba(255,255,255,.16);
-  font-size:10px;
-}
-body[data-theme='dark'] .company-logo img{background:#fff}
-body[data-theme='dark'] .pill.urgent{
-  color:#F3C7C7;
-  background:rgba(215,154,154,.12);
-  border-color:rgba(215,154,154,.34);
-}
-
-.card-overview{
-  margin-top:12px;
-  padding-top:11px;
-  border-top:1px solid rgba(93,127,163,.18);
-}
-
-.card-overview-label{
-  margin-bottom:5px;
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:1.15px;
-  text-transform:uppercase;
-  color:var(--brand-dark);
-}
-
-.card-desc{
-  font-size:12px;
-  color:var(--text-muted);
-  line-height:1.5;
-  max-width:100%;
-  overflow:hidden;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:3;
-}
-
-.card-bottom{
   border-top:1px solid var(--border);
-  padding-top:11px;
-  margin-top:auto;
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
+  background:var(--card);
 }
-
-.view-full-ad{
-  width:auto;
-  min-height:36px;
-  padding:5px 2px 5px 12px;
-  border:none;
-  border-radius:10px;
-  background:transparent;
-  color:var(--brand-dark);
-  display:inline-flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:7px;
-  font-size:12px;
-  font-weight:900;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-
-.view-full-ad:active{
-  opacity:.68;
-}
-
-.view-full-ad-arrow{
-  font-size:15px;
-  line-height:1;
-}
-
-.apply-link{
-  text-decoration:none;
-}
-
-
-
-/* COMPACT ALYGNN MATCH */
-.alygnn-match-mini{
+textarea{
+  resize:none;
+  max-height:120px;
+  min-height:46px;
   border:1px solid var(--border);
-  background:rgba(248,250,252,.82);
-  border-radius:19px;
+  border-radius:15px;
+  background:var(--bg);
+  color:var(--text);
   padding:12px 13px;
-  margin:2px 0 16px;
+  outline:none;
+  font-size:13px;
 }
-
-.alygnn-match-mini-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-
-.alygnn-match-mini-title{
-  font-size:12px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.alygnn-match-mini-sub{
-  margin-top:2px;
-  font-size:9px;
-  color:var(--text-muted);
-  font-weight:700;
-}
-
-.alygnn-match-mini-body{
-  display:grid;
-  grid-template-columns:64px 1fr;
-  gap:13px;
-  align-items:center;
-}
-
-.alygnn-score-ring{
-  --score:0;
-  width:62px;
-  height:62px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  position:relative;
-  background:
-    conic-gradient(
-      var(--mint) calc(var(--score) * 1%),
-      rgba(93,127,163,.13) 0
-    );
-}
-
-.alygnn-score-ring::after{
-  content:'';
-  position:absolute;
-  width:46px;
-  height:46px;
-  border-radius:50%;
-  background:var(--card-bg);
-  border:1px solid rgba(93,127,163,.08);
-}
-
-.alygnn-score-number{
-  position:relative;
-  z-index:1;
-  text-align:center;
-  font-size:16px;
-  line-height:1;
-  color:var(--text);
-  font-weight:900;
-}
-
-.alygnn-score-number small{
-  display:block;
-  margin-top:3px;
-  font-size:7px;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-  color:var(--text-muted);
-  font-weight:900;
-}
-
-.alygnn-mini-metrics{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px 12px;
-}
-
-.alygnn-mini-row{
-  min-width:0;
-}
-
-.alygnn-mini-row-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:6px;
-  margin-bottom:4px;
-}
-
-.alygnn-mini-label{
-  font-size:9px;
-  color:var(--text-muted);
-  font-weight:800;
-  white-space:nowrap;
-}
-
-.alygnn-mini-value{
-  font-size:9px;
-  color:var(--brand-dark);
-  font-weight:900;
-}
-
-.alygnn-mini-track{
-  height:4px;
-  background:rgba(93,127,163,.12);
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.alygnn-mini-fill{
-  height:100%;
-  width:0;
-  background:var(--mint);
-  border-radius:999px;
-}
-
-.details-match-wrap{
-  margin-top:14px;
-}
-
-@media(max-height:760px){
-  .alygnn-match-mini{
-    padding:10px 11px;
-    margin-bottom:12px;
-  }
-
-  .alygnn-match-mini-head{
-    margin-bottom:8px;
-  }
-
-  .alygnn-match-mini-body{
-    grid-template-columns:56px 1fr;
-    gap:10px;
-  }
-
-  .alygnn-score-ring{
-    width:54px;
-    height:54px;
-  }
-
-  .alygnn-score-ring::after{
-    width:40px;
-    height:40px;
-  }
-
-  .alygnn-score-number{
-    font-size:14px;
-  }
-
-  .alygnn-mini-metrics{
-    gap:6px 10px;
-  }
-}
-
-
-.quick-facts{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:9px;
-  margin:2px 0 18px;
-}
-
-.fact{
-  border:1px solid var(--border);
-  background:rgba(248,250,252,.9);
-  border-radius:16px;
-  padding:11px 10px;
-}
-
-.fact-label{
-  font-size:9px;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-  color:var(--text-muted);
-  font-weight:900;
-}
-
-.fact-value{
-  margin-top:5px;
-  font-size:12px;
-  line-height:1.25;
-  color:var(--text);
-  font-weight:900;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.card-actions-mini{
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-
-.icon-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:17px;
-}
-
-/* ACTIONS */
-.action-buttons{
-  width:100%;
-  max-width:430px;
-  display:grid;
-  grid-template-columns:82px minmax(0,1fr) minmax(0,1.45fr);
-  gap:10px;
-  margin-top:14px;
-  padding:11px;
-  border:1px solid var(--border);
-  border-radius:20px;
-  background:rgba(252,252,250,.94);
-  box-shadow:0 10px 30px rgba(27,43,63,.08);
-}
-
-.action-btn{
-  min-width:0;
-  height:68px;
-  border-radius:16px;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:var(--text);
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  -webkit-tap-highlight-color:transparent;
-  transition:transform .12s ease,opacity .12s ease;
-}
-
-.action-btn:active{
-  transform:scale(.985);
-}
-
-.btn-undo{
-  flex-direction:column;
-  gap:3px;
-}
-
-.action-undo-icon{
-  font-size:22px;
-  line-height:1;
-}
-
-.action-main{
-  display:block;
-  font-size:12px;
-  line-height:1.15;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-.action-sub{
-  display:block;
-  margin-top:4px;
-  font-size:9px;
-  line-height:1.1;
-  color:var(--text-muted);
-  font-weight:700;
-  white-space:nowrap;
-}
-
-.btn-skip{
-  flex-direction:column;
-  padding:0 10px;
-  border-color:var(--brand);
-  background:transparent;
-}
-
-.btn-apply{
-  position:relative;
-  flex-direction:column;
-  align-items:flex-start;
-  padding:0 34px 0 17px;
-  border-color:transparent;
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1);
+.send{
+  min-width:72px;
+  border:0;
+  border-radius:15px;
+  background:var(--brand-dark);
   color:#fff;
+  font-weight:900;
+  padding:0 16px;
+}
+.send:disabled{
+  opacity:.45;
 }
 
-.btn-apply .action-sub{
-  color:rgba(255,255,255,.76);
-}
-
-.action-arrow{
-  position:absolute;
-  right:15px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:20px;
-  line-height:1;
-}
-
-@media(max-width:390px){
-  .action-buttons{
-    grid-template-columns:72px minmax(0,1fr) minmax(0,1.35fr);
-    gap:8px;
-    padding:9px;
-  }
-
-  .action-btn{
-    height:64px;
-  }
-
-  .action-main{
-    font-size:11px;
-  }
-
-  .action-sub{
-    font-size:8px;
-  }
-
-  .btn-apply{
-    padding-left:13px;
-    padding-right:29px;
-  }
-
-  .action-arrow{
-    right:11px;
-  }
-}
-
-/* BOTTOM NAV */
-.bottom-nav{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  max-width:520px;
-  margin:0 auto;
-  min-height:72px;
-  padding:10px 12px calc(13px + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.96);
-  border-top:1px solid var(--border);
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  z-index:50;
-  backdrop-filter:blur(16px);
-}
-
-.nav-link{
-  border:none;
-  background:transparent;
-  color:var(--text-muted);
+.notice{
+  margin:10px 16px 0;
+  padding:11px 13px;
+  border-radius:13px;
+  background:var(--soft);
+  color:var(--brand-dark);
   font-size:11px;
-  font-weight:800;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-}
-
-.nav-icon{
-  font-size:19px;
-  line-height:1;
-}
-
-.nav-link.active{
-  color:var(--brand-dark);
-}
-
-/* EMPTY + TOAST */
-.empty-screen{
-  display:none;
-  height:calc(100vh - 112px);
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  text-align:center;
-  padding:30px;
-}
-
-.empty-title{
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:32px;
-  margin-bottom:10px;
-}
-
-.empty-sub{
-  color:var(--text-muted);
-  line-height:1.6;
-  max-width:320px;
-}
-
-.toast{
-  position:fixed;
-  bottom:92px;
-  left:50%;
-  transform:translateX(-50%) translateY(18px);
-  background:var(--text);
-  color:white;
-  padding:12px 22px;
-  border-radius:999px;
-  font-size:14px;
-  transition:opacity .2s ease, transform .2s ease;
-  z-index:100;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  white-space:nowrap;
-}
-
-.toast.show{
-  transform:translateX(-50%) translateY(0);
-  opacity:1;
-  visibility:visible;
-}
-
-@keyframes swipeLeft{
-  to{transform:translateX(-130%) rotate(-22deg);opacity:0}
-}
-
-@keyframes swipeRight{
-  to{transform:translateX(130%) rotate(22deg);opacity:0}
-}
-
-@media(max-height:760px){
-  .top-header{min-height:96px;padding-top:calc(9px + env(safe-area-inset-top))}
-  .logo{font-size:27px}
-  .tagline{display:none}
-  .progress-shell{padding-top:7px}
-  .progress-card{padding:9px 12px}
-  .swipe-area{height:calc(100vh - 96px - 72px);padding-top:9px}
-  .card-stack{height:min(415px,calc(100vh - 315px))}
-  .job-card{padding:19px}
-  .job-title{font-size:25px}
-  .card-desc{-webkit-line-clamp:5}
-  .action-buttons{margin-top:13px}
-}
-
-
-/* FULL JOB AD */
-body.details-open{overflow:hidden}
-.job-details-overlay{
-  position:fixed;inset:0;z-index:300;background:rgba(23,35,51,.42);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .22s ease;
-}
-.job-details-overlay.open{opacity:1;pointer-events:auto}
-.job-details-sheet{
-  width:100%;max-height:94vh;background:var(--bg);border-radius:30px 30px 0 0;
-  transform:translateY(100%);transition:transform .34s cubic-bezier(.2,.8,.2,1);
-  overflow:hidden;display:flex;flex-direction:column;
-  box-shadow:0 -22px 70px rgba(23,35,51,.18);
-}
-.job-details-overlay.open .job-details-sheet{transform:translateY(0)}
-.details-grip{width:44px;height:5px;border-radius:999px;background:#D4DCE3;margin:10px auto 5px;flex-shrink:0}
-.details-header{
-  padding:8px 18px 14px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;
-  border-bottom:1px solid var(--border);background:rgba(246,248,247,.96)
-}
-.details-close,.details-save{
-  width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:#fff;
-  color:var(--text);font-size:20px;display:grid;place-items:center
-}
-.details-header-title{text-align:center;font-size:13px;font-weight:900;color:var(--text)}
-.details-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 17px 120px}
-.details-hero{background:#fff;border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:0 12px 32px rgba(23,35,51,.07)}
-.details-company-row{display:flex;gap:14px;align-items:flex-start}
-.details-logo{width:64px;height:64px;border-radius:20px;background:linear-gradient(145deg,#F5F8FA,#E5ECF2);border:1px solid var(--border);display:grid;place-items:center;font-size:22px;font-weight:900;color:var(--brand-dark);flex-shrink:0}
-.details-title{font-family:'DM Serif Display',Georgia,serif!important;font-size:29px;line-height:1.05;color:var(--text)}
-.details-company{margin-top:6px;font-size:14px;color:var(--text-muted);font-weight:700}
-.details-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
-.details-pill{font-size:11px;font-weight:800;padding:8px 11px;border-radius:999px;border:1px solid var(--border);background:#F9FBFC;color:var(--text-muted)}
-.details-pill.pay{background:var(--brand-light);color:var(--brand-dark);border-color:rgba(93,127,163,.2)}
-.details-section{margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:21px;padding:18px}
-.details-company-about{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.details-company-about-logo{width:56px;height:56px;border:1px solid #dbe5ee;border-radius:16px;overflow:hidden;display:grid;place-items:center;background:#eef4f8;color:#376da3;font-size:19px;font-weight:900;flex:0 0 auto}
-.details-company-about-logo img,.details-logo img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit}
-.details-company-about-name{color:#162336;font-weight:900;font-size:16px}
-.details-company-about-meta{margin-top:4px;color:#718096;font-size:11px;font-weight:700}
-.details-company-links{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
-.details-company-link{display:inline-flex;min-height:33px;align-items:center;padding:0 10px;border:1px solid #dbe5ee;border-radius:999px;color:#376da3;background:#fff;font-size:10px;font-weight:800;text-decoration:none}
-
-.details-section h2{font-size:16px;font-weight:900;margin-bottom:10px;color:var(--text)}
-.details-copy{font-size:14px;color:var(--text-muted);line-height:1.7;white-space:pre-wrap;word-break:break-word}
-.details-list{display:grid;gap:10px;list-style:none}
-.details-list li{position:relative;padding-left:17px;font-size:13px;color:var(--text-muted);line-height:1.55}
-.details-list li::before{content:'';position:absolute;left:0;top:.58em;width:6px;height:6px;border-radius:50%;background:var(--brand)}
-.details-empty{font-size:13px;color:var(--text-muted);font-style:italic}
-.details-footer{position:absolute;left:0;right:0;bottom:0;padding:11px 16px calc(11px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--border);backdrop-filter:blur(18px)}
-.details-apply{width:100%;min-height:56px;border:none;border-radius:17px;background:var(--brand-dark);color:#fff;font-size:15px;font-weight:900;box-shadow:0 9px 22px rgba(52,95,145,.22)}
-.details-apply:disabled{opacity:.6}
-.tap-hint{font-size:11px;color:var(--brand-dark);font-weight:900}
-@media(min-width:700px){.job-details-overlay{align-items:center;justify-content:center;padding:24px}.job-details-sheet{max-width:560px;border-radius:30px;max-height:90vh}.details-footer{border-radius:0 0 30px 30px}}
-
-
-/* ==========================================================
-   SYSTEM DARK MODE
-   Follows Android/iPhone appearance automatically.
-   ========================================================== */
-
-
-
-
-/* ==========================================================
-   CANDIDATE THEME SYNC
-   Base CSS = Light.
-   Dark styles only run when JS resolves the candidate theme
-   to data-theme="dark".
-   ========================================================== */
-body[data-theme="dark"]{
-  color-scheme:dark;
-
-  --brand:#5D86B1;
-  --brand-dark:#79A7D5;
-  --sage:#8FC6A2;
-
-  --bg:#061821;
-  --card-bg:#10232D;
-  --text:#F3F7FA;
-  --border:#29404C;
-  --mint:#71C795;
-  --rose:#E58C96;
-  --text-muted:#A9B8C5;
-
-  --brand-light:rgba(93,134,177,.18);
-  --mint-light:rgba(113,199,149,.13);
-  --rose-light:rgba(229,140,150,.13);
-
-  background:
-    radial-gradient(circle at top,rgba(93,127,163,.12),transparent 31%),
-    #061821 !important;
-  color:var(--text);
-}
-
-body[data-theme="dark"] .top-header{
-  background:rgba(5,24,33,.96) !important;
-  border-bottom-color:var(--border);
-}
-
-body[data-theme="dark"] .back-btn{
-  background:#0D202A;
-  color:var(--text);
-  border:1px solid var(--border);
-}
-
-body[data-theme="dark"] .logo{
-  color:#6F96BE;
-}
-
-body[data-theme="dark"] .tagline{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .progress-card{
-  background:#10232D !important;
-  border-color:var(--border);
-  box-shadow:0 8px 26px rgba(0,0,0,.20);
-}
-
-body[data-theme="dark"] .progress-track{
-  background:#203640;
-}
-
-body[data-theme="dark"] .job-card{
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.12),transparent 28%),
-    var(--card-bg) !important;
-  border-color:var(--border);
-  box-shadow:0 22px 60px rgba(0,0,0,.30);
-}
-
-body[data-theme="dark"] .match{
-  background:rgba(111,191,143,.12);
-  color:#83D6A6;
-  border-color:rgba(111,191,143,.26);
-}
-
-body[data-theme="dark"] .save-btn,
-body[data-theme="dark"] .icon-btn{
-  background:#0B1D26 !important;
-  color:var(--text);
-  border-color:var(--border);
-  box-shadow:0 5px 16px rgba(0,0,0,.20);
-}
-
-body[data-theme="dark"] .action-buttons{
-  background:rgba(9,29,38,.96);
-  border-color:var(--border);
-  box-shadow:0 12px 32px rgba(0,0,0,.22);
-}
-
-body[data-theme="dark"] .action-btn{
-  background:#0B1D26;
-  color:var(--text);
-  border-color:var(--border);
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .btn-skip{
-  background:#0B1D26;
-  color:var(--text);
-  border-color:#5D86B1;
-}
-
-body[data-theme="dark"] .btn-apply{
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1) !important;
-  color:#fff;
-  border-color:transparent;
-}
-
-body[data-theme="dark"] .company-logo{
-  background:linear-gradient(145deg,#183343,#0E2530);
-  border-color:var(--border);
-  color:#8EB4DA;
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .job-title,
-body[data-theme="dark"] .stat-val,
-body[data-theme="dark"] .progress-copy{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .company-name,
-body[data-theme="dark"] .stat-label,
-body[data-theme="dark"] .action-label,
-body[data-theme="dark"] .posted-time,
-body[data-theme="dark"] .card-desc{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .verified{
-  background:#638CB5;
-}
-
-body[data-theme="dark"] .pill{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:#BCC8D2;
-}
-
-body[data-theme="dark"] .pill.salary{
-  background:rgba(93,127,163,.17);
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .alygnn-match-mini{
-  background:#0B1D26 !important;
-  border-color:var(--border);
-}
-
-body[data-theme="dark"] .alygnn-match-mini-title,
-body[data-theme="dark"] .alygnn-score-number{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .alygnn-match-mini-sub,
-body[data-theme="dark"] .alygnn-mini-label{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .alygnn-mini-value{
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .alygnn-score-ring{
-  background:
-    conic-gradient(
-      var(--mint) calc(var(--score) * 1%),
-      #203640 0
-    );
-}
-
-body[data-theme="dark"] .alygnn-score-ring::after{
-  background:#10232D;
-  border-color:var(--border);
-}
-
-body[data-theme="dark"] .alygnn-mini-track{
-  background:#203640;
-}
-
-body[data-theme="dark"] .card-bottom{
-  border-top-color:var(--border);
-}
-
-body[data-theme="dark"] .view-full-ad{
-  background:transparent;
-  border-color:transparent;
-  color:#78A7D6;
-}
-
-body[data-theme="dark"] .apply-link,
-body[data-theme="dark"] .tap-hint{
-  color:#78A7D6;
-}
-
-body[data-theme="dark"] .empty-title{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .empty-sub{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .bottom-nav{
-  background:rgba(6,24,33,.97) !important;
-  border-top-color:var(--border);
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item{
-  color:#7F92A1;
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item.active{
-  color:#6FA6DB;
-}
-
-body[data-theme="dark"] .bottom-nav .nav-item.active:before{
-  background:#4D89C3;
-}
-
-body[data-theme="dark"] .nav-icon{
-  color:inherit;
-}
-
-body[data-theme="dark"] .toast{
-  background:#EAF0F4;
-  color:#14222D;
-}
-
-/* Full job ad */
-body[data-theme="dark"] .job-details-overlay{
-  background:rgba(0,0,0,.62);
-}
-
-body[data-theme="dark"] .job-details-sheet{
-  background:#061821;
-  box-shadow:0 -22px 70px rgba(0,0,0,.45);
-}
-
-body[data-theme="dark"] .details-grip{
-  background:#415864;
-}
-
-body[data-theme="dark"] .details-header{
-  background:rgba(6,24,33,.97);
-  border-bottom-color:var(--border);
-}
-
-body[data-theme="dark"] .details-close,
-body[data-theme="dark"] .details-save{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-header-title{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-hero,
-body[data-theme="dark"] .details-section{
-  background:#10232D !important;
-  border-color:var(--border);
-  box-shadow:none;
-}
-
-body[data-theme="dark"] .details-logo{
-  background:linear-gradient(145deg,#183343,#0E2530);
-  border-color:var(--border);
-  color:#8EB4DA;
-}
-
-body[data-theme="dark"] .details-title,
-body[data-theme="dark"] .details-section h2{
-  color:var(--text);
-}
-
-body[data-theme="dark"] .details-company,
-body[data-theme="dark"] .details-copy,
-body[data-theme="dark"] .details-list li,
-body[data-theme="dark"] .details-empty{
-  color:var(--text-muted);
-}
-
-body[data-theme="dark"] .details-pill{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:#BCC8D2;
-}
-
-body[data-theme="dark"] .details-pill.pay{
-  background:rgba(93,127,163,.18);
-  color:#8EB4DA;
-  border-color:rgba(93,127,163,.28);
-}
-
-body[data-theme="dark"] .details-footer{
-  background:rgba(6,24,33,.97);
-  border-top-color:var(--border);
-}
-
-/* Explicit light mode wins even if Android/WebView was previously dark. */
-body[data-theme="light"]{
-  color-scheme:light;
-}
-
-</style>
-
-<style id="candidate-four-tab-nav">
-.bottom-nav{
-  display:grid!important;
-  grid-template-columns:repeat(4,1fr)!important;
-}
-.bottom-nav .nav-item{
-  position:relative;
-  min-height:54px;
-  border:none;
-  background:transparent;
-  color:#738394;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  font-size:9px;
-  font-weight:800;
-  cursor:pointer;
-}
-.bottom-nav .nav-item.active{color:#35679A}
-.bottom-nav .nav-item.active:before{
-  content:'';
-  position:absolute;
-  top:-9px;
-  width:34px;
-  height:3px;
-  border-radius:999px;
-  background:#35679A;
-}
-.bottom-nav .nav-icon{
-  width:20px;
-  height:20px;
-  display:grid;
-  place-items:center;
-  line-height:1;
-}
-
-.bottom-nav .nav-icon svg{
-  width:20px;
-  height:20px;
-  stroke:currentColor;
-  stroke-width:1.8;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-
-</style>
-
-
-<style id="alygnn-candidate-messages-nav">
-#candidate-bottom-nav{grid-template-columns:repeat(5,1fr)!important}
-.messaging-nav-badge{
-  position:absolute;
-  top:2px;
-  right:calc(50% - 19px);
-  min-width:15px;
-  height:15px;
-  padding:0 4px;
-  border-radius:999px;
-  background:#E64141;
-  color:#fff;
-  font-size:8px;
-  font-weight:900;
-  line-height:1;
-  display:grid;
-  place-items:center;
-  border:2px solid var(--card-bg,var(--card,#fff));
-}
-.messaging-nav-badge[hidden]{display:none!important}
-</style>
-
-
-<style id="alygnn-candidate-primary-header-consistency">
-/* Primary candidate tabs all use the same Alygnn header as My Profile. */
-.top-header{
-  position:sticky!important;
-  top:0!important;
-  z-index:40!important;
-  min-height:86px!important;
-  display:grid!important;
-  grid-template-columns:46px minmax(0,1fr) 46px!important;
-  align-items:center!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.top-header .logo{
-  font-size:31px!important;
-  line-height:1!important;
-}
-.top-header .tagline{display:none!important}
-.top-header .back-btn,
-.top-header .profile-chip{
-  visibility:hidden!important;
-  pointer-events:none!important;
-  width:42px!important;
-  height:42px!important;
-  min-width:42px!important;
-  padding:0!important;
-}
-html[data-effective-theme="light"] .top-header,
-body[data-theme="light"] .top-header{
-  background:rgba(246,248,247,.96)!important;
-  border-bottom-color:#DDE3E8!important;
-}
-html[data-effective-theme="dark"] .top-header,
-body[data-theme="dark"] .top-header{
-  background:rgba(5,24,33,.96)!important;
-  border-bottom-color:#29404C!important;
+  font-weight:700;
+  line-height:1.45;
+}
+.notice.error{
+  background:var(--danger-bg);
+  color:var(--danger);
 }
 </style>
 
-<style id="alygnn-native-surface-match-messages">
-/* Keep Android system-bar edges and the page canvas on the same surface as Messages. */
-html,
-body{
-  min-height:100%;
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-}
-body{min-height:100dvh}
-html[data-effective-theme="light"],
-html[data-effective-theme="light"] body,
-body[data-theme="light"]{
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-}
-html[data-effective-theme="dark"],
-html[data-effective-theme="dark"] body,
-body[data-theme="dark"]{
-  background:#061821!important;
-  background-color:#061821!important;
-}
-/* Never expose a contrasting white strip behind the fixed navigation. */
-html[data-effective-theme="dark"] .bottom-nav,
-body[data-theme="dark"] .bottom-nav{
-  background:rgba(5,24,33,.96)!important;
-}
-html[data-effective-theme="light"] .bottom-nav,
-body[data-theme="light"] .bottom-nav{
-  background:rgba(246,248,247,.96)!important;
-}
-</style>
-
-
-<style id="alygnn-discover-system-edge-fix">
-html[data-effective-theme="dark"] .top-header,
-body[data-theme="dark"] .top-header{background:rgba(5,24,33,.96)!important}
-html[data-effective-theme="light"] .top-header,
-body[data-theme="light"] .top-header{background:rgba(246,248,247,.96)!important}
-/* The empty state must fill only the app canvas; never paint a second system-edge color. */
-.empty-screen{background:transparent!important}
-</style>
-
-
-<style id="alygnn-candidate-shell-consistency-final">
-html[data-effective-theme='dark'],
-html[data-effective-theme='dark'] body,
-html[data-effective-theme='dark'] .top-header,
-body[data-theme='dark'],
-body[data-theme='dark'] .top-header{
-  background:#061821!important;
-  background-color:#061821!important;
-  background-image:none!important;
-}
-html[data-effective-theme='light'],
-html[data-effective-theme='light'] body,
-html[data-effective-theme='light'] .top-header,
-body[data-theme='light'],
-body[data-theme='light'] .top-header{
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-  background-image:none!important;
-}
-.top-header{
-  position:sticky!important;
-  top:0!important;
-  z-index:40!important;
-  width:100%!important;
-  min-height:86px!important;
-  display:grid!important;
-  grid-template-columns:46px minmax(0,1fr) 46px!important;
-  align-items:center!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  margin:0!important;
-  border-bottom:1px solid #29404C!important;
-  box-shadow:none!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-.top-header .logo{
-  margin:0!important;
-  padding:0!important;
-  text-align:center!important;
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px!important;
-  font-weight:400!important;
-  line-height:1!important;
-  letter-spacing:-.7px!important;
-  color:#6F96BE!important;
-  white-space:nowrap!important;
-}
-.top-header .logo span{color:#8FC6A2!important}
-.top-header .tagline{display:none!important}
-.top-header .back-btn,.top-header .profile-chip{
-  visibility:hidden!important;
-  pointer-events:none!important;
-  width:42px!important;
-  height:42px!important;
-  min-width:42px!important;
-  padding:0!important;
-}
-html[data-effective-theme='light'] .top-header,
-body[data-theme='light'] .top-header{border-bottom-color:#DDE3E8!important}
-html[data-effective-theme='light'] .top-header .logo,
-body[data-theme='light'] .top-header .logo{color:#5D7FA3!important}
-html[data-effective-theme='light'] .top-header .logo span,
-body[data-theme='light'] .top-header .logo span{color:#8CB69B!important}
-
-/* Candidate bottom nav source of truth: same dimensions/icons on every tab. */
-#candidate-bottom-nav,
-.bottom-nav.candidate{
-  position:fixed!important;
-  left:0!important;
-  right:0!important;
-  bottom:0!important;
-  z-index:50!important;
-  width:100%!important;
-  max-width:560px!important;
-  margin:0 auto!important;
-  min-height:72px!important;
-  padding:8px 12px calc(10px + env(safe-area-inset-bottom))!important;
-  display:grid!important;
-  grid-template-columns:repeat(5,minmax(0,1fr))!important;
-  border-top:1px solid #29404C!important;
-  background:#061821!important;
-  background-image:none!important;
-  box-shadow:none!important;
-  backdrop-filter:blur(18px)!important;
-  -webkit-backdrop-filter:blur(18px)!important;
-}
-
-#candidate-bottom-nav .nav-item,
-.bottom-nav.candidate .nav{
-  position:relative!important;
-  min-width:0!important;
-  min-height:54px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  background:transparent!important;
-  color:#8293A2!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:4px!important;
-  font-family:'DM Sans',Arial,sans-serif!important;
-  font-size:9px!important;
-  line-height:1.1!important;
-  font-weight:800!important;
-}
-
-#candidate-bottom-nav .nav-icon,
-.bottom-nav.candidate .nav svg{
-  width:20px!important;
-  height:20px!important;
-  min-width:20px!important;
-  min-height:20px!important;
-}
-
-#candidate-bottom-nav .nav-icon svg,
-.bottom-nav.candidate .nav svg{
-  width:20px!important;
-  height:20px!important;
-  fill:none!important;
-  stroke:currentColor!important;
-  stroke-width:1.8!important;
-  stroke-linecap:round!important;
-  stroke-linejoin:round!important;
-}
-
-#candidate-bottom-nav .nav-item.active,
-.bottom-nav.candidate .nav.active{
-  color:#73A4CE!important;
-}
-
-#candidate-bottom-nav .nav-item.active::before,
-.bottom-nav.candidate .nav.active::before{
-  content:''!important;
-  position:absolute!important;
-  top:-9px!important;
-  left:50%!important;
-  transform:translateX(-50%)!important;
-  width:34px!important;
-  height:3px!important;
-  border-radius:999px!important;
-  background:#73A4CE!important;
-}
-
-#candidate-bottom-nav .nav-label,
-.bottom-nav.candidate .nav > span:not(.messaging-nav-badge){
-  font-family:'DM Sans',Arial,sans-serif!important;
-  font-size:9px!important;
-  line-height:1.1!important;
-  font-weight:800!important;
-  white-space:nowrap!important;
-}
-
-html[data-effective-theme='light'] #candidate-bottom-nav,
-body[data-theme='light'] #candidate-bottom-nav,
-html[data-effective-theme='light'] .bottom-nav.candidate{
-  background:#F6F8F7!important;
-  border-top-color:#DDE3E8!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item,
-body[data-theme='light'] #candidate-bottom-nav .nav-item,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav{
-  color:#738394!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active,
-body[data-theme='light'] #candidate-bottom-nav .nav-item.active,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav.active{
-  color:#35679A!important;
-}
-html[data-effective-theme='light'] #candidate-bottom-nav .nav-item.active::before,
-body[data-theme='light'] #candidate-bottom-nav .nav-item.active::before,
-html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
-  background:#35679A!important;
-}
-
-</style>
-
-
-<style id="alygnn-app-native-discover-card">
-  /* App-only flashcard treatment. Keep the website-style content out of Discover. */
-  .app-native-urgent{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    width:max-content;
-    max-width:100%;
-    margin:-2px 0 16px;
-    padding:7px 11px;
-    border-radius:999px;
-    border:1px solid rgba(215,154,154,.45);
-    background:rgba(215,154,154,.11);
-    color:#914747;
-    font-size:11px;
-    line-height:1;
-    font-weight:800;
-  }
-  .app-native-urgent > span{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#D79A9A;
-    box-shadow:0 0 0 3px rgba(215,154,154,.14);
-    flex:0 0 7px;
-  }
-
-  .app-native-facts{
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    gap:10px!important;
-    margin:0 0 16px!important;
-  }
-  .app-native-facts .fact{
-    min-width:0;
-    padding:11px 12px;
-    border-radius:15px;
-    background:#F8FAFB;
-  }
-  .app-native-facts .fact-value{
-    white-space:normal;
-    overflow:visible;
-    text-overflow:clip;
-    word-break:break-word;
-    font-size:12px;
-    line-height:1.28;
-  }
-
-  .app-native-summary{
-    margin-top:1px;
-    padding:15px 16px;
-    border:1px solid var(--border);
-    border-radius:16px;
-    background:rgba(248,250,252,.72);
-  }
-  .app-native-summary-title{
-    margin-bottom:7px;
-    font-size:10px;
-    line-height:1;
-    font-weight:900;
-    letter-spacing:.8px;
-    text-transform:uppercase;
-    color:var(--brand-dark);
-  }
-  .app-native-summary .card-desc{
-    margin:0;
-    -webkit-line-clamp:3;
-    font-size:13px;
-    line-height:1.55;
-  }
-
-  .app-native-card-bottom{
-    margin-top:auto;
-    padding-top:14px;
-  }
-  .app-native-card-bottom .view-full-ad{
-    border:0;
-    background:transparent;
-    padding:5px 0;
-    font:inherit;
-    cursor:pointer;
-  }
-
-  /* The app card should not use the website pill strip / website quick-overview block. */
-  .job-card .card-pills,
-  .job-card .card-overview{
-    display:none!important;
-  }
-
-  body[data-theme="dark"] .app-native-facts .fact,
-  html[data-effective-theme="dark"] .app-native-facts .fact,
-  body[data-theme="dark"] .app-native-summary,
-  html[data-effective-theme="dark"] .app-native-summary{
-    background:#0B1D26;
-    border-color:var(--border);
-  }
-  body[data-theme="dark"] .app-native-summary-title,
-  html[data-effective-theme="dark"] .app-native-summary-title{
-    color:#8EB4DA;
-  }
-  body[data-theme="dark"] .app-native-urgent,
-  html[data-effective-theme="dark"] .app-native-urgent{
-    background:rgba(215,154,154,.12);
-    color:#E1AAAA;
-    border-color:rgba(215,154,154,.30);
-  }
-</style>
-
-
-<style id="alygnn-clean-mobile-discover-card">
-  /* Remove the previous experimental card treatment. */
-  .app-native-facts,
-  .app-native-summary,
-  .app-native-urgent{
-    display:none!important;
-  }
-
-  .card-stack{
-    height:min(410px,calc(100vh - 350px))!important;
-  }
-
-  .job-card{
-    padding:21px 22px 18px!important;
-    border-radius:28px!important;
-    overflow:hidden!important;
-  }
-
-  .job-card.alygnn-recommended-card:first-child{
-    padding-top:50px!important;
-  }
-
-  .card-toolbar{
-    margin-bottom:14px!important;
-  }
-
-  .match{
-    padding:8px 12px!important;
-    font-size:12px!important;
-    box-shadow:none!important;
-  }
-
-  .card-actions-mini{
-    gap:7px!important;
-  }
-
-  .icon-btn,
-  .save-btn{
-    width:37px!important;
-    height:37px!important;
-    background:var(--card-bg)!important;
-    box-shadow:none!important;
-  }
-
-  .card-top{
-    align-items:center!important;
-    gap:13px!important;
-    margin-bottom:14px!important;
-  }
-
-  .company-logo{
-    width:58px!important;
-    height:58px!important;
-    border-radius:18px!important;
-  }
-
-  .job-title{
-    font-size:27px!important;
-    line-height:1.04!important;
-    letter-spacing:-.35px!important;
-  }
-
-  .company-name{
-    font-size:14px!important;
-  }
-
-  .clean-urgent{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    align-self:flex-start;
-    margin:0 0 13px;
-    padding:7px 11px;
-    border:1px solid rgba(215,154,154,.42);
-    border-radius:999px;
-    background:rgba(215,154,154,.10);
-    color:#914747;
-    font-size:11px;
-    line-height:1;
-    font-weight:800;
-  }
-
-  .clean-urgent span{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-    background:#D79A9A;
-    box-shadow:0 0 0 3px rgba(215,154,154,.14);
-  }
-
-  .clean-meta{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    border-top:1px solid var(--border);
-    border-bottom:1px solid var(--border);
-    margin-top:2px;
-  }
-
-  .clean-meta-item{
-    min-width:0;
-    padding:12px 12px 11px 0;
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-  }
-
-  .clean-meta-item:nth-child(odd){
-    border-right:1px solid var(--border);
-    padding-right:14px;
-  }
-
-  .clean-meta-item:nth-child(even){
-    padding-left:14px;
-    padding-right:0;
-  }
-
-  .clean-meta-item:nth-child(-n+2){
-    border-bottom:1px solid var(--border);
-  }
-
-  .clean-meta-label{
-    color:var(--text-muted);
-    font-size:9px;
-    line-height:1;
-    font-weight:800;
-    letter-spacing:.75px;
-    text-transform:uppercase;
-  }
-
-  .clean-meta strong{
-    min-width:0;
-    color:var(--text);
-    font-size:13px;
-    line-height:1.25;
-    font-weight:800;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-
-  .clean-pay strong{
-    color:var(--brand-dark);
-  }
-
-  .clean-card-bottom{
-    margin-top:auto!important;
-    padding-top:12px!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:space-between!important;
-  }
-
-  .clean-view-details{
-    display:inline-flex!important;
-    align-items:center!important;
-    gap:7px!important;
-    border:0!important;
-    background:transparent!important;
-    padding:7px 0!important;
-    color:var(--brand-dark)!important;
-    font-family:'DM Sans',Arial,sans-serif!important;
-    font-size:12px!important;
-    font-weight:900!important;
-    cursor:pointer!important;
-  }
-
-  .posted-time{
-    font-size:11px!important;
-  }
-
-  /* Keep actions clearly separate from the card instead of colliding with it. */
-  .action-buttons{
-    margin-top:18px!important;
-    position:relative!important;
-    z-index:10!important;
-    box-shadow:0 10px 26px rgba(27,43,63,.07)!important;
-  }
-
-  @media(max-height:820px){
-    .card-stack{
-      height:min(390px,calc(100vh - 340px))!important;
-    }
-    .job-card{
-      padding:18px 19px 16px!important;
-    }
-    .job-card.alygnn-recommended-card:first-child{
-      padding-top:47px!important;
-    }
-    .company-logo{
-      width:52px!important;
-      height:52px!important;
-    }
-    .job-title{
-      font-size:24px!important;
-    }
-    .clean-meta-item{
-      padding-top:10px;
-      padding-bottom:9px;
-    }
-    .action-buttons{
-      margin-top:14px!important;
-    }
-  }
-
-  body[data-theme="dark"] .clean-urgent,
-  html[data-effective-theme="dark"] .clean-urgent{
-    color:#E9B7B7;
-    background:rgba(215,154,154,.10);
-    border-color:rgba(215,154,154,.30);
-  }
-
-  body[data-theme="dark"] .clean-pay strong,
-  html[data-effective-theme="dark"] .clean-pay strong,
-  body[data-theme="dark"] .clean-view-details,
-  html[data-effective-theme="dark"] .clean-view-details{
-    color:#8EB4DA!important;
-  }
-</style>
-
-
-<style id="alygnn-balanced-mobile-fit">
-  /* ----- page chrome ----- */
-  .top-header{
-    min-height:74px!important;
-    padding:calc(8px + env(safe-area-inset-top)) 18px 8px!important;
-  }
-  .top-header .logo{
-    font-size:29px!important;
-  }
-
-  .progress-shell{
-    padding:8px 18px 0!important;
-  }
-  .progress-card{
-    min-height:54px!important;
-    padding:8px 12px!important;
-    border-radius:18px!important;
-    box-shadow:0 5px 16px rgba(25,40,60,.045)!important;
-  }
-  .stat-val{
-    font-size:16px!important;
-  }
-  .stat-label{
-    font-size:8px!important;
-  }
-  .progress-copy{
-    margin-bottom:4px!important;
-    font-size:10px!important;
-  }
-  .progress-track{
-    height:5px!important;
-  }
-
-  /* ----- discover canvas ----- */
-  .swipe-area{
-    height:calc(100dvh - 74px - 63px - 78px)!important;
-    min-height:520px!important;
-    justify-content:flex-start!important;
-    padding:10px 18px 8px!important;
-  }
-
-  .card-stack{
-    width:100%!important;
-    max-width:430px!important;
-    height:min(420px,calc(100dvh - 300px))!important;
-    min-height:380px!important;
-  }
-
-  .job-card{
-    padding:20px 22px 17px!important;
-    border-radius:27px!important;
-  }
-
-  .job-card.alygnn-recommended-card:first-child{
-    padding-top:46px!important;
-  }
-
-  .alygnn-recommended-banner{
-    min-height:32px!important;
-    padding:0 15px!important;
-    border-radius:0 26px 0 13px!important;
-    font-size:9.5px!important;
-    letter-spacing:.65px!important;
-    box-shadow:0 5px 14px rgba(93,127,163,.20)!important;
-  }
-
-  .card-toolbar{
-    margin-bottom:12px!important;
-  }
-
-  .match{
-    padding:7px 11px!important;
-    font-size:11px!important;
-    font-weight:800!important;
-  }
-
-  .icon-btn,
-  .save-btn{
-    width:35px!important;
-    height:35px!important;
-    font-size:16px!important;
-  }
-
-  .card-top{
-    align-items:center!important;
-    gap:12px!important;
-    margin-bottom:12px!important;
-  }
-
-  .company-logo{
-    width:54px!important;
-    height:54px!important;
-    border-radius:17px!important;
-  }
-
-  .job-title{
-    font-size:25px!important;
-    line-height:1.04!important;
-    letter-spacing:-.4px!important;
-  }
-
-  .company-name{
-    font-size:13px!important;
-  }
-
-  /* ----- compact app-native job info ----- */
-  .clean-urgent,
-  .clean-meta,
-  .app-native-facts,
-  .app-native-summary,
-  .app-native-urgent{
-    display:none!important;
-  }
-
-  .mobile-job-tags{
-    display:flex;
-    flex-wrap:wrap;
-    gap:7px;
-    margin:1px 0 13px;
-  }
-
-  .mobile-tag{
-    display:inline-flex;
-    align-items:center;
-    min-height:28px;
-    max-width:100%;
-    padding:0 10px;
-    border:1px solid var(--border);
-    border-radius:999px;
-    background:rgba(248,250,252,.78);
-    color:var(--text-muted);
-    font-size:10.5px;
-    line-height:1;
-    font-weight:750;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-
-  .mobile-tag.pay{
-    background:rgba(93,127,163,.09);
-    border-color:rgba(93,127,163,.20);
-    color:var(--brand-dark);
-    font-weight:850;
-  }
-
-  .mobile-tag.urgent{
-    border-color:rgba(215,154,154,.42);
-    background:rgba(215,154,154,.10);
-    color:#914747;
-    font-weight:850;
-  }
-
-  .urgent-dot{
-    width:6px;
-    height:6px;
-    margin-right:6px;
-    border-radius:50%;
-    background:#D79A9A;
-    box-shadow:0 0 0 3px rgba(215,154,154,.13);
-    flex:0 0 6px;
-  }
-
-  .mobile-role-preview{
-    color:var(--text-muted);
-    font-size:12.5px;
-    line-height:1.5;
-    display:-webkit-box;
-    -webkit-line-clamp:3;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-    margin:0;
-  }
-
-  .mobile-card-bottom{
-    margin-top:auto!important;
-    padding-top:11px!important;
-    border-top:1px solid var(--border)!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:space-between!important;
-  }
-
-  .mobile-view-details{
-    display:inline-flex!important;
-    align-items:center!important;
-    gap:7px!important;
-    border:0!important;
-    background:transparent!important;
-    padding:5px 0!important;
-    color:var(--brand-dark)!important;
-    font-family:'DM Sans',Arial,sans-serif!important;
-    font-size:11.5px!important;
-    font-weight:850!important;
-    cursor:pointer!important;
-  }
-
-  .posted-time{
-    font-size:10.5px!important;
-  }
-
-  /* ----- actions: individual buttons, no giant white container ----- */
-  .action-buttons{
-    width:100%!important;
-    max-width:430px!important;
-    grid-template-columns:72px minmax(0,1fr) minmax(0,1.35fr)!important;
-    gap:9px!important;
-    margin-top:12px!important;
+<style id="alygnn-app-chat-modern-theme">
+  /* Explicit app preference wins over system preference. */
+  html[data-effective-theme="light"]{
+    --brand:#5D7FA3;
+    --brand-dark:#345F91;
+    --sage:#8CB69B;
+    --bg:#F6F8F7;
+    --card:#FFFFFF;
+    --text:#172333;
+    --muted:#647282;
+    --border:#DDE3E8;
+    --soft:#EAF0F6;
+    --danger:#C74747;
+    --danger-bg:#FCECEC;
+    color-scheme:light;
+  }
+
+  html[data-effective-theme="dark"]{
+    --brand:#5D86B1;
+    --brand-dark:#79A7D5;
+    --sage:#8FC6A2;
+    --bg:#061821;
+    --card:#10232D;
+    --text:#F3F7FA;
+    --muted:#A9B8C5;
+    --border:#29404C;
+    --soft:#0B1D26;
+    --danger:#E58181;
+    --danger-bg:#3B1E22;
+    color-scheme:dark;
+  }
+
+  html,
+  body,
+  .app{
+    background:var(--bg)!important;
+    color:var(--text)!important;
+  }
+
+  /* Header matches candidate Messages page. */
+  .header{
+    min-height:78px!important;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px!important;
+    background:var(--bg)!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+
+  .back,
+  .more{
+    width:42px!important;
+    height:42px!important;
     padding:0!important;
-    border:0!important;
-    border-radius:0!important;
-    background:transparent!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:1px solid var(--border)!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
     box-shadow:none!important;
+    line-height:1!important;
   }
 
-  .action-btn{
-    height:58px!important;
-    border-radius:17px!important;
-    box-shadow:0 5px 14px rgba(27,43,63,.055)!important;
-  }
-
-  .action-undo-icon{
-    font-size:18px!important;
-  }
-
-  .action-main{
-    font-size:11.5px!important;
-  }
-
-  .action-sub{
-    margin-top:2px!important;
-    font-size:8.5px!important;
-  }
-
-  .btn-apply{
-    box-shadow:0 7px 18px rgba(53,103,154,.20)!important;
-  }
-
-  /* ----- bottom navigation ----- */
-  .bottom-nav{
-    min-height:68px!important;
-    padding:7px 10px calc(10px + env(safe-area-inset-bottom))!important;
-  }
-
-  .bottom-nav .nav,
-  .bottom-nav .nav-item,
-  .bottom-nav .nav-link{
-    font-size:9px!important;
-    gap:3px!important;
-  }
-
-  .bottom-nav svg,
-  .bottom-nav .nav-icon{
-    width:19px!important;
-    height:19px!important;
-  }
-
-  /* ----- dark mode ----- */
-  html[data-effective-theme="dark"] .mobile-tag,
-  body[data-theme="dark"] .mobile-tag{
-    background:#0D202A;
-    border-color:var(--border);
-    color:var(--text-muted);
-  }
-
-  html[data-effective-theme="dark"] .mobile-tag.pay,
-  body[data-theme="dark"] .mobile-tag.pay{
-    background:rgba(93,127,163,.15);
-    color:#8EB4DA;
-  }
-
-  html[data-effective-theme="dark"] .mobile-tag.urgent,
-  body[data-theme="dark"] .mobile-tag.urgent{
-    background:rgba(215,154,154,.10);
-    border-color:rgba(215,154,154,.30);
-    color:#E5B1B1;
-  }
-
-  html[data-effective-theme="dark"] .mobile-view-details,
-  body[data-theme="dark"] .mobile-view-details{
-    color:#8EB4DA!important;
-  }
-
-  /* Very short Android displays still keep everything on-screen. */
-  @media(max-height:800px){
-    .top-header{
-      min-height:68px!important;
-      padding-top:calc(6px + env(safe-area-inset-top))!important;
-      padding-bottom:6px!important;
-    }
-    .progress-shell{
-      padding-top:6px!important;
-    }
-    .progress-card{
-      min-height:49px!important;
-      padding:6px 10px!important;
-    }
-    .swipe-area{
-      height:calc(100dvh - 68px - 57px - 72px)!important;
-      min-height:485px!important;
-      padding-top:8px!important;
-    }
-    .card-stack{
-      height:min(390px,calc(100dvh - 285px))!important;
-      min-height:350px!important;
-    }
-    .job-card{
-      padding:17px 19px 14px!important;
-    }
-    .job-card.alygnn-recommended-card:first-child{
-      padding-top:43px!important;
-    }
-    .job-title{
-      font-size:23px!important;
-    }
-    .company-logo{
-      width:50px!important;
-      height:50px!important;
-    }
-    .mobile-job-tags{
-      margin-bottom:10px!important;
-      gap:6px!important;
-    }
-    .mobile-tag{
-      min-height:25px!important;
-      font-size:9.7px!important;
-    }
-    .mobile-role-preview{
-      -webkit-line-clamp:2!important;
-      font-size:11.7px!important;
-    }
-    .action-buttons{
-      margin-top:9px!important;
-    }
-    .action-btn{
-      height:54px!important;
-    }
-    .bottom-nav{
-      min-height:64px!important;
-      padding-top:6px!important;
-    }
-  }
-</style>
-
-
-<style id="alygnn-swipe-lowered-cleanup">
-  /* The swipe card itself should stay focused. Share/save live in View Details. */
-  .swipe-card-toolbar{
-    justify-content:flex-start!important;
-    min-height:auto!important;
-    margin-bottom:12px!important;
-  }
-
-  .swipe-card-toolbar .match{
-    margin:0!important;
-  }
-
-  /* Give the stats/card breathing room instead of pinning the card right below it. */
-  .swipe-area{
-    padding-top:22px!important;
-  }
-
-  .card-stack{
-    height:365px!important;
-    min-height:365px!important;
-    max-height:365px!important;
-  }
-
-  .job-card{
-    height:365px!important;
-    min-height:365px!important;
-    padding:19px 21px 16px!important;
-  }
-
-  .job-card.alygnn-recommended-card:first-child{
-    padding-top:43px!important;
-  }
-
-  .alygnn-recommended-banner{
-    min-height:31px!important;
-    padding:0 14px!important;
-    font-size:9.3px!important;
-    letter-spacing:.58px!important;
-  }
-
-  .card-top{
-    margin-bottom:11px!important;
-  }
-
-  .company-logo{
-    width:51px!important;
-    height:51px!important;
-    border-radius:16px!important;
-  }
-
-  .job-title{
-    font-size:24px!important;
-    line-height:1.05!important;
-  }
-
-  .company-name{
-    font-size:12.5px!important;
-  }
-
-  .mobile-job-tags{
-    gap:6px!important;
-    margin:0 0 10px!important;
-  }
-
-  .mobile-tag{
-    min-height:25px!important;
-    padding:0 9px!important;
-    font-size:9.7px!important;
-  }
-
-  .mobile-role-preview{
-    font-size:11.8px!important;
-    line-height:1.46!important;
-    -webkit-line-clamp:2!important;
-  }
-
-  .mobile-card-bottom{
-    padding-top:9px!important;
-  }
-
-  .posted-time,
-  .mobile-view-details{
-    font-size:10.5px!important;
-  }
-
-  /* Put the controls close enough to the card, but never overlapping it. */
-  .action-buttons{
-    margin-top:13px!important;
-  }
-
-  .action-btn{
-    height:56px!important;
-  }
-
-  /* Full job details: two clear actions on the right. */
-  .details-header{
-    grid-template-columns:44px 1fr auto!important;
-    gap:10px!important;
-  }
-
-  .details-header-actions{
-    display:flex;
-    align-items:center;
-    gap:7px;
-  }
-
-  .details-action{
-    width:40px;
-    height:40px;
-    padding:0;
-    border:1px solid var(--border);
-    border-radius:50%;
-    background:#fff;
-    color:var(--text);
-    display:grid;
-    place-items:center;
-    appearance:none;
-    -webkit-appearance:none;
-  }
-
-  .details-share svg{
-    width:18px;
-    height:18px;
+  .back-icon{
+    width:20px;
+    height:20px;
     display:block;
+  }
+
+  .back-icon path{
     fill:none;
     stroke:currentColor;
-    stroke-width:2;
+    stroke-width:2.1;
     stroke-linecap:round;
     stroke-linejoin:round;
   }
 
-  /* No dead card-action space remains after share/save were removed. */
-  .card-actions-mini{
+  .logo{
+    font-size:29px!important;
+    line-height:1!important;
+  }
+
+  /* Conversation identity is compact and uses the same page canvas. */
+  .context{
+    padding:13px 18px 14px!important;
+    background:var(--bg)!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+
+  .person{
+    font-size:15px!important;
+    line-height:1.25!important;
+    font-weight:850!important;
+    color:var(--text)!important;
+  }
+
+  .job{
+    margin-top:3px!important;
+    font-size:11px!important;
+    line-height:1.35!important;
+    font-weight:650!important;
+    color:var(--muted)!important;
+  }
+
+  .rule{
     display:none!important;
   }
 
-  /* On shorter Android screens, lower it slightly less but keep the same proportions. */
-  @media(max-height:800px){
-    .swipe-area{
-      padding-top:17px!important;
-    }
-
-    .card-stack,
-    .job-card{
-      height:345px!important;
-      min-height:345px!important;
-      max-height:345px!important;
-    }
-
-    .job-card{
-      padding:17px 19px 14px!important;
-    }
-
-    .job-card.alygnn-recommended-card:first-child{
-      padding-top:40px!important;
-    }
-
-    .company-logo{
-      width:47px!important;
-      height:47px!important;
-    }
-
-    .job-title{
-      font-size:22px!important;
-    }
-
-    .mobile-role-preview{
-      -webkit-line-clamp:2!important;
-      font-size:11.2px!important;
-    }
-
-    .action-buttons{
-      margin-top:10px!important;
-    }
-
-    .action-btn{
-      height:53px!important;
-    }
+  /* Conversation body should never turn into a white page in dark mode. */
+  .messages{
+    padding:18px 15px 22px!important;
+    gap:10px!important;
+    background:var(--bg)!important;
+    scrollbar-width:none;
   }
 
-  body[data-theme="dark"] .details-action,
-  html[data-effective-theme="dark"] .details-action{
-    background:#0B1D26;
-    border-color:var(--border);
-    color:var(--text);
-  }
-</style>
-
-
-<style id="alygnn-old-swipe-layout-restored">
-  /* Restore the older centered Discover composition. */
-  .top-header{
-    min-height:92px!important;
-    padding:calc(10px + env(safe-area-inset-top)) 18px 10px!important;
+  .messages::-webkit-scrollbar{
+    display:none;
   }
 
-  .top-header .logo{
-    font-size:30px!important;
-  }
-
-  .progress-shell{
-    padding:10px 18px 0!important;
-  }
-
-  .progress-card{
-    min-height:60px!important;
-    padding:10px 14px!important;
-    border-radius:20px!important;
-  }
-
-  .swipe-area{
-    height:calc(100dvh - 92px - 70px - 72px)!important;
-    min-height:0!important;
-    padding:16px 18px 10px!important;
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    justify-content:center!important;
-    overflow:visible!important;
-  }
-
-  .card-stack{
-    width:100%!important;
-    max-width:430px!important;
-    height:min(455px,calc(100dvh - 355px))!important;
-    min-height:405px!important;
-    max-height:455px!important;
-    margin:0!important;
-  }
-
-  .job-card{
-    height:100%!important;
-    min-height:0!important;
-    max-height:none!important;
-    padding:22px!important;
-    border-radius:28px!important;
-  }
-
-  .job-card.alygnn-recommended-card:first-child{
-    padding-top:47px!important;
-  }
-
-  .alygnn-recommended-banner{
-    min-height:32px!important;
-    padding:0 15px!important;
-    border-radius:0 26px 0 13px!important;
-    font-size:9.5px!important;
-  }
-
-  .card-toolbar{
-    margin-bottom:14px!important;
-  }
-
-  .match{
-    padding:8px 13px!important;
-    font-size:12px!important;
-  }
-
-  .card-top{
-    gap:13px!important;
-    margin-bottom:14px!important;
-  }
-
-  .company-logo{
-    width:55px!important;
-    height:55px!important;
-    border-radius:18px!important;
-  }
-
-  .job-title{
-    font-size:25px!important;
-    line-height:1.05!important;
-  }
-
-  .company-name{
+  .bubble{
+    max-width:82%!important;
+    padding:10px 12px 9px!important;
+    border-radius:17px!important;
     font-size:13px!important;
-  }
-
-  .mobile-job-tags{
-    gap:7px!important;
-    margin:0 0 12px!important;
-  }
-
-  .mobile-tag{
-    min-height:27px!important;
-    padding:0 10px!important;
-    font-size:10px!important;
-  }
-
-  .mobile-role-preview{
-    font-size:12.3px!important;
-    line-height:1.52!important;
-    -webkit-line-clamp:3!important;
-  }
-
-  .mobile-card-bottom{
-    margin-top:auto!important;
-    padding-top:12px!important;
-  }
-
-  /* Old circular swipe controls. */
-  .old-action-layout{
-    width:auto!important;
-    max-width:none!important;
-    display:flex!important;
-    grid-template-columns:none!important;
-    align-items:flex-end!important;
-    justify-content:center!important;
-    gap:28px!important;
-    margin-top:20px!important;
-    padding:0!important;
-    border:0!important;
-    background:transparent!important;
+    line-height:1.45!important;
     box-shadow:none!important;
   }
 
-  .old-action-layout .action-wrap{
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    gap:6px!important;
+  .mine{
+    align-self:flex-end!important;
+    background:var(--brand)!important;
+    color:#FFFFFF!important;
+    border:1px solid var(--brand)!important;
+    border-bottom-right-radius:6px!important;
   }
 
-  .old-action-layout .action-label{
-    display:block!important;
-    color:var(--text-muted)!important;
-    font-size:10px!important;
-    font-weight:800!important;
-  }
-
-  .old-action-layout .action-btn{
-    min-width:0!important;
-    padding:0!important;
-    border-radius:50%!important;
-    display:grid!important;
-    place-items:center!important;
-    background:#fff!important;
-    border:1.5px solid var(--border)!important;
-    box-shadow:0 5px 16px rgba(27,43,63,.10)!important;
-    font-family:'DM Sans',Arial,sans-serif!important;
-  }
-
-  .old-action-layout .btn-undo{
-    width:48px!important;
-    height:48px!important;
+  .theirs{
+    align-self:flex-start!important;
+    background:var(--card)!important;
     color:var(--text)!important;
-    font-size:19px!important;
+    border:1px solid var(--border)!important;
+    border-bottom-left-radius:6px!important;
   }
 
-  .old-action-layout .btn-skip{
-    width:60px!important;
-    height:60px!important;
-    color:#D25B67!important;
-    font-size:27px!important;
-  }
-
-  .old-action-layout .btn-apply{
-    width:70px!important;
-    height:70px!important;
-    background:var(--brand)!important;
-    border-color:var(--brand)!important;
-    color:#fff!important;
-    font-size:30px!important;
-    box-shadow:0 8px 22px rgba(53,103,154,.22)!important;
-  }
-
-  .old-action-layout .action-main,
-  .old-action-layout .action-sub,
-  .old-action-layout .action-arrow,
-  .old-action-layout .action-undo-icon{
-    display:none!important;
-  }
-
-  /* Keep the newer 5-tab candidate nav. */
-  .bottom-nav{
-    min-height:72px!important;
-    padding:9px 10px calc(12px + env(safe-area-inset-bottom))!important;
-  }
-
-  /* Shorter devices: preserve the old feel without clipping. */
-  @media(max-height:820px){
-    .top-header{
-      min-height:82px!important;
-      padding-top:calc(8px + env(safe-area-inset-top))!important;
-      padding-bottom:8px!important;
-    }
-
-    .progress-card{
-      min-height:55px!important;
-      padding:8px 12px!important;
-    }
-
-    .swipe-area{
-      height:calc(100dvh - 82px - 65px - 68px)!important;
-      padding-top:12px!important;
-    }
-
-    .card-stack{
-      height:min(410px,calc(100dvh - 330px))!important;
-      min-height:365px!important;
-    }
-
-    .job-card{
-      padding:19px!important;
-    }
-
-    .job-card.alygnn-recommended-card:first-child{
-      padding-top:44px!important;
-    }
-
-    .company-logo{
-      width:50px!important;
-      height:50px!important;
-    }
-
-    .job-title{
-      font-size:23px!important;
-    }
-
-    .mobile-role-preview{
-      -webkit-line-clamp:2!important;
-      font-size:11.6px!important;
-    }
-
-    .old-action-layout{
-      margin-top:15px!important;
-      gap:24px!important;
-    }
-
-    .old-action-layout .btn-undo{
-      width:44px!important;
-      height:44px!important;
-    }
-
-    .old-action-layout .btn-skip{
-      width:56px!important;
-      height:56px!important;
-    }
-
-    .old-action-layout .btn-apply{
-      width:64px!important;
-      height:64px!important;
-    }
-
-    .bottom-nav{
-      min-height:68px!important;
-    }
-  }
-
-  html[data-effective-theme="dark"] .old-action-layout .action-btn,
-  body[data-theme="dark"] .old-action-layout .action-btn{
-    background:#0B1D26!important;
-    border-color:var(--border)!important;
-  }
-
-  html[data-effective-theme="dark"] .old-action-layout .btn-apply,
-  body[data-theme="dark"] .old-action-layout .btn-apply{
-    background:var(--brand)!important;
-    border-color:var(--brand)!important;
-    color:#fff!important;
-  }
-</style>
-
-
-<style id="alygnn-equal-swipe-buttons">
-  .old-action-layout{
-    align-items:flex-start!important;
-    gap:24px!important;
-  }
-
-  .old-action-layout .action-wrap{
-    width:64px!important;
-    align-items:center!important;
-  }
-
-  .old-action-layout .btn-undo,
-  .old-action-layout .btn-skip,
-  .old-action-layout .btn-apply{
-    width:60px!important;
-    height:60px!important;
-    min-width:60px!important;
-    min-height:60px!important;
-    max-width:60px!important;
-    max-height:60px!important;
-    flex:0 0 60px!important;
-    border-radius:50%!important;
-  }
-
-  .old-action-layout .btn-undo{font-size:19px!important;}
-  .old-action-layout .btn-skip{font-size:25px!important;}
-  .old-action-layout .btn-apply{font-size:27px!important;}
-
-  .old-action-layout .action-label{
-    width:64px!important;
-    text-align:center!important;
-    line-height:1.2!important;
-  }
-
-  @media(max-height:820px){
-    .old-action-layout .btn-undo,
-    .old-action-layout .btn-skip,
-    .old-action-layout .btn-apply{
-      width:58px!important;
-      height:58px!important;
-      min-width:58px!important;
-      min-height:58px!important;
-      max-width:58px!important;
-      max-height:58px!important;
-      flex:0 0 58px!important;
-    }
-  }
-</style>
-
-
-<style id="alygnn-no-jobs-state">
-  .empty-screen{
-    display:none;
-    min-height:calc(100dvh - 210px);
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    text-align:center;
-    padding:34px 24px 110px;
-  }
-
-  .no-jobs-icon{
-    font-size:46px;
-    line-height:1;
-    margin-bottom:15px;
-  }
-
-  .empty-title{
-    font-family:'DM Sans',Arial,sans-serif!important;
-    font-size:22px!important;
-    line-height:1.2;
-    font-weight:850;
-    color:var(--text);
-    margin-bottom:9px!important;
-  }
-
-  .empty-sub{
-    max-width:330px!important;
-    color:var(--text-muted)!important;
-    font-size:14px;
-    line-height:1.55!important;
-  }
-
-  .no-jobs-actions{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    width:100%;
-    max-width:250px;
-    margin-top:22px;
-  }
-
-  .no-jobs-primary,
-  .no-jobs-secondary{
-    width:100%;
-    min-height:48px;
-    border-radius:999px;
-    font-family:'DM Sans',Arial,sans-serif;
-    font-size:13px;
-    font-weight:850;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-  }
-
-  .no-jobs-primary{
-    border:1px solid var(--brand);
-    background:var(--brand);
-    color:#fff;
-    box-shadow:0 7px 18px rgba(93,127,163,.18);
-  }
-
-  .no-jobs-secondary{
-    border:1.5px solid var(--brand);
-    background:transparent;
-    color:var(--brand-dark);
-  }
-
-  html[data-effective-theme="dark"] .no-jobs-secondary,
-  body[data-theme="dark"] .no-jobs-secondary{
-    color:#8EB4DA;
-    border-color:#5D7FA3;
-  }
-</style>
-
-
-<style id="alygnn-no-jobs-render-fix">
-  /* IMPORTANT: the restored swipe layout uses display:flex!important.
-     These classes intentionally override that when there are no jobs. */
-  #swipe-area.is-hidden-for-empty{
-    display:none!important;
-  }
-
-  #empty-screen{
-    display:none!important;
-  }
-
-  #empty-screen.is-visible{
-    display:flex!important;
-    min-height:calc(100dvh - 210px)!important;
-    padding:28px 24px calc(96px + env(safe-area-inset-bottom))!important;
-    align-items:center!important;
-    justify-content:center!important;
-  }
-
-  /* Match the reference empty state: keep the three counters,
-     remove the unused "Job 0 of 0" progress section entirely. */
-  body.no-jobs-mode .progress-card{
-    grid-template-columns:repeat(3,1fr)!important;
-    max-width:330px!important;
-  }
-
-  body.no-jobs-mode .job-progress{
-    display:none!important;
-  }
-
-  body.no-jobs-mode #stat-remaining{
-    font-size:0!important;
-  }
-
-  body.no-jobs-mode #stat-remaining::after{
-    content:'—';
-    font-size:18px;
-    font-weight:900;
-    color:var(--text);
-  }
-
-  body.no-jobs-mode .no-jobs-icon{
-    display:block!important;
-    font-size:44px!important;
+  .stamp{
+    margin-top:5px!important;
+    font-size:8px!important;
     line-height:1!important;
-    margin:0 0 16px!important;
+    opacity:.68!important;
   }
 
-  body.no-jobs-mode .empty-title{
-    font-family:'DM Sans',Arial,sans-serif!important;
-    font-size:22px!important;
-    line-height:1.2!important;
-    font-weight:850!important;
-    margin:0 0 10px!important;
+  .mine .stamp{
+    color:rgba(255,255,255,.82)!important;
+    text-align:right!important;
   }
 
-  body.no-jobs-mode .empty-sub{
-    max-width:320px!important;
-    font-size:14px!important;
-    line-height:1.55!important;
-    margin:0!important;
+  .theirs .stamp{
+    color:var(--muted)!important;
   }
 
-  body.no-jobs-mode .no-jobs-actions{
-    display:flex!important;
-    width:100%!important;
-    max-width:240px!important;
-    flex-direction:column!important;
-    gap:10px!important;
-    margin-top:22px!important;
+  .empty{
+    margin:auto!important;
+    max-width:300px!important;
+    padding:24px 18px!important;
+    color:var(--muted)!important;
+    font-size:12px!important;
+    line-height:1.5!important;
   }
 
-  body.no-jobs-mode .no-jobs-primary,
-  body.no-jobs-mode .no-jobs-secondary{
-    min-height:46px!important;
-  }
-</style>
-
-
-<style id="alygnn-empty-topbar-job-count">
-  .progress-card,
-  body.no-jobs-mode .progress-card{
-    width:100%!important;
-    max-width:none!important;
-    display:grid!important;
-    grid-template-columns:repeat(3,minmax(0,1fr)) minmax(92px,1.15fr)!important;
-    align-items:center!important;
-    row-gap:0!important;
-    padding:10px 12px!important;
-  }
-
-  .progress-card .stat{
-    min-width:0!important;
-  }
-
-  .job-progress,
-  body.no-jobs-mode .job-progress{
-    display:block!important;
-    grid-column:auto!important;
-    width:auto!important;
-    margin:0!important;
-    padding:0 0 0 12px!important;
-    border-top:0!important;
-    border-left:1px solid var(--border)!important;
-  }
-
-  .progress-copy,
-  body.no-jobs-mode .progress-copy{
-    margin:0 0 6px!important;
-    text-align:center!important;
-    font-size:9.5px!important;
-    line-height:1.1!important;
-    font-weight:800!important;
+  .empty strong{
+    margin-bottom:5px!important;
     color:var(--text)!important;
-    white-space:nowrap!important;
+    font-size:15px!important;
+    font-weight:800!important;
   }
 
-  .progress-track{
-    width:100%!important;
-    height:5px!important;
+  /* Composer stays on the same theme as the conversation. */
+  .composer{
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
+    gap:8px!important;
+    background:var(--bg)!important;
+    border-top:1px solid var(--border)!important;
   }
 
-  body.no-jobs-mode #stat-remaining{
-    font-size:18px!important;
+  textarea{
+    min-height:46px!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    border:1px solid var(--border)!important;
+    border-radius:15px!important;
+    padding:12px 13px!important;
   }
 
-  body.no-jobs-mode #stat-remaining::after{
-    content:none!important;
+  textarea::placeholder{
+    color:var(--muted)!important;
+    opacity:.82!important;
+  }
+
+  .send{
+    min-width:76px!important;
+    min-height:46px!important;
+    border-radius:15px!important;
+    background:var(--brand)!important;
+    color:#FFFFFF!important;
+    box-shadow:none!important;
+  }
+
+  /* Dark mode gets the same navy canvas as the inbox screenshot. */
+  html[data-effective-theme="dark"] .header,
+  html[data-effective-theme="dark"] .context,
+  html[data-effective-theme="dark"] .messages,
+  html[data-effective-theme="dark"] .composer{
+    background:#061821!important;
+  }
+
+  html[data-effective-theme="dark"] .back,
+  html[data-effective-theme="dark"] .more,
+  html[data-effective-theme="dark"] textarea,
+  html[data-effective-theme="dark"] .theirs{
+    background:#10232D!important;
+  }
+
+  html[data-effective-theme="dark"] .mine{
+    background:#5D86B1!important;
+    border-color:#5D86B1!important;
+  }
+
+  html[data-effective-theme="light"] .header,
+  html[data-effective-theme="light"] .context,
+  html[data-effective-theme="light"] .messages,
+  html[data-effective-theme="light"] .composer{
+    background:#F6F8F7!important;
+  }
+
+  html[data-effective-theme="light"] .back,
+  html[data-effective-theme="light"] .more,
+  html[data-effective-theme="light"] textarea,
+  html[data-effective-theme="light"] .theirs{
+    background:#FFFFFF!important;
   }
 </style>
 
 
-<style id="alygnn-no-jobs-button-feedback">
-  #empty-screen,
-  #empty-screen .no-jobs-actions{
+
+
+<style id="alygnn-stable-message-layout">
+  .messages{
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:8px!important;
+    padding:16px 14px 20px!important;
+    background:var(--bg)!important;
+  }
+
+  .message-row{
+    width:100%!important;
+    display:flex!important;
+    flex:0 0 auto!important;
+    box-sizing:border-box!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  .row-mine{justify-content:flex-end!important;}
+  .row-theirs{justify-content:flex-start!important;}
+
+  .bubble{
+    display:inline-block!important;
     position:relative!important;
-    z-index:60!important;
-    pointer-events:auto!important;
+    flex:0 1 auto!important;
+    width:auto!important;
+    min-width:52px!important;
+    max-width:78%!important;
+    height:auto!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    margin:0!important;
+    padding:9px 11px 7px!important;
+    border-radius:16px!important;
+    font-size:13px!important;
+    line-height:1.38!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    box-shadow:none!important;
   }
 
-  #no-jobs-retry,
-  #no-jobs-preferences{
+  .message-text{
+    display:block!important;
+    width:auto!important;
+    max-width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    color:inherit!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    word-break:break-word!important;
+  }
+
+  .mine{
+    background:var(--brand)!important;
+    color:#FFFFFF!important;
+    border:1px solid var(--brand)!important;
+    border-bottom-right-radius:5px!important;
+  }
+
+  .theirs{
+    background:var(--card)!important;
+    color:var(--text)!important;
+    border:1px solid var(--border)!important;
+    border-bottom-left-radius:5px!important;
+  }
+
+  .stamp{
+    display:block!important;
+    width:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    margin:4px 0 0!important;
+    padding:0!important;
+    font-size:7.5px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    text-align:right!important;
+    opacity:.68!important;
+  }
+
+  .mine .stamp{color:rgba(255,255,255,.82)!important;}
+  .theirs .stamp{color:var(--muted)!important;}
+
+  .composer{
     position:relative!important;
-    z-index:61!important;
-    pointer-events:auto!important;
-    touch-action:manipulation!important;
-    -webkit-tap-highlight-color:rgba(93,127,163,.18)!important;
-    transition:
-      transform .10s ease,
-      opacity .15s ease,
-      box-shadow .15s ease,
-      background-color .15s ease!important;
+    z-index:5!important;
+    background:var(--bg)!important;
+    border-top:1px solid var(--border)!important;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
   }
 
-  #no-jobs-retry:active,
-  #no-jobs-preferences:active,
-  #no-jobs-retry.is-pressed,
-  #no-jobs-preferences.is-pressed{
-    transform:scale(.965)!important;
+  #input,
+  #input:focus,
+  #input:active{
+    display:block!important;
+    width:100%!important;
+    box-sizing:border-box!important;
+    min-height:46px!important;
+    max-height:104px!important;
+    margin:0!important;
+    padding:12px 13px!important;
+    border:1px solid var(--border)!important;
+    border-radius:15px!important;
+    background-color:var(--card)!important;
+    background-image:none!important;
+    color:var(--text)!important;
+    opacity:1!important;
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    -webkit-text-fill-color:var(--text)!important;
+    caret-color:var(--text)!important;
+    outline:none!important;
+    box-shadow:none!important;
+    resize:none!important;
+    overflow-y:auto!important;
   }
 
-  #no-jobs-retry:active,
-  #no-jobs-retry.is-pressed{
-    box-shadow:0 2px 7px rgba(93,127,163,.20)!important;
-    opacity:.86!important;
+  #input::placeholder{
+    color:var(--muted)!important;
+    -webkit-text-fill-color:var(--muted)!important;
+    opacity:.85!important;
   }
 
-  #no-jobs-preferences:active,
-  #no-jobs-preferences.is-pressed{
-    background:rgba(93,127,163,.08)!important;
+  html[data-effective-theme="dark"] #input,
+  html[data-effective-theme="dark"] #input:focus,
+  html[data-effective-theme="dark"] #input:active{
+    background-color:#10232D!important;
+    color:#F3F7FA!important;
+    -webkit-text-fill-color:#F3F7FA!important;
+    caret-color:#F3F7FA!important;
   }
 
-  #no-jobs-retry:disabled{
-    cursor:default!important;
-    opacity:.78!important;
+  html[data-effective-theme="light"] #input,
+  html[data-effective-theme="light"] #input:focus,
+  html[data-effective-theme="light"] #input:active{
+    background-color:#FFFFFF!important;
+    color:#172333!important;
+    -webkit-text-fill-color:#172333!important;
+    caret-color:#172333!important;
+  }
+
+  @media(max-width:420px){
+    .bubble{max-width:80%!important;}
   }
 </style>
 
 </head>
 
-<body data-swipe-build="2026-09-27-empty-topbar-job-count">
-<header class="top-header">
-  <button class="back-btn" id="back-button" type="button">
-    <span aria-hidden="true">←</span>
-    <span>Back</span>
-  </button>
+<body>
+<div class="app">
+  <header class="header">
+    <button class="back" id="back" type="button" aria-label="Back to messages">
+      <svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </button>
 
-  <div class="brand-block">
-    <div class="logo">Alygnn<span>.</span></div>
-    <div class="tagline">Get better job matches.</div>
+    <div class="logo">
+      Alygnn<span>.</span>
+    </div>
+
+    <button
+      class="more"
+      id="more"
+      type="button"
+      aria-label="Conversation options"
+      hidden>
+      ⋯
+    </button>
+
+    <div
+      class="chat-menu"
+      id="chat-menu"
+      hidden>
+
+      <button
+        class="menu-action"
+        id="archive-chat"
+        type="button">
+        Archive conversation
+      </button>
+
+      <button
+        class="menu-action danger"
+        id="delete-chat"
+        type="button">
+        Delete for me
+      </button>
+    </div>
+  </header>
+
+  <div>
+    <div class="context">
+      <div class="person" id="person">Loading conversation…</div>
+      <div class="job" id="job"></div>
+      <div class="rule" id="rule"></div>
+    </div>
+
+    <div
+      class="notice"
+      id="notice"
+      hidden>
+    </div>
   </div>
 
-  <button class="profile-chip" id="profile-button" type="button" aria-label="Open profile">JE</button>
-</header>
-
-<section class="progress-shell">
-  <div class="progress-card">
-    <div class="stat">
-      <div class="stat-val" id="stat-applied">0</div>
-      <div class="stat-label">Applied</div>
+  <main
+    class="messages"
+    id="messages">
+    <div class="empty">
+      <strong>Loading conversation…</strong>
     </div>
+  </main>
 
-    <div class="stat">
-      <div class="stat-val" id="stat-skipped">0</div>
-      <div class="stat-label">Passed</div>
-    </div>
+  <div
+    class="composer"
+    id="composer">
+    <textarea
+      id="input"
+      maxlength="2000"
+      rows="1"
+      placeholder="Write a message…"></textarea>
 
-    <div class="stat">
-      <div class="stat-val" id="stat-remaining">0</div>
-      <div class="stat-label">Left</div>
-    </div>
-
-    <div class="job-progress">
-      <div class="progress-copy" id="job-progress-copy">Job 0 of 0</div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill"></div>
-      </div>
-    </div>
+    <button
+      class="send"
+      id="send"
+      type="button">
+      Send
+    </button>
   </div>
-</section>
-
-<main class="swipe-area" id="swipe-area">
-  <div class="card-stack" id="card-stack"></div>
-
-  <div class="action-buttons old-action-layout">
-    <div class="action-wrap">
-      <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">↩</button>
-      <div class="action-label">Undo</div>
-    </div>
-
-    <div class="action-wrap">
-      <button class="action-btn btn-skip" id="skip-button" type="button" aria-label="Pass on this job">✕</button>
-      <div class="action-label">Pass</div>
-    </div>
-
-    <div class="action-wrap">
-      <button class="action-btn btn-apply" id="apply-button" type="button" aria-label="Apply now">✓</button>
-      <div class="action-label">Apply</div>
-    </div>
-  </div>
-</main>
-
-<section class="empty-screen" id="empty-screen">
-  <div class="no-jobs-icon" aria-hidden="true">😕</div>
-  <div class="empty-title">Couldn't load jobs</div>
-  <div class="empty-sub">
-    No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.
-  </div>
-  <div class="no-jobs-actions">
-    <button class="no-jobs-primary" id="no-jobs-retry" type="button">Try again</button>
-    <button class="no-jobs-secondary" id="no-jobs-preferences" type="button">Set preferences again</button>
-  </div>
-</section>
-
-<nav class="bottom-nav" id="candidate-bottom-nav" aria-label="Candidate navigation">
-  <button class="nav-item" type="button" onclick="window.location.href='app-account.html'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="7.5" r="3.5"></circle>
-        <path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path>
-      </svg>
-    </span>
-    <span class="nav-label">My Profile</span>
-  </button>
-
-  <button class="nav-item active" type="button" aria-current="page">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="10.5" cy="10.5" r="5.5"></circle>
-        <path d="m15 15 4.5 4.5"></path>
-      </svg>
-    </span>
-    <span class="nav-label" id="discover-nav-label">Discover</span>
-  </button>
-
-  <button class="nav-item" type="button" onclick="window.location.href='app-applied.html'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <rect x="4" y="7" width="16" height="12" rx="2"></rect>
-        <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path>
-        <path d="M4 11h16"></path>
-      </svg>
-    </span>
-    <span class="nav-label">My Jobs</span>
-  </button>
-
-
-  <button class="nav-item" id="nav-messages" type="button" onclick="window.location.href='app-messages.html?role=candidate'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path>
-        <path d="M8 9h8"></path>
-        <path d="M8 13h5"></path>
-      </svg>
-    </span>
-    <span class="nav-label">Messages</span>
-    <span class="messaging-nav-badge" id="candidate-message-badge" hidden>0</span>
-  </button>
-
-  <button class="nav-item" type="button" onclick="window.location.href='app-account.html#settings'">
-    <span class="nav-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
-      </svg>
-    </span>
-    <span class="nav-label">Settings</span>
-  </button>
-</nav>
-
-
-
-<div class="job-details-overlay" id="job-details-overlay" aria-hidden="true">
-  <section class="job-details-sheet" id="job-details-sheet" role="dialog" aria-modal="true" aria-labelledby="details-job-title">
-    <div class="details-grip"></div>
-    <header class="details-header">
-      <button class="details-close" id="details-close" type="button" aria-label="Close job details">←</button>
-      <div class="details-header-title">Full job ad</div>
-      <div class="details-header-actions">
-        <button class="details-action details-save" id="details-save" type="button" aria-label="Save job">♡</button>
-        <button class="details-action details-share" id="details-share" type="button" aria-label="Share job">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14 5l5 5-5 5"></path>
-            <path d="M19 10H9a4 4 0 0 0-4 4v5"></path>
-          </svg>
-        </button>
-      </div>
-    </header>
-    <div class="details-scroll" id="details-scroll"></div>
-    <footer class="details-footer">
-      <button class="details-apply" id="details-apply" type="button">Apply Now</button>
-    </footer>
-  </section>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
   'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
-  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+  {
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:true
+    }
+  }
 );
 
-let session=null;
-let candidateProfile={};
-let candidatePreferences={};
-let candidateResume={};
-let jobs=[];
-let currentIndex=0;
-const SWIPE_COMMIT_THRESHOLD=70;
-let applied=0;
-let skipped=0;
-let history=[];
-let activeCard=null;
-let isDragging=false;
-let startX=0;
-let startY=0;
-let currentX=0;
-let activePointerId=null;
-let toastTimer;
-let detailsJobIndex=null;
-let dragDistance=0;
+const $=id=>document.getElementById(id);
 
-function escapeHtml(value){
-  return String(value??'').replace(/[&<>"']/g,c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-  })[c]);
-}
-
-function initials(value){
-  const parts=String(value||'A').trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0]||'A')+(parts[1]?.[0]||'')).toUpperCase();
-}
-
-function salaryText(job){
-  if(job.salary)return job.salary;
-  if(job.salary_min&&job.salary_max){
-    return '$'+Number(job.salary_min).toLocaleString()+'–$'+Number(job.salary_max).toLocaleString();
-  }
-  if(job.salary_min)return 'From $'+Number(job.salary_min).toLocaleString();
-  if(job.salary_max)return 'Up to $'+Number(job.salary_max).toLocaleString();
-  return 'Salary not listed';
-}
-
-function postedText(value){
-  if(!value)return 'Recently posted';
-  const date=new Date(value);
-  if(Number.isNaN(date.getTime()))return 'Recently posted';
-  const days=Math.floor((Date.now()-date.getTime())/86400000);
-  if(days<=0)return 'Today';
-  if(days===1)return '1 day ago';
-  return days+' days ago';
-}
-
-
-
-function normalizeList(value){
-  if(Array.isArray(value))return value.map(v=>String(v).trim()).filter(Boolean);
-  if(!value)return [];
-  if(typeof value==='object')return Object.values(value).flatMap(normalizeList);
-  return String(value)
-    .split(/\n|•|;|\|/)
-    .map(v=>v.replace(/^[-–—✓✔]\s*/, '').trim())
-    .filter(Boolean);
-}
-
-
-function parseObject(value){
-  if(!value)return {};
-  if(typeof value==='object'&&!Array.isArray(value))return value;
-  if(typeof value==='string'){
-    try{
-      const parsed=JSON.parse(value);
-      return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
-    }catch(_error){
-      return {};
-    }
-  }
-  return {};
-}
-
-function normalizeMatchText(value){
-  return String(value||'')
-    .toLowerCase()
-    .replace(/&/g,' and ')
-    .replace(/[–—]/g,'-')
-    .replace(/[^a-z0-9+#.\s-]/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-
-const MATCH_STOP_WORDS=new Set([
-  'a','an','and','are','as','at','be','by','for','from','in','is','it','of',
-  'on','or','the','to','with','your','you','our','we','this','that','will',
-  'job','role','position','work','working','team','candidate','company'
-]);
-
-function matchTokens(value){
-  return normalizeMatchText(value)
-    .split(/[\s/,_-]+/)
-    .map(token=>token.trim())
-    .filter(token=>token.length>1&&!MATCH_STOP_WORDS.has(token));
-}
-
-function textSimilarity(left,right){
-  const a=normalizeMatchText(left);
-  const b=normalizeMatchText(right);
-  if(!a||!b)return null;
-  if(a===b)return 100;
-  if(a.includes(b)||b.includes(a))return 95;
-  const aTokens=[...new Set(matchTokens(a))];
-  const bTokens=[...new Set(matchTokens(b))];
-  if(!aTokens.length||!bTokens.length)return 0;
-  const bSet=new Set(bTokens);
-  const overlap=aTokens.filter(token=>bSet.has(token)).length;
-  const denominator=Math.max(aTokens.length,bTokens.length);
-  if(!overlap)return 0;
-  return Math.min(100,Math.round((overlap/denominator)*100));
-}
-
-function canonicalWorkStyle(value){
-  const text=normalizeMatchText(value).replace(/\s+/g,'');
-  if(text.includes('remote'))return 'remote';
-  if(text.includes('hybrid'))return 'hybrid';
-  if(text.includes('onsite')||text.includes('on-site'))return 'onsite';
-  return text;
-}
-
-function canonicalJobType(value){
-  const text=normalizeMatchText(value).replace(/[\s-]+/g,'');
-  if(text.includes('fulltime'))return 'fulltime';
-  if(text.includes('parttime'))return 'parttime';
-  if(text.includes('contractor')||text.includes('contract'))return 'contract';
-  if(text.includes('internship')||text.includes('intern'))return 'intern';
-  if(text.includes('temporary')||text.includes('temp'))return 'temporary';
-  return text;
-}
-
-function splitLocation(value){
-  const raw=String(value||'').trim();
-  const parts=raw.split(',').map(part=>normalizeMatchText(part)).filter(Boolean);
-  return {raw:normalizeMatchText(raw),city:parts[0]||'',state:parts[1]||''};
-}
-
-function locationScore(job){
-  const wanted=candidatePreferences.location||[candidatePreferences.city,candidatePreferences.state].filter(Boolean).join(', ');
-  const offered=job.location||[job.location_city||job.city,job.location_state||job.state].filter(Boolean).join(', ');
-  if(!wanted||!offered)return null;
-  const preferredStyle=canonicalWorkStyle(candidatePreferences.workStyle);
-  const jobStyle=canonicalWorkStyle(job.work_style||job.work_arrangement);
-  if(jobStyle==='remote')return preferredStyle==='remote'?100:90;
-  const a=splitLocation(wanted);
-  const b=splitLocation(offered);
-  if(a.raw===b.raw)return 100;
-  if(a.city&&b.city&&a.city===b.city&&a.state&&b.state&&a.state===b.state)return 100;
-  if(a.city&&b.city&&a.city===b.city)return 90;
-  if(a.state&&b.state&&a.state===b.state)return 75;
-  return 20;
-}
-
-function workStyleScore(job){
-  const wanted=canonicalWorkStyle(candidatePreferences.workStyle);
-  const offered=canonicalWorkStyle(job.work_style||job.work_arrangement);
-  if(!wanted||!offered)return null;
-  if(wanted===offered)return 100;
-  if(wanted==='hybrid'&&(offered==='remote'||offered==='onsite'))return 65;
-  if(offered==='hybrid'&&(wanted==='remote'||wanted==='onsite'))return 65;
-  return 15;
-}
-
-function jobTypeScore(job){
-  const wantedRaw=Array.isArray(candidatePreferences.jobTypes)&&candidatePreferences.jobTypes.length
-    ?candidatePreferences.jobTypes
-    :[candidatePreferences.jobType].filter(Boolean);
-  if(!wantedRaw.length)return null;
-  const wanted=wantedRaw.map(canonicalJobType).filter(Boolean);
-  const offered=canonicalJobType(job.job_type||job.employment_type);
-  if(!offered)return null;
-  return wanted.includes(offered)?100:10;
-}
-
-function extractMoneyValues(text){
-  const source=String(text||'');
-  const values=[];
-  const regex=/\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kK])?/g;
-  let match;
-  while((match=regex.exec(source))){
-    let value=Number(match[1].replace(/,/g,''));
-    if(match[2])value*=1000;
-    if(Number.isFinite(value))values.push(value);
-  }
-  return values;
-}
-
-function annualizePay(value,periodText){
-  if(!Number.isFinite(value))return null;
-  const period=normalizeMatchText(periodText);
-  if(period.includes('hour'))return value*2080;
-  if(period.includes('week'))return value*52;
-  if(period.includes('month'))return value*12;
-  if(period.includes('day'))return value*260;
-  return value;
-}
-
-function jobPayRange(job){
-  let min=Number(job.pay_min??job.salary_min??NaN);
-  let max=Number(job.pay_max??job.salary_max??NaN);
-  const salaryTextValue=job.salary||'';
-  const period=job.pay_period||salaryTextValue;
-  if(!Number.isFinite(min)&&!Number.isFinite(max)){
-    const numbers=extractMoneyValues(salaryTextValue);
-    if(numbers.length){
-      min=numbers[0];
-      max=numbers.length>1?numbers[1]:numbers[0];
-    }
-  }
-  if(!Number.isFinite(min)&&Number.isFinite(max))min=max;
-  if(!Number.isFinite(max)&&Number.isFinite(min))max=min;
-  if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-  min=annualizePay(min,period);
-  max=annualizePay(max,period);
-  if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-  if(min>max)[min,max]=[max,min];
-  return {min,max};
-}
-
-function salaryScore(job){
-  const wantedMin=Number(candidatePreferences.salary_min);
-  const wantedMax=Number(candidatePreferences.salary_max);
-  const offered=jobPayRange(job);
-  if(!Number.isFinite(wantedMin)||!Number.isFinite(wantedMax)||!offered)return null;
-  if(offered.max>=wantedMin&&offered.min<=wantedMax)return 100;
-  if(offered.min>wantedMax)return 95;
-  const gap=wantedMin-offered.max;
-  const denominator=Math.max(wantedMin,1);
-  return Math.max(0,Math.round(100-(gap/denominator)*160));
-}
-
-function candidateSkills(){
-  const direct=normalizeList(candidateResume.skills);
-  const profileSkills=normalizeList(candidateProfile.skills||candidateProfile.skill_list||candidateProfile.top_skills);
-  return [...new Set([...direct,...profileSkills].map(skill=>String(skill).trim()).filter(Boolean))];
-}
-
-function resumeRoleText(){
-  const personal=parseObject(candidateResume.personal);
-  const experiences=Array.isArray(candidateResume.experience)?candidateResume.experience:[];
-  return [
-    candidatePreferences.query,
-    candidateResume.title,
-    personal.professional_title,
-    ...experiences.map(item=>item?.title||item?.job_title||'')
-  ].filter(Boolean).join(' ');
-}
-
-function jobSearchText(job){
-  return [job.title,job.description,job.requirements,job.qualifications,job.skills,job.responsibilities,job.tasks,job.duties]
-    .flatMap(value=>Array.isArray(value)?value:[value])
-    .filter(Boolean)
-    .join(' ');
-}
-
-function roleScore(job){
-  const candidateRole=resumeRoleText();
-  const jobTitle=job.title||'';
-  if(!candidateRole||!jobTitle)return null;
-  if(candidatePreferences.query){
-    const preferred=textSimilarity(candidatePreferences.query,jobTitle);
-    if(preferred!=null&&preferred>=80)return preferred;
-  }
-  return textSimilarity(candidateRole,jobTitle);
-}
-
-function skillsScore(job){
-  const skills=candidateSkills();
-  if(!skills.length)return null;
-  const haystack=normalizeMatchText(jobSearchText(job));
-  if(!haystack)return null;
-  let matched=0;
-  skills.forEach(skill=>{
-    const normalized=normalizeMatchText(skill);
-    if(!normalized)return;
-    if(haystack.includes(normalized)){
-      matched++;
-      return;
-    }
-    const tokens=matchTokens(normalized);
-    if(tokens.length&&tokens.every(token=>haystack.includes(token)))matched++;
-  });
-  return Math.round((matched/skills.length)*100);
-}
-
-
-function experienceScore(job){
-  const experiences=Array.isArray(candidateResume.experience)
-    ?candidateResume.experience
-    :[];
-
-  if(!experiences.length)return null;
-
-  const jobTitle=job.title||'';
-  const jobText=normalizeMatchText(jobSearchText(job));
-
-  let bestTitle=0;
-  const experienceText=[];
-
-  experiences.forEach(item=>{
-    if(!item||typeof item!=='object')return;
-
-    const title=
-      item.title||
-      item.job_title||
-      item.position||
-      item.role||
-      '';
-
-    const description=
-      item.description||
-      item.details||
-      item.summary||
-      item.responsibilities||
-      '';
-
-    if(title){
-      const similarity=textSimilarity(title,jobTitle);
-      if(Number.isFinite(similarity)){
-        bestTitle=Math.max(bestTitle,similarity);
-      }
-    }
-
-    experienceText.push(
-      title,
-      item.company||item.company_name||'',
-      description
+const esc=value=>
+  String(value??'')
+    .replace(
+      /[&<>"']/g,
+      char=>({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#039;'
+      }[char])
     );
-  });
 
-  const candidateText=normalizeMatchText(experienceText.filter(Boolean).join(' '));
+let session=null;
+let role='candidate';
+let applicationId='';
+let conversationId='';
+let conversation=null;
+let application=null;
+let job=null;
+let profile=null;
+let channel=null;
+let sending=false;
+let mutating=false;
+let contextCandidateName='';
+let contextJobTitle='';
 
-  let keywordScore=0;
+function normalizeWorkspaceRole(value){
+  const normalized=
+    String(value||'')
+      .toLowerCase()
+      .trim();
 
-  if(candidateText&&jobText){
-    const jobTokens=[...new Set(matchTokens(jobText))];
-    const candidateTokens=new Set(matchTokens(candidateText));
+  return (
+    normalized==='employer'||
+    normalized==='candidate'
+  )
+    ?normalized
+    :'';
+}
 
-    if(jobTokens.length){
-      const overlap=jobTokens.filter(token=>candidateTokens.has(token)).length;
-      keywordScore=Math.min(
-        100,
-        Math.round((overlap/Math.min(jobTokens.length,18))*100)
-      );
-    }
-  }
+function rememberWorkspaceRole(nextRole){
+  const normalized=
+    normalizeWorkspaceRole(nextRole);
 
-  return Math.round(
-    Math.min(
-      100,
-      (bestTitle*.65)+(keywordScore*.35)
+  if(!normalized)return;
+
+  try{
+    sessionStorage.setItem(
+      'alygnn_active_workspace',
+      normalized
+    );
+
+    localStorage.setItem(
+      'alygnn_active_workspace',
+      normalized
+    );
+  }catch(_error){}
+}
+
+function fmt(value){
+  const date=new Date(value);
+
+  return Number.isNaN(
+    date.getTime()
+  )
+    ?''
+    :date.toLocaleTimeString(
+      undefined,
+      {
+        hour:'numeric',
+        minute:'2-digit'
+      }
+    );
+}
+
+function cleanIdentity(value,generic=[]){
+  const text=String(value??'').trim();
+
+  if(!text)return '';
+
+  return generic.includes(
+    text.toLowerCase()
+  )
+    ?''
+    :text;
+}
+
+function profileCandidateName(){
+  return (
+    cleanIdentity(
+      profile?.full_name,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      profile?.name,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      [
+        profile?.first_name,
+        profile?.last_name
+      ]
+        .filter(Boolean)
+        .join(' '),
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      application?.candidate_name,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      application?.applicant_name,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      application?.full_name,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      [
+        application?.first_name,
+        application?.last_name
+      ]
+        .filter(Boolean)
+        .join(' '),
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      String(
+        application?.candidate_email||
+        application?.email||
+        ''
+      ).split('@')[0],
+      ['candidate','applicant']
     )
   );
 }
 
-function scoreMetric(job,key){
-  const value=job?._alygnn_breakdown?.[key];
-  return Number.isFinite(Number(value))
-    ?Math.max(0,Math.min(100,Math.round(Number(value))))
-    :null;
+function candidateName(){
+  return (
+    cleanIdentity(
+      contextCandidateName,
+      ['candidate','applicant']
+    )||
+    cleanIdentity(
+      conversation?.candidate_name,
+      ['candidate','applicant']
+    )||
+    profileCandidateName()||
+    'Candidate'
+  );
 }
 
-function compactMetric(label,value){
-  const display=value==null?'—':value+'%';
-  const width=value==null?0:value;
-
-  return `
-    <div class="alygnn-mini-row">
-      <div class="alygnn-mini-row-top">
-        <span class="alygnn-mini-label">${escapeHtml(label)}</span>
-        <span class="alygnn-mini-value">${escapeHtml(display)}</span>
-      </div>
-      <div class="alygnn-mini-track">
-        <div class="alygnn-mini-fill" style="width:${width}%"></div>
-      </div>
-    </div>
-  `;
+function companyName(){
+  return (
+    cleanIdentity(job?.company)||
+    cleanIdentity(job?.company_name)||
+    cleanIdentity(job?.employer_name)||
+    cleanIdentity(
+      conversation?.company_name,
+      ['employer','company']
+    )||
+    'Employer'
+  );
 }
 
-function renderCompactAlygnnMatch(job){
-  const score=Number.isFinite(Number(job?.match_score))
-    ?Math.max(0,Math.min(100,Math.round(Number(job.match_score))))
-    :null;
-
-  const breakdown=job?._alygnn_breakdown||{};
-
-  const skills=scoreMetric(job,'skills');
-  const experience=scoreMetric(job,'experience');
-  const salary=scoreMetric(job,'salary');
-  const location=scoreMetric(job,'location');
-
-  return `
-    <div class="alygnn-match-mini">
-      <div class="alygnn-match-mini-head">
-        <div>
-          <div class="alygnn-match-mini-title">Your Alygnn match</div>
-          <div class="alygnn-match-mini-sub">Based on your resume + preferences</div>
-        </div>
-      </div>
-
-      <div class="alygnn-match-mini-body">
-        <div
-          class="alygnn-score-ring"
-          style="--score:${score==null?0:score}"
-          aria-label="${score==null?'Alygnn score pending':score+' percent Alygnn match'}"
-        >
-          <div class="alygnn-score-number">
-            ${score==null?'—':score+'%'}
-            <small>Match</small>
-          </div>
-        </div>
-
-        <div class="alygnn-mini-metrics">
-          ${compactMetric('Skills',skills)}
-          ${compactMetric('Experience',experience)}
-          ${compactMetric('Salary',salary)}
-          ${compactMetric('Location',location)}
-        </div>
-      </div>
-    </div>
-  `;
+function jobTitle(){
+  return (
+    cleanIdentity(
+      contextJobTitle,
+      ['job application','position']
+    )||
+    cleanIdentity(
+      conversation?.job_title,
+      ['job application','position']
+    )||
+    cleanIdentity(job?.title)||
+    cleanIdentity(
+      application?.job_title
+    )||
+    'Job application'
+  );
 }
 
+function setNotice(text,error=false){
+  const notice=$('notice');
 
-function benefitsScore(job){
-  const wanted=normalizeList(candidatePreferences.benefits);
-  const offeredText=normalizeMatchText(Array.isArray(job.benefits)?job.benefits.join(' '):(job.benefits||job.perks||''));
-  if(!wanted.length||!offeredText)return null;
-  let matches=0;
-  wanted.forEach(item=>{
-    const text=normalizeMatchText(item);
-    const tokens=matchTokens(text);
-    if(offeredText.includes(text)||(tokens.length&&tokens.some(token=>offeredText.includes(token))))matches++;
-  });
-  return Math.round((matches/wanted.length)*100);
+  notice.hidden=!text;
+  notice.className=
+    'notice'+
+    (error?' error':'');
+  notice.textContent=text||'';
 }
 
-function industryScore(job){
-  const wanted=normalizeList(candidatePreferences.industries);
-  const offered=job.industry||job.industry_name||job.category||'';
-  if(!wanted.length||!offered)return null;
-  return Math.max(...wanted.map(industry=>textSimilarity(industry,offered)??0));
+function archived(){
+  if(!conversation)return false;
+
+  return Boolean(
+    role==='employer'
+      ?conversation.employer_archived_at
+      :conversation.candidate_archived_at
+  );
 }
 
-function calculateAlygnnScore(job){
-  const criteria=[
-    {key:'role',weight:12,value:roleScore(job)},
-    {key:'skills',weight:20,value:skillsScore(job)},
-    {key:'experience',weight:15,value:experienceScore(job)},
-    {key:'location',weight:13,value:locationScore(job)},
-    {key:'workStyle',weight:10,value:workStyleScore(job)},
-    {key:'jobType',weight:10,value:jobTypeScore(job)},
-    {key:'salary',weight:15,value:salaryScore(job)},
-    {key:'benefits',weight:3,value:benefitsScore(job)},
-    {key:'industry',weight:2,value:industryScore(job)}
-  ];
-  const available=criteria.filter(item=>Number.isFinite(item.value));
-  if(!available.length)return {score:null,breakdown:{}};
-  const totalWeight=available.reduce((sum,item)=>sum+item.weight,0);
-  const weighted=available.reduce((sum,item)=>sum+(item.value*item.weight),0);
-  const score=Math.max(0,Math.min(100,Math.round(weighted/totalWeight)));
-  return {
-    score,
-    breakdown:Object.fromEntries(available.map(item=>[item.key,Math.round(item.value)]))
-  };
+function renderContext(){
+  $('person').textContent=
+    role==='employer'
+      ?candidateName()
+      :companyName();
+
+  $('job').textContent=
+    jobTitle();
+
+  $('rule').textContent=
+    role==='employer'
+      ?'You control the first contact. The candidate can reply after you start the conversation.'
+      :'This conversation was opened by the employer after you applied.';
+
+  $('more').hidden=
+    !conversation?.id;
+
+  $('archive-chat').textContent=
+    archived()
+      ?'Move to inbox'
+      :'Archive conversation';
 }
 
-async function loadCandidateMatchingProfile(){
-  const {data,error}=await sb
-    .from('profiles')
+async function metadata(){
+  if(!applicationId){
+    return;
+  }
+
+  const applicationResult=await sb
+    .from('applications')
     .select('*')
-    .eq('id',session.user.id)
+    .eq(
+      'id',
+      applicationId
+    )
     .maybeSingle();
-  if(error)throw error;
-  candidateProfile=data||{};
-  candidatePreferences=parseObject(candidateProfile.preferences);
-  candidateResume=parseObject(candidateProfile.resume_data);
-}
 
-function renderList(items,emptyText){
-  const clean=normalizeList(items);
-  if(!clean.length)return `<div class="details-empty">${escapeHtml(emptyText)}</div>`;
-  return `<ul class="details-list">${clean.map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-}
+  if(applicationResult.error){
+    throw applicationResult.error;
+  }
 
-function getJobLists(job){
-  return {
-    responsibilities: job.responsibilities||job.tasks||job.duties||[],
-    requirements: job.requirements||job.qualifications||job.skills||[],
-    benefits: job.benefits||job.perks||[]
-  };
-}
+  application=
+    applicationResult.data||
+    null;
 
-function candidateExternalUrl(value){
-  const raw=String(value||'').trim();
-  if(!raw)return '';
-  try{
-    const url=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw);
-    return ['http:','https:'].includes(url.protocol)?url.href:'';
-  }catch(_error){
-    return '';
+  if(!application){
+    return;
+  }
+
+  const jobResult=await sb
+    .from('jobs')
+    .select('*')
+    .eq(
+      'id',
+      application.job_id
+    )
+    .maybeSingle();
+
+  if(!jobResult.error){
+    job=
+      jobResult.data||
+      null;
+  }
+
+  const candidateId=
+    application.candidate_id||
+    application.user_id||
+    application.profile_id;
+
+  if(candidateId){
+    const byId=await sb
+      .from('profiles')
+      .select('*')
+      .eq(
+        'id',
+        candidateId
+      )
+      .maybeSingle();
+
+    if(
+      !byId.error &&
+      byId.data
+    ){
+      profile=byId.data;
+    }
+
+    if(!profile){
+      const byUser=await sb
+        .from('profiles')
+        .select('*')
+        .eq(
+          'user_id',
+          candidateId
+        )
+        .maybeSingle();
+
+      if(
+        !byUser.error &&
+        byUser.data
+      ){
+        profile=byUser.data;
+      }
+    }
   }
 }
 
-function candidateCompanyLogoHtml(job,company){
-  const logo=candidateExternalUrl(job.company_logo_url||job.company_logo||job.logo_url);
-  if(!logo)return escapeHtml(initials(company));
-  return `<img src="${escapeHtml(logo)}" alt="${escapeHtml(company)} logo" onerror="this.remove();this.parentElement.textContent='${escapeHtml(initials(company))}'">`;
-}
+async function findConversation(){
+  let result=null;
 
-async function attachEmployerLogos(jobRows){
-  const rows=Array.isArray(jobRows)?jobRows:[];
-  const employerIds=[...new Set(rows.map(job=>job.employer_id).filter(Boolean).map(String))];
-  if(!employerIds.length)return rows;
+  if(conversationId){
+    result=await sb
+      .from('application_conversations')
+      .select('*')
+      .eq(
+        'id',
+        conversationId
+      )
+      .maybeSingle();
+  }else if(applicationId){
+    result=await sb
+      .from('application_conversations')
+      .select('*')
+      .eq(
+        'application_id',
+        applicationId
+      )
+      .maybeSingle();
+  }
 
-  const logoByEmployer=new Map();
-  await Promise.all(employerIds.map(async employerId=>{
-    let logoUrl='';
-    try{
-      const {data,error}=await sb.rpc('get_public_employer_profile',{target_employer:employerId});
-      if(!error){
-        const profile=Array.isArray(data)?(data[0]||null):(data||null);
-        logoUrl=candidateExternalUrl(profile?.company_logo_url);
+  if(
+    result?.error
+  ){
+    throw result.error;
+  }
+
+  conversation=
+    result?.data||
+    null;
+
+  /*
+   * One thread per candidate + job:
+   * older application links can still find the canonical conversation.
+   */
+  if(
+    !conversation &&
+    application
+  ){
+    const candidateId=
+      application.candidate_id||
+      application.user_id||
+      application.profile_id;
+
+    if(
+      candidateId &&
+      application.job_id
+    ){
+      const fallback=await sb
+        .from('application_conversations')
+        .select('*')
+        .eq(
+          'job_id',
+          String(
+            application.job_id
+          )
+        )
+        .eq(
+          'candidate_id',
+          candidateId
+        )
+        .maybeSingle();
+
+      if(fallback.error){
+        throw fallback.error;
       }
-    }catch(_error){}
 
-    if(!logoUrl){
-      try{
-        const {data}=await sb.from('profiles').select('company_logo_url').eq('id',employerId).maybeSingle();
-        logoUrl=candidateExternalUrl(data?.company_logo_url);
-      }catch(_error){}
+      conversation=
+        fallback.data||
+        null;
     }
+  }
 
-    if(logoUrl)logoByEmployer.set(employerId,logoUrl);
-  }));
-
-  return rows.map(job=>({
-    ...job,
-    company_logo_url:candidateExternalUrl(job.company_logo_url||job.company_logo||job.logo_url)||
-      logoByEmployer.get(String(job.employer_id||''))||''
-  }));
-}
-
-function candidateCompanyLink(label,value){
-  const url=candidateExternalUrl(value);
-  if(!url)return '';
-  return `<a class="details-company-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
-}
-
-function openJobDetails(index){
-  const job=jobs[Number(index)];
-  if(!job)return;
-  detailsJobIndex=Number(index);
-
-  const company=job.company||job.company_name||'Employer';
-  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
-  const type=job.job_type||job.employment_type||'Job';
-  const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
-    ?Math.round(Number(job.match_score))
-    :null;
-  const lists=getJobLists(job);
-  const companyAbout=job.company_description||job.company_headline||job.about_company||'';
-
-  document.getElementById('details-scroll').innerHTML=`
-    <article class="details-hero">
-      <div class="details-company-row">
-        <div class="details-logo">${candidateCompanyLogoHtml(job,company)}</div>
-        <div>
-          <h1 class="details-title" id="details-job-title">${escapeHtml(job.title||'Job Opportunity')}</h1>
-          <div class="details-company">${escapeHtml(company)}</div>
-        </div>
-      </div>
-      <div class="details-pills">
-        <span class="details-pill">⌖ ${escapeHtml(location)}</span>
-        <span class="details-pill">▣ ${escapeHtml(type)}</span>
-        ${style?`<span class="details-pill">⌂ ${escapeHtml(style)}</span>`:''}
-        <span class="details-pill pay">${escapeHtml(salaryText(job))}</span>
-      </div>
-
-      <div class="details-match-wrap">
-        ${renderCompactAlygnnMatch(job)}
-      </div>
-    </article>
-
-    <section class="details-section">
-      <h2>About the role</h2>
-      <div class="details-copy">${escapeHtml(job.description||'The employer has not added a full description yet.')}</div>
-    </section>
-
-    <section class="details-section">
-      <h2>Responsibilities</h2>
-      ${renderList(lists.responsibilities,'Responsibilities will be discussed during the hiring process.')}
-    </section>
-
-    <section class="details-section">
-      <h2>Requirements</h2>
-      ${renderList(lists.requirements,'No additional requirements were listed.')}
-    </section>
-
-    <section class="details-section">
-      <h2>Benefits</h2>
-      ${renderList(lists.benefits,'Benefits were not listed for this role.')}
-    </section>
-
-    <section class="details-section">
-      <h2>About ${escapeHtml(company)}</h2>
-
-      <div class="details-company-about">
-        <div class="details-company-about-logo">${candidateCompanyLogoHtml(job,company)}</div>
-        <div>
-          <div class="details-company-about-name">${escapeHtml(company)}</div>
-          <div class="details-company-about-meta">Verified employer on Alygnn</div>
-        </div>
-      </div>
-
-      <div class="details-copy">${escapeHtml(companyAbout||'Company information has not been added yet.')}</div>
-
-      <div class="details-company-links">
-        ${candidateCompanyLink('Website',job.company_website)}
-        ${candidateCompanyLink('LinkedIn',job.company_linkedin_url)}
-        ${candidateCompanyLink('Instagram',job.company_instagram_url)}
-        ${candidateCompanyLink('Facebook',job.company_facebook_url)}
-        ${candidateCompanyLink('X',job.company_x_url)}
-      </div>
-    </section>
-  `;
-
-  document.getElementById('details-save').textContent='♡';
-  document.getElementById('details-apply').textContent='Apply Now';
-  document.getElementById('details-apply').disabled=false;
-  document.getElementById('details-scroll').scrollTop=0;
-  document.body.classList.add('details-open');
-  const overlay=document.getElementById('job-details-overlay');
-  overlay.classList.add('open');
-  overlay.setAttribute('aria-hidden','false');
-}
-
-
-async function shareDetailsJob(){
-  if(detailsJobIndex===null)return;
-
-  const job=jobs[detailsJobIndex];
-  if(!job)return;
-
-  const title=String(job.title||'Job Opportunity').trim();
-  const company=String(job.company||job.company_name||'Alygnn').trim();
-  const id=String(job.id||job.job_id||'').trim();
-
-  const shareUrl=id
-    ?`https://alygnn.com/job-details.html?id=${encodeURIComponent(id)}`
-    :'https://alygnn.com';
-
-  const shareData={
-    title:`${title} at ${company}`,
-    text:`Check out ${title} at ${company} on Alygnn.`,
-    url:shareUrl
-  };
-
-  try{
-    if(navigator.share){
-      await navigator.share(shareData);
-      return;
-    }
-
-    if(navigator.clipboard?.writeText){
-      await navigator.clipboard.writeText(
-        `${shareData.text}\n${shareData.url}`
+  if(conversation){
+    conversationId=
+      String(
+        conversation.id
       );
-      showToast('Job link copied');
-      return;
+
+    applicationId=
+      String(
+        conversation.application_id||
+        applicationId||
+        ''
+      );
+
+    const hidden=
+      role==='employer'
+        ?conversation.employer_hidden_at
+        :conversation.candidate_hidden_at;
+
+    if(hidden){
+      conversation=null;
+    }
+  }
+
+  renderContext();
+}
+
+async function loadMessages(){
+  if(!conversation){
+    $('messages').innerHTML=`
+      <div class="empty">
+        <strong>
+          ${
+            role==='employer'
+              ?'Send the first message'
+              :'No conversation yet'
+          }
+        </strong>
+        ${
+          role==='employer'
+            ?'The candidate will not see a chat until you send the first message.'
+            :'The employer has not started a conversation for this application.'
+        }
+      </div>
+    `;
+
+    if(role==='candidate'){
+      $('composer').style.display='none';
     }
 
-    showToast('Sharing is not available on this device');
+    return;
+  }
+
+  const result=await sb
+    .from('application_messages')
+    .select('*')
+    .eq(
+      'conversation_id',
+      conversation.id
+    )
+    .order(
+      'created_at',
+      {
+        ascending:true
+      }
+    );
+
+  if(result.error)throw result.error;
+
+  const rows=result.data||[];
+
+  $('messages').innerHTML=
+    rows.length
+      ?rows
+        .map(message=>{
+          const mine=
+            String(message.sender_id)===
+            String(session.user.id);
+
+          const safeBody=
+            esc(String(message.body||'').trim())
+              .replace(/\r\n|\r|\n/g,'<br>');
+
+          return `
+            <div class="message-row ${mine?'row-mine':'row-theirs'}">
+              <div class="bubble ${mine?'mine':'theirs'}">
+                <span class="message-text">${safeBody}</span>
+                <span class="stamp">${esc(fmt(message.created_at))}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join('')
+      :`
+        <div class="empty">
+          <strong>Conversation started</strong>
+          No messages yet.
+        </div>
+      `;
+
+  $('messages').scrollTop=
+    $('messages').scrollHeight;
+
+  await markRead();
+}
+
+async function markRead(){
+  if(!conversation)return;
+
+  try{
+    await sb.rpc(
+      'mark_application_conversation_read',
+      {
+        p_conversation_id:
+          conversation.id
+      }
+    );
   }catch(error){
-    if(error?.name!=='AbortError'){
-      console.error('Could not share job',error);
-      showToast('Could not share this job');
-    }
+    console.warn(error);
   }
 }
 
-function closeJobDetails(){
-  const overlay=document.getElementById('job-details-overlay');
-  overlay.classList.remove('open');
-  overlay.setAttribute('aria-hidden','true');
-  document.body.classList.remove('details-open');
-  setTimeout(()=>{detailsJobIndex=null;},220);
+function subscribe(){
+  if(channel){
+    sb.removeChannel(channel);
+  }
+
+  if(!conversation)return;
+
+  channel=sb
+    .channel(
+      'chat-'+
+      conversation.id
+    )
+    .on(
+      'postgres_changes',
+      {
+        event:'INSERT',
+        schema:'public',
+        table:'application_messages',
+        filter:
+          `conversation_id=eq.${conversation.id}`
+      },
+      async()=>{
+        await findConversation();
+        await loadMessages();
+      }
+    )
+    .subscribe();
 }
 
-async function applyFromDetails(){
-  if(detailsJobIndex===null)return;
-  const button=document.getElementById('details-apply');
-  const job=jobs[detailsJobIndex];
-  if(!job)return;
-  button.disabled=true;
-  button.textContent='Applying…';
+async function send(){
+  const body=
+    $('input').value.trim();
+
+  if(
+    !body||
+    sending
+  ){
+    return;
+  }
+
+  sending=true;
+  $('send').disabled=true;
+  setNotice('');
+
   try{
-    const alreadyExists=await createApplication(job);
-    if(!alreadyExists)applied++;
-    button.textContent=alreadyExists?'Already Applied':'✓ Applied';
-    updateStats();
-    showToast(alreadyExists?'Already applied':'Application submitted');
-    setTimeout(()=>{
-      closeJobDetails();
-      if(detailsJobIndex===currentIndex){
-        history.push({
-          job,
-          direction:'right',
-          index:currentIndex,
-          persistenceCreated:!alreadyExists
-        });
-        currentIndex++;
-        setTimeout(renderCards,230);
+    if(!conversation){
+      if(role!=='employer'){
+        throw new Error(
+          'Only the employer can start this conversation.'
+        );
       }
-    },650);
+
+      if(!applicationId){
+        throw new Error(
+          'Application information is missing.'
+        );
+      }
+
+      const result=await sb.rpc(
+        'start_application_conversation_v3',
+        {
+          p_application_id:
+            applicationId,
+
+          p_body:
+            body,
+
+          p_candidate_name:
+            candidateName(),
+
+          p_job_title:
+            jobTitle()
+        }
+      );
+
+      if(result.error){
+        throw result.error;
+      }
+
+      conversationId=
+        String(
+          result.data?.conversation_id||
+          ''
+        );
+
+      $('input').value='';
+
+      await findConversation();
+      await loadMessages();
+      subscribe();
+      return;
+    }
+
+    const result=await sb
+      .from('application_messages')
+      .insert({
+        conversation_id:
+          conversation.id,
+
+        sender_id:
+          session.user.id,
+
+        body
+      });
+
+    if(result.error){
+      throw result.error;
+    }
+
+    $('input').value='';
+    await findConversation();
+    await loadMessages();
   }catch(error){
     console.error(error);
-    button.disabled=false;
-    button.textContent='Apply Now';
-    showToast(error.message||'Could not apply');
-  }
-}
 
-function buildCard(job,index){
-  const card=document.createElement('div');
-  card.className='job-card';
-  if(job.alygnn_recommended===true){
-    card.classList.add('alygnn-recommended-card');
-  }
-  card.dataset.index=index;
-
-  const company=job.company||job.company_name||'Employer';
-  const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
-  const type=job.job_type||job.employment_type||'Job';
-  const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
-    ?Math.round(Number(job.match_score))
-    :null;
-  const match=alygnnScore!=null
-    ?alygnnScore+'% Match'
-    :'Match pending';
-
-  const recommendedBanner=job.alygnn_recommended===true
-    ?'<div class="alygnn-recommended-banner"><span class="alygnn-recommended-mark">✦</span><span>Alygnn Recommended</span></div>'
-    :'';
-
-  const logoHtml=candidateCompanyLogoHtml(job,company);
-
-  card.innerHTML=`
-    <div class="stamp stamp-apply">APPLY</div>
-    <div class="stamp stamp-skip">PASS</div>
-    ${recommendedBanner}
-
-    <div class="card-toolbar swipe-card-toolbar">
-      <div class="match">★ ${escapeHtml(match)}</div>
-    </div>
-
-    <div class="card-top">
-      <div class="company-logo">${logoHtml}</div>
-      <div>
-        <div class="job-title">${escapeHtml(job.title||'Job Opportunity')}</div>
-        <div class="company-line">
-          <div class="company-name">${escapeHtml(company)}</div>
-          <div class="verified" title="Verified employer">✓</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="mobile-job-tags">
-      ${job.urgently_hiring===true
-        ?'<span class="mobile-tag urgent"><span class="urgent-dot"></span>Urgently Hiring</span>'
-        :''}
-      <span class="mobile-tag">${escapeHtml(location)}</span>
-      <span class="mobile-tag">${escapeHtml(type)}</span>
-      ${style?`<span class="mobile-tag">${escapeHtml(style)}</span>`:''}
-      <span class="mobile-tag pay">${escapeHtml(salaryText(job))}</span>
-    </div>
-
-    <div class="mobile-role-preview">
-      ${escapeHtml(
-        (job.description||'').trim()
-          ? String(job.description).trim().replace(/\s+/g,' ')
-          : 'Open the full job ad to see responsibilities, qualifications, and benefits.'
-      )}
-    </div>
-
-    <div class="card-bottom mobile-card-bottom">
-      <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
-      <button
-        class="view-full-ad mobile-view-details"
-        type="button"
-        aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
-      >
-        <span>View details</span>
-        <span aria-hidden="true">→</span>
-      </button>
-    </div>
-  `;
-
-  const viewFullAdButton=card.querySelector('.view-full-ad');
-  if(viewFullAdButton){
-    viewFullAdButton.addEventListener('click',event=>{
-      event.preventDefault();
-      event.stopPropagation();
-      openJobDetails(index);
-    });
-  }
-
-  setupDrag(card);
-  return card;
-}
-
-function renderCards(){
-  const stack=document.getElementById('card-stack');
-  const swipeArea=document.getElementById('swipe-area');
-  const emptyScreen=document.getElementById('empty-screen');
-
-  stack.innerHTML='';
-
-  const remaining=jobs.slice(currentIndex,currentIndex+3);
-  const noJobs=!remaining.length;
-
-  document.body.classList.toggle('no-jobs-mode',noJobs);
-
-  if(noJobs){
-    swipeArea.classList.add('is-hidden-for-empty');
-    emptyScreen.classList.add('is-visible');
-    updateStats();
-    return;
-  }
-
-  swipeArea.classList.remove('is-hidden-for-empty');
-  emptyScreen.classList.remove('is-visible');
-
-  remaining.forEach((job,i)=>{
-    stack.appendChild(buildCard(job,currentIndex+i));
-  });
-
-  updateStats();
-  setupTopCard();
-  resetDecisionStamps(activeCard);
-}
-
-function setupTopCard(){
-  activeCard=document.querySelector('.job-card:first-child');
-}
-
-function setupDrag(card){
-  card.addEventListener('pointerdown',dragStart,{passive:false});
-}
-
-function resetDecisionStamps(card=activeCard){
-  if(!card)return;
-  const applyStamp=card.querySelector('.stamp-apply');
-  const skipStamp=card.querySelector('.stamp-skip');
-  if(applyStamp)applyStamp.style.opacity=0;
-  if(skipStamp)skipStamp.style.opacity=0;
-}
-
-function dragStart(e){
-  setupTopCard();
-  if(!activeCard||activeCard!==e.currentTarget)return;
-  if(e.target.closest('button,.apply-link')){
-    return;
-  }
-
-  e.preventDefault();
-  isDragging=true;
-  activePointerId=e.pointerId;
-  startX=e.clientX;
-  startY=e.clientY;
-  currentX=0;
-  dragDistance=0;
-  resetDecisionStamps(activeCard);
-
-  activeCard.classList.add('is-dragging');
-  activeCard.style.transition='none';
-
-  try{activeCard.setPointerCapture(e.pointerId)}catch(_){}
-
-  activeCard.addEventListener('pointermove',dragMove,{passive:false});
-  activeCard.addEventListener('pointerup',dragEnd);
-  activeCard.addEventListener('pointercancel',dragEnd);
-}
-
-function dragMove(e){
-  if(!isDragging||!activeCard)return;
-  if(activePointerId!==null&&e.pointerId!==activePointerId)return;
-
-  e.preventDefault();
-
-  currentX=e.clientX-startX;
-  const currentY=e.clientY-startY;
-  dragDistance=Math.hypot(currentX,currentY);
-  const rotate=currentX*.08;
-
-  activeCard.style.transform=`translate(${currentX}px,${currentY*.25}px) rotate(${rotate}deg)`;
-
-  const applyStamp=activeCard.querySelector('.stamp-apply');
-  const skipStamp=activeCard.querySelector('.stamp-skip');
-
-  // No preview state. If a stamp is visible, releasing performs it.
-  if(currentX>=SWIPE_COMMIT_THRESHOLD){
-    if(applyStamp)applyStamp.style.opacity=1;
-    if(skipStamp)skipStamp.style.opacity=0;
-  }else if(currentX<=-SWIPE_COMMIT_THRESHOLD){
-    if(skipStamp)skipStamp.style.opacity=1;
-    if(applyStamp)applyStamp.style.opacity=0;
-  }else{
-    resetDecisionStamps(activeCard);
-  }
-}
-
-function dragEnd(e){
-  if(!isDragging||!activeCard)return;
-
-  isDragging=false;
-  activePointerId=null;
-
-  activeCard.removeEventListener('pointermove',dragMove);
-  activeCard.removeEventListener('pointerup',dragEnd);
-  activeCard.removeEventListener('pointercancel',dragEnd);
-  activeCard.classList.remove('is-dragging');
-
-  const tapped=dragDistance<9&&Math.abs(currentX)<9;
-  const tappedIndex=activeCard.dataset.index;
-
-  if(currentX>=SWIPE_COMMIT_THRESHOLD){
-    resetDecisionStamps(activeCard);
-    animateSwipe('right');
-  }else if(currentX<=-SWIPE_COMMIT_THRESHOLD){
-    resetDecisionStamps(activeCard);
-    animateSwipe('left');
-  }else{
-    resetDecisionStamps(activeCard);
-    activeCard.style.transition='transform .25s ease';
-    activeCard.style.transform='';
-    if(tapped)setTimeout(()=>openJobDetails(tappedIndex),40);
-  }
-}
-
-function candidateSeenJobsKey(userId=session?.user?.id||''){
-  return `alygnn_candidate_seen_jobs:${String(userId||'unknown')}`;
-}
-
-function readCandidateSeenJobs(userId=session?.user?.id||''){
-  try{
-    const value=JSON.parse(localStorage.getItem(candidateSeenJobsKey(userId))||'[]');
-    return new Set(Array.isArray(value)?value.map(String):[]);
-  }catch(_){
-    return new Set();
-  }
-}
-
-function rememberCandidateSeenJob(jobId,userId=session?.user?.id||''){
-  if(!jobId)return;
-  try{
-    const seen=readCandidateSeenJobs(userId);
-    seen.add(String(jobId));
-    localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seen]));
-  }catch(_){}
-}
-
-function forgetCandidateSeenJob(jobId,userId=session?.user?.id||''){
-  if(!jobId)return;
-  try{
-    const seen=readCandidateSeenJobs(userId);
-    seen.delete(String(jobId));
-    localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seen]));
-  }catch(_){}
-}
-
-async function createApplication(job){
-  const {data:existing,error:checkError}=await sb
-    .from('applications')
-    .select('id')
-    .eq('candidate_id',session.user.id)
-    .eq('job_id',job.id)
-    .maybeSingle();
-
-  if(checkError)console.warn(checkError);
-  if(existing){
-    rememberCandidateSeenJob(job.id);
-    return true;
-  }
-
-  const {error}=await sb.from('applications').insert({
-    candidate_id:session.user.id,
-    job_id:job.id,
-    status:'applied',
-    applied_at:new Date().toISOString(),
-    match_score:Number.isFinite(Number(job.match_score))
-      ?Math.round(Number(job.match_score))
-      :null
-  });
-
-  if(error)throw error;
-  rememberCandidateSeenJob(job.id);
-  return false;
-}
-
-async function saveSkippedJob(job){
-  if(!job?.id)return true;
-
-  const {data:existing,error:checkError}=await sb
-    .from('skipped_jobs')
-    .select('job_id')
-    .eq('candidate_id',session.user.id)
-    .eq('job_id',job.id)
-    .maybeSingle();
-
-  if(checkError){
-    console.warn('Could not check skipped job:',checkError);
-  }
-
-  if(existing){
-    rememberCandidateSeenJob(job.id);
-    return true;
-  }
-
-  const {error}=await sb
-    .from('skipped_jobs')
-    .insert({
-      candidate_id:session.user.id,
-      job_id:job.id
-    });
-
-  if(error)throw error;
-  rememberCandidateSeenJob(job.id);
-  return false;
-}
-
-async function animateSwipe(direction){
-  setupTopCard();
-  if(!activeCard)return;
-
-  const job=jobs[Number(activeCard.dataset.index)];
-  activeCard.classList.add(direction==='right'?'swipe-right':'swipe-left');
-
-  let persistenceCreated=false;
-
-  if(direction==='right'){
-    try{
-      const alreadyExists=await createApplication(job);
-      persistenceCreated=!alreadyExists;
-      if(!alreadyExists)applied++;
-      showToast(alreadyExists?'Already applied':'Application submitted');
-    }catch(error){
-      console.error(error);
-      activeCard?.classList.remove('swipe-right');
-      renderCards();
-      showToast(error.message||'Could not apply');
-      return;
-    }
-  }else{
-    try{
-      const alreadySkipped=await saveSkippedJob(job);
-      persistenceCreated=!alreadySkipped;
-      if(!alreadySkipped)skipped++;
-      showToast(alreadySkipped?'Already passed':'Passed');
-    }catch(error){
-      console.error(error);
-      activeCard?.classList.remove('swipe-left');
-      renderCards();
-      showToast(error.message||'Could not save pass');
-      return;
-    }
-  }
-
-  history.push({
-    job,
-    direction,
-    index:currentIndex,
-    persistenceCreated
-  });
-
-  currentIndex++;
-
-  setTimeout(renderCards,350);
-}
-
-function skipCurrent(){
-  setupTopCard();
-  if(activeCard)animateSwipe('left');
-}
-
-function applyCurrent(){
-  setupTopCard();
-  if(activeCard)animateSwipe('right');
-}
-
-async function undo(){
-  if(!history.length){
-    showToast('Nothing to undo');
-    return;
-  }
-
-  const last=history.pop();
-  const jobId=last.job?.id;
-
-  try{
-    if(last.persistenceCreated && jobId){
-      if(last.direction==='right'){
-        const result=await sb
-          .from('applications')
-          .delete()
-          .eq('candidate_id',session.user.id)
-          .eq('job_id',jobId);
-
-        if(result.error)throw result.error;
-      }else{
-        const result=await sb
-          .from('skipped_jobs')
-          .delete()
-          .eq('candidate_id',session.user.id)
-          .eq('job_id',jobId);
-
-        if(result.error)throw result.error;
-      }
-
-      forgetCandidateSeenJob(jobId);
-    }
-
-    if(last.direction==='right' && last.persistenceCreated){
-      applied=Math.max(0,applied-1);
-    }else if(last.direction==='left' && last.persistenceCreated){
-      skipped=Math.max(0,skipped-1);
-    }
-
-    currentIndex=last.index;
-    renderCards();
-    showToast('Undone');
-  }catch(error){
-    console.error('Could not undo candidate action:',error);
-    history.push(last);
-    showToast(error.message||'Could not undo');
-  }
-}
-
-function updateStats(){
-  const remaining=Math.max(0,jobs.length-currentIndex);
-  const position=jobs.length?Math.min(currentIndex+1,jobs.length):0;
-  const completed=jobs.length?Math.min(currentIndex,jobs.length):0;
-  const progress=jobs.length?(completed/jobs.length)*100:0;
-
-  document.getElementById('stat-applied').textContent=applied;
-  document.getElementById('stat-skipped').textContent=skipped;
-  document.getElementById('stat-remaining').textContent=jobs.length ? remaining : 0;
-  document.getElementById('job-progress-copy').textContent=
-    jobs.length ? `Job ${position} of ${jobs.length}` : 'Job 0 of 0';
-  document.getElementById('progress-fill').style.width=jobs.length ? progress+'%' : '0%';
-}
-
-function showToast(message){
-  const toast=document.getElementById('toast');
-  toast.textContent=message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>toast.classList.remove('show'),1800);
-}
-
-async function loadJobs(){
-  const userId=session?.user?.id;
-  if(!userId){
-    jobs=[];
-    renderCards();
-    return;
-  }
-
-  const [jobsResult,applicationsResult,skippedResult]=await Promise.all([
-    sb.from('jobs').select('*').eq('status','active').order('created_at',{ascending:false}),
-    sb.from('applications').select('job_id').eq('candidate_id',userId),
-    sb.from('skipped_jobs').select('job_id').eq('candidate_id',userId)
-  ]);
-
-  if(jobsResult.error){
-    console.error('Could not load jobs:',jobsResult.error);
-    showToast('We could not load your matches. Please try again.');
-    jobs=[];
-    renderCards();
-    return;
-  }
-
-  if(applicationsResult.error){
-    console.warn('Could not load prior applications:',applicationsResult.error);
-  }
-  if(skippedResult.error){
-    console.warn('Could not load prior passed jobs:',skippedResult.error);
-  }
-
-  const appliedRows=applicationsResult.data||[];
-  const skippedRows=skippedResult.data||[];
-  const seenJobIds=readCandidateSeenJobs(userId);
-  appliedRows.forEach(row=>{if(row?.job_id)seenJobIds.add(String(row.job_id));});
-  skippedRows.forEach(row=>{if(row?.job_id)seenJobIds.add(String(row.job_id));});
-  try{localStorage.setItem(candidateSeenJobsKey(userId),JSON.stringify([...seenJobIds]));}catch(_error){}
-
-  applied=appliedRows.length;
-  skipped=skippedRows.length;
-
-  let results=(jobsResult.data||[]).filter(job=>job?.id && !seenJobIds.has(String(job.id)));
-
-  // Keep onboarding preferences meaningful: narrow obvious hard requirements,
-  // then let Alygnn's score rank the remaining jobs.
-  const queryText=String(candidatePreferences.query||'').trim().toLowerCase();
-  if(queryText){
-    results=results.filter(job=>
-      String(job.title||'').toLowerCase().includes(queryText) ||
-      String(job.description||'').toLowerCase().includes(queryText)
+    setNotice(
+      error?.message||
+      'Message could not be sent.',
+      true
     );
-  }
-
-  const wantedTypes=(Array.isArray(candidatePreferences.jobTypes)&&candidatePreferences.jobTypes.length
-    ?candidatePreferences.jobTypes
-    :[candidatePreferences.jobType].filter(Boolean))
-    .map(canonicalJobType)
-    .filter(Boolean);
-  if(wantedTypes.length){
-    results=results.filter(job=>wantedTypes.includes(canonicalJobType(job.job_type||job.employment_type)));
-  }
-
-  const wantedStyle=canonicalWorkStyle(candidatePreferences.workStyle);
-  if(wantedStyle==='remote'){
-    results=results.filter(job=>canonicalWorkStyle(job.work_style||job.work_arrangement)==='remote');
-  }
-
-  const wantedLocation=String(candidatePreferences.location||[candidatePreferences.city,candidatePreferences.state].filter(Boolean).join(', ')).trim().toLowerCase();
-  if(wantedLocation){
-    const wantedParts=splitLocation(wantedLocation);
-    results=results.filter(job=>{
-      const offeredStyle=canonicalWorkStyle(job.work_style||job.work_arrangement);
-      if(offeredStyle==='remote')return true;
-      const offered=splitLocation(job.location||[job.location_city||job.city,job.location_state||job.state].filter(Boolean).join(', '));
-      if(wantedParts.raw && offered.raw && (offered.raw.includes(wantedParts.raw)||wantedParts.raw.includes(offered.raw)))return true;
-      if(wantedParts.city && offered.city && wantedParts.city===offered.city)return true;
-      if(wantedParts.state && offered.state && wantedParts.state===offered.state)return true;
-      return false;
-    });
-  }
-
-  results=await attachEmployerLogos(results);
-
-  jobs=results
-    .map(job=>{
-      const result=calculateAlygnnScore(job);
-      return {...job,match_score:result.score,_alygnn_breakdown:result.breakdown};
-    })
-    .sort((a,b)=>{
-      const scoreA=Number.isFinite(Number(a.match_score))?Number(a.match_score):-1;
-      const scoreB=Number.isFinite(Number(b.match_score))?Number(b.match_score):-1;
-      return scoreB-scoreA;
-    });
-
-  currentIndex=0;
-  history=[];
-  renderCards();
-}
-
-
-let noJobsRetryBusy=false;
-
-async function retryNoJobs(){
-  const button=document.getElementById('no-jobs-retry');
-  if(!button || noJobsRetryBusy)return;
-
-  noJobsRetryBusy=true;
-  button.disabled=true;
-  button.classList.add('is-pressed');
-  button.textContent='Checking…';
-
-  try{
-    await loadJobs();
-
-    if(!jobs.length){
-      button.textContent='No new jobs yet';
-      showToast('No new jobs are available yet.');
-
-      await new Promise(resolve=>setTimeout(resolve,900));
-
-      if(!jobs.length){
-        button.textContent='Try again';
-      }
-    }
-  }catch(error){
-    console.error('Retry jobs failed:',error);
-    button.textContent='Try again';
-    showToast('Could not refresh jobs. Please try again.');
   }finally{
-    button.classList.remove('is-pressed');
-    button.disabled=false;
-    noJobsRetryBusy=false;
+    sending=false;
+    $('send').disabled=false;
+    $('input').focus();
   }
 }
 
-function openPreferencesFromNoJobs(){
-  const button=document.getElementById('no-jobs-preferences');
-  if(!button)return;
-
-  button.classList.add('is-pressed');
-  button.textContent='Opening preferences…';
-
-  // A tiny delay makes the tap feedback visible on Android before navigation.
-  setTimeout(()=>{
-    window.location.assign('app-preferences.html?edit=1&from=discover');
-  },120);
-
-  // Safety reset in case navigation is ever blocked.
-  setTimeout(()=>{
-    button.classList.remove('is-pressed');
-    button.textContent='Set preferences again';
-  },1200);
-}
-
-const noJobsRetryButton=document.getElementById('no-jobs-retry');
-const noJobsPreferencesButton=document.getElementById('no-jobs-preferences');
-
-if(noJobsRetryButton){
-  noJobsRetryButton.addEventListener('click',retryNoJobs);
-}
-
-if(noJobsPreferencesButton){
-  noJobsPreferencesButton.addEventListener('click',openPreferencesFromNoJobs);
-}
-
-document.getElementById('back-button').addEventListener('click',()=>{
-  window.location.href='app-account.html';
-});
-
-document.getElementById('profile-button').addEventListener('click',()=>{
-  window.location.href='app-account.html';
-});
-
-document.getElementById('undo-button').addEventListener('click',undo);
-document.getElementById('skip-button').addEventListener('click',skipCurrent);
-document.getElementById('apply-button').addEventListener('click',applyCurrent);
-
-document.addEventListener('click',event=>{
-  const saveButton=event.target.closest('.save-btn');
-  if(saveButton){
-    event.stopPropagation();
-    saveButton.textContent=saveButton.textContent==='♡'?'♥':'♡';
-    showToast(saveButton.textContent==='♥'?'Job saved':'Removed from saved');
+async function archiveConversation(){
+  if(
+    !conversation?.id||
+    mutating
+  ){
     return;
   }
 
-  const shareButton=event.target.closest('.share-btn');
-  if(shareButton){
-    event.stopPropagation();
-    showToast('Share option coming next');
-  }
-});
+  mutating=true;
+  $('more').disabled=true;
 
+  try{
+    const toArchive=
+      !archived();
 
+    const result=await sb.rpc(
+      'archive_application_conversation',
+      {
+        p_conversation_id:
+          conversation.id,
 
-document.getElementById('details-close').addEventListener('click',closeJobDetails);
-document.getElementById('details-share').addEventListener('click',shareDetailsJob);
-document.getElementById('details-apply').addEventListener('click',applyFromDetails);
-document.getElementById('details-save').addEventListener('click',event=>{
-  const button=event.currentTarget;
-  button.textContent=button.textContent==='♡'?'♥':'♡';
-  showToast(button.textContent==='♥'?'Job saved':'Removed from saved');
-});
-document.getElementById('job-details-overlay').addEventListener('click',event=>{
-  if(event.target===event.currentTarget)closeJobDetails();
-});
-document.getElementById('job-details-sheet').addEventListener('click',event=>event.stopPropagation());
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&document.getElementById('job-details-overlay').classList.contains('open'))closeJobDetails();
-});
-
-
-function getCandidateThemePreference(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
-
-  return ['system','light','dark'].includes(saved)
-    ?saved
-    :'system';
-}
-
-function resolveCandidateTheme(preference=getCandidateThemePreference()){
-  if(preference==='light'||preference==='dark'){
-    return preference;
-  }
-
-  return window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-      ?'dark'
-      :'light';
-}
-
-function applyCandidateTheme(){
-  const preference=getCandidateThemePreference();
-  const resolved=resolveCandidateTheme(preference);
-
-  document.body.dataset.theme=resolved;
-  document.body.dataset.themePreference=preference;
-
-  const themeMeta=document.querySelector('meta[name="theme-color"]:not([media])');
-  if(themeMeta){
-    themeMeta.setAttribute(
-      'content',
-      resolved==='dark' ? '#061821' : '#F6F8F7'
-    );
-  }
-
-  return resolved;
-}
-
-function watchCandidateTheme(){
-  applyCandidateTheme();
-
-  if(window.matchMedia){
-    const media=window.matchMedia('(prefers-color-scheme: dark)');
-    const onSystemThemeChange=()=>{
-      if(getCandidateThemePreference()==='system'){
-        applyCandidateTheme();
+        p_archived:
+          toArchive
       }
-    };
+    );
 
-    if(typeof media.addEventListener==='function'){
-      media.addEventListener('change',onSystemThemeChange);
-    }else if(typeof media.addListener==='function'){
-      media.addListener(onSystemThemeChange);
+    if(result.error){
+      throw result.error;
     }
+
+    setNotice(
+      toArchive
+        ?'Conversation archived.'
+        :'Conversation moved back to your inbox.'
+    );
+
+    await findConversation();
+    renderContext();
+    $('chat-menu').hidden=true;
+  }catch(error){
+    console.error(error);
+
+    setNotice(
+      error?.message||
+      'Conversation could not be updated.',
+      true
+    );
+  }finally{
+    mutating=false;
+    $('more').disabled=false;
+  }
+}
+
+async function deleteConversation(){
+  if(
+    !conversation?.id||
+    mutating
+  ){
+    return;
   }
 
-  window.addEventListener('storage',event=>{
+  const name=
+    role==='employer'
+      ?candidateName()
+      :companyName();
+
+  if(
+    !confirm(
+      `Delete the conversation with ${name} from your Messages?\n\nThis removes it only from your side. The other person keeps their copy. If a new message is sent later, the conversation can appear again.`
+    )
+  ){
+    return;
+  }
+
+  mutating=true;
+  $('more').disabled=true;
+
+  setNotice(
+    'Removing conversation…'
+  );
+
+  try{
+    let result=await sb.rpc(
+      'hide_application_conversation',
+      {
+        p_conversation_id:
+          conversation.id
+      }
+    );
+
     if(
-      event.key==='alygnn_candidate_theme' ||
-      event.key==='alygnn-theme'
+      result.error &&
+      String(
+        result.error.message||
+        ''
+      )
+        .toLowerCase()
+        .includes('function')
     ){
-      applyCandidateTheme();
+      result=await sb.rpc(
+        'delete_application_conversation',
+        {
+          p_conversation_id:
+            conversation.id
+        }
+      );
     }
-  });
 
-  document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden){
-      applyCandidateTheme();
+    if(result.error){
+      throw result.error;
     }
-  });
 
-  window.addEventListener('pageshow',applyCandidateTheme);
-}
+    if(channel){
+      sb.removeChannel(channel);
+    }
 
-function enforceCandidateNav(){
-  const label=document.getElementById('discover-nav-label');
-  if(label&&label.textContent!=='Discover'){
-    label.textContent='Discover';
+    location.replace(
+      'app-messages.html?role='+
+      role
+    );
+  }catch(error){
+    console.error(error);
+
+    setNotice(
+      error?.message||
+      'Conversation could not be removed.',
+      true
+    );
+
+    $('more').disabled=false;
+    mutating=false;
   }
 }
 
-(async function initialize(){
-  watchCandidateTheme();
+$('send').onclick=send;
 
-  const {data,error}=await sb.auth.getSession();
+$('input').addEventListener(
+  'keydown',
+  event=>{
+    if(
+      event.key==='Enter' &&
+      !event.shiftKey
+    ){
+      event.preventDefault();
+      send();
+    }
+  }
+);
 
-  if(error||!data.session){
-    window.location.replace('app-login.html');
+$('back').onclick=()=>{
+  location.href=
+    'app-messages.html?role='+
+    role;
+};
+
+$('more').onclick=event=>{
+  event.stopPropagation();
+  $('chat-menu').hidden=
+    !$('chat-menu').hidden;
+};
+
+$('archive-chat').onclick=
+  archiveConversation;
+
+$('delete-chat').onclick=
+  deleteConversation;
+
+document.addEventListener(
+  'click',
+  event=>{
+    if(
+      !event.target.closest(
+        '.header'
+      )
+    ){
+      $('chat-menu').hidden=true;
+    }
+  }
+);
+
+(async()=>{
+  const query=
+    new URLSearchParams(
+      location.search
+    );
+
+  const requestedRole=
+    normalizeWorkspaceRole(
+      query.get('role')
+    );
+
+  let rememberedRole='';
+
+  try{
+    rememberedRole=
+      normalizeWorkspaceRole(
+        sessionStorage.getItem(
+          'alygnn_active_workspace'
+        )||
+        localStorage.getItem(
+          'alygnn_active_workspace'
+        )
+      );
+  }catch(_error){}
+
+  role=
+    requestedRole||
+    rememberedRole||
+    'candidate';
+
+  rememberWorkspaceRole(role);
+
+  try{
+    if(!requestedRole){
+      query.set(
+        'role',
+        role
+      );
+
+      history.replaceState(
+        null,
+        '',
+        location.pathname+
+        '?'+
+        query.toString()+
+        location.hash
+      );
+    }
+  }catch(_error){}
+
+  applicationId=
+    String(
+      query.get('application')||
+      ''
+    );
+
+  conversationId=
+    String(
+      query.get('conversation')||
+      ''
+    );
+
+  if(role==='employer'){
+    contextCandidateName=
+      String(
+        query.get('candidate')||
+        ''
+      ).trim();
+
+    contextJobTitle=
+      String(
+        query.get('job')||
+        ''
+      ).trim();
+
+    try{
+      const saved=JSON.parse(
+        sessionStorage.getItem(
+          'alygnnMessageContext'
+        )||
+        'null'
+      );
+
+      if(
+        saved &&
+        (
+          !applicationId ||
+          String(
+            saved.applicationId||
+            ''
+          )===applicationId
+        )
+      ){
+        contextCandidateName=
+          contextCandidateName||
+          String(
+            saved.candidateName||
+            ''
+          ).trim();
+
+        contextJobTitle=
+          contextJobTitle||
+          String(
+            saved.jobTitle||
+            ''
+          ).trim();
+      }
+    }catch(_error){}
+  }
+
+  if(
+    !applicationId &&
+    !conversationId
+  ){
+    setNotice(
+      'Conversation information is missing.',
+      true
+    );
+
+    $('composer').style.display='none';
+    return;
+  }
+
+  const {
+    data,
+    error
+  }=await sb.auth.getSession();
+
+  if(
+    error||
+    !data.session
+  ){
+    location.replace(
+      'app-login.html'
+    );
     return;
   }
 
   session=data.session;
 
-  const fullName=
-    session.user.user_metadata?.full_name||
-    session.user.user_metadata?.name||
-    session.user.email?.split('@')[0]||
-    'User';
-
-  document.getElementById('profile-button').textContent=initials(fullName);
-
-  const {count}=await sb
-    .from('applications')
-    .select('*',{count:'exact',head:true})
-    .eq('candidate_id',session.user.id);
-
-  applied=count||0;
-
   try{
-    await loadCandidateMatchingProfile();
-  }catch(profileError){
-    console.error('Could not load Alygnn matching profile:',profileError);
-    showToast('Could not load your Alygnn matching profile');
-  }
-
-  await loadJobs();
-
-  enforceCandidateNav();
-  setTimeout(enforceCandidateNav,250);
-  setTimeout(enforceCandidateNav,1000);
-})();
-</script>
-
-
-<script id="alygnn-candidate-message-badge-script">
-(async function(){
-  const badge=document.getElementById('candidate-message-badge');
-  if(!badge || typeof sb==='undefined') return;
-
-  async function refresh(){
-    try{
-      const {data,error}=await sb.auth.getSession();
-      if(error) throw error;
-      const userId=data?.session?.user?.id;
-      if(!userId){ badge.hidden=true; return; }
-
-      const conversations=await sb
+    /*
+     * When opening by conversation ID, resolve its current application first.
+     */
+    if(
+      conversationId &&
+      !applicationId
+    ){
+      const initial=await sb
         .from('application_conversations')
-        .select('id')
-        .eq('candidate_id',userId);
+        .select('application_id')
+        .eq(
+          'id',
+          conversationId
+        )
+        .maybeSingle();
 
-      if(conversations.error) throw conversations.error;
-      const ids=(conversations.data||[]).map(row=>row.id).filter(Boolean);
-      if(!ids.length){
-        badge.textContent='0';
-        badge.hidden=true;
-        return;
+      if(initial.error){
+        throw initial.error;
       }
 
-      const unread=await sb
-        .from('application_messages')
-        .select('id')
-        .in('conversation_id',ids)
-        .neq('sender_id',userId)
-        .is('read_at',null);
-
-      if(unread.error) throw unread.error;
-      const count=(unread.data||[]).length;
-      badge.textContent=count>99?'99+':String(count);
-      badge.hidden=count===0;
-    }catch(error){
-      console.warn('Candidate message badge unavailable:',error);
-      badge.hidden=true;
+      applicationId=
+        String(
+          initial.data?.application_id||
+          ''
+        );
     }
-  }
 
-  window.AlygnnRefreshCandidateMessageBadge=refresh;
-  await refresh();
-  window.addEventListener('pageshow',refresh);
-  window.addEventListener('focus',refresh);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible') refresh();
-  });
+    await metadata();
+    await findConversation();
 
-  try{
-    const channel=sb
-      .channel('candidate-nav-message-badge-'+Math.random().toString(36).slice(2))
-      .on('postgres_changes',{event:'*',schema:'public',table:'application_messages'},refresh)
-      .on('postgres_changes',{event:'*',schema:'public',table:'application_conversations'},refresh)
-      .subscribe();
-    window.addEventListener('pagehide',()=>{ try{ sb.removeChannel(channel); }catch(_){} },{once:true});
-  }catch(_){}
-})();
-</script>
+    if(
+      role==='employer' &&
+      conversation &&
+      applicationId &&
+      (
+        contextCandidateName||
+        contextJobTitle
+      )
+    ){
+      const sync=await sb.rpc(
+        'sync_application_conversation_identity',
+        {
+          p_application_id:
+            applicationId,
 
+          p_candidate_name:
+            candidateName(),
 
-<script id="alygnn-candidate-message-badge-persistence">
-(function(){
-  const badge=document.getElementById('candidate-message-badge');
-  if(!badge || typeof sb==='undefined')return;
-
-  const GLOBAL_KEY='alygnn_candidate_unread_messages_last';
-  let activeUserId='';
-
-  function scopedKey(userId){
-    return `alygnn_candidate_unread_messages:${String(userId||'unknown')}`;
-  }
-
-  function parseCount(value){
-    const count=Number(value);
-    return Number.isFinite(count)&&count>0?Math.floor(count):0;
-  }
-
-  function cachedCount(){
-    try{
-      return parseCount(
-        (activeUserId&&localStorage.getItem(scopedKey(activeUserId))) ||
-        localStorage.getItem(GLOBAL_KEY) ||
-        '0'
-      );
-    }catch(_){
-      return 0;
-    }
-  }
-
-  function paint(count,persist=true){
-    count=Math.max(0,Number(count)||0);
-    badge.textContent=count>99?'99+':String(count);
-    badge.hidden=count===0;
-
-    if(persist){
-      try{
-        localStorage.setItem(GLOBAL_KEY,String(count));
-        if(activeUserId){
-          localStorage.setItem(scopedKey(activeUserId),String(count));
+          p_job_title:
+            jobTitle()
         }
-      }catch(_){}
+      );
+
+      if(sync.error){
+        console.warn(
+          'Could not refresh conversation identity:',
+          sync.error
+        );
+      }else{
+        await findConversation();
+      }
     }
+
+    renderContext();
+
+    if(
+      role==='candidate' &&
+      !conversation
+    ){
+      $('composer').style.display='none';
+    }
+
+    await loadMessages();
+    subscribe();
+  }catch(error){
+    console.error(error);
+
+    setNotice(
+      error?.message||
+      'Conversation could not be loaded.',
+      true
+    );
+
+    $('composer').style.display='none';
   }
-
-  const initial=cachedCount();
-  if(initial>0)paint(initial,false);
-
-  async function refreshPersistentCandidateBadge(){
-    try{
-      const {data,error}=await sb.auth.getSession();
-      if(error)throw error;
-
-      activeUserId=data?.session?.user?.id||'';
-      if(!activeUserId){
-        paint(0);
-        return;
-      }
-
-      const conversations=await sb
-        .from('application_conversations')
-        .select('id')
-        .eq('candidate_id',activeUserId);
-
-      if(conversations.error)throw conversations.error;
-
-      const ids=(conversations.data||[])
-        .map(row=>row.id)
-        .filter(Boolean);
-
-      if(!ids.length){
-        paint(0);
-        return;
-      }
-
-      const unread=await sb
-        .from('application_messages')
-        .select('id')
-        .in('conversation_id',ids)
-        .neq('sender_id',activeUserId)
-        .is('read_at',null);
-
-      if(unread.error)throw unread.error;
-      paint((unread.data||[]).length);
-    }catch(error){
-      console.warn('Persistent candidate message badge refresh failed:',error);
-      const count=cachedCount();
-      if(count>0)paint(count,false);
-    }
-  }
-
-  const observer=new MutationObserver(()=>{
-    if(badge.hidden){
-      const count=cachedCount();
-      if(count>0){
-        badge.textContent=count>99?'99+':String(count);
-        badge.hidden=false;
-      }
-    }
-  });
-
-  observer.observe(badge,{attributes:true,attributeFilter:['hidden']});
-
-  window.AlygnnRefreshCandidateMessageBadge=refreshPersistentCandidateBadge;
-  refreshPersistentCandidateBadge();
-  setTimeout(refreshPersistentCandidateBadge,250);
-  window.addEventListener('pageshow',refreshPersistentCandidateBadge);
-  window.addEventListener('focus',refreshPersistentCandidateBadge);
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){
-      refreshPersistentCandidateBadge();
-    }
-  });
-  window.addEventListener('storage',event=>{
-    if(event.key===GLOBAL_KEY || event.key===scopedKey(activeUserId)){
-      const count=cachedCount();
-      paint(count,false);
-    }
-  });
 })();
 </script>
-
 </body>
 </html>
