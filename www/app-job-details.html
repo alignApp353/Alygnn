@@ -633,6 +633,254 @@ html[data-effective-theme="dark"] .toast{
   grid-template-columns:1fr 1.65fr;
 }
 </style>
+
+<style id="alygnn-normal-candidate-job-details">
+  /* Keep the full-detail page visually consistent with the normal Discover details. */
+  body{
+    background:
+      radial-gradient(circle at top,rgba(93,127,163,.07),transparent 28%),
+      var(--bg)!important;
+  }
+
+  .header{
+    min-height:76px!important;
+    grid-template-columns:48px 1fr 92px!important;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px!important;
+  }
+
+  .circle-btn{
+    width:42px!important;
+    height:42px!important;
+    box-shadow:none!important;
+    font-size:18px!important;
+  }
+
+  .logo{
+    font-size:28px!important;
+  }
+
+  .page{
+    max-width:620px!important;
+    padding:14px 14px 30px!important;
+  }
+
+  /* The normal candidate view already shows these details in the hero.
+     Remove the duplicate dashboard-style blocks. */
+  #job-overview-section,
+  #match-detail-section{
+    display:none!important;
+  }
+
+  .hero{
+    background:#fff!important;
+    border:1px solid var(--border)!important;
+    border-radius:22px!important;
+    padding:18px!important;
+    box-shadow:0 10px 28px rgba(27,43,63,.055)!important;
+    overflow:visible!important;
+  }
+
+  .top-row{
+    align-items:center!important;
+    margin-bottom:16px!important;
+  }
+
+  .match-badge{
+    padding:8px 11px!important;
+    border-radius:999px!important;
+    background:rgba(111,191,143,.13)!important;
+    border:1px solid rgba(111,191,143,.26)!important;
+    color:#287C54!important;
+    font-size:12px!important;
+    font-weight:900!important;
+  }
+
+  .verified-badge{
+    background:transparent!important;
+    border:0!important;
+    padding:0!important;
+    color:var(--brand-dark)!important;
+    font-size:10px!important;
+    font-weight:800!important;
+    letter-spacing:.45px!important;
+    text-transform:uppercase!important;
+  }
+
+  .identity{
+    display:flex!important;
+    align-items:center!important;
+    gap:13px!important;
+  }
+
+  .company-logo{
+    width:54px!important;
+    height:54px!important;
+    flex:0 0 54px!important;
+    border-radius:16px!important;
+    background:#F5F8FA!important;
+    border:1px solid var(--border)!important;
+    color:var(--brand-dark)!important;
+    box-shadow:none!important;
+    font-size:18px!important;
+  }
+
+  .job-title{
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:24px!important;
+    line-height:1.08!important;
+    letter-spacing:-.35px!important;
+    font-weight:900!important;
+    color:var(--text)!important;
+  }
+
+  .company{
+    margin-top:5px!important;
+    font-size:13px!important;
+    font-weight:700!important;
+  }
+
+  .check{
+    width:16px!important;
+    height:16px!important;
+    font-size:9px!important;
+  }
+
+  .pills{
+    gap:7px!important;
+    margin-top:16px!important;
+  }
+
+  .pill{
+    padding:7px 10px!important;
+    background:#F9FBFC!important;
+    border:1px solid var(--border)!important;
+    font-size:11px!important;
+    font-weight:800!important;
+    color:var(--text)!important;
+  }
+
+  .pill.salary{
+    background:rgba(93,127,163,.09)!important;
+    color:var(--brand-dark)!important;
+  }
+
+  .hero-note{
+    margin-top:15px!important;
+    padding-top:13px!important;
+    font-size:10.5px!important;
+    line-height:1.35!important;
+    font-weight:700!important;
+  }
+
+  .section{
+    margin-top:12px!important;
+    padding:18px!important;
+    border-radius:20px!important;
+    box-shadow:none!important;
+  }
+
+  .section-title{
+    font-family:'DM Sans',Arial,sans-serif!important;
+    font-size:18px!important;
+    line-height:1.2!important;
+    font-weight:900!important;
+    letter-spacing:-.2px!important;
+    color:var(--text)!important;
+  }
+
+  .body-copy{
+    margin-top:11px!important;
+    font-size:13px!important;
+    line-height:1.65!important;
+  }
+
+  .list{
+    margin-top:12px!important;
+    gap:10px!important;
+  }
+
+  .list-item{
+    gap:9px!important;
+    font-size:13px!important;
+    line-height:1.5!important;
+  }
+
+  .list-icon{
+    width:20px!important;
+    height:20px!important;
+    flex-basis:20px!important;
+    font-size:10px!important;
+  }
+
+  .company-card{
+    margin-top:12px!important;
+    gap:11px!important;
+  }
+
+  .company-card-logo{
+    width:48px!important;
+    height:48px!important;
+    border-radius:14px!important;
+    font-size:16px!important;
+  }
+
+  .company-card-name{
+    font-size:15px!important;
+  }
+
+  .company-card-meta{
+    margin-top:2px!important;
+    font-size:11px!important;
+  }
+
+  /* Cleaner bottom action bar, same app look as the normal candidate flow. */
+  .apply-bar{
+    padding:9px 14px calc(9px + env(safe-area-inset-bottom))!important;
+  }
+
+  .apply-inner{
+    max-width:620px!important;
+    grid-template-columns:minmax(118px,.85fr) minmax(0,1.8fr)!important;
+    gap:9px!important;
+  }
+
+  .secondary-btn,
+  .primary-btn{
+    min-height:52px!important;
+    border-radius:15px!important;
+    font-size:14px!important;
+  }
+
+  .primary-btn{
+    box-shadow:none!important;
+  }
+
+  @media(max-width:470px){
+    .page{
+      padding-left:12px!important;
+      padding-right:12px!important;
+    }
+
+    .hero{
+      padding:16px!important;
+      border-radius:20px!important;
+    }
+
+    .section{
+      padding:16px!important;
+      border-radius:18px!important;
+    }
+
+    .job-title{
+      font-size:22px!important;
+    }
+
+    .hero-note{
+      gap:8px!important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -687,12 +935,12 @@ html[data-effective-theme="dark"] .toast{
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="job-overview-section">
       <h2 class="section-title">Job overview</h2>
       <div class="overview-grid" id="overview-grid"></div>
     </section>
 
-    <section class="section">
+    <section class="section" id="match-detail-section">
       <h2 class="section-title">Your Alygnn match</h2>
       <p class="section-sub">A clear breakdown of how this job aligns with your profile.</p>
 
@@ -742,12 +990,12 @@ html[data-effective-theme="dark"] .toast{
     </section>
 
     <section class="section" id="requirements-section">
-      <h2 class="section-title">What they're looking for</h2>
+      <h2 class="section-title">Requirements</h2>
       <div class="list" id="requirements-list"></div>
     </section>
 
     <section class="section" id="benefits-section">
-      <h2 class="section-title">Benefits and highlights</h2>
+      <h2 class="section-title">Benefits</h2>
       <div class="list" id="benefits-list"></div>
     </section>
 
@@ -1313,7 +1561,7 @@ function setApplicationActions(){
   }
 
   if(currentPassed){
-    secondary.textContent='Back to Passed';
+    secondary.textContent='Back to Skipped';
     primary.textContent='Apply now';
     return;
   }
