@@ -1173,6 +1173,98 @@ html[data-effective-theme="dark"] .toast{
   }
 </style>
 
+
+<style id="alygnn-job-details-readability-fix">
+  /* Force the simple job header to stay readable even if theme CSS has
+     a more-specific background rule. */
+  html body #job-content > .hero{
+    background:#FFFFFF!important;
+    background-image:none!important;
+    color:#1A2530!important;
+    border-color:#DDE3E8!important;
+  }
+
+  html body #job-content > .hero .job-title{
+    color:#1A2530!important;
+  }
+
+  html body #job-content > .hero .company{
+    color:#4A5968!important;
+  }
+
+  html body #job-content > .hero .hero-note,
+  html body #job-content > .hero .hero-note span{
+    color:#657485!important;
+    opacity:1!important;
+  }
+
+  html body #job-content > .hero .hero-note{
+    border-top-color:#DDE3E8!important;
+  }
+
+  html body #job-content > .hero .pill{
+    background:#F8FAFB!important;
+    border-color:#DDE3E8!important;
+    color:#1A2530!important;
+  }
+
+  html body #job-content > .hero .pill.salary{
+    background:#EEF4FA!important;
+    color:#355F88!important;
+  }
+
+  html body #job-content > .hero .company-logo{
+    background:#F4F7F9!important;
+    border-color:#DDE3E8!important;
+    color:#476F98!important;
+  }
+
+  html body #job-content > .hero .check{
+    color:#FFFFFF!important;
+  }
+
+  /* Keep the same contrast in dark mode. */
+  html[data-effective-theme="dark"] body #job-content > .hero,
+  html[data-theme="dark"] body #job-content > .hero{
+    background:#101A23!important;
+    background-image:none!important;
+    color:#F4F7F9!important;
+    border-color:#2B3946!important;
+  }
+
+  html[data-effective-theme="dark"] body #job-content > .hero .job-title,
+  html[data-theme="dark"] body #job-content > .hero .job-title{
+    color:#F4F7F9!important;
+  }
+
+  html[data-effective-theme="dark"] body #job-content > .hero .company,
+  html[data-theme="dark"] body #job-content > .hero .company,
+  html[data-effective-theme="dark"] body #job-content > .hero .hero-note,
+  html[data-theme="dark"] body #job-content > .hero .hero-note,
+  html[data-effective-theme="dark"] body #job-content > .hero .hero-note span,
+  html[data-theme="dark"] body #job-content > .hero .hero-note span{
+    color:#AAB6C1!important;
+  }
+
+  html[data-effective-theme="dark"] body #job-content > .hero .hero-note,
+  html[data-theme="dark"] body #job-content > .hero .hero-note{
+    border-top-color:#2B3946!important;
+  }
+
+  html[data-effective-theme="dark"] body #job-content > .hero .pill,
+  html[data-theme="dark"] body #job-content > .hero .pill{
+    background:#15212C!important;
+    border-color:#2B3946!important;
+    color:#F4F7F9!important;
+  }
+
+  html[data-effective-theme="dark"] body #job-content > .hero .pill.salary,
+  html[data-theme="dark"] body #job-content > .hero .pill.salary{
+    background:#18293A!important;
+    color:#A9C7E4!important;
+  }
+</style>
+
 </head>
 
 <body>
