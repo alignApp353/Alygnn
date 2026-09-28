@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin sign in — Alygnn</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -291,16 +292,10 @@ async function signIn(){
 }
 
 async function prepareAdminLogin(){
-  // Always show the admin sign-in form. Never auto-enter the admin area from
-  // a previously stored Alygnn session. This keeps admin access intentional.
-  try{
-    const {data:{session}}=await sb.auth.getSession();
-    if(session?.user?.email){
-      email.value=String(session.user.email||'');
-    }
-  }catch(error){
-    console.warn('Could not read existing Alygnn session:',error);
-  }
+  // Always show a blank admin sign-in form.
+  // Never expose an email address from a previously stored Alygnn session.
+  email.value='';
+  password.value='';
 }
 
 document.getElementById('show-password').addEventListener('click',()=>{
