@@ -1040,7 +1040,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           terms_accepted:true,
           terms_version:TERMS_VERSION,
           success_url:isAddon()
-            ? location.origin+'/employer-dashboard.html?payment=success&product=additional_slot'
+            ? location.origin+'/employer-dashboard.html?payment=success&product=additional_slot&session_id={CHECKOUT_SESSION_ID}#jobs'
             : location.origin+'/employer-dashboard.html?payment=success&plan='+encodeURIComponent(selectedPlan)+'&billing='+encodeURIComponent(selectedBilling),
           cancel_url:location.href
         })
