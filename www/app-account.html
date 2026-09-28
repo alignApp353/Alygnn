@@ -4535,30 +4535,86 @@ $('dashboard-resume-input')?.addEventListener('change',event=>{
   event.target.value='';
 });
 syncCandidateView();
+restoreCandidateScreenState();
 loadCandidateWorkspace();
 configureWorkspaceModeSwitch();
 
-// Android WebView may restore this page from the back/forward cache with the
-// old onboarding DOM still on screen. Re-read the saved candidate state every
-// time My Profile becomes active again.
+// Preserve the current Candidate screen when Android backgrounds the app or
+// when a native/external browser opens. Previously we reloaded the whole
+// workspace on every focus/visibility event, which made the UI appear to reset.
+const CANDIDATE_SCREEN_STATE_KEY='alygnn_candidate_screen_state_v1';
+
+function saveCandidateScreenState(){
+  try{
+    localStorage.setItem(
+      CANDIDATE_SCREEN_STATE_KEY,
+      JSON.stringify({
+        hash:window.location.hash||'',
+        scrollY:Math.max(0,Math.round(window.scrollY||0)),
+        savedAt:Date.now()
+      })
+    );
+  }catch(_){}
+}
+
+function restoreCandidateScreenState(){
+  try{
+    const raw=localStorage.getItem(CANDIDATE_SCREEN_STATE_KEY);
+    if(!raw)return;
+
+    const saved=JSON.parse(raw);
+    if(!saved || typeof saved!=='object')return;
+
+    // Only restore a very recent app-background state. Normal navigation back
+    // to My Profile should still open My Profile normally.
+    if(Date.now()-Number(saved.savedAt||0)>15*60*1000)return;
+
+    if(!window.location.hash && saved.hash==='#settings'){
+      history.replaceState(
+        null,
+        '',
+        window.location.pathname+window.location.search+'#settings'
+      );
+    }
+
+    syncCandidateView();
+
+    const y=Math.max(0,Number(saved.scrollY||0));
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>window.scrollTo(0,y));
+    });
+  }catch(_){}
+}
+
 window.addEventListener('pageshow',event=>{
   refreshTimeBasedDashboardCopy();
+  refreshCandidateSettingsUI();
+
   if(event.persisted){
-    loadCandidateWorkspace({restoring:true});
+    restoreCandidateScreenState();
   }
 });
 
 document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){
+    saveCandidateScreenState();
+    return;
+  }
+
   if(document.visibilityState==='visible'){
+    // Keep the current page exactly where it was. Only refresh lightweight UI.
     refreshTimeBasedDashboardCopy();
-    loadCandidateWorkspace({restoring:true});
+    refreshCandidateSettingsUI();
+    configureWorkspaceModeSwitch();
   }
 });
 
+window.addEventListener('blur',saveCandidateScreenState);
+window.addEventListener('pagehide',saveCandidateScreenState);
+
 window.addEventListener('focus',()=>{
-  // Covers Android navigation cases where pageshow is not marked persisted.
   if(document.visibilityState==='visible'){
-    loadCandidateWorkspace({restoring:true});
+    refreshCandidateSettingsUI();
   }
 });
 
