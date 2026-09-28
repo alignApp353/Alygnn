@@ -1119,13 +1119,30 @@ function activeConversationDetails(){
 function renderChat(){
   const panel=document.getElementById('chat-panel');
 
+  // Preserve an in-progress draft/focus when realtime updates re-render
+  // the currently open conversation.
+  const existingInput=panel.querySelector('#message-input');
+  const existingThreadId=String(panel.dataset.threadId||'');
+  const draftValue=existingInput?.value||'';
+  const inputHadFocus=document.activeElement===existingInput;
+  const selectionStart=existingInput?.selectionStart;
+  const selectionEnd=existingInput?.selectionEnd;
+
   const d=activeConversationDetails();
 
   if(!d){
+    // Realtime conversation updates can briefly arrive before the refreshed
+    // thread details do. If the current chat is already on screen, keep it
+    // instead of flashing "No conversation selected".
+    if(activeThreadId && existingThreadId===String(activeThreadId) && panel.querySelector('.composer')){
+      return;
+    }
+
     const emptyChatCopy = currentRole === 'employer'
       ? 'Choose a conversation from the left, or start one from a candidate application.'
       : 'Choose a conversation from the left when you receive a message about one of your applications.';
 
+    panel.dataset.threadId='';
     panel.innerHTML=`
       <div class="empty-chat">
         <div class="empty-chat-icon">✉</div>
@@ -1134,6 +1151,9 @@ function renderChat(){
       </div>`;
     return;
   }
+
+  const renderedThreadId=String(d.thread?.id||activeThreadId||'pending');
+  const preserveComposer=existingThreadId===renderedThreadId;
   const jobClosed=String(d.job?.status||'').toLowerCase()==='closed';
 
   panel.innerHTML=`
@@ -1175,9 +1195,24 @@ function renderChat(){
       <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
     </div>`;
 
+  panel.dataset.threadId=renderedThreadId;
+
   requestAnimationFrame(()=>{
     const messages=document.getElementById('messages');
     if(messages)messages.scrollTop=messages.scrollHeight;
+
+    if(preserveComposer){
+      const nextInput=document.getElementById('message-input');
+      if(nextInput){
+        nextInput.value=draftValue;
+        if(inputHadFocus){
+          nextInput.focus({preventScroll:true});
+          if(Number.isInteger(selectionStart) && Number.isInteger(selectionEnd)){
+            try{nextInput.setSelectionRange(selectionStart,selectionEnd);}catch(_error){}
+          }
+        }
+      }
+    }
   });
 }
 
