@@ -2387,25 +2387,51 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (String(params.get('product') || '').toLowerCase() !== 'additional_slot') return false;
 
     const checkoutSessionId = String(params.get('session_id') || '').trim();
-    if (!checkoutSessionId) return false;
 
     try {
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.access_token) return false;
 
-      const response = await fetch('/api/create-checkout-session', {
+      const requestBody = checkoutSessionId
+        ? {
+            action: 'sync_second_slot_checkout',
+            checkout_session_id: checkoutSessionId
+          }
+        : {
+            action: 'reconcile_second_slot_checkout'
+          };
+
+      let response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + session.access_token
         },
-        body: JSON.stringify({
-          action: 'sync_second_slot_checkout',
-          checkout_session_id: checkoutSessionId
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      const result = await response.json().catch(() => ({}));
+      let result = await response.json().catch(() => ({}));
+
+      // If an exact Checkout Session was present but Stripe has not finished
+      // exposing it yet, fall back to the employer-scoped Stripe reconciliation.
+      if (
+        checkoutSessionId &&
+        (!response.ok || result?.synced !== true)
+      ) {
+        response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + session.access_token
+          },
+          body: JSON.stringify({
+            action: 'reconcile_second_slot_checkout'
+          })
+        });
+
+        result = await response.json().catch(() => ({}));
+      }
+
       if (!response.ok || result?.synced !== true) {
         throw new Error(result?.error || 'Could not sync the completed Second Job Slot.');
       }
@@ -2416,12 +2442,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return true;
     } catch (error) {
       // Stripe webhook remains the primary fulfillment path.
-      // Keep the dashboard usable if the immediate return sync is delayed.
+      // Keep the dashboard usable if Stripe needs another moment to reconcile.
       console.warn('Completed Second Job Slot sync failed:', error);
       return false;
     }
   }
-
 
   async function syncCompletedPlanCheckoutOnReturn() {
     if (isTeamMember) return false;
