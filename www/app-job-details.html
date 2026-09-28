@@ -1330,11 +1330,41 @@ html[data-effective-theme="dark"] .toast{
   }
 </style>
 
+
+<style id="alygnn-back-arrow-fix">
+  #back-btn{
+    padding:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    line-height:1!important;
+  }
+
+  #back-btn .back-icon{
+    width:20px;
+    height:20px;
+    display:block;
+    flex:0 0 20px;
+  }
+
+  #back-btn .back-icon path{
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+</style>
+
 </head>
 
 <body>
 <header class="header">
-  <button class="circle-btn" id="back-btn" type="button" aria-label="Go back">←</button>
+  <button class="circle-btn" id="back-btn" type="button" aria-label="Go back">
+  <svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6"></path>
+  </svg>
+</button>
 
   <div class="header-title">
     <div class="logo">Alygnn<span>.</span></div>
