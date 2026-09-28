@@ -2818,24 +2818,43 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       // paid-plan capacity, temporary Weekly slots, and candidate billing-lock state.
       const accessResult = await sb.rpc('get_employer_posting_access');
       if (!accessResult.error && accessResult.data) {
+        const directAddonCount = Math.max(0, Number(billingEntitlement.addon_slot_count || 0));
+        const directAddonExpiry = billingEntitlement.addon_slots_expires_at
+          ? new Date(billingEntitlement.addon_slots_expires_at).getTime()
+          : null;
+        const directAddonActive = directAddonCount > 0 &&
+          (directAddonExpiry === null || Number.isNaN(directAddonExpiry) || directAddonExpiry > Date.now());
+
+        const directLimit = Math.max(
+          1,
+          Number(billingEntitlement.slot_limit || 1),
+          directAddonActive ? 2 : 1
+        );
+        const serverLimit = Math.max(1, Number(accessResult.data.slot_limit || 1));
+        const effectiveLimit = Math.max(directLimit, serverLimit);
+        const serverUsed = Math.max(0, Number(accessResult.data.active_job_count || 0));
+        const effectiveCanPost = accessResult.data.can_post === true || serverUsed < effectiveLimit;
+
         billingEntitlement = {
           ...billingEntitlement,
-          slot_limit: Math.max(1, Number(accessResult.data.slot_limit || 1)),
+          slot_limit: effectiveLimit,
           weekly_slot_count: Math.max(0, Number(accessResult.data.weekly_slot_count || 0)),
           weekly_slots_expires_at: accessResult.data.weekly_slots_expires_at || null,
-          addon_slot_count: Math.max(0, Number(accessResult.data.addon_slot_count || 0)),
-          addon_slots_expires_at: accessResult.data.addon_slots_expires_at || null,
+          addon_slot_count: Math.max(directAddonCount, Number(accessResult.data.addon_slot_count || 0)),
+          addon_slots_expires_at: billingEntitlement.addon_slots_expires_at || accessResult.data.addon_slots_expires_at || null,
           candidate_access_locked: accessResult.data.candidate_access_locked === true,
           candidate_access_lock_reason: accessResult.data.candidate_access_lock_reason || null,
           weekly_purchase_allowed: accessResult.data.weekly_purchase_allowed === true,
           recommended_upgrade_plan: accessResult.data.recommended_upgrade_plan ? String(accessResult.data.recommended_upgrade_plan).toLowerCase() : null,
-          second_slot_eligible: accessResult.data.second_slot_eligible === true,
+          second_slot_eligible: directAddonActive ? false : accessResult.data.second_slot_eligible === true,
           active_paid_plan: accessResult.data.active_paid_plan === true,
           server_access_loaded: true,
-          server_can_post: accessResult.data.can_post === true,
-          server_reason: String(accessResult.data.reason || ''),
-          server_active_job_count: Math.max(0, Number(accessResult.data.active_job_count || 0)),
-          server_available_slots: Math.max(0, Number(accessResult.data.available_slots || 0))
+          server_can_post: effectiveCanPost,
+          server_reason: effectiveCanPost && accessResult.data.can_post !== true
+            ? 'second-slot-available'
+            : String(accessResult.data.reason || ''),
+          server_active_job_count: serverUsed,
+          server_available_slots: Math.max(0, effectiveLimit - serverUsed)
         };
       } else if (accessResult.error) {
         console.warn('Could not load server posting access:', accessResult.error);
