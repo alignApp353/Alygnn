@@ -2225,9 +2225,11 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: (product === 'job_plan' || product === 'job_boost' || product === 'team_seat' || product === 'additional_slot')
-        ? checkoutSuccessWithSessionId(successUrl)
-        : successUrl,
+      success_url: product === 'additional_slot'
+        ? 'https://alygnn.com/employer-dashboard.html?payment=success&product=additional_slot&session_id={CHECKOUT_SESSION_ID}#jobs'
+        : (product === 'job_plan' || product === 'job_boost' || product === 'team_seat')
+          ? checkoutSuccessWithSessionId(successUrl)
+          : successUrl,
       cancel_url: cancelUrl,
       customer_email: user.email || undefined,
       'line_items[0][price]': priceId,
