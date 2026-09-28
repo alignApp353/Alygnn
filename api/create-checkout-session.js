@@ -654,46 +654,6 @@ async function manageRpc(name, body) {
   return data;
 }
 
-async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
-  const normalized=String(status||'').toLowerCase();
-  const active=['active','trialing','past_due'].includes(normalized);
-  const patch={
-    addon_slot_count:active?1:0,
-    addon_slots_expires_at:active?(expiresAt||null):null,
-    updated_at:new Date().toISOString()
-  };
-
-  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
-  url.searchParams.set('employer_id','eq.'+employerId);
-
-  let response=await fetch(url,{
-    method:'PATCH',
-    headers:manageServiceHeaders({Prefer:'return=representation'}),
-    body:JSON.stringify(patch)
-  });
-
-  if(!response.ok){
-    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
-  }
-
-  const rows=await response.json().catch(()=>[]);
-  if(active&&(!Array.isArray(rows)||rows.length===0)){
-    response=await fetch(manageBase()+'/rest/v1/employer_entitlements',{
-      method:'POST',
-      headers:manageServiceHeaders({Prefer:'return=minimal'}),
-      body:JSON.stringify({
-        employer_id:employerId,
-        addon_slot_count:1,
-        addon_slots_expires_at:expiresAt||null,
-        updated_at:new Date().toISOString()
-      })
-    });
-    if(!response.ok){
-      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
-    }
-  }
-}
-
 async function manageStripe(method,path,params){
   const secret=process.env.STRIPE_SECRET_KEY;
   if(!secret)throw new Error('STRIPE_SECRET_KEY is not configured.');
@@ -1416,32 +1376,30 @@ async function reconcileSecondSlotCheckout(user){
     throw error;
   }
 
-  const unitAmount=Number(
-    subscription?.items?.data?.[0]?.price?.unit_amount ??
-    checkoutSession?.metadata?.unit_amount_cents ??
-    15000
-  );
-
   const expiresAt=subscription.current_period_end
     ?new Date(Number(subscription.current_period_end)*1000).toISOString()
     :null;
+  // A 100% Stripe promotion makes amount_total exactly 0. Preserve that 0
+  // instead of replacing it with the $150 list price.
+  const checkoutAmount=Number(checkoutSession?.amount_total);
+  const amountCents=Number.isFinite(checkoutAmount)
+    ?checkoutAmount
+    :15000;
 
-  let result=null;
-  try{
-    result=await manageRpc('sync_second_job_slot_subscription',{
-      p_employer_id:user.id,
-      p_status:status,
-      p_expires_at:expiresAt,
-      p_payment_reference:checkoutSession.id,
-      p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
-    });
-  }catch(error){
-    console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:',error?.message||error);
-  }
+  const result=await manageRpc('sync_second_job_slot_subscription',{
+    p_employer_id:user.id,
+    p_status:status,
+    p_expires_at:expiresAt,
+    p_payment_reference:checkoutSession.id,
+    p_amount_cents:amountCents
+  });
 
-  // Stripe is already verified above. Keep the entitlement row in sync even if
-  // the RPC is stale or a $0 promo checkout skips the normal paid-invoice path.
-  await ensureSecondSlotEntitlementRow(user.id,status,expiresAt);
+  // The completed Stripe subscription is the authority for access. Keep the
+  // entitlement row in sync even when the first invoice is $0 from a 100% promo.
+  await patchEntitlement(user.id,{
+    addon_slot_count:1,
+    addon_slots_expires_at:expiresAt
+  });
 
   return{
     synced:true,
@@ -1512,32 +1470,29 @@ async function syncCompletedSecondSlotCheckout(user,sessionId){
     throw error;
   }
 
-  const unitAmount=Number(
-    subscription?.items?.data?.[0]?.price?.unit_amount ??
-    meta.unit_amount_cents ??
-    15000
-  );
-
   const expiresAt=subscription.current_period_end
     ?new Date(Number(subscription.current_period_end)*1000).toISOString()
     :null;
+  // Preserve a legitimate $0 checkout created by a 100% promotion code.
+  const checkoutAmount=Number(session?.amount_total);
+  const amountCents=Number.isFinite(checkoutAmount)
+    ?checkoutAmount
+    :15000;
 
-  let result=null;
-  try{
-    result=await manageRpc('sync_second_job_slot_subscription',{
-      p_employer_id:user.id,
-      p_status:status,
-      p_expires_at:expiresAt,
-      p_payment_reference:session.id,
-      p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
-    });
-  }catch(error){
-    console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:',error?.message||error);
-  }
+  const result=await manageRpc('sync_second_job_slot_subscription',{
+    p_employer_id:user.id,
+    p_status:status,
+    p_expires_at:expiresAt,
+    p_payment_reference:session.id,
+    p_amount_cents:amountCents
+  });
 
-  // Stripe is already verified above. Keep the entitlement row in sync even if
-  // the RPC is stale or a $0 promo checkout skips the normal paid-invoice path.
-  await ensureSecondSlotEntitlementRow(user.id,status,expiresAt);
+  // Stripe says the recurring Second Job Slot is active, so the employer must
+  // receive the extra slot even when the first invoice was fully discounted.
+  await patchEntitlement(user.id,{
+    addon_slot_count:1,
+    addon_slots_expires_at:expiresAt
+  });
 
   return{
     synced:true,
