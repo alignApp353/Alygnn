@@ -1334,6 +1334,89 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
 }
 
 
+async function syncCompletedSecondSlotCheckout(user,sessionId){
+  const id=String(sessionId||'').trim();
+  if(!/^cs_/.test(id)){
+    const error=new Error('A valid Stripe Checkout Session ID is required.');
+    error.status=400;
+    throw error;
+  }
+
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(id),
+    {'expand[]':'subscription'}
+  );
+
+  const meta=session?.metadata||{};
+  const employerId=String(meta.employer_id||'');
+  const product=String(meta.product||'').toLowerCase();
+
+  if(employerId!==String(user.id)){
+    const error=new Error('This checkout does not belong to the signed-in employer.');
+    error.status=403;
+    throw error;
+  }
+
+  if(!['additional_slot','single_job'].includes(product)){
+    const error=new Error('This checkout is not an Alygnn Second Job Slot purchase.');
+    error.status=400;
+    throw error;
+  }
+
+  if(String(session?.status||'').toLowerCase()!=='complete'){
+    const error=new Error('Stripe has not completed this Second Job Slot checkout yet.');
+    error.status=409;
+    throw error;
+  }
+
+  let subscription=session?.subscription||null;
+  if(typeof subscription==='string'){
+    subscription=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  if(!subscription?.id){
+    const error=new Error('Stripe did not return the completed Second Job Slot subscription.');
+    error.status=409;
+    throw error;
+  }
+
+  const status=String(subscription.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Second Job Slot subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const unitAmount=Number(
+    subscription?.items?.data?.[0]?.price?.unit_amount ??
+    meta.unit_amount_cents ??
+    15000
+  );
+
+  const result=await manageRpc('sync_second_job_slot_subscription',{
+    p_employer_id:user.id,
+    p_status:status,
+    p_expires_at:subscription.current_period_end
+      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+      :null,
+    p_payment_reference:session.id,
+    p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
+  });
+
+  return{
+    synced:true,
+    second_job_slot:true,
+    subscription_id:subscription.id,
+    subscription_status:status,
+    result:result||null
+  };
+}
+
 async function syncCompletedPlanCheckout(user,sessionId){
   const id=String(sessionId||'').trim();
   if(!/^cs_/.test(id)){
@@ -1706,6 +1789,11 @@ async function runManageAction(res,user,input){
     return send(res,200,{ok:true,...result});
   }
 
+  if(action==='sync_second_slot_checkout'){
+    const result=await syncCompletedSecondSlotCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
   if(action==='sync_boost_checkout'){
     const result=await syncCompletedBoostCheckout(user,input.checkout_session_id);
     return send(res,200,{ok:true,...result});
@@ -1935,6 +2023,7 @@ module.exports = async function handler(req, res) {
       'resume_second_slot',
       'billing_portal',
       'sync_checkout_session',
+      'sync_second_slot_checkout',
       'sync_boost_checkout',
       'sync_team_seat_checkout'
     ].includes(billingAction)) {
@@ -2136,7 +2225,7 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: (product === 'job_plan' || product === 'job_boost' || product === 'team_seat')
+      success_url: (product === 'job_plan' || product === 'job_boost' || product === 'team_seat' || product === 'additional_slot')
         ? checkoutSuccessWithSessionId(successUrl)
         : successUrl,
       cancel_url: cancelUrl,
