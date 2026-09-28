@@ -4666,6 +4666,72 @@
   }
 </style>
 
+
+<style id="alygnn-appearance-compact">
+  /* Keep Appearance available without making it the first dominant card. */
+  #settings-view .appearance-row-end{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+  }
+
+  #settings-view .appearance-current-value{
+    min-width:42px;
+    padding:5px 8px;
+    border-radius:999px;
+    background:var(--brand-soft);
+    color:var(--brand-dark);
+    font-size:9px;
+    font-weight:900;
+    text-align:center;
+    line-height:1;
+  }
+
+  #settings-view .appearance-chevron{
+    transition:transform .18s ease;
+  }
+
+  #settings-view #appearance-settings-toggle[aria-expanded="true"] .appearance-chevron{
+    transform:rotate(90deg);
+  }
+
+  #settings-view .appearance-inline-panel{
+    padding:13px 12px 14px;
+    border-top:1px solid var(--border-soft);
+    background:var(--card);
+  }
+
+  #settings-view .appearance-inline-panel .appearance-options{
+    gap:8px;
+  }
+
+  #settings-view .appearance-inline-panel .appearance-option{
+    min-height:68px;
+    padding:9px 7px;
+  }
+
+  #settings-view .appearance-inline-panel .appearance-icon{
+    width:23px;
+    height:23px;
+  }
+
+  #settings-view .appearance-inline-panel .appearance-icon svg{
+    width:18px;
+    height:18px;
+  }
+
+  #settings-view .appearance-inline-panel .preference-note{
+    margin:10px 2px 0;
+  }
+
+  html[data-theme="dark"] #settings-view .appearance-current-value{
+    background:#19283A;
+    color:#8EB5DF;
+    -webkit-text-fill-color:#8EB5DF;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
@@ -5392,31 +5458,6 @@
           <p class="page-sub">Personalize your workspace, manage your account, and control how Alygnn fits into your hiring process.</p>
         </div>
 
-        <div class="settings-card">
-          <div class="settings-group-title">Appearance</div>
-          <div class="appearance-options" role="radiogroup" aria-label="Appearance preference">
-            <button class="appearance-option" data-theme-choice="auto" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
-              </span>
-              <span>Auto</span>
-            </button>
-            <button class="appearance-option" data-theme-choice="light" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5v2M12 19.5v2M4.5 4.5l1.4 1.4M18.1 18.1l1.4 1.4M2.5 12h2M19.5 12h2M4.5 19.5l1.4-1.4M18.1 5.9l1.4-1.4"></path></svg>
-              </span>
-              <span>Light</span>
-            </button>
-            <button class="appearance-option" data-theme-choice="dark" role="radio" aria-checked="false" type="button">
-              <span class="appearance-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M20 15.4A8 8 0 0 1 8.6 4a8.2 8.2 0 1 0 11.4 11.4Z"></path></svg>
-              </span>
-              <span>Dark</span>
-            </button>
-          </div>
-          <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
-        </div>
-
         <div class="section-kicker" id="candidate-mode-kicker" hidden>Workspace mode</div>
         <section class="section" id="candidate-mode-section" hidden>
           <button class="settings-link" id="switch-candidate-mode" type="button" onclick="switchToCandidateMode()">
@@ -5451,6 +5492,44 @@
             </span>
             <span class="settings-chevron">›</span>
           </button>
+          <button class="settings-link" id="appearance-settings-toggle" type="button" aria-expanded="false" aria-controls="appearance-settings-panel">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
+              </span>
+              <span class="settings-copy">
+                <strong>Appearance</strong>
+                <small>Choose how Alygnn looks on this device</small>
+              </span>
+            </span>
+            <span class="appearance-row-end">
+              <span class="appearance-current-value" id="appearance-current-value">Auto</span>
+              <span class="settings-chevron appearance-chevron" id="appearance-settings-chevron">›</span>
+            </span>
+          </button>
+          <div class="appearance-inline-panel" id="appearance-settings-panel" hidden>
+            <div class="appearance-options" role="radiogroup" aria-label="Appearance preference">
+              <button class="appearance-option" data-theme-choice="auto" role="radio" aria-checked="false" type="button">
+                <span class="appearance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
+                </span>
+                <span>Auto</span>
+              </button>
+              <button class="appearance-option" data-theme-choice="light" role="radio" aria-checked="false" type="button">
+                <span class="appearance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5v2M12 19.5v2M4.5 4.5l1.4 1.4M18.1 18.1l1.4 1.4M2.5 12h2M19.5 12h2M4.5 19.5l1.4-1.4M18.1 5.9l1.4-1.4"></path></svg>
+                </span>
+                <span>Light</span>
+              </button>
+              <button class="appearance-option" data-theme-choice="dark" role="radio" aria-checked="false" type="button">
+                <span class="appearance-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M20 15.4A8 8 0 0 1 8.6 4a8.2 8.2 0 1 0 11.4 11.4Z"></path></svg>
+                </span>
+                <span>Dark</span>
+              </button>
+            </div>
+            <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
+          </div>
         </section>
 
         <div class="section-kicker">Account</div>
@@ -6271,6 +6350,16 @@
         button.classList.toggle('active',active);
         button.setAttribute('aria-checked',String(active));
       });
+
+      const appearanceCurrentValue=
+        document.getElementById('appearance-current-value');
+
+      if(appearanceCurrentValue){
+        appearanceCurrentValue.textContent=
+          safePreference==='auto'
+            ?'Auto'
+            :safePreference[0].toUpperCase()+safePreference.slice(1);
+      }
 
       repaintSettingsForTheme(theme);
       requestAnimationFrame(()=>repaintSettingsForTheme(theme));
@@ -15788,8 +15877,37 @@
     $('pro-modal').addEventListener('click',event => {
       if(event.target === $('pro-modal')) $('pro-modal').hidden = true;
     });
+    const appearanceSettingsToggle=
+      document.getElementById('appearance-settings-toggle');
+    const appearanceSettingsPanel=
+      document.getElementById('appearance-settings-panel');
+
+    appearanceSettingsToggle?.addEventListener('click',()=>{
+      const willOpen=appearanceSettingsPanel?.hidden!==false;
+
+      if(appearanceSettingsPanel){
+        appearanceSettingsPanel.hidden=!willOpen;
+      }
+
+      appearanceSettingsToggle.setAttribute(
+        'aria-expanded',
+        String(willOpen)
+      );
+    });
+
     document.querySelectorAll('[data-theme-choice]').forEach(button => {
-      button.addEventListener('click',() => setThemePreference(button.dataset.themeChoice));
+      button.addEventListener('click',() => {
+        setThemePreference(button.dataset.themeChoice);
+
+        if(appearanceSettingsPanel){
+          appearanceSettingsPanel.hidden=true;
+        }
+
+        appearanceSettingsToggle?.setAttribute(
+          'aria-expanded',
+          'false'
+        );
+      });
     });
     applyTheme(savedThemePreference());
 
