@@ -4330,11 +4330,10 @@ function candidateCompanyLink(label,value){
   if(!url)return '';
 
   return `
-    <a
+    <button
       class="details-company-link"
-      href="${escapeHtml(url)}"
-      target="_blank"
-      rel="noopener noreferrer"
+      type="button"
+      data-candidate-external-url="${escapeHtml(url)}"
       aria-label="Open ${escapeHtml(label)}"
     >
       <span>${escapeHtml(label)}</span>
@@ -4343,9 +4342,46 @@ function candidateCompanyLink(label,value){
         <path d="M10 14L19 5"></path>
         <path d="M19 13v6H5V5h6"></path>
       </svg>
-    </a>
+    </button>
   `;
 }
+
+async function openCandidateExternalLink(rawUrl){
+  const url=candidateExternalUrl(rawUrl);
+  if(!url)return;
+
+  try{
+    const Browser=
+      window.Capacitor?.Plugins?.Browser ||
+      window.Capacitor?.Browser;
+
+    if(Browser?.open){
+      await Browser.open({
+        url,
+        presentationStyle:'popover'
+      });
+      return;
+    }
+  }catch(error){
+    console.warn('Native browser open failed:',error);
+  }
+
+  try{
+    window.open(url,'_blank','noopener,noreferrer');
+  }catch(error){
+    console.warn('External browser fallback failed:',error);
+    showToast('Could not open this link');
+  }
+}
+
+document.addEventListener('click',event=>{
+  const externalButton=event.target.closest('[data-candidate-external-url]');
+  if(!externalButton)return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  openCandidateExternalLink(externalButton.dataset.candidateExternalUrl);
+});
 
 function openJobDetails(index){
   const job=jobs[Number(index)];
@@ -5607,6 +5643,39 @@ function enforceCandidateNav(){
       const count=cachedCount();
       paint(count,false);
     }
+  });
+})();
+</script>
+
+
+<script id="alygnn-discover-resume-state">
+(function(){
+  const KEY='alygnn_candidate_discover_state_v1';
+
+  function save(){
+    try{
+      const overlay=document.getElementById('job-details-overlay');
+      const detailsOpen=!!overlay?.classList?.contains('open');
+      const payload={
+        path:location.pathname,
+        detailsOpen,
+        detailsJobIndex:typeof detailsJobIndex==='number'?detailsJobIndex:null,
+        savedAt:Date.now()
+      };
+      localStorage.setItem(KEY,JSON.stringify(payload));
+    }catch(_){}
+  }
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden') save();
+  });
+  window.addEventListener('pagehide',save);
+  window.addEventListener('beforeunload',save);
+
+  // Do NOT reload Discover just because the user returned from Chrome/another app.
+  // The existing WebView stays intact, so we only re-apply appearance.
+  window.addEventListener('focus',()=>{
+    window.__alygnnApplyCandidateGlobalTheme?.();
   });
 })();
 </script>
