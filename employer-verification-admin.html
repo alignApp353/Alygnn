@@ -843,7 +843,10 @@ async function loadStatus(status=currentStatus){
         .map(company=>mergedRow(verificationCache.get(company.id),company));
     }else{
       rows=[...verificationCache.values()]
-        .filter(row=>String(row.verification_status||'')===status)
+        .filter(row=>
+          String(row.verification_status||'')===status &&
+          companyCache.has(row.company_id)
+        )
         .map(row=>mergedRow(row,companyCache.get(row.company_id)));
     }
 
@@ -862,7 +865,8 @@ async function loadCounts(){
   loadProfileUpdateCount();
   await Promise.all([loadVerificationCache(),loadCompanyCache()]);
 
-  const all=[...verificationCache.values()];
+  const all=[...verificationCache.values()]
+    .filter(row=>companyCache.has(row.company_id));
 
   $('count-pending').textContent=String(
     all.filter(row=>row.verification_status==='pending_review').length
