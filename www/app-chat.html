@@ -6,6 +6,77 @@
 <meta name="color-scheme" content="light dark">
 <title>Alygnn — Chat</title>
 
+
+<script id="alygnn-chat-theme-critical">
+(function(){
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='auto'||value==='system-default'||value==='default') return 'system';
+    return ['system','light','dark'].includes(value)?value:'system';
+  }
+
+  function role(){
+    try{
+      return String(new URLSearchParams(location.search).get('role')||'candidate').toLowerCase()==='employer'
+        ?'employer'
+        :'candidate';
+    }catch(_){
+      return 'candidate';
+    }
+  }
+
+  function preference(){
+    try{
+      if(role()==='employer'){
+        return normalize(
+          localStorage.getItem('alygnnEmployerTheme') ||
+          localStorage.getItem('alygnnTheme') ||
+          localStorage.getItem('alygnn_candidate_theme') ||
+          localStorage.getItem('alygnn-theme') ||
+          'system'
+        );
+      }
+
+      return normalize(
+        localStorage.getItem('alygnnTheme') ||
+        localStorage.getItem('alygnn_candidate_theme') ||
+        localStorage.getItem('alygnn-theme') ||
+        localStorage.getItem('alygnnEmployerTheme') ||
+        'system'
+      );
+    }catch(_){
+      return 'system';
+    }
+  }
+
+  const pref=preference();
+  const theme=pref==='system'
+    ?(media&&media.matches?'dark':'light')
+    :pref;
+
+  const root=document.documentElement;
+  root.dataset.theme=theme;
+  root.dataset.effectiveTheme=theme;
+  root.style.colorScheme=theme;
+
+  let meta=document.querySelector('meta[name="theme-color"]');
+  if(!meta){
+    meta=document.createElement('meta');
+    meta.name='theme-color';
+    document.head.appendChild(meta);
+  }
+
+  meta.setAttribute(
+    'content',
+    theme==='dark'
+      ?(role()==='employer'?'#0B111A':'#061821')
+      :'#F6F8F7'
+  );
+})();
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
@@ -61,15 +132,15 @@ button{
   position:relative;
   padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
   display:grid;
-  grid-template-columns:48px 1fr 48px;
+  grid-template-columns:46px 1fr 46px;
   align-items:center;
   border-bottom:1px solid var(--border);
   background:var(--bg);
 }
 .back,
 .more{
-  width:44px;
-  height:44px;
+  width:42px;
+  height:42px;
   border:1px solid var(--border);
   border-radius:50%;
   background:var(--card);
@@ -85,7 +156,8 @@ button{
   text-align:center;
   font-family:'DM Serif Display',Georgia,serif!important;
   color:var(--brand);
-  font-size:30px;
+  font-size:29px;
+  letter-spacing:-.2px;
 }
 .logo span{
   color:var(--sage);
@@ -238,12 +310,259 @@ textarea{
   color:var(--danger);
 }
 </style>
+
+<style id="alygnn-app-chat-modern-theme">
+  /* Explicit app preference wins over system preference. */
+  html[data-effective-theme="light"]{
+    --brand:#5D7FA3;
+    --brand-dark:#345F91;
+    --sage:#8CB69B;
+    --bg:#F6F8F7;
+    --card:#FFFFFF;
+    --text:#172333;
+    --muted:#647282;
+    --border:#DDE3E8;
+    --soft:#EAF0F6;
+    --danger:#C74747;
+    --danger-bg:#FCECEC;
+    color-scheme:light;
+  }
+
+  html[data-effective-theme="dark"]{
+    --brand:#5D86B1;
+    --brand-dark:#79A7D5;
+    --sage:#8FC6A2;
+    --bg:#061821;
+    --card:#10232D;
+    --text:#F3F7FA;
+    --muted:#A9B8C5;
+    --border:#29404C;
+    --soft:#0B1D26;
+    --danger:#E58181;
+    --danger-bg:#3B1E22;
+    color-scheme:dark;
+  }
+
+  html,
+  body,
+  .app{
+    background:var(--bg)!important;
+    color:var(--text)!important;
+  }
+
+  /* Header matches candidate Messages page. */
+  .header{
+    min-height:78px!important;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px!important;
+    background:var(--bg)!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+
+  .back,
+  .more{
+    width:42px!important;
+    height:42px!important;
+    padding:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:1px solid var(--border)!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    box-shadow:none!important;
+    line-height:1!important;
+  }
+
+  .back-icon{
+    width:20px;
+    height:20px;
+    display:block;
+  }
+
+  .back-icon path{
+    fill:none;
+    stroke:currentColor;
+    stroke-width:2.1;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  .logo{
+    font-size:29px!important;
+    line-height:1!important;
+  }
+
+  /* Conversation identity is compact and uses the same page canvas. */
+  .context{
+    padding:13px 18px 14px!important;
+    background:var(--bg)!important;
+    border-bottom:1px solid var(--border)!important;
+  }
+
+  .person{
+    font-size:15px!important;
+    line-height:1.25!important;
+    font-weight:850!important;
+    color:var(--text)!important;
+  }
+
+  .job{
+    margin-top:3px!important;
+    font-size:11px!important;
+    line-height:1.35!important;
+    font-weight:650!important;
+    color:var(--muted)!important;
+  }
+
+  .rule{
+    display:none!important;
+  }
+
+  /* Conversation body should never turn into a white page in dark mode. */
+  .messages{
+    padding:18px 15px 22px!important;
+    gap:10px!important;
+    background:var(--bg)!important;
+    scrollbar-width:none;
+  }
+
+  .messages::-webkit-scrollbar{
+    display:none;
+  }
+
+  .bubble{
+    max-width:82%!important;
+    padding:10px 12px 9px!important;
+    border-radius:17px!important;
+    font-size:13px!important;
+    line-height:1.45!important;
+    box-shadow:none!important;
+  }
+
+  .mine{
+    align-self:flex-end!important;
+    background:var(--brand)!important;
+    color:#FFFFFF!important;
+    border:1px solid var(--brand)!important;
+    border-bottom-right-radius:6px!important;
+  }
+
+  .theirs{
+    align-self:flex-start!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    border:1px solid var(--border)!important;
+    border-bottom-left-radius:6px!important;
+  }
+
+  .stamp{
+    margin-top:5px!important;
+    font-size:8px!important;
+    line-height:1!important;
+    opacity:.68!important;
+  }
+
+  .mine .stamp{
+    color:rgba(255,255,255,.82)!important;
+    text-align:right!important;
+  }
+
+  .theirs .stamp{
+    color:var(--muted)!important;
+  }
+
+  .empty{
+    margin:auto!important;
+    max-width:300px!important;
+    padding:24px 18px!important;
+    color:var(--muted)!important;
+    font-size:12px!important;
+    line-height:1.5!important;
+  }
+
+  .empty strong{
+    margin-bottom:5px!important;
+    color:var(--text)!important;
+    font-size:15px!important;
+    font-weight:800!important;
+  }
+
+  /* Composer stays on the same theme as the conversation. */
+  .composer{
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important;
+    gap:8px!important;
+    background:var(--bg)!important;
+    border-top:1px solid var(--border)!important;
+  }
+
+  textarea{
+    min-height:46px!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    border:1px solid var(--border)!important;
+    border-radius:15px!important;
+    padding:12px 13px!important;
+  }
+
+  textarea::placeholder{
+    color:var(--muted)!important;
+    opacity:.82!important;
+  }
+
+  .send{
+    min-width:76px!important;
+    min-height:46px!important;
+    border-radius:15px!important;
+    background:var(--brand)!important;
+    color:#FFFFFF!important;
+    box-shadow:none!important;
+  }
+
+  /* Dark mode gets the same navy canvas as the inbox screenshot. */
+  html[data-effective-theme="dark"] .header,
+  html[data-effective-theme="dark"] .context,
+  html[data-effective-theme="dark"] .messages,
+  html[data-effective-theme="dark"] .composer{
+    background:#061821!important;
+  }
+
+  html[data-effective-theme="dark"] .back,
+  html[data-effective-theme="dark"] .more,
+  html[data-effective-theme="dark"] textarea,
+  html[data-effective-theme="dark"] .theirs{
+    background:#10232D!important;
+  }
+
+  html[data-effective-theme="dark"] .mine{
+    background:#5D86B1!important;
+    border-color:#5D86B1!important;
+  }
+
+  html[data-effective-theme="light"] .header,
+  html[data-effective-theme="light"] .context,
+  html[data-effective-theme="light"] .messages,
+  html[data-effective-theme="light"] .composer{
+    background:#F6F8F7!important;
+  }
+
+  html[data-effective-theme="light"] .back,
+  html[data-effective-theme="light"] .more,
+  html[data-effective-theme="light"] textarea,
+  html[data-effective-theme="light"] .theirs{
+    background:#FFFFFF!important;
+  }
+</style>
+
 </head>
 
 <body>
 <div class="app">
   <header class="header">
-    <button class="back" id="back" type="button">←</button>
+    <button class="back" id="back" type="button" aria-label="Back to messages">
+      <svg class="back-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </button>
 
     <div class="logo">
       Alygnn<span>.</span>
@@ -281,8 +600,8 @@ textarea{
 
   <div>
     <div class="context">
-      <div class="person" id="person">Conversation</div>
-      <div class="job" id="job">Job application</div>
+      <div class="person" id="person">Loading conversation…</div>
+      <div class="job" id="job"></div>
       <div class="rule" id="rule"></div>
     </div>
 
