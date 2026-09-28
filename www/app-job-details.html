@@ -1265,6 +1265,71 @@ html[data-effective-theme="dark"] .toast{
   }
 </style>
 
+
+<style id="alygnn-single-description-card">
+  /* One continuous white card for the full job description. */
+  .job-description-card{
+    margin-top:14px;
+    background:#FFFFFF;
+    border:1px solid var(--border);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 8px 24px rgba(27,43,63,.045);
+  }
+
+  .job-description-card > .description-section{
+    margin:0!important;
+    padding:20px 18px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+
+  .job-description-card > .description-section + .description-section{
+    border-top:1px solid var(--border)!important;
+  }
+
+  .job-description-card .section-title{
+    margin:0!important;
+  }
+
+  .job-description-card .body-copy{
+    margin-top:10px!important;
+  }
+
+  .job-description-card .list{
+    margin-top:11px!important;
+  }
+
+  .job-description-card .company-card{
+    margin-top:12px!important;
+  }
+
+  /* Dark mode keeps the exact same grouped-card structure. */
+  html[data-effective-theme="dark"] .job-description-card,
+  html[data-theme="dark"] .job-description-card{
+    background:#101A23!important;
+    border-color:#2B3946!important;
+    box-shadow:none!important;
+  }
+
+  html[data-effective-theme="dark"] .job-description-card > .description-section + .description-section,
+  html[data-theme="dark"] .job-description-card > .description-section + .description-section{
+    border-top-color:#2B3946!important;
+  }
+
+  @media(max-width:420px){
+    .job-description-card{
+      border-radius:18px;
+    }
+
+    .job-description-card > .description-section{
+      padding:18px 16px!important;
+    }
+  }
+</style>
+
 </head>
 
 <body>
@@ -1368,36 +1433,38 @@ html[data-effective-theme="dark"] .toast{
       </div>
     </section>
 
-    <section class="section">
-      <h2 class="section-title">About the role</h2>
-      <div class="body-copy" id="description"></div>
-    </section>
+    <div class="job-description-card">
+      <section class="section description-section">
+        <h2 class="section-title">About the role</h2>
+        <div class="body-copy" id="description"></div>
+      </section>
 
-    <section class="section" id="requirements-section">
-      <h2 class="section-title">Requirements</h2>
-      <div class="list" id="requirements-list"></div>
-    </section>
+      <section class="section description-section" id="requirements-section">
+        <h2 class="section-title">Requirements</h2>
+        <div class="list" id="requirements-list"></div>
+      </section>
 
-    <section class="section" id="benefits-section">
-      <h2 class="section-title">Benefits</h2>
-      <div class="list" id="benefits-list"></div>
-    </section>
+      <section class="section description-section" id="benefits-section">
+        <h2 class="section-title">Benefits</h2>
+        <div class="list" id="benefits-list"></div>
+      </section>
 
-    <section class="section">
-      <h2 class="section-title">About the company</h2>
+      <section class="section description-section">
+        <h2 class="section-title">About the company</h2>
 
-      <div class="company-card">
-        <div class="company-card-logo" id="company-card-logo">A</div>
-        <div>
-          <div class="company-card-name" id="company-card-name">Employer</div>
-          <div class="company-card-meta">Verified employer on Alygnn</div>
+        <div class="company-card">
+          <div class="company-card-logo" id="company-card-logo">A</div>
+          <div>
+            <div class="company-card-name" id="company-card-name">Employer</div>
+            <div class="company-card-meta">Verified employer on Alygnn</div>
+          </div>
         </div>
-      </div>
 
-      <div class="body-copy" id="company-description">
-        This employer uses Alygnn to connect with candidates whose goals and preferences align with the role.
-      </div>
-    </section>
+        <div class="body-copy" id="company-description">
+          This employer uses Alygnn to connect with candidates whose goals and preferences align with the role.
+        </div>
+      </section>
+    </div>
   </div>
 </main>
 
