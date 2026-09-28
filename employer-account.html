@@ -2013,7 +2013,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     let result = await sb
       .from('employer_entitlements')
-      .select('plan, subscription_status, current_period_end, slot_limit, billing_period, test_mode, test_plan, candidate_access_locked, candidate_access_lock_reason')
+      .select('plan, subscription_status, current_period_end, slot_limit, billing_period, test_mode, test_plan, addon_slot_count, addon_slots_expires_at, candidate_access_locked, candidate_access_lock_reason')
       .eq('employer_id', currentUserId)
       .maybeSingle();
 
@@ -2036,20 +2036,43 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       ent.test_mode !== true &&
       ['launch','growth','scale','weekly_slot','business','enterprise'].includes(plan);
 
-    let limit = activePaid ? accountPaidLimit(ent) : 1;
+    const addonCount = Math.max(0, Number(ent.addon_slot_count || 0));
+    const addonExpiry = ent.addon_slots_expires_at
+      ? new Date(ent.addon_slots_expires_at).getTime()
+      : null;
+    const secondSlotActive =
+      !activePaid &&
+      addonCount > 0 &&
+      (addonExpiry === null || Number.isNaN(addonExpiry) || addonExpiry > Date.now());
+
+    let limit = activePaid ? accountPaidLimit(ent) : (secondSlotActive ? 2 : 1);
     const used = accountActiveSlotCount();
 
     // Unified server capacity includes temporary Weekly slots as add-ons.
+    // A confirmed Second Job Slot must not be overwritten by a stale RPC
+    // response that still reports the Free account's original 1-slot limit.
     const accessResult = await sb.rpc('get_employer_posting_access');
     let serverAllowed = null;
     let serverReason = null;
     if (!accessResult.error && accessResult.data) {
       const serverLimit = Math.max(0, Number(accessResult.data.slot_limit || limit));
 
-      limit = ent.test_mode === true ? 1 : serverLimit;
+      limit = ent.test_mode === true
+        ? 1
+        : Math.max(limit, serverLimit, secondSlotActive ? 2 : 1);
 
-      serverAllowed = typeof accessResult.data.can_post === 'boolean' ? accessResult.data.can_post : null;
-      serverReason = accessResult.data.reason || null;
+      const rawServerAllowed =
+        typeof accessResult.data.can_post === 'boolean'
+          ? accessResult.data.can_post
+          : null;
+
+      serverAllowed =
+        rawServerAllowed === true || used < limit;
+
+      serverReason = serverAllowed && rawServerAllowed !== true && secondSlotActive
+        ? 'second-slot-available'
+        : (accessResult.data.reason || null);
+
       accountCandidateAccessLocked = accessResult.data.candidate_access_locked === true;
       accountCandidateAccessLockReason = String(accessResult.data.candidate_access_lock_reason || '');
     } else {
@@ -2061,6 +2084,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       allowed: serverAllowed === null ? used < limit : serverAllowed,
       used,
       limit,
+      secondSlotActive,
       reason: serverReason || (used < limit ? 'slot-available' : 'slot-limit')
     };
 
@@ -2076,7 +2100,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const section = document.getElementById('account-post-job-link');
 
     if (top) {
-      top.textContent = full ? '+ Add a job slot' : '+ Post a job';
+      const secondSlotFull = full && accountPostingAccess.secondSlotActive === true;
+      top.textContent = full
+        ? (secondSlotFull ? 'All slots in use' : '+ Add a job slot')
+        : '+ Post a job';
       top.href = full
         ? 'pricing.html?reason=slot-limit'
         : 'employer-dashboard.html#post';
@@ -2086,7 +2113,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     if (section) {
-      section.textContent = full ? 'Add a job slot →' : 'Post a job →';
+      const secondSlotFull = full && accountPostingAccess.secondSlotActive === true;
+      section.textContent = full
+        ? (secondSlotFull ? 'All slots in use →' : 'Add a job slot →')
+        : 'Post a job →';
       section.href = full
         ? 'pricing.html?reason=slot-limit'
         : 'employer-dashboard.html#post';
