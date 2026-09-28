@@ -654,6 +654,46 @@ async function manageRpc(name, body) {
   return data;
 }
 
+async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
+  const normalized=String(status||'').toLowerCase();
+  const active=['active','trialing','past_due'].includes(normalized);
+  const patch={
+    addon_slot_count:active?1:0,
+    addon_slots_expires_at:active?(expiresAt||null):null,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(patch)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(active&&(!Array.isArray(rows)||rows.length===0)){
+    response=await fetch(manageBase()+'/rest/v1/employer_entitlements',{
+      method:'POST',
+      headers:manageServiceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({
+        employer_id:employerId,
+        addon_slot_count:1,
+        addon_slots_expires_at:expiresAt||null,
+        updated_at:new Date().toISOString()
+      })
+    });
+    if(!response.ok){
+      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
+    }
+  }
+}
+
 async function manageStripe(method,path,params){
   const secret=process.env.STRIPE_SECRET_KEY;
   if(!secret)throw new Error('STRIPE_SECRET_KEY is not configured.');
@@ -1382,15 +1422,26 @@ async function reconcileSecondSlotCheckout(user){
     15000
   );
 
-  const result=await manageRpc('sync_second_job_slot_subscription',{
-    p_employer_id:user.id,
-    p_status:status,
-    p_expires_at:subscription.current_period_end
-      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
-      :null,
-    p_payment_reference:checkoutSession.id,
-    p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
-  });
+  const expiresAt=subscription.current_period_end
+    ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+    :null;
+
+  let result=null;
+  try{
+    result=await manageRpc('sync_second_job_slot_subscription',{
+      p_employer_id:user.id,
+      p_status:status,
+      p_expires_at:expiresAt,
+      p_payment_reference:checkoutSession.id,
+      p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
+    });
+  }catch(error){
+    console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:',error?.message||error);
+  }
+
+  // Stripe is already verified above. Keep the entitlement row in sync even if
+  // the RPC is stale or a $0 promo checkout skips the normal paid-invoice path.
+  await ensureSecondSlotEntitlementRow(user.id,status,expiresAt);
 
   return{
     synced:true,
@@ -1467,15 +1518,26 @@ async function syncCompletedSecondSlotCheckout(user,sessionId){
     15000
   );
 
-  const result=await manageRpc('sync_second_job_slot_subscription',{
-    p_employer_id:user.id,
-    p_status:status,
-    p_expires_at:subscription.current_period_end
-      ?new Date(Number(subscription.current_period_end)*1000).toISOString()
-      :null,
-    p_payment_reference:session.id,
-    p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
-  });
+  const expiresAt=subscription.current_period_end
+    ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+    :null;
+
+  let result=null;
+  try{
+    result=await manageRpc('sync_second_job_slot_subscription',{
+      p_employer_id:user.id,
+      p_status:status,
+      p_expires_at:expiresAt,
+      p_payment_reference:session.id,
+      p_amount_cents:Number.isFinite(unitAmount)?unitAmount:15000
+    });
+  }catch(error){
+    console.warn('Second Job Slot RPC sync failed; applying verified entitlement fallback:',error?.message||error);
+  }
+
+  // Stripe is already verified above. Keep the entitlement row in sync even if
+  // the RPC is stale or a $0 promo checkout skips the normal paid-invoice path.
+  await ensureSecondSlotEntitlementRow(user.id,status,expiresAt);
 
   return{
     synced:true,
