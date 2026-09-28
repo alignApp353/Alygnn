@@ -4654,6 +4654,18 @@
   }
 </style>
 
+
+<style id="alygnn-settings-no-empty-scroll">
+  /*
+   * Settings already gets safe space from the page/body for the fixed bottom nav.
+   * Remove the old extra 132px Settings buffer so users cannot scroll into
+   * a large empty area below Sign out.
+   */
+  #settings-view{
+    padding-bottom:0 !important;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
