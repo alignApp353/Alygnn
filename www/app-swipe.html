@@ -3125,6 +3125,77 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-no-jobs-button-feedback">
+  #empty-screen,
+  #empty-screen .no-jobs-actions{
+    position:relative!important;
+    z-index:60!important;
+    pointer-events:auto!important;
+  }
+
+  #no-jobs-retry,
+  #no-jobs-preferences{
+    position:relative!important;
+    z-index:61!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    -webkit-tap-highlight-color:transparent!important;
+    transition:
+      transform .12s ease,
+      box-shadow .16s ease,
+      background-color .16s ease,
+      color .16s ease,
+      border-color .16s ease,
+      opacity .16s ease!important;
+  }
+
+  /* Strong Android tap feedback */
+  #no-jobs-retry.tap-feedback,
+  #no-jobs-retry.working{
+    transform:scale(.965)!important;
+    background:#486E96!important;
+    border-color:#486E96!important;
+    color:#fff!important;
+    box-shadow:
+      0 0 0 4px rgba(93,127,163,.16),
+      0 4px 10px rgba(34,66,98,.18)!important;
+  }
+
+  #no-jobs-preferences.tap-feedback,
+  #no-jobs-preferences.working{
+    transform:scale(.965)!important;
+    background:var(--brand)!important;
+    border-color:var(--brand)!important;
+    color:#fff!important;
+    box-shadow:
+      0 0 0 4px rgba(93,127,163,.14),
+      0 4px 10px rgba(34,66,98,.14)!important;
+  }
+
+  #no-jobs-retry.working::after{
+    content:'';
+    display:inline-block;
+    width:12px;
+    height:12px;
+    margin-left:8px;
+    vertical-align:-2px;
+    border:2px solid rgba(255,255,255,.45);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:noJobsSpin .65s linear infinite;
+  }
+
+  @keyframes noJobsSpin{
+    to{transform:rotate(360deg)}
+  }
+
+  #no-jobs-retry:disabled,
+  #no-jobs-preferences:disabled{
+    cursor:default!important;
+  }
+</style>
+
 </head>
 
 <body data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -3196,8 +3267,8 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
     No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.
   </div>
   <div class="no-jobs-actions">
-    <button class="no-jobs-primary" type="button" onclick="loadJobs()">Try again</button>
-    <button class="no-jobs-secondary" type="button" onclick="window.location.href='app-preferences.html?edit=1'">Set preferences again</button>
+    <button class="no-jobs-primary" id="no-jobs-retry" type="button">Try again</button>
+    <button class="no-jobs-secondary" id="no-jobs-preferences" type="button">Set preferences again</button>
   </div>
 </section>
 
@@ -4552,6 +4623,86 @@ async function loadJobs(){
   currentIndex=0;
   history=[];
   renderCards();
+}
+
+
+let noJobsRetryBusy=false;
+
+function holdTapFeedback(button){
+  if(!button)return;
+  button.classList.add('tap-feedback');
+  setTimeout(()=>button.classList.remove('tap-feedback'),220);
+}
+
+async function retryNoJobs(){
+  const button=document.getElementById('no-jobs-retry');
+  if(!button || noJobsRetryBusy)return;
+
+  noJobsRetryBusy=true;
+  button.disabled=true;
+  button.classList.remove('tap-feedback');
+  button.classList.add('working');
+  button.textContent='Checking for jobs';
+
+  // Keep the pressed/highlighted state on screen long enough to be visible.
+  await new Promise(resolve=>setTimeout(resolve,320));
+
+  try{
+    await loadJobs();
+
+    if(!jobs.length){
+      // loadJobs returns to the same empty state if there are still no matches.
+      const currentButton=document.getElementById('no-jobs-retry');
+      if(currentButton){
+        currentButton.classList.add('working');
+        currentButton.textContent='No new jobs yet';
+      }
+      showToast('No new jobs are available yet.');
+      await new Promise(resolve=>setTimeout(resolve,850));
+    }
+  }catch(error){
+    console.error('Retry jobs failed:',error);
+    showToast('Could not refresh jobs. Please try again.');
+  }finally{
+    const currentButton=document.getElementById('no-jobs-retry');
+    if(currentButton){
+      currentButton.classList.remove('working','tap-feedback');
+      currentButton.textContent='Try again';
+      currentButton.disabled=false;
+    }
+    noJobsRetryBusy=false;
+  }
+}
+
+async function openPreferencesFromNoJobs(){
+  const button=document.getElementById('no-jobs-preferences');
+  if(!button || button.disabled)return;
+
+  button.disabled=true;
+  button.classList.remove('tap-feedback');
+  button.classList.add('working');
+  button.textContent='Opening preferences…';
+
+  // Make the blue highlight clearly visible before Android navigates away.
+  await new Promise(resolve=>setTimeout(resolve,360));
+  window.location.assign('app-preferences.html?edit=1&from=discover');
+}
+
+const noJobsRetryButton=document.getElementById('no-jobs-retry');
+const noJobsPreferencesButton=document.getElementById('no-jobs-preferences');
+
+if(noJobsRetryButton){
+  ['pointerdown','touchstart'].forEach(eventName=>{
+    noJobsRetryButton.addEventListener(eventName,()=>holdTapFeedback(noJobsRetryButton),{passive:true});
+  });
+  noJobsRetryButton.addEventListener('click',retryNoJobs);
+}
+
+if(noJobsPreferencesButton){
+  ['pointerdown','touchstart'].forEach(eventName=>{
+    noJobsPreferencesButton.addEventListener(eventName,()=>holdTapFeedback(noJobsPreferencesButton),{passive:true});
+  });
+  noJobsPreferencesButton.addEventListener('click',openPreferencesFromNoJobs);
 }
 
 document.getElementById('back-button').addEventListener('click',()=>{
