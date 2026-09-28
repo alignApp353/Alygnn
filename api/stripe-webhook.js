@@ -132,24 +132,9 @@ async function rpc(name, body) {
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
-
-  const readUrl=new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
-  readUrl.searchParams.set('employer_id','eq.'+employerId);
-  readUrl.searchParams.set('select','slot_limit');
-
-  const read=await fetch(readUrl,{headers:serviceHeaders()});
-  const existingRows=await read.json().catch(()=>[]);
-  if(!read.ok){
-    throw new Error('Could not read Second Job Slot entitlement: '+JSON.stringify(existingRows));
-  }
-
-  const current=Array.isArray(existingRows)?existingRows[0]:null;
-  const currentLimit=Math.max(1,Number(current?.slot_limit||1));
-
   const patch={
     addon_slot_count:active?1:0,
     addon_slots_expires_at:active?(expiresAt||null):null,
-    slot_limit:active?Math.max(2,currentLimit):currentLimit,
     updated_at:new Date().toISOString()
   };
 
@@ -173,9 +158,6 @@ async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
       headers:serviceHeaders({Prefer:'return=minimal'}),
       body:JSON.stringify({
         employer_id:employerId,
-        plan:'free',
-        subscription_status:'inactive',
-        slot_limit:2,
         addon_slot_count:1,
         addon_slots_expires_at:expiresAt||null,
         updated_at:new Date().toISOString()
@@ -303,6 +285,33 @@ async function setCandidateAccessLock(employerId, locked, reason=null, subscript
 function subscriptionUnitAmount(subscription, fallback=0) {
   const value=subscription?.items?.data?.[0]?.price?.unit_amount;
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+async function clearPendingPlanChangeState(employerId) {
+  if (!employerId) return;
+
+  const patchUrl = new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  patchUrl.searchParams.set('employer_id', 'eq.' + employerId);
+
+  const response = await fetch(patchUrl, {
+    method: 'PATCH',
+    headers: serviceHeaders({ Prefer: 'return=minimal' }),
+    body: JSON.stringify({
+      pending_plan: null,
+      pending_billing_period: null,
+      pending_plan_effective_at: null,
+      stripe_plan_schedule_id: null,
+      plan_change_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      'Could not clear stale pending plan change: ' +
+      await response.text()
+    );
+  }
 }
 
 async function clearPendingIfApplied(employerId, activePlan) {
@@ -606,7 +615,16 @@ async function fulfillSubscription(subscription, forceStatus) {
     await setCandidateAccessLock(employerId, false, null, status);
   }
 
-  await clearPendingIfApplied(employerId, meta.plan);
+  /*
+   * A fully ended paid plan cannot have a valid future downgrade.
+   * Clear every pending plan-change field so a canceled plan can never
+   * later appear as "Downgrade to Launch scheduled".
+   */
+  if(terminal){
+    await clearPendingPlanChangeState(employerId);
+  }else{
+    await clearPendingIfApplied(employerId, meta.plan);
+  }
 }
 
 async function handleInvoicePaymentProblem(invoice, reason) {
