@@ -282,17 +282,27 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
 
 <div class="step" data-title="Business Verification">
   <div class="eyebrow">Business verification</div><h1>Tell us about your company.</h1>
-  <p class="intro">This information helps Alygnn protect candidates and maintain trusted employer accounts.</p>
-  <div class="grid"><div class="field"><label class="required" for="company-name">Legal company name</label><input id="company-name" name="company_name" required autocomplete="organization"></div><div class="field"><label class="required" for="website">Company website</label><input id="website" name="website" required placeholder="https://yourcompany.com" inputmode="url"></div></div>
+  <p class="intro">This information helps Alygnn verify your account and protect candidates from fake employer listings.</p>
+
+  <div class="grid">
+    <div class="field"><label class="required" for="company-name">Company name</label><input id="company-name" name="company_name" required autocomplete="organization"></div>
+    <div class="field"><label class="required" for="website">Company website</label><input id="website" name="website" required placeholder="https://yourcompany.com" inputmode="url"></div>
+  </div>
+
   <div class="inline-check"><input id="has-dba" name="has_dba" type="checkbox"><label for="has-dba">This company operates under a DBA or trade name</label></div>
   <div class="field conditional" id="dba-field"><label class="required" for="dba-name">DBA / trade name</label><input id="dba-name" name="dba_name" placeholder="Public-facing business name"></div>
+
   <div class="grid">
-    <div class="field"><label class="required" for="business-phone">Business phone number</label><input id="business-phone" name="business_phone" required type="tel" inputmode="tel" placeholder="(919) 555-0123"></div>
-    <div class="field suggest-wrap"><label class="required" for="industry">Industry</label><input id="industry" name="industry" required autocomplete="off" placeholder="Start typing an industry"><div id="industry-suggestions" class="suggestions"></div><p class="helper">Start typing to search hundreds of industries. You can also enter a legitimate custom industry if it is not listed.</p></div>
+    <div class="field"><label class="required" for="business-phone">Business phone number</label><input id="business-phone" name="business_phone" required type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(919) 555-0123"></div>
+    <div class="field"><label class="required" for="business-email">Business email</label><input id="business-email" name="business_email" required type="email" autocomplete="email" placeholder="admin@yourcompany.com"></div>
+    <div class="field"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"></div>
+    <div class="field suggest-wrap"><label class="required" for="industry">Industry</label><input id="industry" name="industry" required autocomplete="off" placeholder="Start typing an industry"><div id="industry-suggestions" class="suggestions"></div></div>
     <div class="field"><label class="required" for="company-size">Company size</label><select id="company-size" name="company_size" required><option value="">Select size</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>501–1,000</option><option>1,001+</option></select></div>
-    <div class="field suggest-wrap"><label class="required" for="headquarters">Headquarters</label><input id="headquarters" name="headquarters" required autocomplete="off" placeholder="Start typing a city"><div id="city-suggestions" class="suggestions"></div></div>
+    <div class="field suggest-wrap"><label class="required" for="headquarters">Headquarters</label><input id="headquarters" name="headquarters" required autocomplete="off" placeholder="Start typing a U.S. city or town"><div id="city-suggestions" class="suggestions"></div></div>
   </div>
-  <div class="field"><label class="required" for="ein">Federal EIN</label><input id="ein" name="ein" required inputmode="numeric" maxlength="10" autocomplete="off" placeholder="12-3456789"><p class="helper">Your EIN is used only for business verification and is transmitted securely to Alygnn.</p></div>
+
+  <div class="field"><label class="required" for="ein">Federal EIN</label><input id="ein" name="ein" required inputmode="numeric" maxlength="10" autocomplete="off" placeholder="12-3456789"><p class="helper">Checked against real IRS-issued prefix ranges to catch fake or made-up numbers. Alygnn stores only the last four digits — never the full number.</p></div>
+  <p class="helper">We also use your business email and website domain to help verify your account.</p>
 </div>
 
 <div class="step" data-title="Company Voice">
@@ -586,6 +596,8 @@ function saveDraft(){
     company_name:document.getElementById('company-name').value,
     website:document.getElementById('website').value,
     business_phone:document.getElementById('business-phone').value,
+    business_email:document.getElementById('business-email').value,
+    business_address:document.getElementById('business-address').value,
     industry:document.getElementById('industry').value,
     company_size:document.getElementById('company-size').value,
     headquarters:document.getElementById('headquarters').value,
@@ -607,6 +619,8 @@ function restoreDraft(){
   document.getElementById('company-name').value=draft.company_name||'';
   document.getElementById('website').value=draft.website||'';
   document.getElementById('business-phone').value=draft.business_phone||'';
+  document.getElementById('business-email').value=draft.business_email||'';
+  document.getElementById('business-address').value=draft.business_address||'';
   document.getElementById('industry').value=draft.industry||'';
   document.getElementById('company-size').value=draft.company_size||'';
   document.getElementById('headquarters').value=draft.headquarters||'';
@@ -1616,7 +1630,7 @@ function validateCurrent(){if(current===1){for(const field of steps[current].que
 function aiSummary(){const v=[...selectedVoices],c=getRanking('company-priorities').slice(0,3),h=getRanking('candidate-priorities').slice(0,3);return `Your company emphasizes ${joinWords(c).toLowerCase()}. Alygnn will write hiring content in a ${joinWords(v).toLowerCase()} voice while prioritizing candidates who demonstrate ${joinWords(h).toLowerCase()}.`}
 function joinWords(values){if(values.length<=1)return values[0]||'';if(values.length===2)return values.join(' and ');return values.slice(0,-1).join(', ')+', and '+values.at(-1)}
 function buildOverview(){const voices=[...selectedVoices],company=getRanking('company-priorities'),candidate=getRanking('candidate-priorities');document.getElementById('overview-voice').textContent=voices.join(' • ');document.getElementById('overview-company').innerHTML=company.slice(0,3).map(v=>`<li>${escapeHtml(v)}</li>`).join('');document.getElementById('overview-candidate').innerHTML=candidate.slice(0,3).map(v=>`<li>${escapeHtml(v)}</li>`).join('');document.getElementById('ai-summary').textContent=aiSummary()}
-function payload(){const ein=document.getElementById('ein').value.replace(/\D/g,'');return{company_name:document.getElementById('company-name').value.trim(),website:document.getElementById('website').value.trim(),business_phone:document.getElementById('business-phone').value.trim(),industry:document.getElementById('industry').value.trim(),company_size:document.getElementById('company-size').value,headquarters:document.getElementById('headquarters').value.trim(),has_dba:document.getElementById('has-dba').checked,dba_name:document.getElementById('has-dba').checked?document.getElementById('dba-name').value.trim():'',ein,ein_last4:ein.slice(-4),company_voice:[...selectedVoices],company_priorities:getRanking('company-priorities'),candidate_priorities:getRanking('candidate-priorities'),ai_summary:aiSummary(),authorized:document.getElementById('authorization').checked}}
+function payload(){const ein=document.getElementById('ein').value.replace(/\D/g,'');return{company_name:document.getElementById('company-name').value.trim(),website:document.getElementById('website').value.trim(),business_phone:document.getElementById('business-phone').value.trim(),business_email:document.getElementById('business-email').value.trim(),business_address:document.getElementById('business-address').value.trim(),industry:document.getElementById('industry').value.trim(),company_size:document.getElementById('company-size').value,headquarters:document.getElementById('headquarters').value.trim(),has_dba:document.getElementById('has-dba').checked,dba_name:document.getElementById('has-dba').checked?document.getElementById('dba-name').value.trim():'',ein,ein_last4:ein.slice(-4),company_voice:[...selectedVoices],company_priorities:getRanking('company-priorities'),candidate_priorities:getRanking('candidate-priorities'),ai_summary:aiSummary(),authorized:document.getElementById('authorization').checked}}
 async function submit(){
   nextButton.disabled=true;
   nextButton.textContent='Creating company…';
@@ -1677,6 +1691,8 @@ async function submit(){
           company_name:setupProfile.company_name,
           website:setupProfile.website,
           business_phone:setupProfile.business_phone,
+          business_email:setupProfile.business_email,
+          business_address:setupProfile.business_address,
           industry:setupProfile.industry,
           company_size:setupProfile.company_size,
           headquarters:setupProfile.headquarters,
@@ -2142,22 +2158,6 @@ window.addEventListener('beforeunload',saveDraft);
     return;
   }
 
-  /*
-   * Team invitations require an explicit Accept / Decline decision.
-   */
-  try{
-    const {data:workspaceContext,error:workspaceError}=await sb.rpc('get_my_workspace_context');
-    if(!workspaceError){
-      const pending=Array.isArray(workspaceContext?.pending_invites)?workspaceContext.pending_invites:[];
-      if(pending.length){
-        location.replace('app-workspaces.html?after_login=1&preferred=employer');
-        return;
-      }
-    }
-  }catch(error){
-    console.warn('Could not check team invitations:',error);
-  }
-
   const userId=
     String(session.user.id||'').trim();
 
@@ -2257,6 +2257,12 @@ window.addEventListener('beforeunload',saveDraft);
       'company-name'
     ).value=
       session.user.user_metadata?.company_name||
+      '';
+
+    document.getElementById(
+      'business-email'
+    ).value=
+      session.user.email||
       '';
 
     showStep(0);
