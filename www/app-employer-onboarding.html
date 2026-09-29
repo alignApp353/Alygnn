@@ -2152,6 +2152,7 @@ async function submit(){
       );
     }
 
+    try{localStorage.removeItem(DRAFT_KEY)}catch(_){}
     showMessage('Your company profile is saved.','success');
 
     setTimeout(()=>{
@@ -2616,6 +2617,25 @@ window.addEventListener('beforeunload',saveDraft);
       company?.verification_status||
       'pending_review'
     );
+
+    /*
+     * If this employer has an unfinished onboarding draft, a refresh must
+     * resume onboarding instead of treating company membership as proof that
+     * the setup flow was completed.
+     */
+    let activeDraft=null;
+    try{
+      activeDraft=JSON.parse(
+        localStorage.getItem(DRAFT_KEY)||'null'
+      );
+    }catch(_){
+      activeDraft=null;
+    }
+
+    if(activeDraft&&typeof activeDraft==='object'){
+      restoreDraft();
+      return;
+    }
 
     location.replace(
       'app-employer-dashboard.html'
