@@ -513,8 +513,28 @@
 
   function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
 
+  function hasPendingCandidateOnboarding() {
+    try {
+      return (
+        localStorage.getItem('alygnn_pending_candidate_onboarding_v1') === '1' ||
+        !!localStorage.getItem('alygnn_pending_resume_data_v1') ||
+        !!localStorage.getItem('alygnn_pending_preferences_v1') ||
+        !!sessionStorage.getItem('resumeData')
+      );
+    } catch (_) {
+      return !!sessionStorage.getItem('resumeData');
+    }
+  }
+
   async function savePendingPreferences(user, fallbackName = '') {
     if (!user?.id) return;
+
+    // In the public candidate onboarding path (Resume -> Preferences -> Login),
+    // account.html is the single owner of importing the draft. Keeping the
+    // resume and preferences together prevents the login page from consuming
+    // only half of the onboarding state before the resume is attached.
+    if (currentRole === 'seeker' && hasPendingCandidateOnboarding()) return;
+
     const savedPrefs = sessionStorage.getItem('preferences');
     if (!savedPrefs) return;
     let parsedPrefs = {};
