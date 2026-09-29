@@ -283,33 +283,43 @@ async function getCompanyById(id){
 }
 async function loadDocumentStatus(id){
   const verificationButton=$('verification-action');
+
   if(!id){
-    $('document-status').textContent=localStorage.getItem('alygnn_verification_document_submitted')==='true'?'Submitted':'Not submitted';
-    return;
+    return false;
   }
+
   const {data,error}=await sb.from('employer_verification_documents')
-    .select('review_status,created_at').eq('company_id',id)
-    .order('created_at',{ascending:false}).limit(1).maybeSingle();
+    .select('id,review_status,created_at')
+    .eq('company_id',id)
+    .order('created_at',{ascending:false})
+    .limit(1)
+    .maybeSingle();
+
   if(error){
     console.warn('verification document lookup failed:',error);
-    $('document-status').textContent=localStorage.getItem('alygnn_verification_document_submitted')==='true'?'Submitted':'Unable to check';
-    return;
+    // Do not redirect on an API/RLS failure because we cannot prove absence.
+    $('document-status').textContent='Unable to check';
+    return null;
   }
-  if(data){
+
+  if(data?.id){
     $('document-status').textContent=formatDocumentStatus(data.review_status);
-    localStorage.setItem('alygnn_verification_document_submitted','true');
-    return;
+    localStorage.setItem(
+      `alygnn_verification_document_submitted_${currentUserId}`,
+      'true'
+    );
+    return true;
   }
-  const wasSubmitted=localStorage.getItem('alygnn_verification_document_submitted')==='true';
-  $('document-status').textContent=wasSubmitted?'Submitted':'Not submitted';
-  if(!wasSubmitted&&currentStatus!=='approved'){
-    verificationButton.hidden=false;
-    verificationButton.textContent='Upload Verification Document';
-    verificationButton.onclick=()=>{
-      const suffix=companyId?`?company_id=${encodeURIComponent(companyId)}`:'';
-      location.href='app-employer-document-upload.html'+suffix;
-    };
-  }
+
+  /*
+   * No document = nothing is under review yet.
+   * Do not render a Pending Verification status screen.
+   */
+  localStorage.removeItem(
+    `alygnn_verification_document_submitted_${currentUserId}`
+  );
+
+  return false;
 }
 
 async function load({manual=false}={}){
@@ -351,8 +361,20 @@ async function load({manual=false}={}){
 
     localStorage.setItem(setupCompleteKey(currentUserId),'true');
     saveStatusState(currentStatus);
+    const hasDocument=await loadDocumentStatus(companyId);
+
+    if(hasDocument===false && currentStatus!=='approved'){
+      const suffix=companyId
+        ?`?company_id=${encodeURIComponent(companyId)}`
+        :'';
+
+      location.replace(
+        'app-employer-document-upload.html'+suffix
+      );
+      return;
+    }
+
     applyStatus();
-    await loadDocumentStatus(companyId);
   }finally{
     if(manual){refreshButton.disabled=false;refreshButton.textContent='Check Verification Status'}
   }
