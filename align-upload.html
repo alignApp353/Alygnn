@@ -919,6 +919,7 @@
   const PENDING_RESUME_STORE = 'files';
   const PENDING_RESUME_ID = 'candidate-resume';
   const PENDING_RESUME_DATA_KEY = 'alygnn_pending_resume_data_v1';
+  const PENDING_CANDIDATE_ONBOARDING_KEY = 'alygnn_pending_candidate_onboarding_v1';
 
   function openPendingResumeDb() {
     return new Promise((resolve, reject) => {
@@ -986,6 +987,11 @@
     if (!data || typeof data !== 'object') return;
     const json = JSON.stringify(data);
     localStorage.setItem(PENDING_RESUME_DATA_KEY, json);
+
+    // Mark this browser as carrying a pre-signup candidate onboarding draft.
+    // account.html clears the marker only after the resume + preferences are
+    // successfully attached to the authenticated candidate.
+    localStorage.setItem(PENDING_CANDIDATE_ONBOARDING_KEY, '1');
 
     // Keep the old key temporarily so older pages in the flow still work.
     sessionStorage.setItem('resumeData', json);
