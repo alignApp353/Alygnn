@@ -4732,6 +4732,48 @@
   }
 </style>
 
+
+<style id="alygnn-settings-android-paint-isolation">
+  /* Android WebView: keep each settings section/row on its own opaque paint
+     surface so text from a neighboring row cannot ghost or get squished. */
+  #settings-view .section{
+    position:relative;
+    isolation:isolate;
+    contain:paint;
+    overflow:hidden;
+    background:var(--card)!important;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+  }
+
+  #settings-view .settings-link{
+    position:relative;
+    z-index:1;
+    width:100%;
+    min-height:64px!important;
+    height:auto!important;
+    overflow:hidden;
+    flex-shrink:0;
+    background:var(--card)!important;
+    transform:translateZ(0);
+    -webkit-transform:translateZ(0);
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+
+  #settings-view .settings-icon-label,
+  #settings-view .settings-copy{
+    position:relative;
+    z-index:2;
+  }
+
+  #settings-view .settings-copy strong,
+  #settings-view .settings-copy small{
+    white-space:normal;
+    overflow:visible;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
@@ -6094,7 +6136,63 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  
+<div class="sheet" id="security-sheet" hidden>
+  <div class="sheet-panel">
+    <div class="sheet-grip"></div>
+    <h2 class="sheet-title">Account &amp; security</h2>
+    <p class="sheet-sub">Manage the login and security details for this Alygnn account.</p>
+
+    <div class="settings-card">
+      <div class="settings-group-title">Signed-in account</div>
+      <div class="profile-list">
+        <div class="profile-list-item">
+          <strong>Email</strong>
+          <span id="security-account-email">Loading…</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-group-title">Password</div>
+      <p>Send a secure password-reset link to the email on this account.</p>
+      <div class="toolbar">
+        <button class="primary-btn" id="security-reset-password" type="button">Send password reset email</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="secondary-btn" id="close-security-sheet" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="privacy-sheet" hidden>
+  <div class="sheet-panel">
+    <div class="sheet-grip"></div>
+    <h2 class="sheet-title">Privacy</h2>
+    <p class="sheet-sub">Review how Alygnn handles your employer account and company information.</p>
+
+    <div class="settings-card">
+      <div class="settings-group-title">Employer visibility</div>
+      <p>Your company and active job information may be shown to candidates as part of the hiring experience. Private login, billing, verification, and security information is not shown as public company content.</p>
+    </div>
+
+    <div class="settings-card">
+      <div class="settings-group-title">Policies</div>
+      <div class="toolbar">
+        <button class="secondary-btn" id="open-privacy-policy" type="button">Privacy Policy</button>
+        <button class="secondary-btn" id="open-terms-policy" type="button">Terms of Use</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="secondary-btn" id="close-privacy-sheet" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
   <script>
     const sb = supabase.createClient(
@@ -15696,8 +15794,77 @@
 
       location.href='app-employer-billing.html';
     };
-    $('security-settings').onclick = () => toast('Account and security controls will connect here.');
-    $('privacy-settings').onclick = () => toast('Privacy controls will connect here.');
+    $('security-settings').onclick = async () => {
+      const sheet=$('security-sheet');
+      const emailNode=$('security-account-email');
+
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        if(emailNode){
+          emailNode.textContent=
+            session?.user?.email||
+            state.currentUser?.email||
+            'No email available';
+        }
+      }catch(_){
+        if(emailNode)emailNode.textContent='Unable to load email';
+      }
+
+      sheet.hidden=false;
+    };
+
+    $('privacy-settings').onclick = () => {
+      $('privacy-sheet').hidden=false;
+    };
+
+    $('close-security-sheet').onclick=()=>{$('security-sheet').hidden=true};
+    $('close-privacy-sheet').onclick=()=>{$('privacy-sheet').hidden=true};
+
+    $('security-sheet').addEventListener('click',event=>{
+      if(event.target===$('security-sheet'))$('security-sheet').hidden=true;
+    });
+
+    $('privacy-sheet').addEventListener('click',event=>{
+      if(event.target===$('privacy-sheet'))$('privacy-sheet').hidden=true;
+    });
+
+    $('security-reset-password').onclick=async()=>{
+      const button=$('security-reset-password');
+      const original=button.textContent;
+
+      try{
+        button.disabled=true;
+        button.textContent='Sending…';
+
+        const {data:{session},error:sessionError}=await sb.auth.getSession();
+        if(sessionError)throw sessionError;
+
+        const email=String(session?.user?.email||'').trim();
+        if(!email)throw new Error('No email is attached to this account.');
+
+        const {error}=await sb.auth.resetPasswordForEmail(
+          email,
+          {redirectTo:'https://alygnn.com/reset-password.html'}
+        );
+        if(error)throw error;
+
+        toast('Password reset email sent.');
+      }catch(error){
+        console.error('Password reset failed:',error);
+        toast(error?.message||'Could not send the password reset email.');
+      }finally{
+        button.disabled=false;
+        button.textContent=original;
+      }
+    };
+
+    $('open-privacy-policy').onclick=()=>{
+      location.href='privacy.html?from=employer-app';
+    };
+
+    $('open-terms-policy').onclick=()=>{
+      location.href='terms.html?from=employer-app';
+    };
     $('support-settings').onclick = () => toast('Help and support will connect here.');
     $('about-settings').onclick = () => toast('Alygnn Employer Workspace V5');
     $('notifications-btn').onclick = () => {
