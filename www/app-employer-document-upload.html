@@ -165,11 +165,39 @@ async function resolveEmployerCompany(){
     return {id:companyId};
   }
 
-  // Resolve the company through Alygnn's server first. This uses the
-  // service-role key on the server, so browser RLS cannot hide the
-  // employer's own company/membership from this verification page.
+  // First try the verification row because this page is part of the verification flow.
   try{
-    const response=await fetch('https://alygnn.com/api/company/resolve-company',{
+    const {data:verification,error:verificationError}=await sb
+      .from('employer_verifications')
+      .select('company_id,verification_status')
+      .eq('user_id',session.user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if(!verificationError && verification?.company_id){
+      companyId=String(verification.company_id).trim();
+      localStorage.setItem('alygnn_company_id',companyId);
+      sessionStorage.setItem('alygnn_company_id',companyId);
+
+      if(verification.verification_status){
+        localStorage.setItem(
+          'alygnn_employer_verification_status',
+          verification.verification_status
+        );
+      }
+
+      return {
+        id:companyId,
+        verification_status:verification.verification_status||'pending_review'
+      };
+    }
+  }catch(error){
+    console.warn('Verification-row company lookup failed:',error);
+  }
+
+  // If browser RLS hides the company, ask Alygnn's authenticated server endpoint.
+  try{
+    const response=await fetch('https://alygnn.com/api/company/my-company',{
       method:'GET',
       headers:{
         'Authorization':'Bearer '+session.access_token
@@ -180,7 +208,6 @@ async function resolveEmployerCompany(){
 
     if(response.ok && result?.company?.id){
       companyId=String(result.company.id).trim();
-
       localStorage.setItem('alygnn_company_id',companyId);
       sessionStorage.setItem('alygnn_company_id',companyId);
 
@@ -200,21 +227,14 @@ async function resolveEmployerCompany(){
 
       return {
         id:companyId,
-        verification_status:
-          result.company.verificationStatus || 'pending_review',
-        company_name:result.company.name || ''
+        verification_status:result.company.verificationStatus||'pending_review'
       };
     }
-
-    console.warn(
-      'Server could not resolve employer company:',
-      result?.error || response.status
-    );
   }catch(error){
     console.warn('Server company resolver failed:',error);
   }
 
-  // First try the user's company membership. Include pending memberships because
+  // Then try the user's company membership. Include pending memberships because
   // a brand-new employer may not be marked active until verification is complete.
   try{
     const {data:membership,error:membershipError}=await sb
@@ -316,7 +336,7 @@ if(!companyId){
 }
 
 if(!companyId){
-  throw new Error('Alygnn still cannot find a company workspace for this account. The verification document was not uploaded.');
+  throw new Error('Alygnn could not find the company workspace connected to this account. Your PDF was not uploaded.');
 }
 const safeName=selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-100);const storagePath=`${companyId}/${session.user.id}/${Date.now()}-${safeName}`;const {error:uploadError}=await sb.storage.from(BUCKET).upload(storagePath,selectedFile,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});if(uploadError)throw uploadError;const {error:recordError}=await sb.from('employer_verification_documents').insert({company_id:companyId,uploaded_by:session.user.id,document_type:'ein_verification',storage_path:storagePath,original_file_name:selectedFile.name,mime_type:'application/pdf',file_size_bytes:selectedFile.size,review_status:'pending_review'});if(recordError){await sb.storage.from(BUCKET).remove([storagePath]);throw recordError}localStorage.setItem('alygnn_verification_document_submitted','true');localStorage.setItem('alygnn_employer_verification_status','pending_review');showMessage('Your document was submitted successfully.','success');setTimeout(()=>location.replace('app-employer-verification-status.html'),700)}catch(error){console.error(error);showMessage(error.message||'Unable to upload your document.');submitButton.disabled=false;submitButton.textContent='Submit Document'}};(async()=>{
   const result=await sb.auth.getSession();
@@ -329,8 +349,47 @@ const safeName=selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-100);con
 
   const company=await resolveEmployerCompany();
 
-  if(company?.verification_status==='approved'){
-    location.replace('app-employer-dashboard.html');
+  /*
+   * Do not bypass document upload based only on verification_status.
+   * A real uploaded document is required first.
+   */
+  if(companyId){
+    try{
+      const {data:documentRow,error:documentError}=await sb
+        .from('employer_verification_documents')
+        .select('id,review_status,created_at')
+        .eq('company_id',companyId)
+        .order('created_at',{ascending:false})
+        .limit(1)
+        .maybeSingle();
+
+      if(documentError){
+        console.warn(
+          'Could not check existing verification document:',
+          documentError
+        );
+        // Stay on upload page when uncertain.
+      }else if(documentRow?.id){
+        const status=String(
+          company?.verification_status||
+          ''
+        ).toLowerCase().trim();
+
+        if(status==='approved'){
+          location.replace('app-employer-dashboard.html');
+          return;
+        }
+
+        location.replace('app-employer-verification-status.html');
+        return;
+      }
+    }catch(error){
+      console.warn(
+        'Existing verification document check threw:',
+        error
+      );
+      // Stay on upload page when uncertain.
+    }
   }
 })();
 </script></body></html>
