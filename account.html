@@ -1656,6 +1656,7 @@ const PENDING_RESUME_STORE = 'files';
 const PENDING_RESUME_ID = 'candidate-resume';
 const PENDING_RESUME_DATA_KEY = 'alygnn_pending_resume_data_v1';
 const PENDING_PREFS_KEY = 'alygnn_pending_preferences_v1';
+const PENDING_CANDIDATE_ONBOARDING_KEY = 'alygnn_pending_candidate_onboarding_v1';
 
 const CANDIDATE_NOTIFICATION_READ_KEY = 'alygnn_candidate_notification_reads_v1';
 let candidateNotifications = [];
@@ -2275,6 +2276,7 @@ async function claimPendingCandidateOnboarding(user) {
 
   localStorage.removeItem(PENDING_RESUME_DATA_KEY);
   localStorage.removeItem(PENDING_PREFS_KEY);
+  localStorage.removeItem(PENDING_CANDIDATE_ONBOARDING_KEY);
   sessionStorage.removeItem('resumeData');
   sessionStorage.removeItem('preferences');
   await clearPendingResumeFile();
