@@ -159,6 +159,68 @@
     background: rgba(215,154,154,.16);
     color: #8f4747;
   }
+
+
+  /* Hiring Priorities: match the mobile onboarding presentation. */
+  .step[data-title="Hiring Priorities"] .rank-picker {
+    margin-top: 28px;
+  }
+  .step[data-title="Hiring Priorities"] .hiring-priority-head {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:14px;
+  }
+  .step[data-title="Hiring Priorities"] .hiring-priority-label {
+    font-size:13px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .step[data-title="Hiring Priorities"] .hiring-priority-pill {
+    min-width:56px;
+    height:34px;
+    padding:0 14px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:rgba(93,127,163,.10);
+    color:var(--brand);
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .step[data-title="Hiring Priorities"] .rank-list {
+    margin-top:0;
+    gap:10px;
+  }
+  .step[data-title="Hiring Priorities"] .rank-item {
+    min-height:62px;
+    padding:10px 12px;
+    border-radius:14px;
+  }
+  .step[data-title="Hiring Priorities"] .rank-number {
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    font-weight:700;
+  }
+  .step[data-title="Hiring Priorities"] .rank-name {
+    font-weight:600;
+  }
+  .step[data-title="Hiring Priorities"] .rank-note {
+    margin-top:16px;
+    font-size:12px;
+    line-height:1.55;
+  }
+  .step[data-title="Hiring Priorities"] .rank-picker.is-complete .rank-input-row,
+  .step[data-title="Hiring Priorities"] .rank-picker.is-complete > .counter {
+    display:none;
+  }
+  .step[data-title="Hiring Priorities"] .rank-picker:not(.is-complete) .hiring-priority-head {
+    margin-bottom:14px;
+  }
   .rank-item { grid-template-columns: 34px 1fr auto auto; }
 
   .overview-grid { display: grid; gap: 14px; margin-top: 24px; }
@@ -266,17 +328,25 @@
 
 <div class="step" data-title="Hiring Priorities">
   <div class="eyebrow">Hiring priorities</div><h1>What matters most when hiring?</h1>
-  <p class="intro">We started you with exactly 5 hiring priorities. Reorder them from most important to least important, or remove one and replace it with your own.</p>
-  <div class="rank-picker">
+  <p class="intro">We started you with exactly 5 common hiring priorities. Reorder them from most important to least important, or remove one and replace it with your own.</p>
+
+  <div class="rank-picker" id="candidate-priority-picker">
+    <div class="hiring-priority-head">
+      <div class="hiring-priority-label">Your top 5 hiring priorities</div>
+      <div class="hiring-priority-pill" id="candidate-priority-pill">5 / 5</div>
+    </div>
+
+    <div class="rank-list" id="candidate-priorities"></div>
+
+    <p class="rank-note">Drag the cards to reorder them. You can also use the Up and Down buttons. Alygnn will use this order when weighting candidate matches.</p>
+
     <div class="rank-input-row suggest-wrap">
-      <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Start typing a hiring priority">
+      <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Type your own hiring priority">
       <button class="rank-add" id="candidate-priority-add" type="button">Add</button>
       <div id="candidate-priority-suggestions" class="suggestions"></div>
     </div>
-    <div class="counter"><span>Choose exactly 5</span><span id="candidate-priority-counter">0 of 5 selected</span></div>
+    <div class="counter"><span>Add a replacement</span><span id="candidate-priority-counter">5 of 5 selected</span></div>
   </div>
-  <div class="rank-list" id="candidate-priorities"></div>
-  <p class="rank-note">Put the most important factor at the top. Use × to replace any selection.</p>
 </div>
 
 <div class="step" data-title="IRS Verification">
@@ -346,7 +416,7 @@ const VOICES=['Professional','Friendly','Modern','Direct','Formal','Energetic'];
 const COMPANY_STRENGTH_OPTIONS=['Career Growth','Competitive Pay','Company Culture','Learning & Development','Performance & Recognition','Meaningful Work','Innovation','Work-Life Balance','Flexible Scheduling','Remote Work','Strong Leadership','Mentorship','Fast Advancement','Job Stability','Great Benefits','Health & Wellness','Employee Ownership','Team Collaboration','Inclusive Workplace','Community Impact','Mission-Driven Work','Autonomy','Cutting-Edge Technology','Training Programs','Recognition & Rewards','Paid Time Off','Family-Friendly Culture','Travel Opportunities','Entrepreneurial Environment','Communication','Transparent Communication','Career Mobility'];
 const DEFAULT_COMPANY_STRENGTHS=['Career Growth','Company Culture','Performance & Recognition','Meaningful Work','Work-Life Balance'];
 const CANDIDATE_PRIORITY_OPTIONS=['Technical Skills','Soft Skills','Experience','Communication','Culture Fit','Reliability','Leadership','Availability','Problem Solving','Critical Thinking','Coachability','Work Ethic','Adaptability','Teamwork','Customer Service','Sales Ability','Attention to Detail','Initiative','Time Management','Creativity','Professionalism','Education','Certifications','Industry Knowledge','Results Orientation','Accountability','Emotional Intelligence','Learning Agility','Organization','Decision Making'];
-const DEFAULT_HIRING_PRIORITIES=['Communication','Reliability','Problem Solving','Coachability','Work Ethic'];
+const DEFAULT_HIRING_PRIORITIES=['Role-Specific Skills','Relevant Experience','Communication','Reliability','Problem-Solving'];
 const INDUSTRIES=['Accounting','Advertising and Marketing','Agriculture','Architecture and Design','Automotive','Banking','Biotechnology','Construction','Consulting','Consumer Services','Education','Energy and Utilities','Engineering','Entertainment and Media','Financial Services','Food and Beverage','Government','Healthcare','Hospitality','Human Resources and Staffing','Insurance','Legal Services','Logistics and Transportation','Manufacturing','Nonprofit','Pharmaceuticals','Professional Services','Real Estate','Retail','Software and Technology','Telecommunications','Travel and Tourism','Wholesale','Wireless Services','Internet Service Provider','Fiber Optics','Network Infrastructure','Telecommunications Equipment'];
 
 // Google Places is the primary source for U.S. business addresses and headquarters.
@@ -610,8 +680,17 @@ function restoreDraft(){
   document.getElementById('ein').value=draft.ein||'';
   (draft.voices||[]).forEach(v=>selectedVoices.add(v));
   renderVoiceState();
-  if(draft.company_priorities?.length)renderRankList('company-priorities',normalizeSavedRanking(draft.company_priorities,COMPANY_STRENGTH_OPTIONS));
-  if(draft.candidate_priorities?.length)renderRankList('candidate-priorities',normalizeSavedRanking(draft.candidate_priorities,CANDIDATE_PRIORITY_OPTIONS));
+  if(draft.company_priorities?.length){
+    renderRankList('company-priorities',normalizeSavedRanking(draft.company_priorities,COMPANY_STRENGTH_OPTIONS));
+  }else{
+    renderRankList('company-priorities',DEFAULT_COMPANY_STRENGTHS);
+  }
+
+  if(draft.candidate_priorities?.length){
+    renderRankList('candidate-priorities',normalizeSavedRanking(draft.candidate_priorities,CANDIDATE_PRIORITY_OPTIONS));
+  }else{
+    renderRankList('candidate-priorities',DEFAULT_HIRING_PRIORITIES);
+  }
   showStep(draft.current||0);
   return true;
 }
@@ -681,6 +760,13 @@ function updateRankPickerState(listId){
   if(counter)counter.textContent=`${count} of 5 selected`;
   if(input)input.disabled=count>=5;
   if(add)add.disabled=count>=5;
+
+  if(listId==='candidate-priorities'){
+    const picker=document.getElementById('candidate-priority-picker');
+    const pill=document.getElementById('candidate-priority-pill');
+    if(picker)picker.classList.toggle('is-complete',count>=5);
+    if(pill)pill.textContent=`${count} / 5`;
+  }
 }
 function editDistance(a,b){
   const x=String(a||'').toLowerCase(),y=String(b||'').toLowerCase();
