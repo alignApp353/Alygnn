@@ -294,43 +294,51 @@ function rememberEmployerCompany(userId,companyId,status,accountNumber=''){
 }
 async function routeExistingEmployer(userId,companyId,status){
   const normalized=normalizeEmployerStatus(status);
-
-  if(normalized==='approved'){
-    return TARGET_PAGE;
-  }
+  const cleanCompanyId=String(companyId||'').trim();
 
   /*
-   * Verification Status should only be shown after an actual verification
-   * document exists. A company record by itself does NOT mean that the
-   * business is "under review."
+   * A company/account record is NOT enough to enter the employer portal.
+   * First prove that a verification document was actually submitted.
    */
-  if(companyId){
-    try{
-      const {data:documentRow,error}=await sb
-        .from('employer_verification_documents')
-        .select('id,review_status,created_at')
-        .eq('company_id',companyId)
-        .order('created_at',{ascending:false})
-        .limit(1)
-        .maybeSingle();
-
-      if(error){
-        console.warn('Verification document lookup failed:',error);
-      }else if(documentRow?.id){
-        return STATUS_PAGE;
-      }else{
-        return DOCUMENT_UPLOAD_PAGE+
-          '?company_id='+encodeURIComponent(companyId);
-      }
-    }catch(error){
-      console.warn('Verification document lookup threw:',error);
-    }
+  if(!cleanCompanyId){
+    return ONBOARDING_PAGE;
   }
 
-  // Safe fallback: if we cannot prove a document exists, ask for it first.
-  return companyId
-    ? DOCUMENT_UPLOAD_PAGE+'?company_id='+encodeURIComponent(companyId)
-    : ONBOARDING_PAGE;
+  try{
+    const {data:documentRow,error}=await sb
+      .from('employer_verification_documents')
+      .select('id,review_status,created_at')
+      .eq('company_id',cleanCompanyId)
+      .order('created_at',{ascending:false})
+      .limit(1)
+      .maybeSingle();
+
+    if(error){
+      console.warn('Verification document lookup failed:',error);
+
+      // Fail closed: never bypass document upload just because the lookup failed.
+      return DOCUMENT_UPLOAD_PAGE+
+        '?company_id='+encodeURIComponent(cleanCompanyId);
+    }
+
+    if(!documentRow?.id){
+      return DOCUMENT_UPLOAD_PAGE+
+        '?company_id='+encodeURIComponent(cleanCompanyId);
+    }
+
+    // Only AFTER a real document exists may an approved employer enter dashboard.
+    if(normalized==='approved'){
+      return TARGET_PAGE;
+    }
+
+    return STATUS_PAGE;
+  }catch(error){
+    console.warn('Verification document lookup threw:',error);
+
+    // Fail closed.
+    return DOCUMENT_UPLOAD_PAGE+
+      '?company_id='+encodeURIComponent(cleanCompanyId);
+  }
 }
 async function employerDestination(userId){
   /*
@@ -486,7 +494,7 @@ async function employerDestination(userId){
     );
 
     rememberEmployerCompany(userId,savedCompanyId,savedStatus);
-    return routeExistingEmployer(savedStatus);
+    return await routeExistingEmployer(userId,savedCompanyId,savedStatus);
   }
 
   // ONLY now is this truly treated as a brand-new employer.
