@@ -15253,6 +15253,73 @@
           return;
         }
 
+
+        /*
+         * Verification-document gate.
+         *
+         * A company record or an "approved" status must never bypass the
+         * required document-upload step. The dashboard is allowed only when
+         * an actual employer_verification_documents row exists.
+         */
+        const resolvedCompanyId=String(
+          state.companyRecord?.id||
+          state.employerVerification?.company_id||
+          scopedCompanyId||
+          ''
+        ).trim();
+
+        if(resolvedCompanyId){
+          let verificationDocument=null;
+          let documentLookupFailed=false;
+
+          try{
+            const {data:documentRow,error:documentError}=await sb
+              .from('employer_verification_documents')
+              .select('id,review_status,created_at')
+              .eq('company_id',resolvedCompanyId)
+              .order('created_at',{ascending:false})
+              .limit(1)
+              .maybeSingle();
+
+            if(documentError){
+              documentLookupFailed=true;
+              console.warn(
+                'Dashboard verification document lookup failed:',
+                documentError
+              );
+            }else{
+              verificationDocument=documentRow||null;
+            }
+          }catch(error){
+            documentLookupFailed=true;
+            console.warn(
+              'Dashboard verification document lookup threw:',
+              error
+            );
+          }
+
+          if(documentLookupFailed || !verificationDocument?.id){
+            location.replace(
+              'app-employer-document-upload.html?company_id='+
+              encodeURIComponent(resolvedCompanyId)
+            );
+            return;
+          }
+
+          const verifiedStatus=String(
+            state.verificationStatus||
+            state.employerVerification?.verification_status||
+            ''
+          ).toLowerCase().trim();
+
+          if(verifiedStatus!=='approved'){
+            location.replace(
+              'app-employer-verification-status.html'
+            );
+            return;
+          }
+        }
+
         try{
           state.entitlement=await loadDashboardEntitlement();
         }catch(entitlementError){
