@@ -394,7 +394,7 @@ async function startBoostCheckout(){
         duration_hours:boostDays*24,
         terms_accepted:true,
         terms_version:TERMS_VERSION,
-        success_url:location.origin+'/employer-dashboard.html?boost=success&job='+encodeURIComponent(job.id)+'&days='+encodeURIComponent(boostDays)+'#jobs',
+        success_url:location.origin+'/employer-dashboard.html?boost=success&job='+encodeURIComponent(job.id)+'&days='+encodeURIComponent(boostDays)+'&session_id={CHECKOUT_SESSION_ID}#jobs',
         cancel_url:location.href
       })
     });
