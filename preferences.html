@@ -809,10 +809,12 @@
   const TOTAL = 300000;
   const FLOOR = 10000;
   const PENDING_PREFS_KEY = 'alygnn_pending_preferences_v1';
+  const PENDING_CANDIDATE_ONBOARDING_KEY = 'alygnn_pending_candidate_onboarding_v1';
 
   function storePendingPreferences(preferences) {
     const json = JSON.stringify(preferences);
     localStorage.setItem(PENDING_PREFS_KEY, json);
+    localStorage.setItem(PENDING_CANDIDATE_ONBOARDING_KEY, '1');
 
     // Backward compatibility with the existing login page.
     sessionStorage.setItem('preferences', json);
