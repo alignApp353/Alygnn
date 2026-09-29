@@ -198,7 +198,6 @@ html[data-theme="dark"] .transition-icon.employer{background:#123A2C}
     </button>
   </section>
   <footer class="footer">
-    Already have an account? <button class="sign-in-link" id="sign-in-link" type="button">Sign in</button>
     <div class="small-note">You can switch between candidate and employer experiences at any time.</div>
   </footer>
 </main>
@@ -260,7 +259,7 @@ function chooseExperience(type){
 }
 candidateChoice.addEventListener('click',()=>chooseExperience('candidate'));
 employerChoice.addEventListener('click',()=>chooseExperience('employer'));
-document.getElementById('sign-in-link').addEventListener('click',()=>{const savedType=localStorage.getItem('alygnn_account_type');chooseExperience(savedType==='employer'?'employer':'candidate')});
+
 window.addEventListener('pageshow',resetStartScreen);
 document.addEventListener('DOMContentLoaded',resetStartScreen);
 </script>
