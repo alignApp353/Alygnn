@@ -295,7 +295,7 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
   <div class="grid">
     <div class="field"><label class="required" for="business-phone">Business phone number</label><input id="business-phone" name="business_phone" required type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(919) 555-0123"></div>
     <div class="field"><label class="required" for="business-email">Business email</label><input id="business-email" name="business_email" required type="email" autocomplete="email" placeholder="admin@yourcompany.com"></div>
-    <div class="field"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"></div>
+    <div class="field suggest-wrap"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"><div id="address-suggestions" class="suggestions"></div></div>
     <div class="field suggest-wrap"><label class="required" for="industry">Industry</label><input id="industry" name="industry" required autocomplete="off" placeholder="Start typing an industry"><div id="industry-suggestions" class="suggestions"></div></div>
     <div class="field"><label class="required" for="company-size">Company size</label><select id="company-size" name="company_size" required><option value="">Select size</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>501–1,000</option><option>1,001+</option></select></div>
     <div class="field suggest-wrap"><label class="required" for="headquarters">Headquarters</label><input id="headquarters" name="headquarters" required autocomplete="off" placeholder="Start typing a U.S. city or town"><div id="city-suggestions" class="suggestions"></div></div>
@@ -585,6 +585,220 @@ const CANDIDATE_PRIORITY_REPLACEMENTS=[
   'Physical Requirements'
 ];
 const INDUSTRIES=["Accounting", "Actuarial Services", "Advertising", "Advertising and Marketing", "Aerospace", "Aerospace Manufacturing", "Agriculture", "Agricultural Equipment", "Agricultural Services", "Airlines", "Airports and Aviation", "Alternative Energy", "Ambulance Services", "Amusement Parks", "Animal Health", "Animation", "Apparel and Fashion", "Appliance Manufacturing", "Architecture", "Architecture and Design", "Art Galleries", "Artificial Intelligence", "Asset Management", "Assisted Living", "Audio Production", "Auto Parts", "Automotive", "Automotive Dealerships", "Automotive Manufacturing", "Automotive Repair", "Aviation", "Bakeries", "Banking", "Bars and Nightclubs", "Beauty and Cosmetics", "Beverage Manufacturing", "Big Data", "Biotechnology", "Book Publishing", "Breweries", "Broadcast Media", "Building Materials", "Business Consulting", "Business Process Outsourcing", "Business Services", "Cafes and Coffee Shops", "Call Centers", "Cannabis", "Car Rental", "Car Washes", "Casinos and Gaming", "Catering", "Chemical Manufacturing", "Child Care", "Civil Engineering", "Cleaning Services", "Cloud Computing", "Commercial Construction", "Commercial Real Estate", "Computer Hardware", "Computer Networking", "Computer Software", "Construction", "Construction Equipment", "Consumer Electronics", "Consumer Goods", "Consumer Services", "Content Creation", "Courier Services", "Cybersecurity", "Dairy", "Data Analytics", "Data Centers", "Dental", "Digital Marketing", "Distribution", "E-Commerce", "Education", "Electrical Contracting", "Electrical Equipment Manufacturing", "Electronics Manufacturing", "Emergency Services", "Energy", "Energy and Utilities", "Engineering", "Entertainment", "Entertainment and Media", "Environmental Consulting", "Environmental Services", "Event Management", "Facilities Management", "Farming", "Fashion", "Film and Television", "Financial Services", "FinTech", "Fire Protection", "Fitness", "Food and Beverage", "Food Delivery", "Food Manufacturing", "Food Processing", "Food Service", "Forestry", "Freight and Logistics", "Funeral Services", "Furniture Manufacturing", "Gaming", "Gas Utilities", "Government", "Graphic Design", "Green Energy", "Grocery Stores", "Healthcare", "Healthcare Services", "Home Health Care", "Home Improvement", "Hospital and Health Care", "Hospitality", "Hotels", "Human Resources", "Human Resources and Staffing", "HVAC", "Import and Export", "Industrial Automation", "Industrial Equipment", "Industrial Manufacturing", "Information Services", "Information Technology", "Insurance", "Interior Design", "Internet", "Internet Service Provider", "Investment Banking", "Investment Management", "IT Consulting", "Janitorial Services", "Jewelry", "Landscaping", "Law Enforcement", "Legal Services", "Leisure and Recreation", "Logistics", "Logistics and Transportation", "Luxury Goods", "Machine Shops", "Machinery Manufacturing", "Management Consulting", "Manufacturing", "Marine", "Market Research", "Marketing", "Mechanical Engineering", "Medical Devices", "Medical Practice", "Mental Health Care", "Mining", "Mobile Applications", "Mortgage Lending", "Motion Pictures", "Museums and Cultural Institutions", "Music", "Network Infrastructure", "Nonprofit", "Nursing Homes", "Oil and Gas", "Online Media", "Packaging", "Paper Manufacturing", "Payroll Services", "Pest Control", "Pet Care", "Pet Products", "Pharmaceuticals", "Photography", "Plastics Manufacturing", "Plumbing", "Printing", "Private Equity", "Professional Services", "Property Management", "Public Relations", "Publishing", "Railroad", "Real Estate", "Recruiting", "Recycling", "Renewable Energy", "Research", "Residential Construction", "Restaurant", "Restaurants", "Retail", "Retail Apparel", "Retail Banking", "Retail Grocery", "Robotics", "Roofing", "Security Services", "Semiconductors", "Senior Living", "Shipping", "Social Media", "Software", "Software and Technology", "Solar Energy", "Sports", "Sports and Recreation", "Staffing and Recruiting", "Storage and Warehousing", "Supermarkets", "Supply Chain", "Technology", "Telecommunications", "Telecommunications Equipment", "Textiles", "Tourism", "Transportation", "Travel", "Travel and Tourism", "Trucking", "Utilities", "Venture Capital", "Veterinary", "Warehousing", "Waste Management", "Water Utilities", "Web Development", "Wholesale", "Wireless Services", "Wine and Spirits", "Accounting Firms", "Ad Agencies", "Aerospace Defense", "Agribusiness", "Air Conditioning", "Airport Operations", "App Development", "Architecture Firms", "Auto Body Shops", "Auto Dealerships", "Auto Repair Shops", "B2B Services", "B2B Sales", "B2C Services", "Banking Services", "Barber Shops", "Beauty Salons", "Bicycle Shops", "Boat Dealers", "Bookstores", "Building Maintenance", "Business Development", "Cable and Internet", "Car Dealerships", "Carpet Cleaning", "Cement and Concrete", "Charities", "Churches and Religious Organizations", "Commercial Cleaning", "Commercial Landscaping", "Commercial Printing", "Community Services", "Computer Repair", "Concrete Contractors", "Convenience Stores", "Corporate Training", "Credit Unions", "Customer Service Outsourcing", "Defense and Space", "Delivery Services", "Dental Laboratories", "Dental Practices", "Dermatology", "Direct Sales", "Dry Cleaning", "Electric Utilities", "Electrical Services", "Employee Benefits", "Employment Services", "Equipment Rental", "Event Planning", "Executive Search", "Fast Food", "Fast Casual Restaurants", "Fine Dining", "Flooring", "Florists", "Food Trucks", "Franchising", "Freight Brokerage", "General Contractors", "Glass and Glazing", "Golf Courses", "Government Contracting", "Grocery Delivery", "Gyms and Fitness Centers", "Hair Salons", "Hardware Stores", "Health Insurance", "Heating and Cooling", "Home Builders", "Home Services", "Hospice", "Hospitality Management", "Hotels and Resorts", "Housekeeping", "Industrial Construction", "Industrial Services", "Insurance Agencies", "Insurance Brokerage", "Internet Marketing", "Land Development", "Laundry Services", "Life Insurance", "Local Government", "Luxury Retail", "Maintenance Services", "Medical Billing", "Medical Laboratories", "Medical Staffing", "Merchant Services", "Metal Fabrication", "Moving Companies", "Municipal Government", "Office Supplies", "Optometry", "Orthodontics", "Outpatient Care", "Painting Contractors", "Parking Services", "Personal Care Services", "Personal Training", "Pet Grooming", "Physical Therapy", "Plumbing Contractors", "Pool Services", "Postal Services", "Property and Casualty Insurance", "Quick Service Restaurants", "Real Estate Brokerage", "Real Estate Development", "Rehabilitation Services", "Residential Services", "Resorts", "Restaurant Groups", "Restaurant Management", "Roofing Contractors", "Sales Consulting", "School Districts", "Schools", "Security Systems", "Self Storage", "Sign Manufacturing", "Skilled Trades", "Solar Installation", "Specialty Retail", "Telecom Sales", "Telemedicine", "Temporary Staffing", "Tire Shops", "Title and Escrow", "Towing", "Trade Shows", "Tree Services", "Uniform Services", "University", "Vehicle Rentals", "Warehouse Distribution", "Waste Collection", "Water Treatment", "Web Design", "Wedding Services", "Welding", "Window and Door", "Wireless Retail", "Wood Products", "Accounting Software", "AdTech", "AgTech", "BioTech", "CleanTech", "Construction Tech", "EdTech", "HealthTech", "HR Tech", "InsurTech", "LegalTech", "MarTech", "PropTech", "Retail Tech", "SaaS", "Telecom Technology", "Cloud Services", "Managed IT Services", "Managed Security Services", "Network Security", "Data Security", "IT Support", "IT Services", "IT Staffing", "Systems Integration", "Enterprise Software", "Consumer Software", "Mobile Software", "Web Hosting", "Domain Services", "Data Science", "Machine Learning", "Generative AI", "Computer Vision", "Blockchain", "Cryptocurrency", "Payments", "Payment Processing", "Point of Sale", "Financial Technology", "Accounting Services", "Tax Services", "Bookkeeping", "Audit Services", "Wealth Management", "Financial Planning", "Credit Services", "Lending", "Consumer Lending", "Commercial Lending", "Mortgage", "Real Estate Investment", "REIT", "Property Insurance", "Claims Management", "Benefits Administration", "Pension Administration", "Retirement Services", "Hospital Systems", "Clinics", "Urgent Care", "Primary Care", "Pediatrics", "Cardiology", "Radiology", "Surgery Centers", "Pharmacies", "Pharmacy Services", "Medical Distribution", "Medical Equipment", "Behavioral Health", "Substance Abuse Treatment", "Counseling Services", "Social Work", "Home Care", "Disability Services", "Elder Care", "Rehabilitation", "Occupational Therapy", "Speech Therapy", "Diagnostics", "Laboratory Services", "Clinical Research", "Contract Research Organizations", "Life Sciences", "Genomics", "Medical Research", "Drug Development", "Veterinary Clinics", "Animal Hospitals", "Pet Boarding", "Animal Shelters", "Food Production", "Food Distribution", "Wholesale Food", "Restaurant Supply", "Hospitality Supply", "Coffee Roasting", "Distilleries", "Wineries", "Soft Drinks", "Bottling", "Dairy Products", "Meat Processing", "Seafood", "Produce Distribution", "Organic Food", "Meal Kits", "School Food Service", "Institutional Food Service", "Hotel Operations", "Vacation Rentals", "Travel Agencies", "Tour Operators", "Cruise Lines", "Theme Parks", "Recreation Centers", "Country Clubs", "Fitness Studios", "Yoga Studios", "Martial Arts", "Sports Teams", "Sports Management", "Ticketing", "Live Events", "Concert Promotion", "Performing Arts", "Theater", "Radio", "Television", "Streaming Media", "Podcasting", "News Media", "Newspapers", "Magazines", "Digital Publishing", "Content Marketing", "Influencer Marketing", "Creative Agencies", "Branding Agencies", "Media Buying", "SEO", "Search Engine Marketing", "Email Marketing", "Marketing Technology", "Public Affairs", "Government Relations", "Political Consulting", "Fundraising", "Nonprofit Management", "Foundations", "Associations", "Membership Organizations", "Religious Institutions", "Higher Education", "K-12 Education", "Preschools", "Vocational Education", "Trade Schools", "Online Education", "Tutoring", "Test Preparation", "Educational Services", "Education Management", "Research Universities", "Community Colleges", "Libraries", "Municipal Services", "Public Administration", "Federal Government", "State Government", "County Government", "Military", "Defense Contractors", "Public Safety", "Fire Departments", "Police Departments", "Emergency Management", "Corrections", "Courts", "Public Works", "Water and Sewer", "Electric Power", "Natural Gas", "Power Generation", "Power Transmission", "Power Distribution", "Renewable Power", "Wind Energy", "Hydroelectric Power", "Nuclear Energy", "Energy Services", "Energy Consulting", "Oilfield Services", "Petroleum Refining", "Pipeline Transportation", "Mining Services", "Metals and Mining", "Steel Manufacturing", "Aluminum Manufacturing", "Foundries", "Fabricated Metal Products", "Industrial Machinery", "Heavy Equipment", "Automotive Suppliers", "Aerospace Components", "Electronics", "Semiconductor Manufacturing", "Consumer Products Manufacturing", "Food Equipment Manufacturing", "Packaging Manufacturing", "Paper and Pulp", "Printing and Packaging", "Chemical Processing", "Specialty Chemicals", "Industrial Chemicals", "Pharmaceutical Manufacturing", "Medical Device Manufacturing", "Furniture", "Cabinetry", "Textile Manufacturing", "Apparel Manufacturing", "Footwear", "Jewelry Manufacturing", "Plastics", "Rubber Products", "Glass Manufacturing", "Ceramics", "Building Products", "Lumber", "Forestry Products", "Residential Real Estate", "Commercial Property", "Industrial Real Estate", "Multifamily Housing", "Property Leasing", "Real Estate Services", "Real Estate Appraisal", "Home Inspection", "Mortgage Services", "Title Services", "Escrow Services", "Construction Management", "Engineering Services", "General Construction", "Specialty Contractors", "Carpentry", "Masonry", "Drywall", "Electrical Contractors", "Mechanical Contractors", "Civil Construction", "Road Construction", "Infrastructure Construction", "Utility Construction", "Heavy Civil Construction", "Excavation", "Demolition", "Concrete", "Paving", "Surveying", "Geotechnical Engineering", "Environmental Engineering", "Architecture Services", "Urban Planning", "Interior Architecture", "Facilities Services", "Building Operations", "Commercial Property Management", "Residential Property Management", "Transportation Services", "Public Transportation", "Bus Transportation", "Rail Transportation", "Air Freight", "Ocean Freight", "Freight Forwarding", "Third Party Logistics", "3PL", "Last Mile Delivery", "Fleet Management", "Transportation Brokerage", "Warehousing and Fulfillment", "Fulfillment Centers", "Cold Storage", "Distribution Centers", "Supply Chain Consulting", "Procurement", "Purchasing", "Wholesale Distribution", "Industrial Distribution", "Technology Distribution", "Consumer Retail", "Department Stores", "Discount Retail", "Home Improvement Retail", "Furniture Retail", "Electronics Retail", "Sporting Goods Retail", "Auto Parts Retail", "Pharmacy Retail", "Convenience Retail", "Fuel Stations", "Gas Stations", "Specialty Stores", "Online Retail", "Marketplace", "Subscription Commerce", "Direct to Consumer", "DTC", "Customer Support", "Contact Centers", "Business Services Outsourcing", "Back Office Services", "Document Management", "Records Management", "Translation Services", "Language Services", "Office Services", "Coworking", "Business Centers", "Corporate Services", "Professional Training", "Leadership Development", "Coaching", "Recruitment Process Outsourcing", "Executive Coaching", "Sales Training", "Security Guard Services", "Private Security", "Alarm Services", "Cybersecurity Services", "Fire and Safety Services", "Workplace Safety", "Occupational Health", "Environmental Health and Safety", "EHS", "Legal Practices", "Law Firms", "Corporate Law", "Litigation", "Personal Injury Law", "Family Law", "Immigration Law", "Criminal Defense", "Employment Law", "Intellectual Property", "Patent Services", "Legal Support Services", "Court Reporting", "Compliance Services", "Regulatory Affairs", "Risk Management", "Quality Assurance", "Quality Control", "Certification Services", "Testing Laboratories", "Inspection Services", "Engineering Testing", "Calibration Services", "Scientific Instruments", "Research and Development", "Product Development", "Industrial Design", "Product Design", "UX Design", "UI Design", "Graphic Arts", "Photography Studios", "Video Production", "Post Production", "Recording Studios", "Music Production", "Talent Agencies", "Modeling Agencies", "Creator Economy", "Digital Media", "Online Communities", "Social Networks", "Gaming Studios", "Esports", "Video Games", "Mobile Games", "Console Games", "Virtual Reality", "Augmented Reality", "Metaverse", "Consumer Internet", "Internet Platforms", "Search", "Online Advertising", "Online Marketplaces", "Delivery Platforms", "Ride Sharing", "Mobility", "Electric Vehicles", "EV Charging", "Autonomous Vehicles", "Fleet Services", "Truck Repair", "Diesel Repair", "Collision Repair", "Auto Detailing", "Motorcycle Dealers", "Marine Dealers", "Boat Services", "Aircraft Maintenance", "Aviation Maintenance", "Charter Aviation", "Private Aviation", "Ground Handling", "Airport Services", "Travel Technology", "Hotel Technology", "Restaurant Technology", "Food Technology", "FoodTech", "Agricultural Technology", "Precision Agriculture", "Farm Equipment", "Seed and Crop", "Crop Protection", "Livestock", "Poultry", "Aquaculture", "Forestry Services", "Landscaping Services", "Lawn Care", "Nurseries", "Garden Centers", "Pest Management", "Waste and Recycling", "Recycling Services", "Hazardous Waste", "Environmental Remediation", "Water Management", "Water Treatment Services", "Wastewater Treatment", "Sustainability Consulting", "ESG Consulting", "Carbon Management", "Solar", "Wind", "Battery Storage", "Energy Storage", "EV Infrastructure", "Renewable Energy Development", "Industrial Automation Systems", "Robotics Automation", "Control Systems", "Process Automation", "Instrumentation", "Internet of Things", "IoT", "Smart Buildings", "Smart Home", "Building Automation", "Security Technology", "Telecommunications Services", "Wireless Communications", "Cable Television", "Fiber Internet", "Broadband", "Network Services", "Telecom Infrastructure", "Cell Towers", "Satellite Communications", "Unified Communications", "VoIP", "Cloud Communications", "Data Communications", "Telecom Equipment", "Network Equipment", "Human Capital Management", "Payroll", "Benefits", "HR Consulting", "Recruiting Agencies", "Staffing Agencies", "Temporary Employment", "Professional Staffing", "Healthcare Staffing", "Technology Staffing", "Light Industrial Staffing", "Executive Recruitment", "Workforce Management", "Background Screening", "Employee Screening", "Employment Verification", "People Analytics", "Workplace Consulting", "Organizational Development", "Diversity and Inclusion Consulting", "Employee Engagement", "Corporate Wellness", "Workplace Benefits", "Franchise Restaurants", "Independent Restaurants", "Casual Dining", "Full Service Restaurants", "Limited Service Restaurants", "Pizza Restaurants", "Burger Restaurants", "Coffee Shops", "Dessert Shops", "Ice Cream Shops", "Juice Bars", "Smoothie Shops", "Bistros", "Delis", "Food Courts", "Bars", "Pubs", "Nightclubs", "Breweries and Taprooms", "Catering Services", "Food Catering", "Corporate Catering", "Event Catering", "Institutional Catering", "Restaurant Equipment", "Kitchen Equipment", "Hospitality Staffing"];
+// Google Places is the primary source for U.S. business addresses and headquarters.
+// IMPORTANT: this uses Google's current Autocomplete Data API (Places API New),
+// not the legacy google.maps.places.Autocomplete class. Google stopped making
+// the legacy Autocomplete class available to new Maps customers in March 2025.
+const GOOGLE_MAPS_API_KEY='AIzaSyAFG0kmiUVY0uWa-NoC9YJFg5X571uVwt0';
+let googleMapsLoadPromise=null;
+let googlePlacesLibraryPromise=null;
+
+function loadGoogleMapsJs(){
+  if(window.google?.maps?.importLibrary)return Promise.resolve();
+  if(googleMapsLoadPromise)return googleMapsLoadPromise;
+
+  googleMapsLoadPromise=new Promise((resolve,reject)=>{
+    const existing=document.getElementById('google-maps-script');
+    if(existing){
+      if(window.google?.maps?.importLibrary){resolve();return}
+      existing.addEventListener('load',()=>resolve(),{once:true});
+      existing.addEventListener('error',()=>reject(new Error('Google Maps JavaScript API failed to load.')),{once:true});
+      return;
+    }
+
+    const script=document.createElement('script');
+    script.id='google-maps-script';
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&v=weekly&loading=async`;
+    script.async=true;
+    script.defer=true;
+    script.onload=()=>resolve();
+    script.onerror=()=>reject(new Error('Google Maps JavaScript API failed to load.'));
+    document.head.appendChild(script);
+  });
+
+  return googleMapsLoadPromise;
+}
+
+async function loadGooglePlaces(){
+  await loadGoogleMapsJs();
+  if(!window.google?.maps?.importLibrary)throw new Error('Google Maps importLibrary is unavailable.');
+  if(!googlePlacesLibraryPromise){
+    googlePlacesLibraryPromise=google.maps.importLibrary('places');
+  }
+  return googlePlacesLibraryPromise;
+}
+
+function newPlaceComponent(place,type,useShort=false){
+  const component=(place?.addressComponents||[]).find(c=>Array.isArray(c.types)&&c.types.includes(type));
+  if(!component)return '';
+  return String(useShort?(component.shortText||component.longText||''):(component.longText||component.shortText||'')).trim();
+}
+
+function cityStateFromNewGooglePlace(place,fallback=''){
+  const city=
+    newPlaceComponent(place,'locality')||
+    newPlaceComponent(place,'postal_town')||
+    newPlaceComponent(place,'administrative_area_level_3')||
+    newPlaceComponent(place,'sublocality')||
+    String(place?.displayName||'').trim();
+  const state=newPlaceComponent(place,'administrative_area_level_1',true);
+  if(city&&state)return `${city}, ${state}`;
+  return city||String(place?.formattedAddress||fallback||'').trim();
+}
+
+function closePlacesBox(box){
+  if(!box)return;
+  box.classList.remove('show');
+  box.innerHTML='';
+}
+
+function setupNewPlacesField({input,box,primaryTypes=null,formatPlace}){
+  let debounceTimer=null;
+  let currentSuggestions=[];
+  let sessionToken=null;
+  let newestRequestId=0;
+  let ready=false;
+  let placesLib=null;
+
+  async function ensureReady(){
+    if(ready&&placesLib)return placesLib;
+    placesLib=await loadGooglePlaces();
+    ready=true;
+    return placesLib;
+  }
+
+  async function renderPredictions(){
+    const query=String(input.value||'').trim();
+    if(query.length<2){
+      closePlacesBox(box);
+      return;
+    }
+
+    const requestId=++newestRequestId;
+
+    try{
+      const lib=await ensureReady();
+      const {AutocompleteSuggestion,AutocompleteSessionToken}=lib;
+      if(!AutocompleteSuggestion||!AutocompleteSessionToken){
+        throw new Error('Places API (New) autocomplete is unavailable.');
+      }
+
+      if(!sessionToken)sessionToken=new AutocompleteSessionToken();
+
+      const request={
+        input:query,
+        includedRegionCodes:['us'],
+        language:'en-US',
+        region:'us',
+        sessionToken
+      };
+      if(Array.isArray(primaryTypes)&&primaryTypes.length){
+        request.includedPrimaryTypes=primaryTypes;
+      }
+
+      const result=await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+      if(requestId!==newestRequestId)return;
+
+      currentSuggestions=(result?.suggestions||[])
+        .filter(s=>s?.placePrediction)
+        .slice(0,8);
+
+      if(!currentSuggestions.length){
+        closePlacesBox(box);
+        return;
+      }
+
+      box.innerHTML=currentSuggestions.map((s,index)=>{
+        const text=String(s.placePrediction?.text?.toString?.()||s.placePrediction?.mainText?.toString?.()||'').trim();
+        return `<button class="suggestion" type="button" data-place-index="${index}">${escapeHtml(text)}</button>`;
+      }).join('');
+      box.classList.add('show');
+    }catch(error){
+      if(requestId!==newestRequestId)return;
+      console.warn('Google Places autocomplete request failed:',error);
+      closePlacesBox(box);
+    }
+  }
+
+  input.addEventListener('input',()=>{
+    clearTimeout(debounceTimer);
+    debounceTimer=setTimeout(renderPredictions,180);
+  });
+
+  input.addEventListener('focus',()=>{
+    if(String(input.value||'').trim().length>=2){
+      clearTimeout(debounceTimer);
+      debounceTimer=setTimeout(renderPredictions,0);
+    }
+  });
+
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Escape')closePlacesBox(box);
+  });
+
+  input.addEventListener('blur',()=>setTimeout(()=>closePlacesBox(box),180));
+
+  box.addEventListener('mousedown',e=>e.preventDefault());
+  box.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-place-index]');
+    if(!button)return;
+    const suggestion=currentSuggestions[Number(button.dataset.placeIndex)];
+    const prediction=suggestion?.placePrediction;
+    if(!prediction)return;
+
+    try{
+      const place=prediction.toPlace();
+      await place.fetchFields({fields:['formattedAddress','addressComponents','displayName']});
+      const nextValue=String(formatPlace(place,input.value)||'').trim();
+      if(nextValue)input.value=nextValue;
+      closePlacesBox(box);
+      currentSuggestions=[];
+      sessionToken=null; // a selection ends this billing session
+      saveDraft();
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(error){
+      console.warn('Could not load the selected Google Place:',error);
+    }
+  });
+
+  // Warm the library in the background so the first keystroke is responsive.
+  ensureReady().catch(error=>console.warn('Google Places initialization failed:',error));
+}
+
+async function setupGooglePlacesAutocomplete(){
+  const addressInput=document.getElementById('business-address');
+  const addressBox=document.getElementById('address-suggestions');
+  const headquartersInput=document.getElementById('headquarters');
+  const cityBox=document.getElementById('city-suggestions');
+
+  // Always keep the manual fallback available for Headquarters. Google is the
+  // primary source, but this means Butner, NC and other small towns can still be
+  // selected if Google is blocked by a browser extension or temporarily fails.
+  setupSuggestions('headquarters','city-suggestions',US_CITIES);
+
+  try{
+    await loadGooglePlaces();
+
+    setupNewPlacesField({
+      input:addressInput,
+      box:addressBox,
+      // Do not over-filter address predictions: street addresses, premises,
+      // suites, and other valid business locations can have different types.
+      primaryTypes:null,
+      formatPlace:(place,fallback)=>place?.formattedAddress||fallback
+    });
+
+    setupNewPlacesField({
+      input:headquartersInput,
+      box:cityBox,
+      primaryTypes:['(cities)'],
+      formatPlace:(place,fallback)=>cityStateFromNewGooglePlace(place,fallback)
+    });
+  }catch(error){
+    console.warn('Google Places unavailable. Manual address entry and Alygnn city fallback remain enabled.',error);
+  }
+}
+
 const US_CITIES=['Albuquerque, NM','Alexandria, VA','Anaheim, CA','Anchorage, AK','Arlington, TX','Arlington, VA','Atlanta, GA','Augusta, GA','Austin, TX','Baltimore, MD','Baton Rouge, LA','Birmingham, AL','Boise, ID','Boston, MA','Buffalo, NY','Burlington, VT','Cary, NC','Charleston, SC','Charlotte, NC','Chattanooga, TN','Chicago, IL','Cincinnati, OH','Cleveland, OH','Colorado Springs, CO','Columbia, SC','Columbus, OH','Dallas, TX','Denver, CO','Des Moines, IA','Detroit, MI','Durham, NC','El Paso, TX','Fayetteville, NC','Fort Lauderdale, FL','Fort Worth, TX','Fresno, CA','Greensboro, NC','Greenville, SC','Hartford, CT','Henderson, NV','Honolulu, HI','Houston, TX','Indianapolis, IN','Irvine, CA','Jackson, MS','Jacksonville, FL','Kansas City, MO','Knoxville, TN','Las Vegas, NV','Lexington, KY','Little Rock, AR','Long Beach, CA','Los Angeles, CA','Louisville, KY','Madison, WI','Memphis, TN','Mesa, AZ','Miami, FL','Milwaukee, WI','Minneapolis, MN','Nashville, TN','New Orleans, LA','New York, NY','Newark, NJ','Norfolk, VA','Oakland, CA','Oklahoma City, OK','Omaha, NE','Orlando, FL','Philadelphia, PA','Phoenix, AZ','Pittsburgh, PA','Plano, TX','Portland, ME','Portland, OR','Providence, RI','Raleigh, NC','Reno, NV','Richmond, VA','Rochester, NY','Sacramento, CA','Salt Lake City, UT','San Antonio, TX','San Diego, CA','San Francisco, CA','San Jose, CA','Savannah, GA','Seattle, WA','St. Louis, MO','St. Petersburg, FL','Syracuse, NY','Tallahassee, FL','Tampa, FL','Toledo, OH','Tucson, AZ','Tulsa, OK','Virginia Beach, VA','Washington, DC','Wilmington, NC','Winston-Salem, NC'];
 const steps=[...document.querySelectorAll('.step')];let current=0;const selectedVoices=new Set();
 const form=document.getElementById('onboarding-form'),message=document.getElementById('message'),nextButton=document.getElementById('next-button'),backButton=document.getElementById('back-button');
@@ -2149,7 +2363,7 @@ window.addEventListener('beforeunload',saveDraft);
   renderCompanyStrengths(DEFAULT_COMPANY_STRENGTHS);
   renderCandidatePriorities(DEFAULT_CANDIDATE);
   setupSuggestions('industry','industry-suggestions',INDUSTRIES);
-  setupSuggestions('headquarters','city-suggestions',US_CITIES);
+  await setupGooglePlacesAutocomplete();
 
   const{data:{session},error:sessionError}=await sb.auth.getSession();
 
