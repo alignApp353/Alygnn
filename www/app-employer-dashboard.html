@@ -5492,6 +5492,38 @@
             </span>
             <span class="settings-chevron">›</span>
           </button>
+        </section>
+
+        <div class="section-kicker">Account</div>
+        <section class="section">
+          <button class="settings-link" id="security-settings" type="button">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z"></path><path d="M9.5 12 11 13.5 14.8 9.7"></path></svg></span>
+              <span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button class="settings-link" id="privacy-settings" type="button">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4C7 4 3.5 8 2.5 12c1 4 4.5 8 9.5 8s8.5-4 9.5-8c-1-4-4.5-8-9.5-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+              <span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button class="settings-link" id="support-settings" type="button">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.7 9a2.5 2.5 0 0 1 4.8.8c0 1.8-2.5 2.2-2.5 4M12 17.2h.01"></path></svg></span>
+              <span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button class="settings-link" id="about-settings" type="button">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 10.5V17M12 7h.01"></path></svg></span>
+              <span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
           <button class="settings-link" id="appearance-settings-toggle" type="button" aria-expanded="false" aria-controls="appearance-settings-panel">
             <span class="settings-icon-label">
               <span class="settings-icon" aria-hidden="true">
@@ -5530,38 +5562,6 @@
             </div>
             <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
           </div>
-        </section>
-
-        <div class="section-kicker">Account</div>
-        <section class="section">
-          <button class="settings-link" id="security-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z"></path><path d="M9.5 12 11 13.5 14.8 9.7"></path></svg></span>
-              <span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
-          </button>
-          <button class="settings-link" id="privacy-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4C7 4 3.5 8 2.5 12c1 4 4.5 8 9.5 8s8.5-4 9.5-8c-1-4-4.5-8-9.5-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
-              <span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
-          </button>
-          <button class="settings-link" id="support-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.7 9a2.5 2.5 0 0 1 4.8.8c0 1.8-2.5 2.2-2.5 4M12 17.2h.01"></path></svg></span>
-              <span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
-          </button>
-          <button class="settings-link" id="about-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 10.5V17M12 7h.01"></path></svg></span>
-              <span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
-          </button>
         </section>
 
         <section class="section">
@@ -7204,6 +7204,52 @@
       return y;
     }
 
+    async function saveResumeBlob(blob,fileName){
+      if(!blob){
+        throw new Error('No resume file was created.');
+      }
+
+      const safeName = String(fileName || 'candidate-resume.pdf')
+        .replace(/[^a-z0-9._-]+/gi,'-');
+
+      try{
+        const file = new File(
+          [blob],
+          safeName,
+          {type:blob.type || 'application/pdf'}
+        );
+
+        if(
+          navigator.share &&
+          navigator.canShare &&
+          navigator.canShare({files:[file]})
+        ){
+          await navigator.share({
+            files:[file],
+            title:safeName
+          });
+          return true;
+        }
+      }catch(error){
+        // If the native share sheet is dismissed or unavailable, fall back
+        // to a normal browser download below.
+        console.warn('Native resume save fallback:',error);
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = safeName;
+      link.rel = 'noopener';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),15000);
+      return true;
+    }
+
     async function downloadCandidateResumePdf(data){
       if(
         !window.jspdf ||
@@ -7484,7 +7530,8 @@
           .toLowerCase() +
         '-resume.pdf';
 
-      doc.save(fileName);
+      const pdfBlob = doc.output('blob');
+      await saveResumeBlob(pdfBlob,fileName);
     }
 
     async function resolveCandidateResumeUrl(data){
@@ -16061,31 +16108,23 @@
         const blob =
           await response.blob();
 
-        const objectUrl =
-          URL.createObjectURL(blob);
+        const extension = (()=>{
+          const type = String(blob.type || '').toLowerCase();
+          if(type.includes('pdf')) return '.pdf';
+          if(type.includes('wordprocessingml')) return '.docx';
+          if(type.includes('msword')) return '.doc';
+          return '';
+        })();
 
-        const link =
-          document.createElement('a');
-
-        link.href =
-          objectUrl;
-
-        link.download =
+        const fileName =
           (data.name || 'candidate')
             .replace(/[^a-z0-9]+/gi,'-')
-          + '-resume';
+            .replace(/^-|-$/g,'')
+            .toLowerCase()
+          + '-resume'
+          + extension;
 
-        document.body.appendChild(
-          link
-        );
-
-        link.click();
-        link.remove();
-
-        setTimeout(
-          ()=>URL.revokeObjectURL(objectUrl),
-          1000
-        );
+        await saveResumeBlob(blob,fileName);
 
       }catch(error){
         console.error(
@@ -16246,13 +16285,17 @@
           return;
         }
 
-        const link = document.createElement('a');
-        link.href = resumeUrl;
-        link.download = (data.name || 'candidate').replace(/[^a-z0-9]+/gi,'-') + '-resume';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        const response = await fetch(resumeUrl);
+        if(!response.ok){
+          throw new Error('Could not download the stored resume.');
+        }
+        const blob = await response.blob();
+        const extension = String(blob.type || '').toLowerCase().includes('pdf') ? '.pdf' : '';
+        const fileName = (data.name || 'candidate')
+          .replace(/[^a-z0-9]+/gi,'-')
+          .replace(/^-|-$/g,'')
+          .toLowerCase() + '-resume' + extension;
+        await saveResumeBlob(blob,fileName);
       }catch(error){
         console.error('Could not download candidate resume:',error);
         toast('Could not download this resume.');
