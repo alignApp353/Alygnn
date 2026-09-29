@@ -140,6 +140,23 @@
   .suggestion-correction strong { font-weight: 700; }
   .rank-remove { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; }
   .rank-remove:hover { background: rgba(215,154,154,.15); color: #a05858; }
+
+  /* Company Strengths only: make the remove action obvious, matching the phone UI. */
+  .step[data-title="Company Strengths"] .rank-remove {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(215,154,154,.52);
+    border-radius: 11px;
+    background: rgba(215,154,154,.08);
+    color: #a05858;
+    font-size: 19px;
+    font-weight: 600;
+  }
+  .step[data-title="Company Strengths"] .rank-remove:hover {
+    border-color: rgba(215,154,154,.8);
+    background: rgba(215,154,154,.16);
+    color: #8f4747;
+  }
   .rank-item { grid-template-columns: 34px 1fr auto auto; }
 
   .overview-grid { display: grid; gap: 14px; margin-top: 24px; }
@@ -325,6 +342,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
 
 const VOICES=['Professional','Friendly','Modern','Direct','Formal','Energetic'];
 const COMPANY_STRENGTH_OPTIONS=['Career Growth','Competitive Pay','Company Culture','Learning & Development','Performance & Recognition','Meaningful Work','Innovation','Work-Life Balance','Flexible Scheduling','Remote Work','Strong Leadership','Mentorship','Fast Advancement','Job Stability','Great Benefits','Health & Wellness','Employee Ownership','Team Collaboration','Inclusive Workplace','Community Impact','Mission-Driven Work','Autonomy','Cutting-Edge Technology','Training Programs','Recognition & Rewards','Paid Time Off','Family-Friendly Culture','Travel Opportunities','Entrepreneurial Environment','Communication','Transparent Communication','Career Mobility'];
+const DEFAULT_COMPANY_STRENGTHS=['Career Growth','Company Culture','Performance & Recognition','Meaningful Work','Work-Life Balance'];
 const CANDIDATE_PRIORITY_OPTIONS=['Technical Skills','Soft Skills','Experience','Communication','Culture Fit','Reliability','Leadership','Availability','Problem Solving','Critical Thinking','Coachability','Work Ethic','Adaptability','Teamwork','Customer Service','Sales Ability','Attention to Detail','Initiative','Time Management','Creativity','Professionalism','Education','Certifications','Industry Knowledge','Results Orientation','Accountability','Emotional Intelligence','Learning Agility','Organization','Decision Making'];
 const INDUSTRIES=['Accounting','Advertising and Marketing','Agriculture','Architecture and Design','Automotive','Banking','Biotechnology','Construction','Consulting','Consumer Services','Education','Energy and Utilities','Engineering','Entertainment and Media','Financial Services','Food and Beverage','Government','Healthcare','Hospitality','Human Resources and Staffing','Insurance','Legal Services','Logistics and Transportation','Manufacturing','Nonprofit','Pharmaceuticals','Professional Services','Real Estate','Retail','Software and Technology','Telecommunications','Travel and Tourism','Wholesale','Wireless Services','Internet Service Provider','Fiber Optics','Network Infrastructure','Telecommunications Equipment'];
 
@@ -1443,6 +1461,7 @@ window.addEventListener('beforeunload',saveDraft);
   document.body.classList.add('onboarding-ready');
 
   if(!restoreDraft()){
+    renderRankList('company-priorities',DEFAULT_COMPANY_STRENGTHS);
     if(profile?.company_name) document.getElementById('company-name').value=profile.company_name;
     if(profile?.company_website) document.getElementById('website').value=profile.company_website;
     if(profile?.company_phone) document.getElementById('business-phone').value=formatUsPhone(profile.company_phone);
