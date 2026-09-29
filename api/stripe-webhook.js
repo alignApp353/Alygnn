@@ -466,10 +466,17 @@ async function fulfillCheckout(session) {
   }
 
   if (product === 'weekly_slot') {
+    const paymentReference =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : (session.payment_intent?.id || session.id);
+
     await rpc('grant_weekly_job_slot', {
       p_employer_id: employerId,
-      p_payment_reference: session.id,
-      p_amount_cents: session.amount_total || 9900,
+      p_payment_reference: paymentReference,
+      p_amount_cents: Number.isFinite(Number(session.amount_total))
+        ? Number(session.amount_total)
+        : 9900,
       p_days: 7
     });
     return;
@@ -635,19 +642,27 @@ async function handleInvoicePaymentProblem(invoice, reason) {
 
   const subscription = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`);
   const meta=subscription.metadata||{};
-  if (String(meta.product||'').toLowerCase() !== 'job_plan' || !meta.employer_id) return;
+  const product=String(meta.product||'').toLowerCase();
+  if(!meta.employer_id)return;
 
-  await setCandidateAccessLock(meta.employer_id, true, reason || 'payment_failed', 'past_due');
-  await upsertPlan({
-    employerId: meta.employer_id,
-    plan: meta.plan,
-    billing: meta.billing || 'monthly',
-    status: 'past_due',
-    periodEnd: subscription.current_period_end,
-    subscriptionId: subscription.id,
-    customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
-    scheduleId: typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id
-  });
+  if(product==='job_plan'){
+    await setCandidateAccessLock(meta.employer_id, true, reason || 'payment_failed', 'past_due');
+    await upsertPlan({
+      employerId: meta.employer_id,
+      plan: meta.plan,
+      billing: meta.billing || 'monthly',
+      status: 'past_due',
+      periodEnd: subscription.current_period_end,
+      subscriptionId: subscription.id,
+      customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
+      scheduleId: typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id
+    });
+    return;
+  }
+
+  if(['additional_slot','single_job','team_seat'].includes(product)){
+    await fulfillSubscription(subscription,'past_due');
+  }
 }
 
 module.exports = async function handler(req, res) {
