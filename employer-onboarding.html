@@ -142,7 +142,8 @@
   .rank-remove:hover { background: rgba(215,154,154,.15); color: #a05858; }
 
   /* Company Strengths only: make the remove action obvious, matching the phone UI. */
-  .step[data-title="Company Strengths"] .rank-remove {
+  .step[data-title="Company Strengths"] .rank-remove,
+  .step[data-title="Hiring Priorities"] .rank-remove {
     width: 36px;
     height: 36px;
     border: 1px solid rgba(215,154,154,.52);
@@ -152,7 +153,8 @@
     font-size: 19px;
     font-weight: 600;
   }
-  .step[data-title="Company Strengths"] .rank-remove:hover {
+  .step[data-title="Company Strengths"] .rank-remove:hover,
+  .step[data-title="Hiring Priorities"] .rank-remove:hover {
     border-color: rgba(215,154,154,.8);
     background: rgba(215,154,154,.16);
     color: #8f4747;
@@ -264,7 +266,7 @@
 
 <div class="step" data-title="Hiring Priorities">
   <div class="eyebrow">Hiring priorities</div><h1>What matters most when hiring?</h1>
-  <p class="intro">Choose 5 things your hiring team values most. Start typing to search the list, or add your own priority. Then rank the five from most important to least important.</p>
+  <p class="intro">We started you with exactly 5 hiring priorities. Reorder them from most important to least important, or remove one and replace it with your own.</p>
   <div class="rank-picker">
     <div class="rank-input-row suggest-wrap">
       <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Start typing a hiring priority">
@@ -344,6 +346,7 @@ const VOICES=['Professional','Friendly','Modern','Direct','Formal','Energetic'];
 const COMPANY_STRENGTH_OPTIONS=['Career Growth','Competitive Pay','Company Culture','Learning & Development','Performance & Recognition','Meaningful Work','Innovation','Work-Life Balance','Flexible Scheduling','Remote Work','Strong Leadership','Mentorship','Fast Advancement','Job Stability','Great Benefits','Health & Wellness','Employee Ownership','Team Collaboration','Inclusive Workplace','Community Impact','Mission-Driven Work','Autonomy','Cutting-Edge Technology','Training Programs','Recognition & Rewards','Paid Time Off','Family-Friendly Culture','Travel Opportunities','Entrepreneurial Environment','Communication','Transparent Communication','Career Mobility'];
 const DEFAULT_COMPANY_STRENGTHS=['Career Growth','Company Culture','Performance & Recognition','Meaningful Work','Work-Life Balance'];
 const CANDIDATE_PRIORITY_OPTIONS=['Technical Skills','Soft Skills','Experience','Communication','Culture Fit','Reliability','Leadership','Availability','Problem Solving','Critical Thinking','Coachability','Work Ethic','Adaptability','Teamwork','Customer Service','Sales Ability','Attention to Detail','Initiative','Time Management','Creativity','Professionalism','Education','Certifications','Industry Knowledge','Results Orientation','Accountability','Emotional Intelligence','Learning Agility','Organization','Decision Making'];
+const DEFAULT_HIRING_PRIORITIES=['Communication','Reliability','Problem Solving','Coachability','Work Ethic'];
 const INDUSTRIES=['Accounting','Advertising and Marketing','Agriculture','Architecture and Design','Automotive','Banking','Biotechnology','Construction','Consulting','Consumer Services','Education','Energy and Utilities','Engineering','Entertainment and Media','Financial Services','Food and Beverage','Government','Healthcare','Hospitality','Human Resources and Staffing','Insurance','Legal Services','Logistics and Transportation','Manufacturing','Nonprofit','Pharmaceuticals','Professional Services','Real Estate','Retail','Software and Technology','Telecommunications','Travel and Tourism','Wholesale','Wireless Services','Internet Service Provider','Fiber Optics','Network Infrastructure','Telecommunications Equipment'];
 
 // Google Places is the primary source for U.S. business addresses and headquarters.
@@ -1462,6 +1465,7 @@ window.addEventListener('beforeunload',saveDraft);
 
   if(!restoreDraft()){
     renderRankList('company-priorities',DEFAULT_COMPANY_STRENGTHS);
+    renderRankList('candidate-priorities',DEFAULT_HIRING_PRIORITIES);
     if(profile?.company_name) document.getElementById('company-name').value=profile.company_name;
     if(profile?.company_website) document.getElementById('website').value=profile.company_website;
     if(profile?.company_phone) document.getElementById('business-phone').value=formatUsPhone(profile.company_phone);
