@@ -4774,6 +4774,107 @@
   }
 </style>
 
+
+<style id="alygnn-restored-settings-tools">
+  .restored-settings-sheet .sheet-panel{
+    max-height:88vh;
+  }
+  .restored-settings-stack{
+    display:grid;
+    gap:12px;
+    margin-top:16px;
+  }
+  .restored-settings-card{
+    padding:16px;
+    border:1px solid var(--border-soft);
+    border-radius:18px;
+    background:var(--card);
+  }
+  .restored-settings-card h3{
+    font-size:14px;
+    font-weight:900;
+  }
+  .restored-settings-card p{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.55;
+  }
+  .restored-settings-card label{
+    display:block;
+    margin:13px 0 6px;
+    font-size:10px;
+    font-weight:900;
+    color:var(--text);
+  }
+  .restored-settings-card select,
+  .restored-settings-card textarea{
+    width:100%;
+    border:1px solid var(--border);
+    border-radius:13px;
+    background:var(--card);
+    color:var(--text);
+    outline:none;
+  }
+  .restored-settings-card select{
+    min-height:46px;
+    padding:0 12px;
+  }
+  .restored-settings-card textarea{
+    min-height:130px;
+    padding:12px;
+    resize:vertical;
+  }
+  .restored-settings-actions{
+    display:flex;
+    gap:9px;
+    flex-wrap:wrap;
+    margin-top:14px;
+  }
+  .restored-settings-actions button,
+  .restored-settings-actions a{
+    min-height:44px;
+    padding:0 14px;
+    border-radius:13px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    font-size:11px;
+    font-weight:900;
+  }
+  .restored-settings-primary{
+    border:0;
+    background:var(--brand-dark);
+    color:#fff;
+  }
+  .restored-settings-secondary{
+    border:1px solid var(--border);
+    background:var(--card);
+    color:var(--text);
+  }
+  .restored-settings-message{
+    min-height:18px;
+    margin-top:10px;
+    font-size:11px;
+    line-height:1.45;
+    color:var(--muted);
+  }
+  .restored-settings-message.success{color:var(--green)}
+  .restored-settings-message.error{color:var(--danger)}
+  .about-version{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:12px 0;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .about-version:last-child{border-bottom:0}
+  .about-version strong{font-size:12px}
+  .about-version span{font-size:11px;color:var(--muted)}
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
   <div class="loading" id="loading" aria-label="Alygnn is loading">
@@ -6188,6 +6289,83 @@
 
     <div class="toolbar">
       <button class="secondary-btn" id="close-privacy-sheet" type="button">Done</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="sheet restored-settings-sheet" id="support-sheet" hidden>
+  <div class="sheet-panel">
+    <div class="sheet-grip"></div>
+    <button class="icon-btn" id="close-support-sheet" style="float:right" type="button" aria-label="Close help and support">×</button>
+    <h2 class="sheet-title">Help &amp; support</h2>
+    <p class="sheet-sub">Send the Alygnn team a message without leaving the app.</p>
+
+    <div class="restored-settings-stack">
+      <section class="restored-settings-card">
+        <h3>Contact Alygnn</h3>
+        <p id="support-account-context">We’ll include your signed-in account email with your message.</p>
+
+        <label for="support-category">What do you need help with?</label>
+        <select id="support-category">
+          <option>Account &amp; login</option>
+          <option>Employer verification</option>
+          <option>Billing &amp; plan</option>
+          <option>Team access</option>
+          <option>Jobs &amp; candidates</option>
+          <option>Report a problem</option>
+          <option>Privacy request</option>
+          <option>Other</option>
+        </select>
+
+        <label for="support-message-input">Message</label>
+        <textarea id="support-message-input" maxlength="4000" placeholder="Tell us what happened or what you need help with."></textarea>
+
+        <div class="restored-settings-actions">
+          <button class="restored-settings-primary" id="send-support-message" type="button">Send message</button>
+        </div>
+        <div class="restored-settings-message" id="support-message-status"></div>
+      </section>
+
+      <section class="restored-settings-card">
+        <h3>Email support</h3>
+        <p>You can also contact Alygnn directly.</p>
+        <div class="restored-settings-actions">
+          <a class="restored-settings-secondary" href="mailto:admin@alygnn.com?subject=Alygnn%20Employer%20Support">admin@alygnn.com</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="sheet restored-settings-sheet" id="about-sheet" hidden>
+  <div class="sheet-panel">
+    <div class="sheet-grip"></div>
+    <button class="icon-btn" id="close-about-sheet" style="float:right" type="button" aria-label="Close about Alygnn">×</button>
+    <h2 class="sheet-title">About Alygnn</h2>
+    <p class="sheet-sub">Employer workspace information and legal resources.</p>
+
+    <div class="restored-settings-stack">
+      <section class="restored-settings-card">
+        <div class="about-version"><strong>Product</strong><span>Alygnn Employer Workspace</span></div>
+        <div class="about-version"><strong>Workspace version</strong><span>V5</span></div>
+      </section>
+
+      <section class="restored-settings-card">
+        <h3>Legal</h3>
+        <div class="restored-settings-actions">
+          <button class="restored-settings-secondary" id="about-privacy-policy" type="button">Privacy Policy</button>
+          <button class="restored-settings-secondary" id="about-terms" type="button">Terms of Use</button>
+        </div>
+      </section>
+
+      <section class="restored-settings-card">
+        <h3>Support</h3>
+        <p>Need help with your employer account or workspace?</p>
+        <div class="restored-settings-actions">
+          <button class="restored-settings-primary" id="about-open-support" type="button">Contact support</button>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -15794,30 +15972,12 @@
 
       location.href='app-employer-billing.html';
     };
-    $('security-settings').onclick = async () => {
-      const sheet=$('security-sheet');
-      const emailNode=$('security-account-email');
-
-      try{
-        const {data:{session}}=await sb.auth.getSession();
-        if(emailNode){
-          emailNode.textContent=
-            session?.user?.email||
-            state.currentUser?.email||
-            'No email available';
-        }
-      }catch(_){
-        if(emailNode)emailNode.textContent='Unable to load email';
-      }
-
-      sheet.hidden=false;
-    };
+    $('security-settings').onclick = () => { location.href='app-employer-account-security.html'; };
 
     $('privacy-settings').onclick = () => {
       $('privacy-sheet').hidden=false;
     };
 
-    $('close-security-sheet').onclick=()=>{$('security-sheet').hidden=true};
     $('close-privacy-sheet').onclick=()=>{$('privacy-sheet').hidden=true};
 
     $('security-sheet').addEventListener('click',event=>{
@@ -15865,8 +16025,85 @@
     $('open-terms-policy').onclick=()=>{
       location.href='terms.html?from=employer-app';
     };
-    $('support-settings').onclick = () => toast('Help and support will connect here.');
-    $('about-settings').onclick = () => toast('Alygnn Employer Workspace V5');
+    $('support-settings').onclick = async () => {
+      const sheet=$('support-sheet');
+      const context=$('support-account-context');
+      const status=$('support-message-status');
+      if(status){status.textContent='';status.className='restored-settings-message';}
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        const email=session?.user?.email||state.currentUser?.email||'this Alygnn account';
+        if(context)context.textContent=`Signed in as ${email}. We’ll include this account context with your message.`;
+      }catch(_){}
+      sheet.hidden=false;
+    };
+
+    $('close-support-sheet').onclick=()=>{$('support-sheet').hidden=true};
+    $('support-sheet').addEventListener('click',event=>{
+      if(event.target===$('support-sheet'))$('support-sheet').hidden=true;
+    });
+
+    $('send-support-message').onclick=async()=>{
+      const button=$('send-support-message');
+      const status=$('support-message-status');
+      const category=String($('support-category').value||'Other');
+      const message=String($('support-message-input').value||'').trim();
+
+      status.textContent='';
+      status.className='restored-settings-message';
+
+      if(message.length<10){
+        status.textContent='Tell us a little more so the Alygnn team can help.';
+        status.className='restored-settings-message error';
+        return;
+      }
+
+      const original=button.textContent;
+      button.disabled=true;
+      button.textContent='Sending…';
+
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        const email=String(session?.user?.email||state.currentUser?.email||'').trim();
+        const name=String(
+          session?.user?.user_metadata?.full_name||
+          session?.user?.user_metadata?.name||
+          email.split('@')[0]||
+          'Alygnn Employer'
+        ).trim();
+
+        if(!email)throw new Error('Your signed-in email could not be found.');
+
+        const body=`[Employer support: ${category}]\n\n${message}`;
+
+        const {error}=await sb.functions.invoke('send-contact-message',{
+          body:{name,email,message:body}
+        });
+        if(error)throw error;
+
+        $('support-message-input').value='';
+        status.textContent='Message sent. The Alygnn team will reply to your account email.';
+        status.className='restored-settings-message success';
+      }catch(error){
+        console.error('Employer support message failed:',error);
+        status.textContent='Could not send the message right now. You can email admin@alygnn.com below.';
+        status.className='restored-settings-message error';
+      }finally{
+        button.disabled=false;
+        button.textContent=original;
+      }
+    };
+    $('about-settings').onclick=()=>{$('about-sheet').hidden=false};
+    $('close-about-sheet').onclick=()=>{$('about-sheet').hidden=true};
+    $('about-sheet').addEventListener('click',event=>{
+      if(event.target===$('about-sheet'))$('about-sheet').hidden=true;
+    });
+    $('about-privacy-policy').onclick=()=>{location.href='privacy.html?from=employer-app'};
+    $('about-terms').onclick=()=>{location.href='terms.html?from=employer-app'};
+    $('about-open-support').onclick=()=>{
+      $('about-sheet').hidden=true;
+      $('support-settings').click();
+    };
     $('notifications-btn').onclick = () => {
       renderNotifications();
       $('notifications-sheet').hidden = false;
