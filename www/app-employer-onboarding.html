@@ -264,6 +264,13 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
 .message{display:none;margin-top:16px;padding:13px 14px;border-radius:14px;font-size:12px;font-weight:800;line-height:1.5}.message.error{display:block;background:var(--danger-bg);color:var(--danger)}.message.success{display:block;background:var(--success-bg);color:var(--success)}
 .actions{display:flex;gap:10px;margin-top:25px}.btn{min-height:54px;border-radius:16px;font-size:13px;font-weight:900}.back{width:120px;border:1px solid var(--border);background:#fff;color:var(--text)}.next{flex:1;border:0;background:var(--dark);color:#fff}.btn:disabled{opacity:.6;cursor:not-allowed}
 @media(max-width:590px){.shell{padding-left:14px;padding-right:14px}.card{padding:21px;border-radius:23px}.grid,.choice-grid{grid-template-columns:1fr}.actions{position:sticky;bottom:8px;z-index:30;padding:10px;background:rgba(246,248,247,.94);backdrop-filter:blur(14px);border:1px solid rgba(221,227,232,.75);border-radius:18px}.back{width:92px}h1{font-size:27px}.secure{font-size:10px}.rank-item{grid-template-columns:32px 1fr auto}.company-strength-item{grid-template-columns:32px 1fr auto auto!important}.move{display:none}.strength-add-row{grid-template-columns:1fr auto}.strength-add-btn{min-width:72px;padding:0 12px}}
+
+  #address-suggestions{
+    z-index:120!important;
+    max-height:260px;
+    overflow:auto;
+  }
+
 </style>
 </head>
 <body>
@@ -295,7 +302,7 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
   <div class="grid">
     <div class="field"><label class="required" for="business-phone">Business phone number</label><input id="business-phone" name="business_phone" required type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(919) 555-0123"></div>
     <div class="field"><label class="required" for="business-email">Business email</label><input id="business-email" name="business_email" required type="email" autocomplete="email" placeholder="admin@yourcompany.com"></div>
-    <div class="field suggest-wrap"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="street-address" placeholder="Start typing a U.S. street address"><div id="address-suggestions" class="suggestions"></div></div>
+    <div class="field suggest-wrap"><label class="required" for="business-address">Business address</label><input id="business-address" name="business_address" required autocomplete="off" aria-autocomplete="list" aria-controls="address-suggestions" aria-expanded="false" placeholder="Start typing a U.S. street address"><div id="address-suggestions" class="suggestions"></div></div>
     <div class="field suggest-wrap"><label class="required" for="industry">Industry</label><input id="industry" name="industry" required autocomplete="off" placeholder="Start typing an industry"><div id="industry-suggestions" class="suggestions"></div></div>
     <div class="field"><label class="required" for="company-size">Company size</label><select id="company-size" name="company_size" required><option value="">Select size</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>501–1,000</option><option>1,001+</option></select></div>
     <div class="field suggest-wrap"><label class="required" for="headquarters">Headquarters</label><input id="headquarters" name="headquarters" required autocomplete="off" placeholder="Start typing a U.S. city or town"><div id="city-suggestions" class="suggestions"></div></div>
@@ -797,6 +804,178 @@ async function setupGooglePlacesAutocomplete(){
   }catch(error){
     console.warn('Google Places unavailable. Manual address entry and Alygnn city fallback remain enabled.',error);
   }
+}
+
+
+const ADDRESS_AUTOCOMPLETE_ENDPOINT='https://alygnn.com/api/address-autocomplete';
+
+function alygnnAddressSessionToken(){
+  try{
+    const key='alygnn_address_session_token';
+    let value=sessionStorage.getItem(key);
+    if(!value){
+      value='addr_'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+      value=value.replace(/[^A-Za-z0-9_-]/g,'').slice(0,36);
+      sessionStorage.setItem(key,value);
+    }
+    return value;
+  }catch{
+    return ('addr_'+Date.now().toString(36)).slice(0,36);
+  }
+}
+
+function closeBusinessAddressSuggestions(){
+  const box=document.getElementById('address-suggestions');
+  const input=document.getElementById('business-address');
+  if(box){
+    box.classList.remove('show');
+    box.innerHTML='';
+  }
+  if(input)input.setAttribute('aria-expanded','false');
+}
+
+async function alygnnAddressRequest(payload,signal){
+  const {data:{session}}=await sb.auth.getSession();
+  const token=session?.access_token;
+  if(!token)throw new Error('Your Alygnn session expired. Please sign in again.');
+
+  const response=await fetch(ADDRESS_AUTOCOMPLETE_ENDPOINT,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+token
+    },
+    body:JSON.stringify(payload),
+    signal
+  });
+
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){
+    throw new Error(data?.error||'Address suggestions are temporarily unavailable.');
+  }
+  return data;
+}
+
+function setupBusinessAddressAutocomplete(){
+  const input=document.getElementById('business-address');
+  const box=document.getElementById('address-suggestions');
+  if(!input||!box)return;
+
+  let timer=null;
+  let controller=null;
+  let currentSuggestions=[];
+  let suppress=false;
+
+  function render(items){
+    currentSuggestions=Array.isArray(items)?items:[];
+    if(!currentSuggestions.length){
+      closeBusinessAddressSuggestions();
+      return;
+    }
+
+    box.innerHTML=currentSuggestions.map((item,index)=>`
+      <button
+        class="suggestion"
+        type="button"
+        data-address-index="${index}">
+        <strong style="display:block;font-weight:700">${escapeHtml(item.main_text||item.text||'Address')}</strong>
+        ${item.secondary_text?`<span style="display:block;margin-top:2px;font-size:11px;color:var(--text-muted)">${escapeHtml(item.secondary_text)}</span>`:''}
+      </button>
+    `).join('')+`
+      <div style="padding:8px 12px;font-size:10px;color:var(--text-muted);text-align:right" translate="no">Google Maps</div>
+    `;
+
+    box.classList.add('show');
+    input.setAttribute('aria-expanded','true');
+  }
+
+  async function loadSuggestions(){
+    if(suppress)return;
+
+    const query=String(input.value||'').trim();
+    if(query.length<3){
+      closeBusinessAddressSuggestions();
+      return;
+    }
+
+    if(controller)controller.abort();
+    controller=new AbortController();
+
+    box.innerHTML='<div style="padding:12px 14px;color:var(--text-muted);font-size:12px">Finding addresses…</div>';
+    box.classList.add('show');
+    input.setAttribute('aria-expanded','true');
+
+    try{
+      const result=await alygnnAddressRequest({
+        action:'suggest',
+        input:query,
+        country:'US',
+        session_token:alygnnAddressSessionToken()
+      },controller.signal);
+
+      render(result?.suggestions||[]);
+    }catch(error){
+      if(error?.name==='AbortError')return;
+      console.warn('Business address autocomplete:',error);
+      closeBusinessAddressSuggestions();
+    }
+  }
+
+  input.addEventListener('input',()=>{
+    if(suppress){
+      suppress=false;
+      return;
+    }
+    clearTimeout(timer);
+    timer=setTimeout(loadSuggestions,180);
+  });
+
+  input.addEventListener('focus',()=>{
+    if(String(input.value||'').trim().length>=3){
+      clearTimeout(timer);
+      timer=setTimeout(loadSuggestions,0);
+    }
+  });
+
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Escape')closeBusinessAddressSuggestions();
+  });
+
+  input.addEventListener('blur',()=>{
+    setTimeout(closeBusinessAddressSuggestions,180);
+  });
+
+  box.addEventListener('mousedown',event=>event.preventDefault());
+
+  box.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-address-index]');
+    if(!button)return;
+
+    const item=currentSuggestions[Number(button.dataset.addressIndex)];
+    if(!item?.place_id)return;
+
+    try{
+      suppress=true;
+      input.value=item.text||item.main_text||input.value;
+      closeBusinessAddressSuggestions();
+
+      const result=await alygnnAddressRequest({
+        action:'details',
+        place_id:item.place_id,
+        session_token:alygnnAddressSessionToken()
+      });
+
+      const address=result?.address||{};
+      const full=String(address.formatted_address||'').trim();
+      if(full)input.value=full;
+
+      if(typeof saveDraft==='function')saveDraft();
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(error){
+      console.warn('Could not load selected business address:',error);
+      suppress=false;
+    }
+  });
 }
 
 const US_CITIES=['Albuquerque, NM','Alexandria, VA','Anaheim, CA','Anchorage, AK','Arlington, TX','Arlington, VA','Atlanta, GA','Augusta, GA','Austin, TX','Baltimore, MD','Baton Rouge, LA','Birmingham, AL','Boise, ID','Boston, MA','Buffalo, NY','Burlington, VT','Cary, NC','Charleston, SC','Charlotte, NC','Chattanooga, TN','Chicago, IL','Cincinnati, OH','Cleveland, OH','Colorado Springs, CO','Columbia, SC','Columbus, OH','Dallas, TX','Denver, CO','Des Moines, IA','Detroit, MI','Durham, NC','El Paso, TX','Fayetteville, NC','Fort Lauderdale, FL','Fort Worth, TX','Fresno, CA','Greensboro, NC','Greenville, SC','Hartford, CT','Henderson, NV','Honolulu, HI','Houston, TX','Indianapolis, IN','Irvine, CA','Jackson, MS','Jacksonville, FL','Kansas City, MO','Knoxville, TN','Las Vegas, NV','Lexington, KY','Little Rock, AR','Long Beach, CA','Los Angeles, CA','Louisville, KY','Madison, WI','Memphis, TN','Mesa, AZ','Miami, FL','Milwaukee, WI','Minneapolis, MN','Nashville, TN','New Orleans, LA','New York, NY','Newark, NJ','Norfolk, VA','Oakland, CA','Oklahoma City, OK','Omaha, NE','Orlando, FL','Philadelphia, PA','Phoenix, AZ','Pittsburgh, PA','Plano, TX','Portland, ME','Portland, OR','Providence, RI','Raleigh, NC','Reno, NV','Richmond, VA','Rochester, NY','Sacramento, CA','Salt Lake City, UT','San Antonio, TX','San Diego, CA','San Francisco, CA','San Jose, CA','Savannah, GA','Seattle, WA','St. Louis, MO','St. Petersburg, FL','Syracuse, NY','Tallahassee, FL','Tampa, FL','Toledo, OH','Tucson, AZ','Tulsa, OK','Virginia Beach, VA','Washington, DC','Wilmington, NC','Winston-Salem, NC'];
@@ -2363,7 +2542,8 @@ window.addEventListener('beforeunload',saveDraft);
   renderCompanyStrengths(DEFAULT_COMPANY_STRENGTHS);
   renderCandidatePriorities(DEFAULT_CANDIDATE);
   setupSuggestions('industry','industry-suggestions',INDUSTRIES);
-  await setupGooglePlacesAutocomplete();
+  setupSuggestions('headquarters','city-suggestions',US_CITIES);
+  setupBusinessAddressAutocomplete();
 
   const{data:{session},error:sessionError}=await sb.auth.getSession();
 
