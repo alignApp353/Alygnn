@@ -862,6 +862,7 @@ function isAdditiveSlotPurchase(){
 }
 
 function returnToPricing(){
+  if(returnMode==='billing') return 'app-employer-billing.html';
   let url='app-employer-pricing.html';
   if(returnMode==='preview') url+='?return=preview';
   return url;
@@ -1570,7 +1571,7 @@ function addonIneligibleMessage(){
 async function initialize(){
   const query=new URLSearchParams(location.search);
 
-  returnMode=query.get('return')==='preview'?'preview':'dashboard';
+  returnMode=query.get('return')==='billing'?'billing':(query.get('return')==='preview'?'preview':'dashboard');
 
   product=String(query.get('product')||'job_plan').toLowerCase();
 
