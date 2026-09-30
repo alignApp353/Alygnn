@@ -22,7 +22,7 @@ button{cursor:pointer}
 .brand{font-family:'DM Serif Display',Georgia,serif!important;font-size:31px;color:var(--brand)}.brand span{color:var(--sage)}
 .secure{font-size:11px;font-weight:900;color:var(--success);background:var(--success-bg);padding:8px 11px;border-radius:999px}
 .progress-copy{margin-top:30px;display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:11px;font-weight:900;letter-spacing:.45px;text-transform:uppercase}
-.progress{height:9px;margin-top:9px;border-radius:999px;background:#E5EAEF;overflow:hidden}.progress>div{height:100%;width:16.67%;border-radius:inherit;background:linear-gradient(90deg,var(--dark),var(--sage));transition:width .3s ease}
+.progress{height:9px;margin-top:9px;border-radius:999px;background:#E5EAEF;overflow:hidden}.progress>div{height:100%;width:16.67%;border-radius:inherit;background:var(--brand);transition:width .3s ease}
 .card{margin-top:21px;padding:28px;border:1px solid var(--border);border-radius:28px;background:rgba(252,252,250,.97);box-shadow:var(--shadow)}
 .step{display:none}.step.active{display:block;animation:enter .22s ease}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .eyebrow{color:var(--dark);font-size:11px;font-weight:900;letter-spacing:.9px;text-transform:uppercase}
@@ -273,10 +273,10 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
 
 </style>
 </head>
-<body>
+<body style="visibility:hidden">
 <main class="shell">
 <header class="top"><div class="brand">Alygnn<span>.</span></div><div class="secure">Employer setup</div></header>
-<div class="progress-copy"><span id="progress-label">Welcome</span><span id="progress-percent">17%</span></div>
+<div class="progress-copy"><span id="progress-label">Welcome</span><span id="progress-percent">14%</span></div>
 <div class="progress"><div id="progress-fill"></div></div>
 <section class="card">
 <form id="onboarding-form" novalidate>
@@ -1067,7 +1067,31 @@ function restoreDraft(){
 function escapeHtml(value){const div=document.createElement('div');div.textContent=String(value??'');return div.innerHTML}
 function showMessage(text,type='error'){message.textContent=text;message.className='message '+type}
 function clearMessage(){message.className='message';message.textContent=''}
-function showStep(index){current=index;steps.forEach((s,i)=>s.classList.toggle('active',i===index));const pct=Math.round(((index+1)/steps.length)*100);document.getElementById('progress-fill').style.width=pct+'%';document.getElementById('progress-percent').textContent=pct+'%';document.getElementById('progress-label').textContent=steps[index].dataset.title;backButton.hidden=index===0;nextButton.textContent=index===0?'Get Started':index===steps.length-1?(ONBOARDING_REVIEW_MODE?'Return to Verification':'Finish Setup'):'Continue';clearMessage();if(index===steps.length-1)buildOverview();window.scrollTo({top:0,behavior:'smooth'})}
+function showStep(index){
+  current=index;
+  steps.forEach((s,i)=>s.classList.toggle('active',i===index));
+
+  const TOTAL_SETUP_STAGES=7;
+  const pct=Math.round(((index+1)/TOTAL_SETUP_STAGES)*100);
+
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('progress-percent').textContent=pct+'%';
+  document.getElementById('progress-label').textContent=steps[index].dataset.title;
+
+  backButton.hidden=index===0;
+  nextButton.textContent=
+    index===0
+      ?'Get Started'
+      :index===steps.length-1
+        ?(ONBOARDING_REVIEW_MODE?'Continue':'Finish Setup')
+        :'Continue';
+
+  clearMessage();
+  if(index===steps.length-1)buildOverview();
+
+  document.body.style.visibility='visible';
+  window.scrollTo({top:0,behavior:'auto'});
+}
 function renderVoices(){const box=document.getElementById('voice-options');box.innerHTML=VOICES.map(v=>`<button type="button" class="voice" data-voice="${v}">${v}</button>`).join('');box.onclick=e=>{const b=e.target.closest('.voice');if(!b)return;const v=b.dataset.voice;if(selectedVoices.has(v))selectedVoices.delete(v);else if(selectedVoices.size<3)selectedVoices.add(v);renderVoiceState()};renderVoiceState()}
 function renderVoiceState(){document.querySelectorAll('.voice').forEach(b=>{const on=selectedVoices.has(b.dataset.voice);b.classList.toggle('selected',on);b.disabled=!on&&selectedVoices.size>=3});document.getElementById('voice-preview').textContent=selectedVoices.size?[...selectedVoices].join(' • '):'No voices selected';document.getElementById('voice-counter').textContent=`${selectedVoices.size} of 3 selected`}
 let companyStrengthSortable=null;
