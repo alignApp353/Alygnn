@@ -407,7 +407,7 @@ html[data-theme="dark"] .custom-add-btn{
       <div class="field">
         <label>Company</label>
         <div class="company-box">
-          <div class="company-name" id="company-name">Loading company…</div>
+          <div class="company-name" id="company-name">Your company</div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
       </div>
@@ -2425,6 +2425,23 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     session=sessionData.session;
 
     /*
+     * Populate the company label immediately from already-available account
+     * metadata. Do not make the visible form wait for company/member queries.
+     */
+    const instantMetadata=session.user?.user_metadata||{};
+    const instantCompanyName=
+      instantMetadata.onboarding_company_profile?.company_name ||
+      instantMetadata.employer_ai_profile?.company_name ||
+      instantMetadata.company_name ||
+      localStorage.getItem('alygnn_employer_company_name') ||
+      'Your company';
+
+    const instantCompanyNode=el('company-name');
+    if(instantCompanyNode){
+      instantCompanyNode.textContent=instantCompanyName;
+    }
+
+    /*
      * SESSION CONFIRMED:
      * Activate the actual job form BEFORE removing the loader.
      * The remaining employer/company/verification checks continue below.
@@ -2627,6 +2644,15 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       'Your company';
 
     el('company-name').textContent=companyName;
+
+    if(companyName && companyName!=='Your company'){
+      try{
+        localStorage.setItem(
+          'alygnn_employer_company_name',
+          companyName
+        );
+      }catch(_){}
+    }
 
     const aiButton=el('company-ai-link');
     const lock=el('verification-lock');
