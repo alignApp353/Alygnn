@@ -405,6 +405,19 @@
   </div>
 </div>
 
+<div class="step" data-title="Overview">
+  <div class="eyebrow">Overview</div><h1>Review your hiring preferences.</h1>
+  <p class="intro">Confirm the information below. Your employer account will then be automatically approved or placed into manual review.</p>
+  <div class="overview-grid">
+    <div class="overview-card"><div class="overview-head"><h2>Company Voice</h2><button class="edit" type="button" data-go="2">Edit</button></div><div class="overview-content" id="overview-voice"></div></div>
+    <div class="overview-card"><div class="overview-head"><h2>What Makes Your Company Stand Out</h2><button class="edit" type="button" data-go="3">Edit</button></div><ol class="overview-content ordered" id="overview-company"></ol></div>
+    <div class="overview-card"><div class="overview-head"><h2>What Matters Most When Hiring</h2><button class="edit" type="button" data-go="4">Edit</button></div><ol class="overview-content ordered" id="overview-candidate"></ol></div>
+    <div class="ai-summary"><h2>AI Summary</h2><p id="ai-summary"></p></div>
+  </div>
+  <div class="authorization"><div class="inline-check" style="margin-top:0"><input id="authorization" type="checkbox" required><label for="authorization">I am authorized to recruit and post jobs on behalf of this company, and the information provided is accurate.</label></div></div>
+  <p class="helper">You can update these preferences later from your AI Hiring Blueprint.</p>
+</div>
+
 <div class="step" data-title="IRS Verification">
   <div class="eyebrow">Company verification</div>
   <h1>Verify your business.</h1>
@@ -431,19 +444,6 @@
     <strong>Why does Alygnn verify businesses?</strong>
     <span>Every employer is reviewed before its jobs become fully approved on Alygnn.</span>
   </div>
-</div>
-
-<div class="step" data-title="Overview">
-  <div class="eyebrow">Overview</div><h1>Review your hiring preferences.</h1>
-  <p class="intro">Confirm the information below. Your employer account will then be automatically approved or placed into manual review.</p>
-  <div class="overview-grid">
-    <div class="overview-card"><div class="overview-head"><h2>Company Voice</h2><button class="edit" type="button" data-go="2">Edit</button></div><div class="overview-content" id="overview-voice"></div></div>
-    <div class="overview-card"><div class="overview-head"><h2>What Makes Your Company Stand Out</h2><button class="edit" type="button" data-go="3">Edit</button></div><ol class="overview-content ordered" id="overview-company"></ol></div>
-    <div class="overview-card"><div class="overview-head"><h2>What Matters Most When Hiring</h2><button class="edit" type="button" data-go="4">Edit</button></div><ol class="overview-content ordered" id="overview-candidate"></ol></div>
-    <div class="ai-summary"><h2>AI Summary</h2><p id="ai-summary"></p></div>
-  </div>
-  <div class="authorization"><div class="inline-check" style="margin-top:0"><input id="authorization" type="checkbox" required><label for="authorization">I am authorized to recruit and post jobs on behalf of this company, and the information provided is accurate.</label></div></div>
-  <p class="helper">You can update these preferences later from your AI Hiring Blueprint.</p>
 </div>
 
 <div id="message" class="message" aria-live="polite"></div>
@@ -777,7 +777,7 @@ function showStep(index){
   backButton.hidden=false;
   nextButton.textContent=index===0?'Get Started':index===steps.length-1?'Finish Setup':'Continue';
   clearMessage();
-  if(index===steps.length-1)buildOverview();
+  if(steps[index]?.dataset.title==='Overview')buildOverview();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function renderVoices(){
@@ -1070,7 +1070,8 @@ function validateCurrent(){
   if(current===2&&selectedVoices.size===0){showMessage('Choose at least one Company Voice.');return false}
   if(current===3&&getRanking('company-priorities').length!==5){showMessage('Choose 5 company strengths before continuing.');return false}
   if(current===4&&getRanking('candidate-priorities').length!==5){showMessage('Choose 5 hiring priorities before continuing.');return false}
-  if(current===5){
+  if(current===5&&!document.getElementById('authorization').checked){showMessage('Confirm that you are authorized to recruit for this company.');return false}
+  if(current===6){
     const fileInput=document.getElementById('ein-document');
     const hasNewFile=fileInput.files&&fileInput.files.length>0;
     const hasExistingFile=fileInput.dataset.uploadedPath;
@@ -1081,7 +1082,6 @@ function validateCurrent(){
       if(file.size>10*1024*1024){showMessage('That file is too large — please upload something under 10MB.');return false}
     }
   }
-  if(current===6&&!document.getElementById('authorization').checked){showMessage('Confirm that you are authorized to recruit for this company.');return false}
   return true;
 }
 
