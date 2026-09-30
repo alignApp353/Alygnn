@@ -209,6 +209,42 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
   font-weight:700;
   letter-spacing:.01em;
 }
+.loading-detail{
+  min-height:18px;
+  margin-top:8px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+  opacity:.82;
+}
+.loading-actions{
+  display:none;
+  justify-content:center;
+  gap:10px;
+  margin-top:22px;
+}
+.loading-actions.show{
+  display:flex;
+}
+.loading-retry,
+.loading-back{
+  min-height:42px;
+  padding:0 16px;
+  border-radius:13px;
+  font-size:12px;
+  font-weight:900;
+}
+.loading-retry{
+  border:0;
+  background:var(--brand-dark);
+  color:#fff;
+}
+.loading-back{
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+}
+
 .loading-track{
   position:relative;
   width:116px;
@@ -366,9 +402,15 @@ html[data-theme="dark"] .custom-add-btn{
 <div class="loading" id="loading" aria-label="Alygnn is loading">
   <div class="loading-box">
     <div class="loading-logo">Alygnn<span>.</span></div>
-    <div class="loading-copy">Preparing your job post.</div>
+    <div class="loading-copy" id="loading-copy">Preparing your job post.</div>
+    <div class="loading-detail" id="loading-detail">Checking your employer workspace.</div>
     <div class="loading-track" aria-hidden="true">
       <div class="loading-bar"></div>
+    </div>
+
+    <div class="loading-actions" id="loading-actions">
+      <button class="loading-retry" id="loading-retry" type="button">Try Again</button>
+      <button class="loading-back" id="loading-back" type="button">Back to Jobs</button>
     </div>
   </div>
 </div>
@@ -1589,9 +1631,98 @@ async function enforceJobSlotAccess(userId,companyId){
   return false;
 }
 
-function hideLoading(){
-  el('loading').hidden = true;
+
+const JOB_POST_LOADING_MESSAGES=[
+  ['Preparing your job post.','Checking your employer workspace.'],
+  ['Getting your company ready.','Loading your company and verification details.'],
+  ['Checking your job capacity.','Making sure you have an available job slot.'],
+  ['Almost ready.','Restoring your job draft and hiring preferences.'],
+  ['Still working on it.','Alygnn is waiting for a secure response from the server.']
+];
+
+let jobPostLoadingMessageIndex=0;
+let jobPostLoadingInterval=null;
+let jobPostLoadingWatchdog=null;
+
+function updateJobPostLoadingMessage(index){
+  const message=
+    JOB_POST_LOADING_MESSAGES[
+      index % JOB_POST_LOADING_MESSAGES.length
+    ];
+
+  const copy=el('loading-copy');
+  const detail=el('loading-detail');
+
+  if(copy)copy.textContent=message[0];
+  if(detail)detail.textContent=message[1];
 }
+
+function startJobPostLoadingExperience(){
+  updateJobPostLoadingMessage(0);
+
+  clearInterval(jobPostLoadingInterval);
+  clearTimeout(jobPostLoadingWatchdog);
+
+  /*
+   * Change the copy every 9 seconds so a slow secure/network request
+   * never looks frozen.
+   */
+  jobPostLoadingInterval=setInterval(()=>{
+    jobPostLoadingMessageIndex+=1;
+    updateJobPostLoadingMessage(
+      jobPostLoadingMessageIndex
+    );
+  },9000);
+
+  /*
+   * Never leave the employer staring at an endless loader.
+   * We DO NOT skip any checks. We simply expose recovery controls if
+   * initialization has not completed after 30 seconds.
+   */
+  jobPostLoadingWatchdog=setTimeout(()=>{
+    const copy=el('loading-copy');
+    const detail=el('loading-detail');
+    const actions=el('loading-actions');
+
+    if(copy){
+      copy.textContent='This is taking longer than usual.';
+    }
+
+    if(detail){
+      detail.textContent=
+        'Your connection or one of Alygnn’s secure services may be responding slowly.';
+    }
+
+    if(actions){
+      actions.classList.add('show');
+    }
+  },30000);
+}
+
+function stopJobPostLoadingExperience(){
+  clearInterval(jobPostLoadingInterval);
+  clearTimeout(jobPostLoadingWatchdog);
+  jobPostLoadingInterval=null;
+  jobPostLoadingWatchdog=null;
+}
+
+function hideLoading(){
+  stopJobPostLoadingExperience();
+
+  const loading=el('loading');
+  if(loading)loading.hidden=true;
+}
+
+el('loading-retry')?.addEventListener('click',()=>{
+  location.reload();
+});
+
+el('loading-back')?.addEventListener('click',()=>{
+  location.href='app-employer-dashboard.html?view=jobs';
+});
+
+startJobPostLoadingExperience();
+
 
 function choose(containerId, callback){
   el(containerId).addEventListener('click', event => {
