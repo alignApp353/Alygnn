@@ -17,14 +17,6 @@
     try{
       const requested=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();
       if(requested==='employer'||requested==='candidate') return requested;
-
-      const active=String(
-        sessionStorage.getItem('alygnn_active_workspace')||
-        localStorage.getItem('alygnn_active_workspace')||
-        ''
-      ).toLowerCase();
-      if(active==='employer'||active==='candidate') return active;
-
       const stored=String(localStorage.getItem('alygnn_account_type')||'').toLowerCase();
       return stored==='employer'?'employer':'candidate';
     }catch(_error){
@@ -1188,6 +1180,104 @@ html[data-effective-theme="dark"] .bottom-nav.employer{
 }
 </style>
 
+
+<style id="alygnn-employer-messages-one-canvas">
+/* Keep Employer Messages on one continuous background from header to bottom nav. */
+body.employer-mode{
+  min-height:100vh!important;
+}
+
+body.employer-mode .shell{
+  min-height:calc(100vh - 72px - env(safe-area-inset-bottom))!important;
+  background:var(--bg)!important;
+  background-color:var(--bg)!important;
+  background-image:none!important;
+}
+
+html[data-theme="light"] body.employer-mode,
+html[data-effective-theme="light"] body.employer-mode,
+html[data-theme="light"] body.employer-mode .shell,
+html[data-effective-theme="light"] body.employer-mode .shell{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+
+html[data-theme="dark"] body.employer-mode,
+html[data-effective-theme="dark"] body.employer-mode,
+html[data-theme="dark"] body.employer-mode .shell,
+html[data-effective-theme="dark"] body.employer-mode .shell{
+  background:#0B111A!important;
+  background-color:#0B111A!important;
+  background-image:none!important;
+}
+
+/* Prevent the candidate-page dark canvas from showing through underneath
+   the employer messages shell. */
+html[data-theme="dark"],
+html[data-effective-theme="dark"]{
+  background:#0B111A!important;
+}
+
+html[data-theme="light"],
+html[data-effective-theme="light"]{
+  background:#F6F8F7!important;
+}
+</style>
+
+
+<style id="alygnn-employer-messages-full-canvas-fix">
+/*
+  Employer Messages must occupy the entire viewport.
+  The old shell stopped above the fixed bottom nav, which exposed a second
+  candidate-theme dark background underneath it.
+*/
+body.employer-mode{
+  min-height:100dvh!important;
+  background:var(--bg)!important;
+  background-image:none!important;
+}
+
+body.employer-mode .shell{
+  min-height:100dvh!important;
+  padding-bottom:calc(108px + env(safe-area-inset-bottom))!important;
+  background:var(--bg)!important;
+  background-color:var(--bg)!important;
+  background-image:none!important;
+}
+
+html[data-theme="dark"] body.employer-mode,
+html[data-effective-theme="dark"] body.employer-mode,
+html[data-theme="dark"] body.employer-mode .shell,
+html[data-effective-theme="dark"] body.employer-mode .shell{
+  background:#0B111A!important;
+  background-color:#0B111A!important;
+  background-image:none!important;
+}
+
+html[data-theme="light"] body.employer-mode,
+html[data-effective-theme="light"] body.employer-mode,
+html[data-theme="light"] body.employer-mode .shell,
+html[data-effective-theme="light"] body.employer-mode .shell{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+
+/* Bottom navigation sits on the same employer canvas instead of a second card color. */
+html[data-theme="dark"] body.employer-mode .bottom-nav.employer,
+html[data-effective-theme="dark"] body.employer-mode .bottom-nav.employer{
+  background:#0B111A!important;
+  background-color:#0B111A!important;
+}
+
+html[data-theme="light"] body.employer-mode .bottom-nav.employer,
+html[data-effective-theme="light"] body.employer-mode .bottom-nav.employer{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+}
+</style>
+
 </head>
 
 <body class="messages-booting">
@@ -1548,95 +1638,18 @@ function applicationName(application={}){
   );
 }
 
-function normalizeWorkspaceRole(value){
-  const normalized=String(value||'').toLowerCase().trim();
-
-  return (
-    normalized==='employer'||
-    normalized==='candidate'
-  )
-    ?normalized
-    :'';
-}
-
-function rememberWorkspaceRole(nextRole){
-  const normalized=
-    normalizeWorkspaceRole(nextRole);
-
-  if(!normalized)return;
-
-  try{
-    sessionStorage.setItem(
-      'alygnn_active_workspace',
-      normalized
-    );
-
-    localStorage.setItem(
-      'alygnn_active_workspace',
-      normalized
-    );
-  }catch(_error){}
-}
-
 async function resolveRole(){
   const requested=
-    normalizeWorkspaceRole(
-      new URLSearchParams(
-        location.search
-      ).get('role')
-    );
+    new URLSearchParams(
+      location.search
+    ).get('role');
 
-  if(requested){
-    rememberWorkspaceRole(requested);
+  if(
+    requested==='employer'||
+    requested==='candidate'
+  ){
     return requested;
   }
-
-  /*
-   * Android/WebView can restore this page without the original query string.
-   * Keep the user in the workspace they actually came from instead of
-   * accidentally falling back to the candidate side.
-   */
-  try{
-    const referrer=
-      String(
-        document.referrer||
-        ''
-      ).toLowerCase();
-
-    if(
-      referrer.includes(
-        'app-employer-dashboard.html'
-      )
-    ){
-      rememberWorkspaceRole('employer');
-      return 'employer';
-    }
-
-    if(
-      referrer.includes('app-account.html')||
-      referrer.includes('app-swipe.html')||
-      referrer.includes('app-applied.html')
-    ){
-      rememberWorkspaceRole('candidate');
-      return 'candidate';
-    }
-  }catch(_error){}
-
-  try{
-    const remembered=
-      normalizeWorkspaceRole(
-        sessionStorage.getItem(
-          'alygnn_active_workspace'
-        )||
-        localStorage.getItem(
-          'alygnn_active_workspace'
-        )
-      );
-
-    if(remembered){
-      return remembered;
-    }
-  }catch(_error){}
 
   try{
     const {data}=await sb
@@ -1651,7 +1664,6 @@ async function resolveRole(){
         ''
       ).toLowerCase()==='employer'
     ){
-      rememberWorkspaceRole('employer');
       return 'employer';
     }
   }catch(_error){}
@@ -1664,13 +1676,9 @@ async function resolveRole(){
       ''
     ).toLowerCase();
 
-  const resolved=
-    meta==='employer'
-      ?'employer'
-      :'candidate';
-
-  rememberWorkspaceRole(resolved);
-  return resolved;
+  return meta==='employer'
+    ?'employer'
+    :'candidate';
 }
 
 function archiveField(){
@@ -2586,18 +2594,9 @@ function openConversation(id){
 
   if(!row)return;
 
-  const conversationRole=
-    role==='employer'
-      ?'employer'
-      :'candidate';
-
-  rememberWorkspaceRole(
-    conversationRole
-  );
-
   const params=
     new URLSearchParams({
-      role:conversationRole,
+      role,
       conversation:row.id
     });
 
@@ -2819,38 +2818,6 @@ $('employer-header-notification').onclick=()=>{
 
     session=data.session;
     role=await resolveRole();
-    rememberWorkspaceRole(role);
-
-    /*
-     * Put the resolved workspace back into the URL if Android restored the
-     * page without it. Every thread click now carries the same role forward.
-     */
-    try{
-      const currentParams=
-        new URLSearchParams(
-          location.search
-        );
-
-      if(
-        currentParams.get('role')!==
-        role
-      ){
-        currentParams.set(
-          'role',
-          role
-        );
-
-        history.replaceState(
-          null,
-          '',
-          location.pathname+
-          '?'+
-          currentParams.toString()+
-          location.hash
-        );
-      }
-    }catch(_error){}
-
     document.body.classList.toggle('candidate-mode',role==='candidate');
     document.body.classList.toggle('employer-mode',role==='employer');
     if(role==='employer') applyEmployerMessagesTheme();
