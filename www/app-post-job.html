@@ -1634,8 +1634,8 @@ async function enforceJobSlotAccess(userId,companyId){
 
 const JOB_POST_LOADING_MESSAGES=[
   ['Preparing your job post.','Checking your employer workspace.'],
-  ['Getting your company ready.','Loading your company and verification details.'],
-  ['Checking your job capacity.','Making sure you have an available job slot.'],
+  ['Signing you in securely.','Confirming your employer session.'],
+  ['Opening your job builder.','Your account checks will continue in the background.'],
   ['Almost ready.','Restoring your job draft and hiring preferences.'],
   ['Still working on it.','Alygnn is waiting for a secure response from the server.']
 ];
@@ -1696,7 +1696,7 @@ function startJobPostLoadingExperience(){
     if(actions){
       actions.classList.add('show');
     }
-  },22000);
+  },8000);
 }
 
 function stopJobPostLoadingExperience(){
@@ -2515,6 +2515,20 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     }
 
     session=sessionData.session;
+
+    /*
+     * SESSION CONFIRMED:
+     * Open the job builder now. Do not make the employer wait for every
+     * company / verification / capacity request before they can start typing.
+     *
+     * All of those checks still run below and the authoritative capacity
+     * check still protects Publish.
+     */
+    /*
+     * The form is already open. Background checks above only refresh
+     * company / verification / entitlement state.
+     */
+    hideLoading();
 
     // Refresh the Auth user so recently saved Company AI Profile metadata is
     // available immediately instead of using a stale cached session object.
