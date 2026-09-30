@@ -234,6 +234,62 @@
   .ai-summary p { margin-top: 10px; color: var(--text); font-size: 14px; line-height: 1.7; font-weight: 300; }
   .authorization { margin-top: 20px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: white; }
 
+  /* Company Verification step — app-matched styling only. */
+  .step[data-title="IRS Verification"] .verification-copy {
+    margin-top: 14px; color: var(--text-muted); font-size: 15px; line-height: 1.65; font-weight: 300;
+  }
+  .step[data-title="IRS Verification"] .accepted-docs-card {
+    margin-top: 22px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: white;
+  }
+  .step[data-title="IRS Verification"] .accepted-docs-title {
+    font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px;
+  }
+  .step[data-title="IRS Verification"] .accepted-doc {
+    display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.45; color: var(--text); margin-top: 8px;
+  }
+  .step[data-title="IRS Verification"] .accepted-check { color: #4d9a6f; font-weight: 700; }
+  .step[data-title="IRS Verification"] .verification-upload {
+    position: relative; margin-top: 18px; min-height: 210px; padding: 28px 20px;
+    border: 2px dashed rgba(93,127,163,.72); border-radius: 18px; background: rgba(93,127,163,.025);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: .18s ease;
+  }
+  .step[data-title="IRS Verification"] .verification-upload:hover,
+  .step[data-title="IRS Verification"] .verification-upload.drag-over {
+    border-color: var(--brand); background: rgba(93,127,163,.06);
+  }
+  .step[data-title="IRS Verification"] .verification-upload input[type="file"] {
+    position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; cursor: pointer;
+  }
+  .step[data-title="IRS Verification"] .verification-pdf {
+    font-size: 25px; font-weight: 700; color: var(--brand); margin-bottom: 16px;
+  }
+  .step[data-title="IRS Verification"] .verification-drop-title {
+    font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+  }
+  .step[data-title="IRS Verification"] .verification-drop-sub,
+  .step[data-title="IRS Verification"] .verification-status {
+    font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  }
+  .step[data-title="IRS Verification"] .verification-drop-meta {
+    margin-top: 4px; font-size: 11px; color: var(--text-muted);
+  }
+  .step[data-title="IRS Verification"] .verification-choose {
+    margin-top: 16px; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px;
+    background: var(--brand); color: white; font-size: 12px; font-weight: 700; pointer-events: none;
+  }
+  .step[data-title="IRS Verification"] .verification-status {
+    margin-top: 12px; text-align: center;
+  }
+  .step[data-title="IRS Verification"] .verification-why {
+    margin-top: 16px; padding: 16px 18px; border-radius: 14px; background: rgba(93,127,163,.08);
+  }
+  .step[data-title="IRS Verification"] .verification-why strong {
+    display: block; margin-bottom: 5px; font-size: 13px; color: var(--text);
+  }
+  .step[data-title="IRS Verification"] .verification-why span {
+    display: block; font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  }
+
   .message { display: none; margin-top: 18px; padding: 14px 16px; border-radius: 12px; font-size: 13px; font-weight: 400; line-height: 1.5; }
   .message.error { display: block; background: rgba(215,154,154,0.15); color: #a05858; }
   .message.success { display: block; background: rgba(111,191,143,0.15); color: #2d8a57; }
@@ -338,7 +394,7 @@
 
     <div class="rank-list" id="candidate-priorities"></div>
 
-    <p class="rank-note">Drag the cards to reorder them. You can also use the Up and Down buttons. Alygnn will use this order when weighting candidate matches.</p>
+    <p class="rank-note">Drag the cards to reorder them. Alygnn will use this order when weighting candidate matches.</p>
 
     <div class="rank-input-row suggest-wrap">
       <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Type your own hiring priority">
@@ -350,17 +406,30 @@
 </div>
 
 <div class="step" data-title="IRS Verification">
-  <div class="eyebrow">IRS verification</div><h1>Confirm your EIN with a document.</h1>
-  <p class="intro">Upload one of the documents below showing your EIN. A real person reviews it before final approval.</p>
-  <div class="value-list">
-    <div class="value">IRS EIN Confirmation Letter (CP 575)</div>
-    <div class="value">IRS 147C Letter</div>
-    <div class="value">A completed Form W-9</div>
+  <div class="eyebrow">Company verification</div>
+  <h1>Verify your business.</h1>
+  <p class="verification-copy">Upload one official document showing your legal business name and EIN. You can continue building your profile and creating jobs while Alygnn reviews it.</p>
+
+  <div class="accepted-docs-card">
+    <div class="accepted-docs-title">Accepted documents</div>
+    <div class="accepted-doc"><span class="accepted-check">✓</span><span>IRS CP 575 EIN Confirmation Letter</span></div>
+    <div class="accepted-doc"><span class="accepted-check">✓</span><span>IRS Letter 147C</span></div>
+    <div class="accepted-doc"><span class="accepted-check">✓</span><span>Official IRS EIN Assignment Letter</span></div>
   </div>
-  <div class="field">
-    <label class="required" for="ein-document">Upload document (PDF)</label>
+
+  <div class="verification-upload" id="ein-document-drop">
     <input id="ein-document" name="ein_document" type="file" accept="application/pdf">
-    <p class="helper" id="ein-document-status"></p>
+    <div class="verification-pdf">PDF</div>
+    <div class="verification-drop-title">Drop your PDF here</div>
+    <div class="verification-drop-sub">or choose a file from your device</div>
+    <div class="verification-drop-meta">PDF only · Maximum 10 MB</div>
+    <button class="verification-choose" type="button">Choose PDF</button>
+  </div>
+  <p class="verification-status" id="ein-document-status"></p>
+
+  <div class="verification-why">
+    <strong>Why does Alygnn verify businesses?</strong>
+    <span>Every employer is reviewed before its jobs become fully approved on Alygnn.</span>
   </div>
 </div>
 
@@ -948,6 +1017,25 @@ function isPlausibleEin(digits){
   if(hasLongSequentialRun(digits))return false;
   if(hasRepeatingPattern(digits))return false;
   return true;
+}
+
+const einDocumentInput=document.getElementById('ein-document');
+const einDocumentDrop=document.getElementById('ein-document-drop');
+if(einDocumentInput&&einDocumentDrop){
+  einDocumentDrop.addEventListener('dragover',e=>{
+    e.preventDefault();
+    einDocumentDrop.classList.add('drag-over');
+  });
+  einDocumentDrop.addEventListener('dragleave',()=>{
+    einDocumentDrop.classList.remove('drag-over');
+  });
+  einDocumentDrop.addEventListener('drop',()=>{
+    einDocumentDrop.classList.remove('drag-over');
+  });
+  einDocumentInput.addEventListener('change',()=>{
+    const status=document.getElementById('ein-document-status');
+    if(status&&einDocumentInput.files?.[0])status.textContent=einDocumentInput.files[0].name;
+  });
 }
 
 function validateCurrent(){
