@@ -4,6 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#F6F8F7">
+<script>
+(function(){
+  const key='alygnnEmployerTheme';
+  const system=window.matchMedia('(prefers-color-scheme: dark)');
+  const pref=localStorage.getItem(key)||'auto';
+  const safe=['auto','light','dark'].includes(pref)?pref:'auto';
+  const theme=safe==='auto'?(system.matches?'dark':'light'):safe;
+  document.documentElement.dataset.theme=theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    'content',
+    theme==='dark'?'#061824':'#F6F8F7'
+  );
+})();
+</script>
+
 <title>Employer Setup | Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +37,7 @@ button{cursor:pointer}
 .brand{font-family:'DM Serif Display',Georgia,serif!important;font-size:31px;color:var(--brand)}.brand span{color:var(--sage)}
 .secure{font-size:11px;font-weight:900;color:var(--success);background:var(--success-bg);padding:8px 11px;border-radius:999px}
 .progress-copy{margin-top:30px;display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:11px;font-weight:900;letter-spacing:.45px;text-transform:uppercase}
-.progress{height:9px;margin-top:9px;border-radius:999px;background:#E5EAEF;overflow:hidden}.progress>div{height:100%;width:16.67%;border-radius:inherit;background:var(--brand);transition:width .3s ease}
+.progress{height:9px;margin-top:9px;border-radius:999px;background:#E5EAEF;overflow:hidden}.progress>div{height:100%;width:16.67%;border-radius:inherit;background:#5D7FA3;transition:width .3s ease}
 .card{margin-top:21px;padding:28px;border:1px solid var(--border);border-radius:28px;background:rgba(252,252,250,.97);box-shadow:var(--shadow)}
 .step{display:none}.step.active{display:block;animation:enter .22s ease}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .eyebrow{color:var(--dark);font-size:11px;font-weight:900;letter-spacing:.9px;text-transform:uppercase}
@@ -270,6 +285,54 @@ input,select{width:100%;min-height:53px;padding:0 14px;border:1px solid var(--bo
     max-height:260px;
     overflow:auto;
   }
+
+
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --brand:#79A2CC;
+  --dark:#79A2CC;
+  --sage:#8CB69B;
+  --bg:#061824;
+  --card:#0E1C29;
+  --text:#F4F7FA;
+  --muted:#A9B6C5;
+  --border:#2B3E50;
+  --danger:#FF9B9B;
+  --danger-bg:#3A1C22;
+  --success:#65D39A;
+  --success-bg:#123527;
+  --shadow:0 18px 55px rgba(0,0,0,.28);
+}
+html[data-theme="dark"] body{
+  background:
+    radial-gradient(circle at 10% 5%,rgba(140,182,155,.10),transparent 28%),
+    radial-gradient(circle at 90% 90%,rgba(93,127,163,.12),transparent 30%),
+    var(--bg);
+}
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .value,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] .selection-box,
+html[data-theme="dark"] .overview-card,
+html[data-theme="dark"] .authorization,
+html[data-theme="dark"] .voice,
+html[data-theme="dark"] .rank-item,
+html[data-theme="dark"] .suggestions,
+html[data-theme="dark"] .suggestion{
+  background:#0E1C29!important;
+  color:var(--text)!important;
+}
+html[data-theme="dark"] .ai-summary{
+  background:#14283A!important;
+  border-color:#2B3E50!important;
+}
+html[data-theme="dark"] .actions{
+  background:rgba(6,24,36,.94)!important;
+}
+html[data-theme="dark"] .progress{
+  background:#203446!important;
+}
 
 </style>
 </head>
