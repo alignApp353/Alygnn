@@ -4876,31 +4876,64 @@
 </style>
 
 
-<style id="alygnn-current-dashboard-clean-boot">
-  body[data-dashboard-booting="true"] .shell{
-    visibility:hidden!important;
+<style id="alygnn-team-avatar-contrast-fix">
+  /* Keep member initials readable in both themes. */
+  .team-avatar{
+    background:#EAF1F7!important;
+    color:#284E70!important;
+    border:1px solid #D6E2EC!important;
+    opacity:1!important;
+    -webkit-text-fill-color:#284E70!important;
   }
-  body[data-dashboard-booting="false"] .shell{
-    visibility:visible!important;
+
+  html[data-theme="dark"] .team-avatar{
+    background:#173047!important;
+    color:#B9D6EF!important;
+    border-color:#355068!important;
+    -webkit-text-fill-color:#B9D6EF!important;
   }
-</style>
 
+  html[data-theme="dark"] .team-member-copy strong{
+    color:#F4F7FA!important;
+  }
 
-<style id="alygnn-employer-nav-focus-fix">
-  .bottom-nav .nav-item,
-  .bottom-nav .nav-item:focus,
-  .bottom-nav .nav-item:focus-visible,
-  .bottom-nav .nav-item:active{
-    outline:none!important;
-    box-shadow:none!important;
-    -webkit-tap-highlight-color:transparent!important;
+  html[data-theme="dark"] .team-member-copy span{
+    color:#A9B6C5!important;
   }
 </style>
 
 </head>
-<body data-employer-dashboard-build="2026-09-30-current-dashboard" data-dashboard-booting="true">
-  <div class="shell">
+<body data-employer-dashboard-build="2026-09-21-plan-badges-settings-v2">
+  <div class="loading" id="loading" aria-label="Alygnn is loading">
+    <div class="loading-inner">
+      <div class="loading-logo">Alygnn<span>.</span></div>
+      <div class="loading-copy" id="employer-loading-copy">Opening your workspace.</div>
+      <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+    </div>
+  </div>
+  <script id="alygnn-employer-boot-copy">
+    (function(){
+      try{
+        if('scrollRestoration' in history) history.scrollRestoration='manual';
+        window.scrollTo(0,0);
+        const view=String(new URLSearchParams(location.search).get('view')||'').toLowerCase();
+        const copy={
+          jobs:'Opening your jobs.',
+          company:'Opening your company workspace.',
+          settings:'Opening your settings.',
+          dashboard:'Opening your workspace.'
+        };
+        const node=document.getElementById('employer-loading-copy');
+        if(node) node.textContent=copy[view]||'Opening your workspace.';
+        window.__alygnnEmployerBootSafety=setTimeout(function(){
+          const loader=document.getElementById('loading');
+          if(loader) loader.hidden=true;
+        },6500);
+      }catch(_error){}
+    })();
+  </script>
 
+  <div class="shell">
     <header class="header">
       <div aria-hidden="true"></div>
       <div class="logo">Alygnn<span>.</span></div>
@@ -6742,6 +6775,7 @@
     const $ = id => document.getElementById(id);
 
     const els = {
+      loading:$('loading'),
       greeting:$('greeting'),
       dashboardMessage:$('dashboard-message'),
       notificationCount:$('notification-count'),
@@ -7983,13 +8017,6 @@
       }catch(_error){}
     }
 
-    let employerUserNavigationVersion=0;
-
-    function markEmployerUserNavigation(){
-      employerUserNavigationVersion+=1;
-      return employerUserNavigationVersion;
-    }
-
     function setView(name){
       const previousView = state.currentView;
       state.currentView = name;
@@ -8055,19 +8082,7 @@
       }
 
       if(name==='company'){
-        const companyViewToken='company';
-
-        refreshCompanyProfile().then(()=>{
-          /*
-           * refreshCompanyProfile updates data only. Never allow an async
-           * refresh to move the user away from Company.
-           */
-          if(state.currentView===companyViewToken){
-            document.querySelectorAll('.view').forEach(view=>{
-              view.hidden=view.id!=='company-view';
-            });
-          }
-        }).catch(error=>{
+        refreshCompanyProfile().catch(error=>{
           console.error('Company profile refresh failed:',error);
         });
       }
@@ -8231,12 +8246,6 @@
       const currentMeta=currentUser.user_metadata||{};
 
       const name =
-        currentMeta.full_name ||
-        currentMeta.name ||
-        state.session?.user?.user_metadata?.full_name ||
-        state.session?.user?.user_metadata?.name ||
-        currentUser.email?.split('@')[0] ||
-        state.session?.user?.email?.split('@')[0] ||
         shared.member_name ||
         member.full_name ||
         member.member_name ||
@@ -8246,6 +8255,12 @@
         access.full_name ||
         access.name ||
         access.display_name ||
+        currentMeta.full_name ||
+        currentMeta.name ||
+        state.session?.user?.user_metadata?.full_name ||
+        state.session?.user?.user_metadata?.name ||
+        currentUser.email?.split('@')[0] ||
+        state.session?.user?.email?.split('@')[0] ||
         'there';
 
       const firstName =
@@ -11891,33 +11906,10 @@
       return base;
     }
 
-    function currentUserIsPrimaryEmployer(){
-      const userId=String(
-        state.session?.user?.id||
-        state.currentUser?.id||
-        ''
-      ).trim();
-
-      if(!userId)return false;
-
-      const access=state.teamAccess||{};
-      if(access.is_owner===true)return true;
-
-      const employerOwnerId=String(
-        state.employerVerification?.user_id||
-        state.companyRecord?.owner_user_id||
-        state.companyRecord?.user_id||
-        access.owner_user_id||
-        ''
-      ).trim();
-
-      return !!employerOwnerId && employerOwnerId===userId;
-    }
-
     function teamCan(permission){
       const access=state.teamAccess||{};
 
-      if(currentUserIsPrimaryEmployer()){
+      if(access.is_owner===true){
         return true;
       }
 
@@ -15189,46 +15181,6 @@
     }
 
     async function initialize(){
-      const bootNavigationVersion=
-        employerUserNavigationVersion;
-
-      /*
-       * Resolve the requested workspace tab BEFORE auth/company/network work.
-       * This prevents Dashboard from flashing before Company/Settings/Jobs.
-       */
-      const initialParams=
-        new URLSearchParams(location.search);
-
-      const immediateRequestedView=
-        String(
-          initialParams.get('view')||
-          ''
-        ).trim();
-
-      if(
-        [
-          'dashboard',
-          'jobs',
-          'company',
-          'settings'
-        ].includes(immediateRequestedView)
-      ){
-        state.currentView=immediateRequestedView;
-
-        document.querySelectorAll('.view').forEach(view=>{
-          view.hidden=
-            view.id!==
-            immediateRequestedView+'-view';
-        });
-
-        document.querySelectorAll('.nav-item').forEach(button=>{
-          button.classList.toggle(
-            'active',
-            button.dataset.view===immediateRequestedView
-          );
-        });
-      }
-
       try{
         const { data,error } = await sb.auth.getSession();
 
@@ -15238,9 +15190,6 @@
         }
 
         state.session = data.session;
-        state.currentTeamMember=null;
-        state.teamAccess=null;
-        state.sharedCompanyContext=null;
         await refreshCurrentUser();
 
         /*
@@ -15331,6 +15280,73 @@
           return;
         }
 
+
+        /*
+         * Verification-document gate.
+         *
+         * A company record or an "approved" status must never bypass the
+         * required document-upload step. The dashboard is allowed only when
+         * an actual employer_verification_documents row exists.
+         */
+        const resolvedCompanyId=String(
+          state.companyRecord?.id||
+          state.employerVerification?.company_id||
+          scopedCompanyId||
+          ''
+        ).trim();
+
+        if(resolvedCompanyId){
+          let verificationDocument=null;
+          let documentLookupFailed=false;
+
+          try{
+            const {data:documentRow,error:documentError}=await sb
+              .from('employer_verification_documents')
+              .select('id,review_status,created_at')
+              .eq('company_id',resolvedCompanyId)
+              .order('created_at',{ascending:false})
+              .limit(1)
+              .maybeSingle();
+
+            if(documentError){
+              documentLookupFailed=true;
+              console.warn(
+                'Dashboard verification document lookup failed:',
+                documentError
+              );
+            }else{
+              verificationDocument=documentRow||null;
+            }
+          }catch(error){
+            documentLookupFailed=true;
+            console.warn(
+              'Dashboard verification document lookup threw:',
+              error
+            );
+          }
+
+          if(documentLookupFailed || !verificationDocument?.id){
+            location.replace(
+              'app-employer-document-upload.html?company_id='+
+              encodeURIComponent(resolvedCompanyId)
+            );
+            return;
+          }
+
+          const verifiedStatus=String(
+            state.verificationStatus||
+            state.employerVerification?.verification_status||
+            ''
+          ).toLowerCase().trim();
+
+          if(verifiedStatus!=='approved'){
+            location.replace(
+              'app-employer-verification-status.html'
+            );
+            return;
+          }
+        }
+
         try{
           state.entitlement=await loadDashboardEntitlement();
         }catch(entitlementError){
@@ -15354,6 +15370,9 @@
             applicationError
           );
         }
+
+        const initialParams=
+          new URLSearchParams(location.search);
 
         const requestedJobId=
           String(
@@ -15389,63 +15408,52 @@
          * Open My Jobs immediately and open the exact listing whose ID
          * was supplied by app-job-preview.html.
          */
-        const userChangedWorkspaceDuringBoot=
-          employerUserNavigationVersion!==bootNavigationVersion;
-
-        if(!userChangedWorkspaceDuringBoot){
-          if(
-            requestedJobId ||
-            requestedView==='jobs'
-          ){
-            state.currentView='jobs';
-          }else if(
-            requestedView==='company' ||
-            requestedView==='settings' ||
-            requestedView==='dashboard'
-          ){
-            state.currentView=requestedView;
-          }
+        if(
+          requestedJobId ||
+          requestedView==='jobs'
+        ){
+          state.currentView='jobs';
+        }else if(
+          requestedView==='company' ||
+          requestedView==='settings' ||
+          requestedView==='dashboard'
+        ){
+          state.currentView=requestedView;
         }
 
         safeRenderAll();
         refreshEmployerMessageBadge();
 
-        /*
-         * Never let the original URL route win after the employer has already
-         * tapped another workspace tab while initialization was still running.
-         */
-        if(!userChangedWorkspaceDuringBoot){
-          if(requestedView==='company'){
-            setView('company');
-            if(initialParams.get('edit')==='1'||initialParams.get('reason')==='logo_required'){
-              setTimeout(
-                ()=>openCompanyEditor('all'),
-                0
-              );
-            }
-          }else if(requestedView==='settings'){
-            setView('settings');
-          }else if(requestedView==='dashboard'){
-            setView('dashboard');
+        if(requestedView==='company'){
+          setView('company');
+          if(initialParams.get('edit')==='1'||initialParams.get('reason')==='logo_required'){
+            setTimeout(
+              ()=>openCompanyEditor('all'),
+              0
+            );
+          }
+        }else if(requestedView==='settings'){
+          setView('settings');
+        }else if(requestedView==='dashboard'){
+          setView('dashboard');
+        }
+
+        if(
+          requestedJobId ||
+          requestedView==='jobs'
+        ){
+          if(requestedJobId){
+            jobsStatusTab='open';
+            requestedInitialJobsTab='';
           }
 
-          if(
-            requestedJobId ||
-            requestedView==='jobs'
-          ){
-            if(requestedJobId){
-              jobsStatusTab='open';
-              requestedInitialJobsTab='';
-            }
+          setView('jobs');
 
-            setView('jobs');
-
-            /* Only a direct published-job request should force Open and launch
-               the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
-               the requested Drafts tab selected. */
-            if(requestedJobId){
-              openRequestedDashboardJob();
-            }
+          /* Only a direct published-job request should force Open and launch
+             the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
+             the requested Drafts tab selected. */
+          if(requestedJobId){
+            openRequestedDashboardJob();
           }
         }
 
@@ -15458,7 +15466,11 @@
         safeRenderAll();
 
       }finally{
-        document.body.dataset.dashboardBooting='false';
+        if(window.__alygnnEmployerBootSafety){
+          clearTimeout(window.__alygnnEmployerBootSafety);
+          window.__alygnnEmployerBootSafety=null;
+        }
+        els.loading.hidden = true;
         resetEmployerWorkspaceScroll();
         setTimeout(resetEmployerWorkspaceScroll,80);
 
@@ -15466,16 +15478,10 @@
          * Do not require a second tap on Open Jobs.
          * If a direct listing request is pending, resolve it here too.
          */
-        const userChangedWorkspaceDuringBoot=
-          employerUserNavigationVersion!==bootNavigationVersion;
-
         const pendingJobId=
           requestedDashboardJobId();
 
-        if(
-          pendingJobId &&
-          !userChangedWorkspaceDuringBoot
-        ){
+        if(pendingJobId){
           jobsStatusTab='open';
           requestedInitialJobsTab='';
 
@@ -15494,7 +15500,6 @@
       const nav = event.target.closest('[data-view]');
       if(nav){
         event.preventDefault();
-        markEmployerUserNavigation();
         try{nav.blur();}catch(_error){}
         resetEmployerWorkspaceScroll();
         if(
@@ -16398,17 +16403,10 @@
       removeCurrentTeamMember;
 
     $('employer-messages-nav').onclick=()=>{
-      /*
-       * The primary employer/owner always has candidate messaging access.
-       * Only added team members should be permission-gated.
-       */
-      if(
-        !currentUserIsPrimaryEmployer() &&
-        !requireTeamPermission(
-          'messages_manage',
-          'Your team access does not include candidate messaging.'
-        )
-      ){
+      if(!requireTeamPermission(
+        'messages_manage',
+        'Your team access does not include candidate messaging.'
+      )){
         return;
       }
 
