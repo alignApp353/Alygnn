@@ -2813,25 +2813,10 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       lock.hidden=false;
     }
 
-    setupSuggestions();
-    setupSkillBenefitTypeahead();
-    restoreDraft();
-
-    activeJobDraftId =
-      entryParams.get('draft') ||
-      sessionStorage.getItem('alygnnActiveJobDraftId') ||
-      activeJobDraftId ||
-      '';
-
-    const requestedStep=Math.max(
-      1,
-      Math.min(
-        5,
-        Number(sessionStorage.getItem('alygnnJobReturnStep')||1)||1
-      )
-    );
-
-    showStep(requestedStep);
+    /*
+     * The builder is already open from the early session/company identity
+     * phase. Do not reinitialize the form here.
+     */
   }catch(error){
     console.error(error);
     showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
