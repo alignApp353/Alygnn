@@ -442,7 +442,7 @@ html[data-theme="dark"] .custom-add-btn{
       <div class="field">
         <label>Company</label>
         <div class="company-box">
-          <div class="company-name" id="company-name">Loading company…</div>
+          <div class="company-name" id="company-name">Your company</div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
       </div>
@@ -1637,7 +1637,7 @@ const JOB_POST_LOADING_MESSAGES=[
   ['Getting your company ready.','Loading your company and verification details.'],
   ['Checking your job capacity.','Making sure you have an available job slot.'],
   ['Almost ready.','Restoring your job draft and hiring preferences.'],
-  ['Still working on it.','Alygnn is waiting for a secure response from the server.']
+  ['Still working on it.','Alygnn is still finishing secure checks in the background.']
 ];
 
 let jobPostLoadingMessageIndex=0;
@@ -1662,6 +1662,21 @@ function startJobPostLoadingExperience(){
 
   clearInterval(jobPostLoadingInterval);
   clearTimeout(jobPostLoadingWatchdog);
+
+  /*
+   * IMPORTANT:
+   * Keep every account/company/verification/slot check running, but do not
+   * block the employer behind the loader for more than 5 seconds.
+   *
+   * If initialization is still running after 5 seconds, reveal the job form
+   * and let the remaining secure checks finish in the background.
+   */
+  setTimeout(()=>{
+    const loading=el('loading');
+    if(loading && !loading.hidden){
+      loading.hidden=true;
+    }
+  },5000);
 
   /*
    * Change the copy every 9 seconds so a slow secure/network request
