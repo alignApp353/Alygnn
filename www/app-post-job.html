@@ -2430,132 +2430,162 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      * or document checks just to display the correct company name.
      */
     const earlyUserId=session.user.id;
-    const sessionMeta=session.user?.user_metadata||{};
-    const companyNameFromRoute=String(
-      entryParams.get('company_name')||
+
+    /*
+     * COMPANY NAME SOURCE OF TRUTH:
+     * Employer onboarding saves the legal company name into fresh Auth
+     * metadata as user_metadata.company_name. getSession() can contain an
+     * older cached user object, so refresh the user BEFORE resolving the
+     * company name.
+     */
+    let freshUser=session.user;
+
+    try{
+      const freshUserResult=await withHardTimeout(
+        sb.auth.getUser(),
+        3500,
+        'Fresh employer user metadata',
+        {data:{user:null},error:new Error('Fresh user lookup timed out')}
+      );
+
+      if(!freshUserResult?.error && freshUserResult?.data?.user){
+        freshUser=freshUserResult.data.user;
+        session={...session,user:freshUser};
+      }
+    }catch(freshUserError){
+      console.warn('Fresh employer metadata unavailable:',freshUserError);
+    }
+
+    const sessionMeta=freshUser?.user_metadata||{};
+
+    /*
+     * Onboarding also keeps an account-specific draft containing company_name.
+     * Use that as a direct local fallback if metadata syncing was delayed.
+     */
+    let onboardingDraftCompanyName='';
+
+    try{
+      const onboardingDraft=JSON.parse(
+        localStorage.getItem(
+          `alygnn_employer_onboarding_draft:${earlyUserId}`
+        )||'null'
+      );
+
+      onboardingDraftCompanyName=String(
+        onboardingDraft?.company_name||
+        ''
+      ).trim();
+    }catch(_){}
+
+    let resolvedCompanyName=String(
+      sessionMeta.company_name ||
+      sessionMeta.onboarding_company_profile?.company_name ||
+      sessionMeta.employer_ai_profile?.company_name ||
+      onboardingDraftCompanyName ||
+      sessionStorage.getItem('alygnn_job_post_company_name') ||
+      localStorage.getItem('alygnn_employer_company_name') ||
+      ''
+    ).trim();
+
+    let earlyCompanyId=String(
+      sessionMeta.onboarding_company_profile?.company_id ||
+      sessionMeta.company_id ||
+      sessionMeta.employer_company_id ||
+      sessionStorage.getItem('alygnn_company_id') ||
+      localStorage.getItem('alygnn_company_id') ||
       ''
     ).trim();
 
     /*
-     * Resolve the ACTUAL employer company name before showing Step 1.
-     * Use the same shared-company source as the dashboard, then fall back
-     * to employer_verifications and auth metadata.
+     * If Auth/local state still does not have the name, ask the same shared
+     * company sources used elsewhere in the employer app.
      */
-    let resolvedCompanyName=companyNameFromRoute;
-    let earlyCompanyId='';
+    if(!resolvedCompanyName){
+      try{
+        const [
+          sharedResult,
+          membershipResult,
+          verificationResult
+        ]=await Promise.all([
+          withHardTimeout(
+            sb.rpc('get_my_company_shared_context'),
+            3500,
+            'Shared company context',
+            {data:null,error:new Error('Shared company context timed out')}
+          ),
+          withHardTimeout(
+            sb.from('company_members')
+              .select('company_id,companies(*)')
+              .eq('user_id',earlyUserId)
+              .eq('membership_status','active')
+              .limit(1)
+              .maybeSingle(),
+            3500,
+            'Company membership identity',
+            {data:null,error:new Error('Company membership lookup timed out')}
+          ),
+          withHardTimeout(
+            sb.from('employer_verifications')
+              .select('*')
+              .eq('user_id',earlyUserId)
+              .maybeSingle(),
+            3500,
+            'Employer verification identity',
+            {data:null,error:new Error('Employer verification lookup timed out')}
+          )
+        ]);
 
-    const routedCompanyNode=el('company-name');
-    if(routedCompanyNode && resolvedCompanyName){
-      routedCompanyNode.hidden=false;
-      routedCompanyNode.textContent=resolvedCompanyName;
-    }
+        const sharedRaw=sharedResult?.data||null;
+        const shared=Array.isArray(sharedRaw)
+          ?(sharedRaw[0]||{})
+          :(sharedRaw||{});
 
-    try{
-      const [
-        sharedResult,
-        verificationResult
-      ]=await Promise.all([
-        withHardTimeout(
-          sb.rpc('get_my_company_shared_context'),
-          4000,
-          'Shared company context',
-          {data:null,error:new Error('Shared company context timed out')}
-        ),
-        withHardTimeout(
-          sb.from('employer_verifications')
-            .select('*')
-            .eq('user_id',earlyUserId)
-            .maybeSingle(),
-          4000,
-          'Employer verification company lookup',
-          {data:null,error:new Error('Employer verification lookup timed out')}
-        )
-      ]);
+        const membership=membershipResult?.data||{};
+        const joinedCompany=Array.isArray(membership.companies)
+          ?(membership.companies[0]||{})
+          :(membership.companies||{});
 
-      const sharedRaw=sharedResult?.data||null;
-      const shared=Array.isArray(sharedRaw)
-        ?(sharedRaw[0]||{})
-        :(sharedRaw||{});
+        const verification=verificationResult?.data||{};
 
-      const verification=verificationResult?.data||{};
+        const sharedSetup=
+          shared.onboarding_profile&&typeof shared.onboarding_profile==='object'
+            ?shared.onboarding_profile
+            :{};
 
-      const sharedSetup=
-        shared.onboarding_profile&&typeof shared.onboarding_profile==='object'
-          ?shared.onboarding_profile
-          :{};
+        const sharedAi=
+          shared.ai_profile&&typeof shared.ai_profile==='object'
+            ?shared.ai_profile
+            :{};
 
-      const sharedAi=
-        shared.ai_profile&&typeof shared.ai_profile==='object'
-          ?shared.ai_profile
-          :{};
+        earlyCompanyId=String(
+          earlyCompanyId ||
+          shared.company_id ||
+          membership.company_id ||
+          verification.company_id ||
+          ''
+        ).trim();
 
-      earlyCompanyId=String(
-        shared.company_id ||
-        verification.company_id ||
-        sessionMeta.company_id ||
-        sessionMeta.employer_company_id ||
-        ''
-      ).trim();
-
-      resolvedCompanyName=
-        resolvedCompanyName ||
-        String(
+        resolvedCompanyName=String(
           sharedAi.company_name ||
           sharedSetup.company_name ||
           shared.company_name ||
+          joinedCompany.company_name ||
+          joinedCompany.legal_name ||
+          joinedCompany.name ||
           verification.company_name ||
           verification.legal_name ||
-          sessionMeta.onboarding_company_profile?.company_name ||
-          sessionMeta.employer_ai_profile?.company_name ||
-          sessionMeta.company_name ||
-          sessionMeta.business_name ||
           ''
         ).trim();
-
-      /*
-       * If we have a company id but still no name, query the company record.
-       * Use select('*') so this works with the real current schema.
-       */
-      if(!resolvedCompanyName && earlyCompanyId){
-        const companyResult=await withHardTimeout(
-          sb.from('companies')
-            .select('*')
-            .eq('id',earlyCompanyId)
-            .maybeSingle(),
-          3500,
-          'Company record lookup',
-          {data:null,error:new Error('Company record lookup timed out')}
-        );
-
-        const company=companyResult?.data||{};
-
-        resolvedCompanyName=String(
-          company.company_name ||
-          company.legal_name ||
-          company.name ||
-          ''
-        ).trim();
+      }catch(companyLookupError){
+        console.warn('Company name lookup unavailable:',companyLookupError);
       }
-    }catch(companyIdentityError){
-      console.warn(
-        'Company identity lookup deferred:',
-        companyIdentityError
-      );
     }
 
     /*
-     * Last-known real name only. Never invent "Company" or "Your company".
+     * Paint ONLY the real stored name. No generic fallback text.
      */
-    resolvedCompanyName=
-      resolvedCompanyName ||
-      String(
-        sessionStorage.getItem('alygnn_job_post_company_name') ||
-        localStorage.getItem('alygnn_employer_company_name') ||
-        ''
-      ).trim();
-
     const companyNode=el('company-name');
-    if(companyNode && resolvedCompanyName){
+    if(companyNode){
       companyNode.hidden=false;
       companyNode.textContent=resolvedCompanyName;
     }
@@ -2563,6 +2593,7 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     if(earlyCompanyId){
       try{
         sessionStorage.setItem('alygnn_company_id',earlyCompanyId);
+        localStorage.setItem('alygnn_company_id',earlyCompanyId);
       }catch(_){}
     }
 
@@ -2580,7 +2611,8 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     }
 
     /*
-     * Open the builder now. All slower checks continue below.
+     * Open Step 1 after the company identity has been resolved.
+     * Remaining verification / entitlement checks continue below.
      */
     /* Builder already initialized above. */
     hideLoading();
