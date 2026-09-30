@@ -7983,6 +7983,13 @@
       }catch(_error){}
     }
 
+    let employerUserNavigationVersion=0;
+
+    function markEmployerUserNavigation(){
+      employerUserNavigationVersion+=1;
+      return employerUserNavigationVersion;
+    }
+
     function setView(name){
       const previousView = state.currentView;
       state.currentView = name;
@@ -15182,6 +15189,9 @@
     }
 
     async function initialize(){
+      const bootNavigationVersion=
+        employerUserNavigationVersion;
+
       /*
        * Resolve the requested workspace tab BEFORE auth/company/network work.
        * This prevents Dashboard from flashing before Company/Settings/Jobs.
@@ -15379,52 +15389,63 @@
          * Open My Jobs immediately and open the exact listing whose ID
          * was supplied by app-job-preview.html.
          */
-        if(
-          requestedJobId ||
-          requestedView==='jobs'
-        ){
-          state.currentView='jobs';
-        }else if(
-          requestedView==='company' ||
-          requestedView==='settings' ||
-          requestedView==='dashboard'
-        ){
-          state.currentView=requestedView;
+        const userChangedWorkspaceDuringBoot=
+          employerUserNavigationVersion!==bootNavigationVersion;
+
+        if(!userChangedWorkspaceDuringBoot){
+          if(
+            requestedJobId ||
+            requestedView==='jobs'
+          ){
+            state.currentView='jobs';
+          }else if(
+            requestedView==='company' ||
+            requestedView==='settings' ||
+            requestedView==='dashboard'
+          ){
+            state.currentView=requestedView;
+          }
         }
 
         safeRenderAll();
         refreshEmployerMessageBadge();
 
-        if(requestedView==='company'){
-          setView('company');
-          if(initialParams.get('edit')==='1'||initialParams.get('reason')==='logo_required'){
-            setTimeout(
-              ()=>openCompanyEditor('all'),
-              0
-            );
-          }
-        }else if(requestedView==='settings'){
-          setView('settings');
-        }else if(requestedView==='dashboard'){
-          setView('dashboard');
-        }
-
-        if(
-          requestedJobId ||
-          requestedView==='jobs'
-        ){
-          if(requestedJobId){
-            jobsStatusTab='open';
-            requestedInitialJobsTab='';
+        /*
+         * Never let the original URL route win after the employer has already
+         * tapped another workspace tab while initialization was still running.
+         */
+        if(!userChangedWorkspaceDuringBoot){
+          if(requestedView==='company'){
+            setView('company');
+            if(initialParams.get('edit')==='1'||initialParams.get('reason')==='logo_required'){
+              setTimeout(
+                ()=>openCompanyEditor('all'),
+                0
+              );
+            }
+          }else if(requestedView==='settings'){
+            setView('settings');
+          }else if(requestedView==='dashboard'){
+            setView('dashboard');
           }
 
-          setView('jobs');
+          if(
+            requestedJobId ||
+            requestedView==='jobs'
+          ){
+            if(requestedJobId){
+              jobsStatusTab='open';
+              requestedInitialJobsTab='';
+            }
 
-          /* Only a direct published-job request should force Open and launch
-             the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
-             the requested Drafts tab selected. */
-          if(requestedJobId){
-            openRequestedDashboardJob();
+            setView('jobs');
+
+            /* Only a direct published-job request should force Open and launch
+               the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
+               the requested Drafts tab selected. */
+            if(requestedJobId){
+              openRequestedDashboardJob();
+            }
           }
         }
 
@@ -15445,10 +15466,16 @@
          * Do not require a second tap on Open Jobs.
          * If a direct listing request is pending, resolve it here too.
          */
+        const userChangedWorkspaceDuringBoot=
+          employerUserNavigationVersion!==bootNavigationVersion;
+
         const pendingJobId=
           requestedDashboardJobId();
 
-        if(pendingJobId){
+        if(
+          pendingJobId &&
+          !userChangedWorkspaceDuringBoot
+        ){
           jobsStatusTab='open';
           requestedInitialJobsTab='';
 
@@ -15467,6 +15494,7 @@
       const nav = event.target.closest('[data-view]');
       if(nav){
         event.preventDefault();
+        markEmployerUserNavigation();
         try{nav.blur();}catch(_error){}
         resetEmployerWorkspaceScroll();
         if(
