@@ -4245,13 +4245,23 @@
 }
 </style>
 
-</head>
-<body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs">
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div class="loading-copy">Loading employer workspace…</div>
-  </div>
 
+<style id="alygnn-employer-clean-boot">
+  html{
+    background:var(--bg);
+  }
+
+  body[data-dashboard-booting="true"] .shell{
+    visibility:hidden!important;
+  }
+
+  body[data-dashboard-booting="false"] .shell{
+    visibility:visible!important;
+  }
+</style>
+
+</head>
+<body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div class="shell">
     <header class="header">
       <div aria-hidden="true"></div>
@@ -5693,7 +5703,6 @@
     const $ = id => document.getElementById(id);
 
     const els = {
-      loading:$('loading'),
       greeting:$('greeting'),
       dashboardMessage:$('dashboard-message'),
       notificationCount:$('notification-count'),
@@ -14150,7 +14159,12 @@
         safeRenderAll();
 
       }finally{
-        els.loading.hidden = true;
+        /*
+         * Reveal the workspace only after initialization has resolved.
+         * This prevents the previous employer / old dashboard state from
+         * flashing before the current account is rendered.
+         */
+        document.body.dataset.dashboardBooting='false';
 
         /*
          * Do not require a second tap on Open Jobs.
