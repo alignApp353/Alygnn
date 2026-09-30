@@ -8048,7 +8048,19 @@
       }
 
       if(name==='company'){
-        refreshCompanyProfile().catch(error=>{
+        const companyViewToken='company';
+
+        refreshCompanyProfile().then(()=>{
+          /*
+           * refreshCompanyProfile updates data only. Never allow an async
+           * refresh to move the user away from Company.
+           */
+          if(state.currentView===companyViewToken){
+            document.querySelectorAll('.view').forEach(view=>{
+              view.hidden=view.id!=='company-view';
+            });
+          }
+        }).catch(error=>{
           console.error('Company profile refresh failed:',error);
         });
       }
@@ -15170,6 +15182,43 @@
     }
 
     async function initialize(){
+      /*
+       * Resolve the requested workspace tab BEFORE auth/company/network work.
+       * This prevents Dashboard from flashing before Company/Settings/Jobs.
+       */
+      const initialParams=
+        new URLSearchParams(location.search);
+
+      const immediateRequestedView=
+        String(
+          initialParams.get('view')||
+          ''
+        ).trim();
+
+      if(
+        [
+          'dashboard',
+          'jobs',
+          'company',
+          'settings'
+        ].includes(immediateRequestedView)
+      ){
+        state.currentView=immediateRequestedView;
+
+        document.querySelectorAll('.view').forEach(view=>{
+          view.hidden=
+            view.id!==
+            immediateRequestedView+'-view';
+        });
+
+        document.querySelectorAll('.nav-item').forEach(button=>{
+          button.classList.toggle(
+            'active',
+            button.dataset.view===immediateRequestedView
+          );
+        });
+      }
+
       try{
         const { data,error } = await sb.auth.getSession();
 
@@ -15295,9 +15344,6 @@
             applicationError
           );
         }
-
-        const initialParams=
-          new URLSearchParams(location.search);
 
         const requestedJobId=
           String(
