@@ -132,9 +132,20 @@ async function rpc(name, body) {
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
+
+  // Stripe should provide current_period_end, but a verified active subscription
+  // must never be written with a NULL expiry. This fallback keeps the paid
+  // Second Job Slot usable until a later Stripe event supplies the exact date.
+  let effectiveExpiresAt=expiresAt||null;
+  if(active&&!effectiveExpiresAt){
+    const fallback=new Date();
+    fallback.setUTCMonth(fallback.getUTCMonth()+1);
+    effectiveExpiresAt=fallback.toISOString();
+  }
+
   const patch={
     addon_slot_count:active?1:0,
-    addon_slots_expires_at:active?(expiresAt||null):null,
+    addon_slots_expires_at:active?effectiveExpiresAt:null,
     updated_at:new Date().toISOString()
   };
 
@@ -159,7 +170,7 @@ async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
       body:JSON.stringify({
         employer_id:employerId,
         addon_slot_count:1,
-        addon_slots_expires_at:expiresAt||null,
+        addon_slots_expires_at:effectiveExpiresAt,
         updated_at:new Date().toISOString()
       })
     });
@@ -285,33 +296,6 @@ async function setCandidateAccessLock(employerId, locked, reason=null, subscript
 function subscriptionUnitAmount(subscription, fallback=0) {
   const value=subscription?.items?.data?.[0]?.price?.unit_amount;
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
-}
-
-async function clearPendingPlanChangeState(employerId) {
-  if (!employerId) return;
-
-  const patchUrl = new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
-  patchUrl.searchParams.set('employer_id', 'eq.' + employerId);
-
-  const response = await fetch(patchUrl, {
-    method: 'PATCH',
-    headers: serviceHeaders({ Prefer: 'return=minimal' }),
-    body: JSON.stringify({
-      pending_plan: null,
-      pending_billing_period: null,
-      pending_plan_effective_at: null,
-      stripe_plan_schedule_id: null,
-      plan_change_updated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      'Could not clear stale pending plan change: ' +
-      await response.text()
-    );
-  }
 }
 
 async function clearPendingIfApplied(employerId, activePlan) {
@@ -466,17 +450,10 @@ async function fulfillCheckout(session) {
   }
 
   if (product === 'weekly_slot') {
-    const paymentReference =
-      typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : (session.payment_intent?.id || session.id);
-
     await rpc('grant_weekly_job_slot', {
       p_employer_id: employerId,
-      p_payment_reference: paymentReference,
-      p_amount_cents: Number.isFinite(Number(session.amount_total))
-        ? Number(session.amount_total)
-        : 9900,
+      p_payment_reference: session.id,
+      p_amount_cents: session.amount_total || 9900,
       p_days: 7
     });
     return;
@@ -622,16 +599,7 @@ async function fulfillSubscription(subscription, forceStatus) {
     await setCandidateAccessLock(employerId, false, null, status);
   }
 
-  /*
-   * A fully ended paid plan cannot have a valid future downgrade.
-   * Clear every pending plan-change field so a canceled plan can never
-   * later appear as "Downgrade to Launch scheduled".
-   */
-  if(terminal){
-    await clearPendingPlanChangeState(employerId);
-  }else{
-    await clearPendingIfApplied(employerId, meta.plan);
-  }
+  await clearPendingIfApplied(employerId, meta.plan);
 }
 
 async function handleInvoicePaymentProblem(invoice, reason) {
@@ -642,27 +610,19 @@ async function handleInvoicePaymentProblem(invoice, reason) {
 
   const subscription = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`);
   const meta=subscription.metadata||{};
-  const product=String(meta.product||'').toLowerCase();
-  if(!meta.employer_id)return;
+  if (String(meta.product||'').toLowerCase() !== 'job_plan' || !meta.employer_id) return;
 
-  if(product==='job_plan'){
-    await setCandidateAccessLock(meta.employer_id, true, reason || 'payment_failed', 'past_due');
-    await upsertPlan({
-      employerId: meta.employer_id,
-      plan: meta.plan,
-      billing: meta.billing || 'monthly',
-      status: 'past_due',
-      periodEnd: subscription.current_period_end,
-      subscriptionId: subscription.id,
-      customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
-      scheduleId: typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id
-    });
-    return;
-  }
-
-  if(['additional_slot','single_job','team_seat'].includes(product)){
-    await fulfillSubscription(subscription,'past_due');
-  }
+  await setCandidateAccessLock(meta.employer_id, true, reason || 'payment_failed', 'past_due');
+  await upsertPlan({
+    employerId: meta.employer_id,
+    plan: meta.plan,
+    billing: meta.billing || 'monthly',
+    status: 'past_due',
+    periodEnd: subscription.current_period_end,
+    subscriptionId: subscription.id,
+    customerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
+    scheduleId: typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id
+  });
 }
 
 module.exports = async function handler(req, res) {
