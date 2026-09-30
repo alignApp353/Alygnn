@@ -312,22 +312,9 @@ async function resolveEmployerCompany(){
 
 function verificationReturnTo(){
   const params=new URLSearchParams(location.search);
-  const requested=params.get('return_to')||sessionStorage.getItem('alygnnAiProfileReturnTo')||'';
-  const allowed=new Set([
-    'app-post-job.html',
-    'app-employer-ai-profile.html',
-    'app-employer-dashboard.html',
-    'app-employer-onboarding.html'
-  ]);
-
-  if(allowed.has(requested))return requested;
-
-  const referrer=String(document.referrer||'');
-  if(referrer.includes('app-post-job.html'))return 'app-post-job.html';
-  if(referrer.includes('app-employer-onboarding.html'))return 'app-employer-onboarding.html';
-  if(referrer.includes('app-employer-dashboard.html'))return 'app-employer-dashboard.html';
-
-  return 'app-employer-dashboard.html';
+  const companyParam=params.get('company_id')||companyId||'';
+  return 'app-employer-onboarding.html?review=1'+
+    (companyParam?'&company_id='+encodeURIComponent(companyParam):'');
 }
 document.getElementById('back-button').onclick=()=>location.replace(verificationReturnTo());submitButton.onclick=async()=>{if(!selectedFile||!validateFile(selectedFile))return;submitButton.disabled=true;submitButton.textContent='Uploading…';clearMessage();try{if(!session)throw new Error('Your session expired. Sign in again.');
 
@@ -338,7 +325,8 @@ if(!companyId){
 if(!companyId){
   throw new Error('Alygnn could not find the company workspace connected to this account. Your PDF was not uploaded.');
 }
-const safeName=selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-100);const storagePath=`${companyId}/${session.user.id}/${Date.now()}-${safeName}`;const {error:uploadError}=await sb.storage.from(BUCKET).upload(storagePath,selectedFile,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});if(uploadError)throw uploadError;const {error:recordError}=await sb.from('employer_verification_documents').insert({company_id:companyId,uploaded_by:session.user.id,document_type:'ein_verification',storage_path:storagePath,original_file_name:selectedFile.name,mime_type:'application/pdf',file_size_bytes:selectedFile.size,review_status:'pending_review'});if(recordError){await sb.storage.from(BUCKET).remove([storagePath]);throw recordError}localStorage.setItem('alygnn_verification_document_submitted','true');localStorage.setItem('alygnn_employer_verification_status','pending_review');showMessage('Your document was submitted successfully.','success');setTimeout(()=>location.replace('app-employer-verification-status.html'),700)}catch(error){console.error(error);showMessage(error.message||'Unable to upload your document.');submitButton.disabled=false;submitButton.textContent='Submit Document'}};(async()=>{
+const safeName=selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'-').slice(-100);const storagePath=`${companyId}/${session.user.id}/${Date.now()}-${safeName}`;const {error:uploadError}=await sb.storage.from(BUCKET).upload(storagePath,selectedFile,{cacheControl:'3600',upsert:false,contentType:'application/pdf'});if(uploadError)throw uploadError;const {error:recordError}=await sb.from('employer_verification_documents').insert({company_id:companyId,uploaded_by:session.user.id,document_type:'ein_verification',storage_path:storagePath,original_file_name:selectedFile.name,mime_type:'application/pdf',file_size_bytes:selectedFile.size,review_status:'pending_review'});if(recordError){await sb.storage.from(BUCKET).remove([storagePath]);throw recordError}localStorage.setItem('alygnn_verification_document_submitted','true');localStorage.setItem('alygnn_employer_verification_status','pending_review');
+try{localStorage.removeItem(`alygnn_employer_onboarding_draft_${session.user.id}`)}catch(_){}showMessage('Your document was submitted successfully.','success');setTimeout(()=>location.replace('app-employer-verification-status.html'),700)}catch(error){console.error(error);showMessage(error.message||'Unable to upload your document.');submitButton.disabled=false;submitButton.textContent='Submit Document'}};(async()=>{
   const result=await sb.auth.getSession();
   session=result.data.session;
 
