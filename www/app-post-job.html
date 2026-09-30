@@ -209,12 +209,41 @@ label{display:block;margin-bottom:8px;font-size:13px;font-weight:900}
   font-weight:700;
   letter-spacing:.01em;
 }
-
-
-
-
-
-
+.loading-detail{
+  min-height:18px;
+  margin-top:8px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+  opacity:.82;
+}
+.loading-actions{
+  display:none;
+  justify-content:center;
+  gap:10px;
+  margin-top:22px;
+}
+.loading-actions.show{
+  display:flex;
+}
+.loading-retry,
+.loading-back{
+  min-height:42px;
+  padding:0 16px;
+  border-radius:13px;
+  font-size:12px;
+  font-weight:900;
+}
+.loading-retry{
+  border:0;
+  background:var(--brand-dark);
+  color:#fff;
+}
+.loading-back{
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+}
 
 .loading-track{
   position:relative;
@@ -374,10 +403,16 @@ html[data-theme="dark"] .custom-add-btn{
   <div class="loading-box">
     <div class="loading-logo">Alygnn<span>.</span></div>
     <div class="loading-copy" id="loading-copy">Preparing your job post.</div>
-<div class="loading-track" aria-hidden="true">
+    <div class="loading-detail" id="loading-detail">Checking your employer workspace.</div>
+    <div class="loading-track" aria-hidden="true">
       <div class="loading-bar"></div>
     </div>
-</div>
+
+    <div class="loading-actions" id="loading-actions">
+      <button class="loading-retry" id="loading-retry" type="button">Try Again</button>
+      <button class="loading-back" id="loading-back" type="button">Back to Jobs</button>
+    </div>
+  </div>
 </div>
 
 <header class="header">
@@ -407,10 +442,9 @@ html[data-theme="dark"] .custom-add-btn{
       <div class="field">
         <label>Company</label>
         <div class="company-box">
-          <div class="company-name" id="company-name"></div>
+          <div class="company-name" id="company-name">Loading company…</div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
-        <button type="button" class="company-ai-link" id="company-verification-link" hidden>Verify Company</button>
       </div>
 
       <div class="field">
@@ -1211,14 +1245,20 @@ function setupSuggestions(){
     titleBox.innerHTML='<div class="suggest-empty">Searching job titles…</div>';
     titleBox.classList.add('show');
 
-    const rows=await searchJobTitleCatalog(query);
+    const catalogRows=await searchJobTitleCatalog(query);
 
     if(titleInput.value.trim()!==query)return;
 
-    renderCatalogResults(titleBox,rows,row=>{
+    const rows=mergeJobTitleRows(
+      catalogRows,
+      localJobTitleMatches(query)
+    );
+
+    renderJobTitleResults(titleBox,rows,query,row=>{
       titleInput.value=row.job_title;
       selectedOnetCode=row.onet_soc_code||'';
       loadOccupationProfile(selectedOnetCode);
+      refreshRoleSuggestions();
     });
   }
 
@@ -1592,29 +1632,78 @@ async function enforceJobSlotAccess(userId,companyId){
 }
 
 
+const JOB_POST_LOADING_MESSAGES=[
+  ['Preparing your job post.','Checking your employer workspace.'],
+  ['Getting your company ready.','Loading your company and verification details.'],
+  ['Checking your job capacity.','Making sure you have an available job slot.'],
+  ['Almost ready.','Restoring your job draft and hiring preferences.'],
+  ['Still working on it.','Alygnn is waiting for a secure response from the server.']
+];
 
-let jobPostLoadingReleaseTimer=null;
+let jobPostLoadingMessageIndex=0;
+let jobPostLoadingInterval=null;
+let jobPostLoadingWatchdog=null;
+
+function updateJobPostLoadingMessage(index){
+  const message=
+    JOB_POST_LOADING_MESSAGES[
+      index % JOB_POST_LOADING_MESSAGES.length
+    ];
+
+  const copy=el('loading-copy');
+  const detail=el('loading-detail');
+
+  if(copy)copy.textContent=message[0];
+  if(detail)detail.textContent=message[1];
+}
 
 function startJobPostLoadingExperience(){
-  const copy=el('loading-copy');
-  if(copy)copy.textContent='Preparing your job post.';
+  updateJobPostLoadingMessage(0);
 
-  clearTimeout(jobPostLoadingReleaseTimer);
+  clearInterval(jobPostLoadingInterval);
+  clearTimeout(jobPostLoadingWatchdog);
 
   /*
-   * The loader is only a short transition.
-   * If startup work is still running after 5 seconds, reveal the form.
-   * Remaining secure checks continue in the background.
+   * Change the copy every 9 seconds so a slow secure/network request
+   * never looks frozen.
    */
-  jobPostLoadingReleaseTimer=setTimeout(()=>{
-    const loading=el('loading');
-    if(loading)loading.hidden=true;
-  },5000);
+  jobPostLoadingInterval=setInterval(()=>{
+    jobPostLoadingMessageIndex+=1;
+    updateJobPostLoadingMessage(
+      jobPostLoadingMessageIndex
+    );
+  },9000);
+
+  /*
+   * Never leave the employer staring at an endless loader.
+   * We DO NOT skip any checks. We simply expose recovery controls if
+   * initialization has not completed after 30 seconds.
+   */
+  jobPostLoadingWatchdog=setTimeout(()=>{
+    const copy=el('loading-copy');
+    const detail=el('loading-detail');
+    const actions=el('loading-actions');
+
+    if(copy){
+      copy.textContent='This is taking longer than usual.';
+    }
+
+    if(detail){
+      detail.textContent=
+        'Your connection or one of Alygnn’s secure services may be responding slowly.';
+    }
+
+    if(actions){
+      actions.classList.add('show');
+    }
+  },30000);
 }
 
 function stopJobPostLoadingExperience(){
-  clearTimeout(jobPostLoadingReleaseTimer);
-  jobPostLoadingReleaseTimer=null;
+  clearInterval(jobPostLoadingInterval);
+  clearTimeout(jobPostLoadingWatchdog);
+  jobPostLoadingInterval=null;
+  jobPostLoadingWatchdog=null;
 }
 
 function hideLoading(){
@@ -1623,6 +1712,14 @@ function hideLoading(){
   const loading=el('loading');
   if(loading)loading.hidden=true;
 }
+
+el('loading-retry')?.addEventListener('click',()=>{
+  location.reload();
+});
+
+el('loading-back')?.addEventListener('click',()=>{
+  location.href='app-employer-dashboard.html?view=jobs';
+});
 
 startJobPostLoadingExperience();
 
@@ -2162,20 +2259,9 @@ async function saveDraftAndExit(){
     sessionStorage.removeItem('alygnnJobReturnStep');
     location.href='app-employer-dashboard.html?view=jobs&jobs_tab=drafts';
   }catch(error){
-    console.warn(
-      'Cloud draft save failed; keeping local draft instead:',
-      error
-    );
-
-    /*
-     * saveCurrentJobDraft() already stored the draft in sessionStorage.
-     * Do not block the employer from leaving because the cloud draft table
-     * is unavailable or restricted.
-     */
-    saveCurrentJobDraft();
-    sessionStorage.setItem('alygnnEmployerJobsTab','drafts');
-    sessionStorage.removeItem('alygnnJobReturnStep');
-    location.href='app-employer-dashboard.html?view=jobs&jobs_tab=drafts';
+    console.error('Could not save job draft before exit:',error);
+    el('exit-modal').hidden=true;
+    showMessage('Could not save this draft. Please try again.');
   }finally{
     exitDraftSaving=false;
     button.disabled=false;
@@ -2287,49 +2373,20 @@ el('exit-modal').addEventListener('click',event=>{
 el('company-ai-link').addEventListener('click',()=>{
   saveCurrentJobDraft();
 
+  // This action is now only used for business-verification issues.
+  // Company AI Profile completion never blocks job creation.
   if(currentCompanyId){
-    try{
-      localStorage.setItem('alygnn_company_id',currentCompanyId);
-      sessionStorage.setItem('alygnn_company_id',currentCompanyId);
-    }catch(_){}
-  }
-
-  sessionStorage.setItem('alygnnAiProfileReturnTo','app-post-job.html');
-
-  const params=new URLSearchParams({
-    return_to:'app-post-job.html'
-  });
-
-  if(currentCompanyId){
-    params.set('company_id',currentCompanyId);
-  }
-
-  location.href=
-    'app-employer-ai-profile.html?' +
-    params.toString();
-});
-
-el('company-verification-link').addEventListener('click',()=>{
-  saveCurrentJobDraft();
-
-  if(currentCompanyId){
-    try{
-      localStorage.setItem('alygnn_company_id',currentCompanyId);
-      sessionStorage.setItem('alygnn_company_id',currentCompanyId);
-    }catch(_){}
+    localStorage.setItem('alygnn_company_id',currentCompanyId);
   }
 
   const params=new URLSearchParams({
     return_to:'app-post-job.html'
   });
-
-  if(currentCompanyId){
-    params.set('company_id',currentCompanyId);
-  }
+  if(currentCompanyId)params.set('company_id',currentCompanyId);
 
   location.href=
-    'app-employer-document-upload.html?' +
-    params.toString();
+    'app-employer-document-upload.html' +
+    (params.toString()?`?${params.toString()}`:'');
 });
 
 
@@ -2422,19 +2479,6 @@ el('description').addEventListener('input', () => {
   el('description-count').textContent = el('description').value.length;
 });
 
-
-function withHardTimeout(promise,ms,label,fallbackValue){
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise(resolve=>{
-      setTimeout(()=>{
-        console.warn(`${label} timed out after ${ms}ms`);
-        resolve(fallbackValue);
-      },ms);
-    })
-  ]);
-}
-
 (async function init(){
   try{
     const entryParams=new URLSearchParams(location.search);
@@ -2442,15 +2486,7 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       sessionStorage.removeItem('alygnn_job_slot_gate');
       sessionStorage.removeItem('alygnnEditJobId');
     }
-    const sessionResponse=await withHardTimeout(
-      sb.auth.getSession(),
-      4000,
-      'Auth session lookup',
-      {data:{session:null},error:new Error('Session lookup timed out')}
-    );
-
-    const sessionData=sessionResponse?.data||{};
-    const sessionError=sessionResponse?.error||null;
+    const {data:sessionData,error:sessionError}=await sb.auth.getSession();
 
     if(sessionError||!sessionData.session){
       location.replace('app-employer-login.html');
@@ -2459,286 +2495,9 @@ function withHardTimeout(promise,ms,label,fallbackValue){
 
     session=sessionData.session;
 
-    /*
-     * Resolve ONLY the employer's company identity before showing Step 1.
-     * Do not wait for verification, membership permissions, slot capacity,
-     * or document checks just to display the correct company name.
-     */
-    const earlyUserId=session.user.id;
-
-    /*
-     * COMPANY SOURCE OF TRUTH
-     * -----------------------
-     * Use the exact same canonical server-side company resolver as the
-     * employer dashboard. This endpoint exists specifically because browser
-     * RLS can hide the companies row even when the employer legitimately owns
-     * the workspace.
-     */
-    let resolvedCompanyName='';
-    let earlyCompanyId='';
-    let serverResolvedCompany=null;
-
-    try{
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),4500);
-
-      const response=await fetch(
-        'https://alygnn.com/api/company/my-company',
-        {
-          method:'GET',
-          headers:{
-            'Authorization':'Bearer '+session.access_token
-          },
-          signal:controller.signal
-        }
-      );
-
-      clearTimeout(timer);
-
-      if(response.ok){
-        const result=await response.json().catch(()=>({}));
-        const company=result.company||{};
-
-        earlyCompanyId=String(
-          company.id||
-          result.company_id||
-          result.companyId||
-          ''
-        ).trim();
-
-        resolvedCompanyName=String(
-          company.company_name||
-          company.companyName||
-          company.legal_name||
-          company.legalName||
-          company.name||
-          result.company_name||
-          result.companyName||
-          ''
-        ).trim();
-
-        serverResolvedCompany={
-          ...company,
-          ...(earlyCompanyId?{id:earlyCompanyId}:{}),
-          ...(resolvedCompanyName?{company_name:resolvedCompanyName}:{})
-        };
-      }else{
-        console.warn(
-          'Canonical company resolver returned:',
-          response.status
-        );
-      }
-    }catch(companyServerError){
-      console.warn(
-        'Canonical company resolver unavailable:',
-        companyServerError
-      );
-    }
-
-    /*
-     * Only if the canonical resolver could not return a name, use the same
-     * stored employer sources already maintained by onboarding.
-     */
-    if(!resolvedCompanyName){
-      /*
-       * Fallback to the same workspace RPCs used by the older working
-       * employer job-post flow. This is intentionally before metadata-only
-       * fallbacks so the visible company name comes from the employer workspace.
-       */
-      try{
-        const accessResult=await withHardTimeout(
-          sb.rpc('get_my_team_access'),
-          3000,
-          'Employer workspace access',
-          {data:null,error:new Error('Workspace access timed out')}
-        );
-
-        const accessData=accessResult?.data||{};
-        const accessCompanyId=String(accessData.company_id||'').trim();
-
-        if(accessCompanyId && !earlyCompanyId){
-          earlyCompanyId=accessCompanyId;
-        }
-
-        const workspaceResult=await withHardTimeout(
-          sb.rpc('get_my_workspace_context'),
-          3000,
-          'Employer workspace context',
-          {data:null,error:new Error('Workspace context timed out')}
-        );
-
-        const workspaceData=workspaceResult?.data||{};
-        const workspaceRows=Array.isArray(workspaceData?.employer_workspaces)
-          ? workspaceData.employer_workspaces
-          : [];
-
-        const workspace=workspaceRows.find(row=>
-          !earlyCompanyId ||
-          String(row?.company_id||'')===String(earlyCompanyId)
-        ) || workspaceRows[0] || null;
-
-        if(workspace){
-          resolvedCompanyName=String(
-            workspace.company_name||
-            workspace.legal_name||
-            workspace.name||
-            ''
-          ).trim();
-
-          if(!earlyCompanyId){
-            earlyCompanyId=String(workspace.company_id||'').trim();
-          }
-        }
-      }catch(workspaceFallbackError){
-        console.warn(
-          'Workspace company-name fallback unavailable:',
-          workspaceFallbackError
-        );
-      }
-
-      let freshUser=session.user;
-
-      try{
-        const freshUserResult=await withHardTimeout(
-          sb.auth.getUser(),
-          3000,
-          'Fresh employer user metadata',
-          {data:{user:null},error:new Error('Fresh user lookup timed out')}
-        );
-
-        if(!freshUserResult?.error && freshUserResult?.data?.user){
-          freshUser=freshUserResult.data.user;
-          session={...session,user:freshUser};
-        }
-      }catch(_){}
-
-      const sessionMeta=freshUser?.user_metadata||{};
-
-      resolvedCompanyName=String(
-        resolvedCompanyName||
-        sessionMeta.company_name||
-        sessionMeta.onboarding_company_profile?.company_name||
-        sessionMeta.employer_ai_profile?.company_name||
-        localStorage.getItem('alygnn_employer_company_name')||
-        ''
-      ).trim();
-
-      if(!resolvedCompanyName){
-        try{
-          const verificationResult=await withHardTimeout(
-            sb
-              .from('employer_verifications')
-              .select('company_name,company_id')
-              .eq('user_id',earlyUserId)
-              .maybeSingle(),
-            3000,
-            'Employer verification company name',
-            {data:null,error:new Error('Verification lookup timed out')}
-          );
-
-          if(!verificationResult?.error && verificationResult?.data){
-            resolvedCompanyName=String(
-              verificationResult.data.company_name||''
-            ).trim();
-
-            if(!earlyCompanyId){
-              earlyCompanyId=String(
-                verificationResult.data.company_id||''
-              ).trim();
-            }
-          }
-        }catch(_){}
-      }
-
-      earlyCompanyId=String(
-        earlyCompanyId||
-        sessionMeta.onboarding_company_profile?.company_id||
-        sessionMeta.company_id||
-        sessionMeta.employer_company_id||
-        localStorage.getItem(`alygnn_company_id_${earlyUserId}`)||
-        localStorage.getItem('alygnn_company_id')||
-        ''
-      ).trim();
-    }
-
-    /*
-     * Paint the real company name before showing Step 1.
-     * Never show "Company", "Your company", or "Loading company".
-     */
-    const companyNode=el('company-name');
-    if(companyNode){
-      companyNode.hidden=false;
-      companyNode.textContent=resolvedCompanyName||'';
-    }
-
-    if(earlyCompanyId){
-      currentCompanyId=earlyCompanyId;
-
-      try{
-        localStorage.setItem('alygnn_company_id',earlyCompanyId);
-        localStorage.setItem(
-          `alygnn_company_id_${earlyUserId}`,
-          earlyCompanyId
-        );
-        sessionStorage.setItem('alygnn_company_id',earlyCompanyId);
-      }catch(_){}
-    }
-
-    if(serverResolvedCompany){
-      currentCompany=serverResolvedCompany;
-    }
-
-    if(resolvedCompanyName){
-      try{
-        localStorage.setItem(
-          'alygnn_employer_company_name',
-          resolvedCompanyName
-        );
-        sessionStorage.setItem(
-          'alygnn_job_post_company_name',
-          resolvedCompanyName
-        );
-      }catch(_){}
-    }
-
-    /*
-     * Open the builder now.
-     */
-    setupSuggestions();
-    setupSkillBenefitTypeahead();
-    restoreDraft();
-
-    activeJobDraftId=
-      entryParams.get('draft')||
-      sessionStorage.getItem('alygnnActiveJobDraftId')||
-      activeJobDraftId||
-      '';
-
-    const requestedStep=Math.max(
-      1,
-      Math.min(
-        5,
-        Number(
-          sessionStorage.getItem('alygnnJobReturnStep')||1
-        )||1
-      )
-    );
-
-    showStep(requestedStep);
-    hideLoading();
-
     // Refresh the Auth user so recently saved Company AI Profile metadata is
     // available immediately instead of using a stale cached session object.
-    const userResponse=await withHardTimeout(
-      sb.auth.getUser(),
-      3500,
-      'Auth user refresh',
-      {data:{user:null},error:new Error('User refresh timed out')}
-    );
-
-    const userData=userResponse?.data||{};
-    const userError=userResponse?.error||null;
-
+    const {data:userData,error:userError}=await sb.auth.getUser();
     if(!userError&&userData?.user){
       session={...session,user:userData.user};
     }
@@ -2750,29 +2509,14 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       verificationResult,
       membershipResult
     ]=await Promise.all([
-      withHardTimeout(
-        sb.from('profiles').select('*').eq('id',userId).maybeSingle(),
-        4500,
-        'Employer profile load',
-        {data:null,error:new Error('Profile load timed out')}
-      ),
-      withHardTimeout(
-        sb.from('employer_verifications').select('*').eq('user_id',userId).maybeSingle(),
-        4500,
-        'Employer verification load',
-        {data:null,error:new Error('Verification load timed out')}
-      ),
-      withHardTimeout(
-        sb.from('company_members')
-          .select('company_id,companies(*)')
-          .eq('user_id',userId)
-          .eq('membership_status','active')
-          .limit(1)
-          .maybeSingle(),
-        4500,
-        'Company membership load',
-        {data:null,error:new Error('Membership load timed out')}
-      )
+      sb.from('profiles').select('*').eq('id',userId).maybeSingle(),
+      sb.from('employer_verifications').select('*').eq('user_id',userId).maybeSingle(),
+      sb.from('company_members')
+        .select('company_id,companies(*)')
+        .eq('user_id',userId)
+        .eq('membership_status','active')
+        .limit(1)
+        .maybeSingle()
     ]);
 
     if(profileResult.error)console.warn('Profile load failed:',profileResult.error);
@@ -2784,20 +2528,14 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     const membership=membershipResult.data||null;
 
     currentCompanyId=
-      currentCompanyId ||
       membership?.company_id ||
       verification.company_id ||
       sessionStorage.getItem('alygnn_company_id') ||
       '';
 
-    const membershipCompany=membership
+    currentCompany=membership
       ? (Array.isArray(membership.companies)?membership.companies[0]:membership.companies)
       : null;
-
-    currentCompany={
-      ...(currentCompany||{}),
-      ...(membershipCompany||{})
-    };
 
     /*
      * The builder should never become unusable because a preflight slot lookup
@@ -2805,20 +2543,8 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      * We still perform the authoritative slot check again on Publish.
      */
     try{
-      const slotAllowed=await withHardTimeout(
-        enforceJobSlotAccess(userId,currentCompanyId),
-        5000,
-        'Job-slot preflight',
-        'deferred'
-      );
-
-      if(slotAllowed===false)return;
-
-      if(slotAllowed==='deferred'){
-        console.warn(
-          'Job-slot preflight timed out. The authoritative slot check will run again before publish.'
-        );
-      }
+      const slotAllowed=await enforceJobSlotAccess(userId,currentCompanyId);
+      if(!slotAllowed)return;
     }catch(slotCheckError){
       console.error('Job-slot preflight check deferred:',slotCheckError);
     }
@@ -2826,21 +2552,13 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     let verificationDocument=null;
 
     if(currentCompanyId){
-      const documentResponse=await withHardTimeout(
-        sb
-          .from('employer_verification_documents')
-          .select('id,review_status,created_at')
-          .eq('company_id',currentCompanyId)
-          .order('created_at',{ascending:false})
-          .limit(1)
-          .maybeSingle(),
-        4000,
-        'Verification document load',
-        {data:null,error:new Error('Verification document load timed out')}
-      );
-
-      const document=documentResponse?.data||null;
-      const documentError=documentResponse?.error||null;
+      const {data:document,error:documentError}=await sb
+        .from('employer_verification_documents')
+        .select('id,review_status,created_at')
+        .eq('company_id',currentCompanyId)
+        .order('created_at',{ascending:false})
+        .limit(1)
+        .maybeSingle();
 
       if(documentError){
         console.warn('Verification document load failed:',documentError);
@@ -2922,70 +2640,54 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       metadata.onboarding_company_profile?.company_name ||
       profile.company_name ||
       metadata.company_name ||
-      localStorage.getItem('alygnn_employer_company_name') ||
-      '';
+      'Your company';
 
-    if(companyName){
-      el('company-name').hidden=false;
-      el('company-name').textContent=companyName;
-
-      try{
-        sessionStorage.setItem(
-          'alygnn_job_post_company_name',
-          companyName
-        );
-      }catch(_){}
-    }
-
-    if(companyName && companyName!==''){
-      try{
-        localStorage.setItem(
-          'alygnn_employer_company_name',
-          companyName
-        );
-      }catch(_){}
-    }
+    el('company-name').textContent=companyName;
 
     const aiButton=el('company-ai-link');
-    const verificationButton=el('company-verification-link');
     const lock=el('verification-lock');
 
-    /*
-     * Company AI Profile is independent from business verification.
-     * If the employer never completed it, always give them a way to do so.
-     */
-    aiButton.textContent='Complete Company AI Profile';
-    aiButton.hidden=aiProfileComplete===true;
-
-    /*
-     * Business verification gets its own action.
-     */
     if(employerVerified){
-      verificationButton.hidden=true;
+      aiButton.hidden=true;
       lock.hidden=true;
     }else if(verificationStatus==='not_submitted'){
-      verificationButton.textContent='Verify Company';
-      verificationButton.hidden=false;
+      aiButton.textContent='Verify Company';
+      aiButton.hidden=false;
       lock.textContent=
         'Verify your company by uploading an official business document.';
       lock.hidden=false;
     }else if(verificationStatus==='rejected'){
-      verificationButton.textContent='Resubmit Company Verification';
-      verificationButton.hidden=false;
+      aiButton.textContent='Resubmit Company Verification';
+      aiButton.hidden=false;
       lock.textContent=
         'Your company verification needs attention. Upload a corrected business document.';
       lock.hidden=false;
     }else{
-      verificationButton.hidden=true;
+      aiButton.hidden=true;
       lock.textContent=
         'Your company verification is pending. You can continue building this job while Alygnn reviews it.';
       lock.hidden=false;
     }
 
-    /*
-     * The builder is already open from the early session/company identity
-     * phase. Do not reinitialize the form here.
-     */
+    setupSuggestions();
+    setupSkillBenefitTypeahead();
+    restoreDraft();
+
+    activeJobDraftId =
+      entryParams.get('draft') ||
+      sessionStorage.getItem('alygnnActiveJobDraftId') ||
+      activeJobDraftId ||
+      '';
+
+    const requestedStep=Math.max(
+      1,
+      Math.min(
+        5,
+        Number(sessionStorage.getItem('alygnnJobReturnStep')||1)||1
+      )
+    );
+
+    showStep(requestedStep);
   }catch(error){
     console.error(error);
     showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
