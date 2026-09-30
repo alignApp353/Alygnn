@@ -15851,13 +15851,35 @@
     }
 
     function prepareCompanyForJobPost(){
-      const company=companyMetadata();
-      const name=String(company?.name||'').trim();
+      const user=state.currentUser||state.session?.user||{};
+      const meta=user.user_metadata||{};
+      const shared=state.sharedCompanyContext||{};
+      const setup=shared.onboarding_profile||meta.onboarding_company_profile||{};
+      const aiProfile=shared.ai_profile||meta.employer_ai_profile||{};
+      const verification=state.employerVerification||{};
+      const company=state.companyRecord||{};
+      const firstJob=state.jobs?.[0]||{};
 
-      if(
-        name &&
-        name.toLowerCase()!=='your company'
-      ){
+      /*
+       * IMPORTANT:
+       * Only use real stored company-name values here.
+       * Do NOT use companyMetadata(), because that helper intentionally has a
+       * "Your Company" fallback for display purposes.
+       */
+      const name=String(
+        aiProfile.company_name ||
+        setup.company_name ||
+        verification.company_name ||
+        company.company_name ||
+        company.legal_name ||
+        company.name ||
+        meta.company_name ||
+        meta.business_name ||
+        firstJob.company_name ||
+        ''
+      ).trim();
+
+      if(name){
         try{
           sessionStorage.setItem(
             'alygnn_job_post_company_name',
