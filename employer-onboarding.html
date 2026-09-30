@@ -1607,6 +1607,10 @@ window.addEventListener('beforeunload',saveDraft);
   // in the same browser. Completion must come from this user's saved blueprint
   // (or an actual approved/verified state).
   const verificationStatus=String(profile?.verification_status||'').trim().toLowerCase();
+  const resubmitRequested=new URLSearchParams(window.location.search).get('resubmit')==='1';
+  const rejectedForResubmission=['rejected','denied'].includes(verificationStatus);
+  const allowVerificationResubmission=resubmitRequested&&rejectedForResubmission;
+
   const blueprint=profile?.hiring_blueprint&&typeof profile.hiring_blueprint==='object'
     ? profile.hiring_blueprint
     : null;
@@ -1626,7 +1630,7 @@ window.addEventListener('beforeunload',saveDraft);
     verificationStatus==='approved' ||
     blueprintLooksComplete;
 
-  if(onboardingAlreadySubmitted){
+  if(onboardingAlreadySubmitted&&!allowVerificationResubmission){
     onboardingCompleted=true;
     window.removeEventListener('beforeunload',saveDraft);
     try{localStorage.removeItem(DRAFT_KEY)}catch{}
