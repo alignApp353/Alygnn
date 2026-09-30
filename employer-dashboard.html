@@ -3270,20 +3270,31 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     const status = String(currentProfile?.verification_status || 'not_submitted').toLowerCase();
     const submitted = ['pending', 'pending_review', 'submitted', 'under_review', 'in_review'].includes(status);
+    const rejected = ['rejected', 'denied'].includes(status);
 
     if (lockBox) {
       lockBox.style.display = 'block';
-      lockBox.innerHTML = submitted
-        ? `
+
+      if (rejected) {
+        lockBox.innerHTML = `
+          <strong>Business verification was rejected</strong><br>
+          Your jobs will remain <strong>Pending approval</strong> and hidden from candidates. Review your verification information and submit updated documents for another review.
+          <br><br>
+          <a href="employer-onboarding.html" style="color:#5D7FA3; font-weight:500;">Review and resubmit verification →</a>
+        `;
+      } else if (submitted) {
+        lockBox.innerHTML = `
           <strong>Business verification pending</strong><br>
           You can post your job now. It will be saved as <strong>Pending approval</strong> and will stay hidden from candidates until Alygnn approves your business.
-        `
-        : `
+        `;
+      } else {
+        lockBox.innerHTML = `
           <strong>Business verification not complete</strong><br>
           You can create your job now, but it will stay <strong>Pending approval</strong> and hidden from candidates until your business is verified.
           <br><br>
           <a href="employer-onboarding.html" style="color:#5D7FA3; font-weight:500;">Complete business verification →</a>
         `;
+      }
     }
 
     updatePostingAccessUI();
