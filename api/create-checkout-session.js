@@ -634,6 +634,77 @@ function subscriptionBilling(ent,sub){
   return ['monthly','quarterly'].includes(fromStripe)?fromStripe:billingPeriod(ent);
 }
 
+async function manageRpc(name, body) {
+  const response = await fetch(
+    manageBase() + '/rest/v1/rpc/' + encodeURIComponent(name),
+    {
+      method: 'POST',
+      headers: manageServiceHeaders(),
+      body: JSON.stringify(body || {})
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      (data && (data.message || data.error)) ||
+      ('Supabase RPC ' + name + ' failed.')
+    );
+  }
+  return data;
+}
+
+async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
+  const normalized=String(status||'').toLowerCase();
+  const active=['active','trialing','past_due'].includes(normalized);
+
+  // Stripe should provide current_period_end, but a verified active subscription
+  // must never be written with a NULL expiry. This fallback keeps the paid
+  // Second Job Slot usable until a later Stripe event supplies the exact date.
+  let effectiveExpiresAt=expiresAt||null;
+  if(active&&!effectiveExpiresAt){
+    const fallback=new Date();
+    fallback.setUTCMonth(fallback.getUTCMonth()+1);
+    effectiveExpiresAt=fallback.toISOString();
+  }
+
+  const patch={
+    addon_slot_count:active?1:0,
+    addon_slots_expires_at:active?effectiveExpiresAt:null,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(patch)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(active&&(!Array.isArray(rows)||rows.length===0)){
+    response=await fetch(manageBase()+'/rest/v1/employer_entitlements',{
+      method:'POST',
+      headers:manageServiceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({
+        employer_id:employerId,
+        addon_slot_count:1,
+        addon_slots_expires_at:effectiveExpiresAt,
+        updated_at:new Date().toISOString()
+      })
+    });
+    if(!response.ok){
+      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
+    }
+  }
+}
+
 async function manageStripe(method,path,params){
   const secret=process.env.STRIPE_SECRET_KEY;
   if(!secret)throw new Error('STRIPE_SECRET_KEY is not configured.');
@@ -1091,7 +1162,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const params={
     mode:'payment',
     customer:customerId,
-    success_url:checkoutSuccessWithSessionId(successUrl),
+    success_url:successUrl,
     cancel_url:cancelUrl,
     client_reference_id:employerId,
     'line_items[0][price]':upgrade.priceId,
@@ -1313,65 +1384,6 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   };
 }
 
-async function manageRpc(name, body) {
-  const response = await fetch(
-    manageBase() + '/rest/v1/rpc/' + encodeURIComponent(name),
-    {
-      method: 'POST',
-      headers: manageServiceHeaders(),
-      body: JSON.stringify(body || {})
-    }
-  );
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(
-      (data && (data.message || data.error)) ||
-      ('Supabase RPC ' + name + ' failed.')
-    );
-  }
-  return data;
-}
-
-async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
-  const normalized=String(status||'').toLowerCase();
-  const active=['active','trialing','past_due'].includes(normalized);
-  const patch={
-    addon_slot_count:active?1:0,
-    addon_slots_expires_at:active?(expiresAt||null):null,
-    updated_at:new Date().toISOString()
-  };
-
-  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
-  url.searchParams.set('employer_id','eq.'+employerId);
-
-  let response=await fetch(url,{
-    method:'PATCH',
-    headers:manageServiceHeaders({Prefer:'return=representation'}),
-    body:JSON.stringify(patch)
-  });
-
-  if(!response.ok){
-    throw new Error('Could not sync Second Job Slot entitlement: '+await response.text());
-  }
-
-  const rows=await response.json().catch(()=>[]);
-  if(active&&(!Array.isArray(rows)||rows.length===0)){
-    response=await fetch(manageBase()+'/rest/v1/employer_entitlements',{
-      method:'POST',
-      headers:manageServiceHeaders({Prefer:'return=minimal'}),
-      body:JSON.stringify({
-        employer_id:employerId,
-        addon_slot_count:1,
-        addon_slots_expires_at:expiresAt||null,
-        updated_at:new Date().toISOString()
-      })
-    });
-    if(!response.ok){
-      throw new Error('Could not create Second Job Slot entitlement: '+await response.text());
-    }
-  }
-}
 
 async function reconcileSecondSlotCheckout(user){
   let subscription=null;
@@ -1573,41 +1585,6 @@ async function syncCompletedPlanCheckout(user,sessionId){
     throw error;
   }
 
-  if(product==='weekly_slot'){
-    if(String(session?.status||'').toLowerCase()!=='complete'){
-      const error=new Error('Stripe has not completed this Weekly Job Slot checkout yet.');
-      error.status=409;
-      throw error;
-    }
-
-    const paymentStatus=String(session?.payment_status||'').toLowerCase();
-    if(!['paid','no_payment_required'].includes(paymentStatus)){
-      const error=new Error('Stripe has not confirmed this Weekly Job Slot purchase.');
-      error.status=409;
-      throw error;
-    }
-
-    const paymentReference=
-      typeof session.payment_intent==='string'
-        ? session.payment_intent
-        : (session.payment_intent?.id||session.id);
-
-    const result=await manageRpc('grant_weekly_job_slot',{
-      p_employer_id:user.id,
-      p_payment_reference:paymentReference,
-      p_amount_cents:Number.isFinite(Number(session.amount_total))
-        ?Number(session.amount_total)
-        :9900,
-      p_days:7
-    });
-
-    return{
-      synced:true,
-      weekly_slot:true,
-      result:result||null
-    };
-  }
-
   if(product!=='job_plan' || !['launch','growth','scale'].includes(plan)){
     const error=new Error('This checkout is not an Alygnn employer plan purchase.');
     error.status=400;
@@ -1736,6 +1713,8 @@ async function syncCompletedPlanCheckout(user,sessionId){
     slot_limit:Number(catalog.slots||0)+1
   };
 }
+
+
 
 async function syncCompletedTeamSeatCheckout(user,sessionId){
   const id=String(sessionId||'').trim();
@@ -1973,48 +1952,6 @@ async function runManageAction(res,user,input){
   }
 
   if(action==='summary'){
-    /*
-     * Self-heal stale scheduled-plan data.
-     *
-     * A canceled/terminal job-plan subscription can leave pending_plan,
-     * pending_billing_period, or pending_plan_effective_at behind from an
-     * earlier test downgrade. That must never make a Free account look as
-     * though Launch (or another plan) will start automatically.
-     */
-    let planSummary=subscriptionSummary(ent,sub);
-
-    const hasStalePendingPlan=
-      planSummary.current_plan==='free' &&
-      (
-        !!ent?.pending_plan ||
-        !!ent?.pending_billing_period ||
-        !!ent?.pending_plan_effective_at ||
-        !!ent?.stripe_plan_schedule_id
-      );
-
-    if(hasStalePendingPlan){
-      try{
-        if(sub){
-          await releaseSchedule(sub,ent);
-        }
-      }catch(error){
-        console.warn(
-          'Could not release stale plan schedule while cleaning billing summary:',
-          error?.message||error
-        );
-      }
-
-      await patchEntitlement(user.id,{
-        stripe_plan_schedule_id:null,
-        pending_plan:null,
-        pending_billing_period:null,
-        pending_plan_effective_at:null
-      });
-
-      ent=await getEntitlement(user.id);
-      planSummary=subscriptionSummary(ent,sub);
-    }
-
     let secondSlot=null;
 
     try{
@@ -2051,7 +1988,7 @@ async function runManageAction(res,user,input){
     return send(res,200,{
       ok:true,
       summary:{
-        ...planSummary,
+        ...subscriptionSummary(ent,sub),
         second_job_slot:secondSlotSummary(secondSlot),
         billing_account:billingAccount
       }
@@ -2436,7 +2373,11 @@ module.exports = async function handler(req, res) {
 
     const params = {
       mode,
-      success_url: checkoutSuccessWithSessionId(successUrl),
+      success_url: product === 'additional_slot'
+        ? 'https://alygnn.com/employer-dashboard.html?payment=success&product=additional_slot&session_id={CHECKOUT_SESSION_ID}#jobs'
+        : (product === 'job_plan' || product === 'job_boost' || product === 'team_seat')
+          ? checkoutSuccessWithSessionId(successUrl)
+          : successUrl,
       cancel_url: cancelUrl,
       customer_email: user.email || undefined,
       'line_items[0][price]': priceId,
