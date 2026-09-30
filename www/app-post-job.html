@@ -407,7 +407,7 @@ html[data-theme="dark"] .custom-add-btn{
       <div class="field">
         <label>Company</label>
         <div class="company-box">
-          <div class="company-name" id="company-name">Company</div>
+          <div class="company-name" id="company-name"></div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
       </div>
@@ -2431,17 +2431,19 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      */
     const earlyUserId=session.user.id;
     const sessionMeta=session.user?.user_metadata||{};
-    let resolvedCompanyName=
+    let resolvedCompanyName=String(
       sessionStorage.getItem('alygnn_job_post_company_name') ||
       sessionMeta.onboarding_company_profile?.company_name ||
       sessionMeta.employer_ai_profile?.company_name ||
       sessionMeta.company_name ||
       localStorage.getItem('alygnn_employer_company_name') ||
-      '';
+      ''
+    ).trim();
 
     const immediateCompanyNode=el('company-name');
-    if(immediateCompanyNode && resolvedCompanyName){
+    if(immediateCompanyNode){
       immediateCompanyNode.textContent=resolvedCompanyName;
+      immediateCompanyNode.hidden=!resolvedCompanyName;
     }
 
     let earlyCompanyId=
