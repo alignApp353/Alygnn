@@ -3280,7 +3280,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           <strong>Business verification was rejected</strong><br>
           Your jobs will remain <strong>Pending approval</strong> and hidden from candidates. Review your verification information and submit updated documents for another review.
           <br><br>
-          <a href="employer-onboarding.html" style="color:#5D7FA3; font-weight:500;">Review and resubmit verification →</a>
+          <a href="employer-onboarding.html?resubmit=1" style="color:#5D7FA3; font-weight:500;">Review and resubmit verification →</a>
         `;
       } else if (submitted) {
         lockBox.innerHTML = `
