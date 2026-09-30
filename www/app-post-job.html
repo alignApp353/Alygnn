@@ -2431,14 +2431,24 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      */
     const earlyUserId=session.user.id;
     const sessionMeta=session.user?.user_metadata||{};
+    const companyNameFromRoute=String(
+      entryParams.get('company_name')||
+      ''
+    ).trim();
 
     /*
      * Resolve the ACTUAL employer company name before showing Step 1.
      * Use the same shared-company source as the dashboard, then fall back
      * to employer_verifications and auth metadata.
      */
-    let resolvedCompanyName='';
+    let resolvedCompanyName=companyNameFromRoute;
     let earlyCompanyId='';
+
+    const routedCompanyNode=el('company-name');
+    if(routedCompanyNode && resolvedCompanyName){
+      routedCompanyNode.hidden=false;
+      routedCompanyNode.textContent=resolvedCompanyName;
+    }
 
     try{
       const [
@@ -2487,18 +2497,20 @@ function withHardTimeout(promise,ms,label,fallbackValue){
         ''
       ).trim();
 
-      resolvedCompanyName=String(
-        sharedAi.company_name ||
-        sharedSetup.company_name ||
-        shared.company_name ||
-        verification.company_name ||
-        verification.legal_name ||
-        sessionMeta.onboarding_company_profile?.company_name ||
-        sessionMeta.employer_ai_profile?.company_name ||
-        sessionMeta.company_name ||
-        sessionMeta.business_name ||
-        ''
-      ).trim();
+      resolvedCompanyName=
+        resolvedCompanyName ||
+        String(
+          sharedAi.company_name ||
+          sharedSetup.company_name ||
+          shared.company_name ||
+          verification.company_name ||
+          verification.legal_name ||
+          sessionMeta.onboarding_company_profile?.company_name ||
+          sessionMeta.employer_ai_profile?.company_name ||
+          sessionMeta.company_name ||
+          sessionMeta.business_name ||
+          ''
+        ).trim();
 
       /*
        * If we have a company id but still no name, query the company record.
@@ -2543,9 +2555,9 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       ).trim();
 
     const companyNode=el('company-name');
-    if(companyNode){
+    if(companyNode && resolvedCompanyName){
+      companyNode.hidden=false;
       companyNode.textContent=resolvedCompanyName;
-      companyNode.hidden=!resolvedCompanyName;
     }
 
     if(earlyCompanyId){
