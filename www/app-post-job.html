@@ -1211,20 +1211,14 @@ function setupSuggestions(){
     titleBox.innerHTML='<div class="suggest-empty">Searching job titles…</div>';
     titleBox.classList.add('show');
 
-    const catalogRows=await searchJobTitleCatalog(query);
+    const rows=await searchJobTitleCatalog(query);
 
     if(titleInput.value.trim()!==query)return;
 
-    const rows=mergeJobTitleRows(
-      catalogRows,
-      localJobTitleMatches(query)
-    );
-
-    renderJobTitleResults(titleBox,rows,query,row=>{
+    renderCatalogResults(titleBox,rows,row=>{
       titleInput.value=row.job_title;
       selectedOnetCode=row.onet_soc_code||'';
       loadOccupationProfile(selectedOnetCode);
-      refreshRoleSuggestions();
     });
   }
 
@@ -2546,6 +2540,62 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      * stored employer sources already maintained by onboarding.
      */
     if(!resolvedCompanyName){
+      /*
+       * Fallback to the same workspace RPCs used by the older working
+       * employer job-post flow. This is intentionally before metadata-only
+       * fallbacks so the visible company name comes from the employer workspace.
+       */
+      try{
+        const accessResult=await withHardTimeout(
+          sb.rpc('get_my_team_access'),
+          3000,
+          'Employer workspace access',
+          {data:null,error:new Error('Workspace access timed out')}
+        );
+
+        const accessData=accessResult?.data||{};
+        const accessCompanyId=String(accessData.company_id||'').trim();
+
+        if(accessCompanyId && !earlyCompanyId){
+          earlyCompanyId=accessCompanyId;
+        }
+
+        const workspaceResult=await withHardTimeout(
+          sb.rpc('get_my_workspace_context'),
+          3000,
+          'Employer workspace context',
+          {data:null,error:new Error('Workspace context timed out')}
+        );
+
+        const workspaceData=workspaceResult?.data||{};
+        const workspaceRows=Array.isArray(workspaceData?.employer_workspaces)
+          ? workspaceData.employer_workspaces
+          : [];
+
+        const workspace=workspaceRows.find(row=>
+          !earlyCompanyId ||
+          String(row?.company_id||'')===String(earlyCompanyId)
+        ) || workspaceRows[0] || null;
+
+        if(workspace){
+          resolvedCompanyName=String(
+            workspace.company_name||
+            workspace.legal_name||
+            workspace.name||
+            ''
+          ).trim();
+
+          if(!earlyCompanyId){
+            earlyCompanyId=String(workspace.company_id||'').trim();
+          }
+        }
+      }catch(workspaceFallbackError){
+        console.warn(
+          'Workspace company-name fallback unavailable:',
+          workspaceFallbackError
+        );
+      }
+
       let freshUser=session.user;
 
       try{
@@ -2565,12 +2615,40 @@ function withHardTimeout(promise,ms,label,fallbackValue){
       const sessionMeta=freshUser?.user_metadata||{};
 
       resolvedCompanyName=String(
+        resolvedCompanyName||
         sessionMeta.company_name||
         sessionMeta.onboarding_company_profile?.company_name||
         sessionMeta.employer_ai_profile?.company_name||
         localStorage.getItem('alygnn_employer_company_name')||
         ''
       ).trim();
+
+      if(!resolvedCompanyName){
+        try{
+          const verificationResult=await withHardTimeout(
+            sb
+              .from('employer_verifications')
+              .select('company_name,company_id')
+              .eq('user_id',earlyUserId)
+              .maybeSingle(),
+            3000,
+            'Employer verification company name',
+            {data:null,error:new Error('Verification lookup timed out')}
+          );
+
+          if(!verificationResult?.error && verificationResult?.data){
+            resolvedCompanyName=String(
+              verificationResult.data.company_name||''
+            ).trim();
+
+            if(!earlyCompanyId){
+              earlyCompanyId=String(
+                verificationResult.data.company_id||''
+              ).trim();
+            }
+          }
+        }catch(_){}
+      }
 
       earlyCompanyId=String(
         earlyCompanyId||
@@ -2590,7 +2668,7 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     const companyNode=el('company-name');
     if(companyNode){
       companyNode.hidden=false;
-      companyNode.textContent=resolvedCompanyName;
+      companyNode.textContent=resolvedCompanyName||'';
     }
 
     if(earlyCompanyId){
