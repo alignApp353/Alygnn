@@ -2431,134 +2431,135 @@ function withHardTimeout(promise,ms,label,fallbackValue){
      */
     const earlyUserId=session.user.id;
     const sessionMeta=session.user?.user_metadata||{};
-    let resolvedCompanyName=String(
-      sessionStorage.getItem('alygnn_job_post_company_name') ||
-      sessionMeta.onboarding_company_profile?.company_name ||
-      sessionMeta.employer_ai_profile?.company_name ||
-      sessionMeta.company_name ||
-      localStorage.getItem('alygnn_employer_company_name') ||
-      ''
-    ).trim();
 
-    const immediateCompanyNode=el('company-name');
-    if(immediateCompanyNode){
-      immediateCompanyNode.textContent=resolvedCompanyName;
-      immediateCompanyNode.hidden=!resolvedCompanyName;
-    }
-
-    let earlyCompanyId=
-      sessionStorage.getItem('alygnn_company_id') ||
-      sessionMeta.company_id ||
-      sessionMeta.employer_company_id ||
-      '';
+    /*
+     * Resolve the ACTUAL employer company name before showing Step 1.
+     * Use the same shared-company source as the dashboard, then fall back
+     * to employer_verifications and auth metadata.
+     */
+    let resolvedCompanyName='';
+    let earlyCompanyId='';
 
     try{
-      const earlyQueries=[];
-
-      if(earlyCompanyId){
-        earlyQueries.push(
-          withHardTimeout(
-            sb.from('companies')
-              .select('id,company_name,legal_name,name')
-              .eq('id',earlyCompanyId)
-              .maybeSingle(),
-            4000,
-            'Company identity lookup',
-            {data:null,error:new Error('Company identity lookup timed out')}
-          )
-        );
-      }else{
-        earlyQueries.push(Promise.resolve({data:null,error:null}));
-      }
-
-      earlyQueries.push(
+      const [
+        sharedResult,
+        verificationResult
+      ]=await Promise.all([
+        withHardTimeout(
+          sb.rpc('get_my_company_shared_context'),
+          4000,
+          'Shared company context',
+          {data:null,error:new Error('Shared company context timed out')}
+        ),
         withHardTimeout(
           sb.from('employer_verifications')
-            .select('company_id,company_name')
+            .select('*')
             .eq('user_id',earlyUserId)
             .maybeSingle(),
           4000,
-          'Employer company identity lookup',
-          {data:null,error:new Error('Employer company identity lookup timed out')}
+          'Employer verification company lookup',
+          {data:null,error:new Error('Employer verification lookup timed out')}
         )
-      );
+      ]);
 
-      const [
-        earlyCompanyResult,
-        earlyVerificationResult
-      ]=await Promise.all(earlyQueries);
+      const sharedRaw=sharedResult?.data||null;
+      const shared=Array.isArray(sharedRaw)
+        ?(sharedRaw[0]||{})
+        :(sharedRaw||{});
 
-      const earlyCompany=earlyCompanyResult?.data||null;
-      const earlyVerification=earlyVerificationResult?.data||null;
+      const verification=verificationResult?.data||{};
 
-      if(!earlyCompanyId && earlyVerification?.company_id){
-        earlyCompanyId=earlyVerification.company_id;
-        try{
-          sessionStorage.setItem('alygnn_company_id',earlyCompanyId);
-        }catch(_){}
-      }
+      const sharedSetup=
+        shared.onboarding_profile&&typeof shared.onboarding_profile==='object'
+          ?shared.onboarding_profile
+          :{};
 
-      resolvedCompanyName=
-        earlyCompany?.company_name ||
-        earlyCompany?.legal_name ||
-        earlyCompany?.name ||
-        earlyVerification?.company_name ||
-        resolvedCompanyName ||
-        localStorage.getItem('alygnn_employer_company_name') ||
-        '';
+      const sharedAi=
+        shared.ai_profile&&typeof shared.ai_profile==='object'
+          ?shared.ai_profile
+          :{};
+
+      earlyCompanyId=String(
+        shared.company_id ||
+        verification.company_id ||
+        sessionMeta.company_id ||
+        sessionMeta.employer_company_id ||
+        ''
+      ).trim();
+
+      resolvedCompanyName=String(
+        sharedAi.company_name ||
+        sharedSetup.company_name ||
+        shared.company_name ||
+        verification.company_name ||
+        verification.legal_name ||
+        sessionMeta.onboarding_company_profile?.company_name ||
+        sessionMeta.employer_ai_profile?.company_name ||
+        sessionMeta.company_name ||
+        sessionMeta.business_name ||
+        ''
+      ).trim();
 
       /*
-       * If verification gave us the company id but the first direct company
-       * query could not run, do one short direct lookup now.
+       * If we have a company id but still no name, query the company record.
+       * Use select('*') so this works with the real current schema.
        */
-      if(
-        !resolvedCompanyName &&
-        earlyCompanyId &&
-        !earlyCompany
-      ){
-        const followupCompanyResult=await withHardTimeout(
+      if(!resolvedCompanyName && earlyCompanyId){
+        const companyResult=await withHardTimeout(
           sb.from('companies')
-            .select('id,company_name,legal_name,name')
+            .select('*')
             .eq('id',earlyCompanyId)
             .maybeSingle(),
-          3000,
-          'Company name follow-up lookup',
-          {data:null,error:new Error('Company name follow-up timed out')}
+          3500,
+          'Company record lookup',
+          {data:null,error:new Error('Company record lookup timed out')}
         );
 
-        const followupCompany=followupCompanyResult?.data||null;
+        const company=companyResult?.data||{};
 
-        resolvedCompanyName=
-          followupCompany?.company_name ||
-          followupCompany?.legal_name ||
-          followupCompany?.name ||
-          resolvedCompanyName;
+        resolvedCompanyName=String(
+          company.company_name ||
+          company.legal_name ||
+          company.name ||
+          ''
+        ).trim();
       }
     }catch(companyIdentityError){
       console.warn(
-        'Early company identity lookup deferred:',
+        'Company identity lookup deferred:',
         companyIdentityError
       );
     }
 
     /*
-     * Do NOT replace the actual employer name with a generic phrase.
-     * If the network lookup is temporarily unavailable, use the last known
-     * company name from this account.
+     * Last-known real name only. Never invent "Company" or "Your company".
      */
     resolvedCompanyName=
       resolvedCompanyName ||
-      localStorage.getItem('alygnn_employer_company_name') ||
-      '';
+      String(
+        sessionStorage.getItem('alygnn_job_post_company_name') ||
+        localStorage.getItem('alygnn_employer_company_name') ||
+        ''
+      ).trim();
 
-    const earlyCompanyNode=el('company-name');
-    if(earlyCompanyNode){
-      earlyCompanyNode.textContent=resolvedCompanyName;
-      earlyCompanyNode.hidden=!resolvedCompanyName;
+    const companyNode=el('company-name');
+    if(companyNode){
+      companyNode.textContent=resolvedCompanyName;
+      companyNode.hidden=!resolvedCompanyName;
+    }
+
+    if(earlyCompanyId){
+      try{
+        sessionStorage.setItem('alygnn_company_id',earlyCompanyId);
+      }catch(_){}
     }
 
     if(resolvedCompanyName){
       try{
+        sessionStorage.setItem(
+          'alygnn_job_post_company_name',
+          resolvedCompanyName
+        );
         localStorage.setItem(
           'alygnn_employer_company_name',
           resolvedCompanyName
@@ -2567,28 +2568,9 @@ function withHardTimeout(promise,ms,label,fallbackValue){
     }
 
     /*
-     * Now open the builder. All slower employer verification / membership /
-     * capacity checks continue below and do not block Step 1.
+     * Open the builder now. All slower checks continue below.
      */
-    setupSuggestions();
-    setupSkillBenefitTypeahead();
-    restoreDraft();
-
-    activeJobDraftId =
-      entryParams.get('draft') ||
-      sessionStorage.getItem('alygnnActiveJobDraftId') ||
-      activeJobDraftId ||
-      '';
-
-    const requestedStep=Math.max(
-      1,
-      Math.min(
-        5,
-        Number(sessionStorage.getItem('alygnnJobReturnStep')||1)||1
-      )
-    );
-
-    showStep(requestedStep);
+    /* Builder already initialized above. */
     hideLoading();
 
     // Refresh the Auth user so recently saved Company AI Profile metadata is
