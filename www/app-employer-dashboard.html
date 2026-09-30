@@ -15850,7 +15850,30 @@
       location.href='app-employer-pricing.html?'+params.toString();
     }
 
+    function prepareCompanyForJobPost(){
+      const company=companyMetadata();
+      const name=String(company?.name||'').trim();
+
+      if(
+        name &&
+        name.toLowerCase()!=='your company'
+      ){
+        try{
+          sessionStorage.setItem(
+            'alygnn_job_post_company_name',
+            name
+          );
+          localStorage.setItem(
+            'alygnn_employer_company_name',
+            name
+          );
+        }catch(_){}
+      }
+    }
+
     async function openPostJob(){
+      prepareCompanyForJobPost();
+
       if(!requireTeamPermission(
         'jobs_manage',
         'Your team access does not allow posting or editing jobs.'
