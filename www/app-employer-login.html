@@ -349,7 +349,7 @@ async function employerDestination(userId){
   try{
     const draftKey=`alygnn_employer_onboarding_draft_${userId}`;
     const draft=JSON.parse(localStorage.getItem(draftKey)||'null');
-    if(draft&&typeof draft==='object'){
+    if(draft&&typeof draft==='object'&&!draft.setup_complete){
       return ONBOARDING_PAGE;
     }
   }catch(_){}
