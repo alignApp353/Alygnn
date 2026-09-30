@@ -15850,51 +15850,54 @@
       location.href='app-employer-pricing.html?'+params.toString();
     }
 
-    function prepareCompanyForJobPost(){
-      const user=state.currentUser||state.session?.user||{};
-      const meta=user.user_metadata||{};
-      const shared=state.sharedCompanyContext||{};
-      const setup=shared.onboarding_profile||meta.onboarding_company_profile||{};
-      const aiProfile=shared.ai_profile||meta.employer_ai_profile||{};
-      const verification=state.employerVerification||{};
-      const company=state.companyRecord||{};
-      const firstJob=state.jobs?.[0]||{};
-
+    function jobPostCompanyName(){
       /*
-       * IMPORTANT:
-       * Only use real stored company-name values here.
-       * Do NOT use companyMetadata(), because that helper intentionally has a
-       * "Your Company" fallback for display purposes.
+       * Use the exact same resolved company identity the dashboard itself uses.
+       * companyMetadata() already combines shared AI profile, onboarding,
+       * employer verification, companies, auth metadata, and existing jobs.
        */
       const name=String(
-        aiProfile.company_name ||
-        setup.company_name ||
-        verification.company_name ||
-        company.company_name ||
-        company.legal_name ||
-        company.name ||
-        meta.company_name ||
-        meta.business_name ||
-        firstJob.company_name ||
+        companyMetadata()?.name||
         ''
       ).trim();
 
-      if(name){
-        try{
-          sessionStorage.setItem(
-            'alygnn_job_post_company_name',
-            name
-          );
-          localStorage.setItem(
-            'alygnn_employer_company_name',
-            name
-          );
-        }catch(_){}
+      if(
+        !name ||
+        name.toLowerCase()==='your company'
+      ){
+        return '';
       }
+
+      try{
+        sessionStorage.setItem(
+          'alygnn_job_post_company_name',
+          name
+        );
+        localStorage.setItem(
+          'alygnn_employer_company_name',
+          name
+        );
+      }catch(_){}
+
+      return name;
+    }
+
+    function postJobUrl(extraParams={}){
+      const params=new URLSearchParams(extraParams);
+      const companyName=jobPostCompanyName();
+
+      if(companyName){
+        params.set('company_name',companyName);
+      }
+
+      const query=params.toString();
+
+      return 'app-post-job.html'+
+        (query?'?'+query:'');
     }
 
     async function openPostJob(){
-      prepareCompanyForJobPost();
+      jobPostCompanyName();
 
       if(!requireTeamPermission(
         'jobs_manage',
@@ -15941,7 +15944,7 @@
           sessionStorage.removeItem('alygnnJobReturnStep');
           sessionStorage.removeItem('alygnnJobDraft');
           sessionStorage.removeItem('alygnnActiveJobDraftId');
-          location.href='app-post-job.html?capacity=available';
+          location.href=postJobUrl({capacity:'available'});
           return;
         }
 
@@ -15971,7 +15974,7 @@
         sessionStorage.removeItem('alygnnEditJobId');
         sessionStorage.removeItem('alygnnJobDraft');
         sessionStorage.removeItem('alygnnActiveJobDraftId');
-        location.href='app-post-job.html';
+        location.href=postJobUrl();
       }catch(error){
         console.error('Could not verify job-slot capacity:',error);
         toast('Could not verify your job-slot access. Please try again.');
