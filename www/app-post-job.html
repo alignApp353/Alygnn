@@ -442,7 +442,7 @@ html[data-theme="dark"] .custom-add-btn{
       <div class="field">
         <label>Company</label>
         <div class="company-box">
-          <div class="company-name" id="company-name">Your company</div>
+          <div class="company-name" id="company-name">Loading company…</div>
         </div>
         <button type="button" class="company-ai-link" id="company-ai-link" hidden>Complete Company AI Profile</button>
       </div>
@@ -1637,7 +1637,7 @@ const JOB_POST_LOADING_MESSAGES=[
   ['Getting your company ready.','Loading your company and verification details.'],
   ['Checking your job capacity.','Making sure you have an available job slot.'],
   ['Almost ready.','Restoring your job draft and hiring preferences.'],
-  ['Still working on it.','Alygnn is still finishing secure checks in the background.']
+  ['Still working on it.','Alygnn is waiting for a secure response from the server.']
 ];
 
 let jobPostLoadingMessageIndex=0;
@@ -1662,21 +1662,6 @@ function startJobPostLoadingExperience(){
 
   clearInterval(jobPostLoadingInterval);
   clearTimeout(jobPostLoadingWatchdog);
-
-  /*
-   * IMPORTANT:
-   * Keep every account/company/verification/slot check running, but do not
-   * block the employer behind the loader for more than 5 seconds.
-   *
-   * If initialization is still running after 5 seconds, reveal the job form
-   * and let the remaining secure checks finish in the background.
-   */
-  setTimeout(()=>{
-    const loading=el('loading');
-    if(loading && !loading.hidden){
-      loading.hidden=true;
-    }
-  },5000);
 
   /*
    * Change the copy every 9 seconds so a slow secure/network request
@@ -1711,7 +1696,7 @@ function startJobPostLoadingExperience(){
     if(actions){
       actions.classList.add('show');
     }
-  },30000);
+  },22000);
 }
 
 function stopJobPostLoadingExperience(){
@@ -2494,6 +2479,19 @@ el('description').addEventListener('input', () => {
   el('description-count').textContent = el('description').value.length;
 });
 
+
+function withHardTimeout(promise,ms,label,fallbackValue){
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise(resolve=>{
+      setTimeout(()=>{
+        console.warn(`${label} timed out after ${ms}ms`);
+        resolve(fallbackValue);
+      },ms);
+    })
+  ]);
+}
+
 (async function init(){
   try{
     const entryParams=new URLSearchParams(location.search);
@@ -2501,7 +2499,15 @@ el('description').addEventListener('input', () => {
       sessionStorage.removeItem('alygnn_job_slot_gate');
       sessionStorage.removeItem('alygnnEditJobId');
     }
-    const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+    const sessionResponse=await withHardTimeout(
+      sb.auth.getSession(),
+      4000,
+      'Auth session lookup',
+      {data:{session:null},error:new Error('Session lookup timed out')}
+    );
+
+    const sessionData=sessionResponse?.data||{};
+    const sessionError=sessionResponse?.error||null;
 
     if(sessionError||!sessionData.session){
       location.replace('app-employer-login.html');
@@ -2512,7 +2518,16 @@ el('description').addEventListener('input', () => {
 
     // Refresh the Auth user so recently saved Company AI Profile metadata is
     // available immediately instead of using a stale cached session object.
-    const {data:userData,error:userError}=await sb.auth.getUser();
+    const userResponse=await withHardTimeout(
+      sb.auth.getUser(),
+      3500,
+      'Auth user refresh',
+      {data:{user:null},error:new Error('User refresh timed out')}
+    );
+
+    const userData=userResponse?.data||{};
+    const userError=userResponse?.error||null;
+
     if(!userError&&userData?.user){
       session={...session,user:userData.user};
     }
@@ -2524,14 +2539,29 @@ el('description').addEventListener('input', () => {
       verificationResult,
       membershipResult
     ]=await Promise.all([
-      sb.from('profiles').select('*').eq('id',userId).maybeSingle(),
-      sb.from('employer_verifications').select('*').eq('user_id',userId).maybeSingle(),
-      sb.from('company_members')
-        .select('company_id,companies(*)')
-        .eq('user_id',userId)
-        .eq('membership_status','active')
-        .limit(1)
-        .maybeSingle()
+      withHardTimeout(
+        sb.from('profiles').select('*').eq('id',userId).maybeSingle(),
+        4500,
+        'Employer profile load',
+        {data:null,error:new Error('Profile load timed out')}
+      ),
+      withHardTimeout(
+        sb.from('employer_verifications').select('*').eq('user_id',userId).maybeSingle(),
+        4500,
+        'Employer verification load',
+        {data:null,error:new Error('Verification load timed out')}
+      ),
+      withHardTimeout(
+        sb.from('company_members')
+          .select('company_id,companies(*)')
+          .eq('user_id',userId)
+          .eq('membership_status','active')
+          .limit(1)
+          .maybeSingle(),
+        4500,
+        'Company membership load',
+        {data:null,error:new Error('Membership load timed out')}
+      )
     ]);
 
     if(profileResult.error)console.warn('Profile load failed:',profileResult.error);
@@ -2558,8 +2588,20 @@ el('description').addEventListener('input', () => {
      * We still perform the authoritative slot check again on Publish.
      */
     try{
-      const slotAllowed=await enforceJobSlotAccess(userId,currentCompanyId);
-      if(!slotAllowed)return;
+      const slotAllowed=await withHardTimeout(
+        enforceJobSlotAccess(userId,currentCompanyId),
+        5000,
+        'Job-slot preflight',
+        'deferred'
+      );
+
+      if(slotAllowed===false)return;
+
+      if(slotAllowed==='deferred'){
+        console.warn(
+          'Job-slot preflight timed out. The authoritative slot check will run again before publish.'
+        );
+      }
     }catch(slotCheckError){
       console.error('Job-slot preflight check deferred:',slotCheckError);
     }
@@ -2567,13 +2609,21 @@ el('description').addEventListener('input', () => {
     let verificationDocument=null;
 
     if(currentCompanyId){
-      const {data:document,error:documentError}=await sb
-        .from('employer_verification_documents')
-        .select('id,review_status,created_at')
-        .eq('company_id',currentCompanyId)
-        .order('created_at',{ascending:false})
-        .limit(1)
-        .maybeSingle();
+      const documentResponse=await withHardTimeout(
+        sb
+          .from('employer_verification_documents')
+          .select('id,review_status,created_at')
+          .eq('company_id',currentCompanyId)
+          .order('created_at',{ascending:false})
+          .limit(1)
+          .maybeSingle(),
+        4000,
+        'Verification document load',
+        {data:null,error:new Error('Verification document load timed out')}
+      );
+
+      const document=documentResponse?.data||null;
+      const documentError=documentResponse?.error||null;
 
       if(documentError){
         console.warn('Verification document load failed:',documentError);
