@@ -1940,7 +1940,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     ];
 
     const approved = currentProfile?.employer_verified === true;
-    const status = currentProfile?.verification_status || 'not_submitted';
+    const status = String(currentProfile?.verification_status || 'not_submitted').toLowerCase();
+    const rejected = ['rejected', 'denied'].includes(status);
 
     if (approved) {
       // Hide the big banner now that there's nothing left to do — show the
@@ -1958,16 +1959,35 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (badge) badge.classList.remove('show');
     banner.style.display = 'flex';
     banner.className = 'verify-banner incomplete';
-    icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
     title.className = 'verify-title incomplete';
+
+    const cta = document.getElementById('verify-cta');
+
+    if (rejected) {
+      icon.textContent = '⚠️';
+      title.textContent = 'Business verification was rejected';
+      steps.innerHTML = '<span class="verify-step todo">○ Status: Rejected</span>';
+
+      if (cta) {
+        cta.style.display = '';
+        cta.href = 'employer-onboarding.html';
+        cta.textContent = 'Review and resubmit verification →';
+      }
+      return;
+    }
+
+    icon.textContent = fields.every(f => f.done) ? '⏳' : '⚠️';
     title.textContent = fields.every(f => f.done)
       ? 'Business verification pending — Alygnn review in progress'
       : 'Complete your business profile to unlock posting';
 
     steps.innerHTML = `<span class="verify-step todo">○ Status: ${status}</span>`;
 
-    const cta = document.getElementById('verify-cta');
-    if (cta) cta.style.display = fields.every(f => f.done) ? 'none' : '';
+    if (cta) {
+      cta.href = 'employer-onboarding.html';
+      cta.textContent = 'Complete guided setup →';
+      cta.style.display = fields.every(f => f.done) ? 'none' : '';
+    }
   }
 
   function escapeHtml(value) {
