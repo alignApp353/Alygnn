@@ -4394,7 +4394,88 @@
       background:#2A1717;
     }
 
-  </style>
+  
+/* === Alygnn company logo crop + dark-mode company-link fixes === */
+.company-link-chip-label{
+  color:inherit !important;
+  opacity:1 !important;
+}
+[data-theme="dark"] .company-link-chip,
+html[data-theme="dark"] .company-link-chip,
+body.dark .company-link-chip{
+  background:#132332 !important;
+  color:#F3F7FB !important;
+  border-color:#2A4052 !important;
+}
+[data-theme="dark"] .company-link-chip-icon,
+html[data-theme="dark"] .company-link-chip-icon,
+body.dark .company-link-chip-icon{
+  background:#1D3347 !important;
+  color:#8FB7E0 !important;
+}
+[data-theme="dark"] .company-link-remove,
+html[data-theme="dark"] .company-link-remove,
+body.dark .company-link-remove{
+  color:#B7C5D3 !important;
+}
+
+.alygnn-crop-backdrop{
+  position:fixed;inset:0;z-index:10050;
+  display:none;align-items:flex-end;justify-content:center;
+  padding:18px;background:rgba(2,12,22,.72);
+  backdrop-filter:blur(8px);
+}
+.alygnn-crop-backdrop.show{display:flex}
+.alygnn-crop-sheet{
+  width:min(520px,100%);
+  max-height:92vh;overflow:auto;
+  border:1px solid var(--border);
+  border-radius:26px;
+  background:var(--card);
+  color:var(--text);
+  box-shadow:0 28px 80px rgba(0,0,0,.35);
+  padding:18px;
+}
+.alygnn-crop-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  margin-bottom:14px;
+}
+.alygnn-crop-head h3{margin:0;font-size:20px}
+.alygnn-crop-head p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.45}
+.alygnn-crop-close{
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--border);
+  background:var(--card-bg);color:var(--text);font-size:22px;font-weight:800;
+}
+.alygnn-crop-stage{
+  position:relative;width:min(360px,100%);aspect-ratio:1/1;margin:0 auto;
+  overflow:hidden;border-radius:24px;border:1px solid var(--border);
+  background:#0B1723;touch-action:none;cursor:grab;
+}
+.alygnn-crop-stage:active{cursor:grabbing}
+.alygnn-crop-stage img{
+  position:absolute;left:50%;top:50%;
+  transform-origin:center center;
+  user-select:none;-webkit-user-drag:none;pointer-events:none;
+  max-width:none;max-height:none;
+}
+.alygnn-crop-guide{
+  position:absolute;inset:10px;border:2px solid rgba(255,255,255,.9);
+  border-radius:22px;box-shadow:0 0 0 999px rgba(0,0,0,.20);pointer-events:none;
+}
+.alygnn-crop-controls{margin-top:16px}
+.alygnn-crop-controls label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;font-weight:800;margin-bottom:8px;
+}
+.alygnn-crop-controls input[type="range"]{width:100%}
+.alygnn-crop-actions{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-top:16px}
+.alygnn-crop-actions button{
+  min-height:50px;border-radius:15px;font:inherit;font-weight:900;
+}
+.alygnn-crop-cancel{border:1px solid var(--border);background:var(--card-bg);color:var(--text)}
+.alygnn-crop-use{border:1px solid var(--brand);background:var(--brand);color:#fff}
+
+</style>
 
 <style id="alygnn-messaging-employer-nav">
 .bottom-nav{
@@ -4873,33 +4954,6 @@
   .about-version:last-child{border-bottom:0}
   .about-version strong{font-size:12px}
   .about-version span{font-size:11px;color:var(--muted)}
-</style>
-
-
-<style id="alygnn-team-avatar-contrast-fix">
-  /* Keep member initials readable in both themes. */
-  .team-avatar{
-    background:#EAF1F7!important;
-    color:#284E70!important;
-    border:1px solid #D6E2EC!important;
-    opacity:1!important;
-    -webkit-text-fill-color:#284E70!important;
-  }
-
-  html[data-theme="dark"] .team-avatar{
-    background:#173047!important;
-    color:#B9D6EF!important;
-    border-color:#355068!important;
-    -webkit-text-fill-color:#B9D6EF!important;
-  }
-
-  html[data-theme="dark"] .team-member-copy strong{
-    color:#F4F7FA!important;
-  }
-
-  html[data-theme="dark"] .team-member-copy span{
-    color:#A9B6C5!important;
-  }
 </style>
 
 </head>
@@ -7413,6 +7467,34 @@
       `
       : ''
   }
+
+<div class="alygnn-crop-backdrop" id="alygnn-logo-cropper" aria-hidden="true">
+  <div class="alygnn-crop-sheet" role="dialog" aria-modal="true" aria-labelledby="alygnn-crop-title">
+    <div class="alygnn-crop-head">
+      <div>
+        <h3 id="alygnn-crop-title">Crop company logo</h3>
+        <p>Drag the image to reposition it, then use the slider to zoom.</p>
+      </div>
+      <button type="button" class="alygnn-crop-close" id="alygnn-crop-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="alygnn-crop-stage" id="alygnn-crop-stage">
+      <img id="alygnn-crop-image" alt="Company logo crop preview">
+      <div class="alygnn-crop-guide"></div>
+    </div>
+
+    <div class="alygnn-crop-controls">
+      <label for="alygnn-crop-zoom"><span>Zoom</span><span id="alygnn-crop-zoom-value">100%</span></label>
+      <input id="alygnn-crop-zoom" type="range" min="100" max="300" step="1" value="100">
+    </div>
+
+    <div class="alygnn-crop-actions">
+      <button type="button" class="alygnn-crop-cancel" id="alygnn-crop-cancel">Cancel</button>
+      <button type="button" class="alygnn-crop-use" id="alygnn-crop-use">Use Photo</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
     }
@@ -15850,55 +15932,7 @@
       location.href='app-employer-pricing.html?'+params.toString();
     }
 
-    function jobPostCompanyName(){
-      /*
-       * Use the exact same resolved company identity the dashboard itself uses.
-       * companyMetadata() already combines shared AI profile, onboarding,
-       * employer verification, companies, auth metadata, and existing jobs.
-       */
-      const name=String(
-        companyMetadata()?.name||
-        ''
-      ).trim();
-
-      if(
-        !name ||
-        name.toLowerCase()==='your company'
-      ){
-        return '';
-      }
-
-      try{
-        sessionStorage.setItem(
-          'alygnn_job_post_company_name',
-          name
-        );
-        localStorage.setItem(
-          'alygnn_employer_company_name',
-          name
-        );
-      }catch(_){}
-
-      return name;
-    }
-
-    function postJobUrl(extraParams={}){
-      const params=new URLSearchParams(extraParams);
-      const companyName=jobPostCompanyName();
-
-      if(companyName){
-        params.set('company_name',companyName);
-      }
-
-      const query=params.toString();
-
-      return 'app-post-job.html'+
-        (query?'?'+query:'');
-    }
-
     async function openPostJob(){
-      jobPostCompanyName();
-
       if(!requireTeamPermission(
         'jobs_manage',
         'Your team access does not allow posting or editing jobs.'
@@ -15944,7 +15978,7 @@
           sessionStorage.removeItem('alygnnJobReturnStep');
           sessionStorage.removeItem('alygnnJobDraft');
           sessionStorage.removeItem('alygnnActiveJobDraftId');
-          location.href=postJobUrl({capacity:'available'});
+          location.href='app-post-job.html?capacity=available';
           return;
         }
 
@@ -15974,7 +16008,7 @@
         sessionStorage.removeItem('alygnnEditJobId');
         sessionStorage.removeItem('alygnnJobDraft');
         sessionStorage.removeItem('alygnnActiveJobDraftId');
-        location.href=postJobUrl();
+        location.href='app-post-job.html';
       }catch(error){
         console.error('Could not verify job-slot capacity:',error);
         toast('Could not verify your job-slot access. Please try again.');
@@ -16019,13 +16053,266 @@
         }
       );
 
+
+    // Keep Edit Company open if Android recreates/resumes the activity after the photo picker.
+    const COMPANY_EDITOR_RESUME_KEY='alygnnCompanyEditorResumeAfterPicker';
+
+    function reopenCompanyEditorAfterPickerIfNeeded(){
+      if(sessionStorage.getItem(COMPANY_EDITOR_RESUME_KEY)!=='1')return;
+
+      let tries=0;
+      const timer=setInterval(()=>{
+        tries+=1;
+        const modal=$('company-edit-modal');
+        const ready=Boolean(state.currentUser||state.session?.user);
+
+        if(modal && ready){
+          clearInterval(timer);
+          if(modal.hidden){
+            openCompanyEditor('all');
+          }
+        }else if(tries>=24){
+          clearInterval(timer);
+        }
+      },250);
+    }
+
+    window.addEventListener('pageshow',reopenCompanyEditorAfterPickerIfNeeded);
+    window.addEventListener('focus',reopenCompanyEditorAfterPickerIfNeeded);
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden)reopenCompanyEditorAfterPickerIfNeeded();
+    });
+
+    $('edit-company-logo').addEventListener('click',()=>{
+      sessionStorage.setItem(COMPANY_EDITOR_RESUME_KEY,'1');
+    });
+
+    const alygnnCropState={
+      sourceFile:null,
+      objectUrl:'',
+      image:null,
+      baseScale:1,
+      zoom:1,
+      offsetX:0,
+      offsetY:0,
+      dragging:false,
+      pointerId:null,
+      startX:0,
+      startY:0,
+      startOffsetX:0,
+      startOffsetY:0
+    };
+
+    function closeAlygnnLogoCropper({keepPickerResume=false}={}){
+      const cropper=$('alygnn-logo-cropper');
+      if(cropper){
+        cropper.classList.remove('show');
+        cropper.setAttribute('aria-hidden','true');
+      }
+
+      if(alygnnCropState.objectUrl){
+        URL.revokeObjectURL(alygnnCropState.objectUrl);
+      }
+
+      alygnnCropState.sourceFile=null;
+      alygnnCropState.objectUrl='';
+      alygnnCropState.image=null;
+      alygnnCropState.dragging=false;
+      alygnnCropState.pointerId=null;
+
+      if(!keepPickerResume){
+        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
+      }
+    }
+
+    function updateAlygnnCropTransform(){
+      const image=$('alygnn-crop-image');
+      if(!image || !alygnnCropState.image)return;
+
+      const scale=alygnnCropState.baseScale*alygnnCropState.zoom;
+      image.style.width=`${alygnnCropState.image.naturalWidth*scale}px`;
+      image.style.height=`${alygnnCropState.image.naturalHeight*scale}px`;
+      image.style.transform=
+        `translate(calc(-50% + ${alygnnCropState.offsetX}px), calc(-50% + ${alygnnCropState.offsetY}px))`;
+    }
+
+    function clampAlygnnCropOffsets(){
+      const stage=$('alygnn-crop-stage');
+      if(!stage || !alygnnCropState.image)return;
+
+      const scale=alygnnCropState.baseScale*alygnnCropState.zoom;
+      const renderedW=alygnnCropState.image.naturalWidth*scale;
+      const renderedH=alygnnCropState.image.naturalHeight*scale;
+      const maxX=Math.max(0,(renderedW-stage.clientWidth)/2);
+      const maxY=Math.max(0,(renderedH-stage.clientHeight)/2);
+
+      alygnnCropState.offsetX=Math.max(-maxX,Math.min(maxX,alygnnCropState.offsetX));
+      alygnnCropState.offsetY=Math.max(-maxY,Math.min(maxY,alygnnCropState.offsetY));
+    }
+
+    function openAlygnnLogoCropper(file){
+      const cropper=$('alygnn-logo-cropper');
+      const image=$('alygnn-crop-image');
+      const zoom=$('alygnn-crop-zoom');
+      const zoomValue=$('alygnn-crop-zoom-value');
+      const stage=$('alygnn-crop-stage');
+
+      if(!cropper || !image || !zoom || !stage){
+        state.pendingCompanyLogoFile=file;
+        return;
+      }
+
+      if(alygnnCropState.objectUrl){
+        URL.revokeObjectURL(alygnnCropState.objectUrl);
+      }
+
+      alygnnCropState.sourceFile=file;
+      alygnnCropState.objectUrl=URL.createObjectURL(file);
+      alygnnCropState.offsetX=0;
+      alygnnCropState.offsetY=0;
+      alygnnCropState.zoom=1;
+      zoom.value='100';
+      if(zoomValue)zoomValue.textContent='100%';
+
+      image.onload=()=>{
+        alygnnCropState.image=image;
+        const stageW=stage.clientWidth||320;
+        const stageH=stage.clientHeight||320;
+        alygnnCropState.baseScale=Math.max(
+          stageW/image.naturalWidth,
+          stageH/image.naturalHeight
+        );
+        clampAlygnnCropOffsets();
+        updateAlygnnCropTransform();
+      };
+
+      image.src=alygnnCropState.objectUrl;
+      cropper.classList.add('show');
+      cropper.setAttribute('aria-hidden','false');
+    }
+
+    $('alygnn-crop-zoom')?.addEventListener('input',event=>{
+      alygnnCropState.zoom=Math.max(1,Number(event.target.value||100)/100);
+      $('alygnn-crop-zoom-value').textContent=`${Math.round(alygnnCropState.zoom*100)}%`;
+      clampAlygnnCropOffsets();
+      updateAlygnnCropTransform();
+    });
+
+    const alygnnCropStage=$('alygnn-crop-stage');
+    if(alygnnCropStage){
+      alygnnCropStage.addEventListener('pointerdown',event=>{
+        if(!alygnnCropState.image)return;
+        alygnnCropState.dragging=true;
+        alygnnCropState.pointerId=event.pointerId;
+        alygnnCropState.startX=event.clientX;
+        alygnnCropState.startY=event.clientY;
+        alygnnCropState.startOffsetX=alygnnCropState.offsetX;
+        alygnnCropState.startOffsetY=alygnnCropState.offsetY;
+        alygnnCropStage.setPointerCapture?.(event.pointerId);
+      });
+
+      alygnnCropStage.addEventListener('pointermove',event=>{
+        if(!alygnnCropState.dragging || event.pointerId!==alygnnCropState.pointerId)return;
+        alygnnCropState.offsetX=
+          alygnnCropState.startOffsetX+(event.clientX-alygnnCropState.startX);
+        alygnnCropState.offsetY=
+          alygnnCropState.startOffsetY+(event.clientY-alygnnCropState.startY);
+        clampAlygnnCropOffsets();
+        updateAlygnnCropTransform();
+      });
+
+      const endDrag=event=>{
+        if(event.pointerId!==alygnnCropState.pointerId)return;
+        alygnnCropState.dragging=false;
+        alygnnCropState.pointerId=null;
+      };
+      alygnnCropStage.addEventListener('pointerup',endDrag);
+      alygnnCropStage.addEventListener('pointercancel',endDrag);
+    }
+
+    $('alygnn-crop-close')?.addEventListener('click',()=>{
+      $('edit-company-logo').value='';
+      closeAlygnnLogoCropper();
+    });
+
+    $('alygnn-crop-cancel')?.addEventListener('click',()=>{
+      $('edit-company-logo').value='';
+      closeAlygnnLogoCropper();
+    });
+
+    $('alygnn-logo-cropper')?.addEventListener('click',event=>{
+      if(event.target===$('alygnn-logo-cropper')){
+        $('edit-company-logo').value='';
+        closeAlygnnLogoCropper();
+      }
+    });
+
+    $('alygnn-crop-use')?.addEventListener('click',()=>{
+      const stage=$('alygnn-crop-stage');
+      const img=alygnnCropState.image;
+      const original=alygnnCropState.sourceFile;
+      if(!stage || !img || !original)return;
+
+      const outputSize=600;
+      const canvas=document.createElement('canvas');
+      canvas.width=outputSize;
+      canvas.height=outputSize;
+      const ctx=canvas.getContext('2d');
+
+      const displayScale=alygnnCropState.baseScale*alygnnCropState.zoom;
+      const stageToOutput=outputSize/stage.clientWidth;
+      const drawW=img.naturalWidth*displayScale*stageToOutput;
+      const drawH=img.naturalHeight*displayScale*stageToOutput;
+      const centerX=outputSize/2 + alygnnCropState.offsetX*stageToOutput;
+      const centerY=outputSize/2 + alygnnCropState.offsetY*stageToOutput;
+
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,outputSize,outputSize);
+      ctx.drawImage(
+        img,
+        centerX-drawW/2,
+        centerY-drawH/2,
+        drawW,
+        drawH
+      );
+
+      canvas.toBlob(blob=>{
+        if(!blob){
+          toast('Could not crop this image. Please choose another photo.');
+          return;
+        }
+
+        const baseName=(original.name||'company-logo')
+          .replace(/\.[^.]+$/,'')
+          .replace(/[^a-z0-9_-]+/gi,'-')
+          .replace(/^-+|-+$/g,'') || 'company-logo';
+
+        const croppedFile=new File(
+          [blob],
+          `${baseName}-cropped.jpg`,
+          {type:'image/jpeg',lastModified:Date.now()}
+        );
+
+        state.pendingCompanyLogoFile=croppedFile;
+
+        const previewUrl=URL.createObjectURL(blob);
+        renderLogoInto(
+          $('edit-company-logo-preview'),
+          previewUrl,
+          companyMetadata().name
+        );
+
+        closeAlygnnLogoCropper();
+      },'image/jpeg',0.92);
+    });
+
     $('edit-company-logo').addEventListener('change',event=>{
       const file=event.target.files?.[0]||null;
-      state.pendingCompanyLogoFile=file;
 
       if(!file){
         const company=companyMetadata();
         renderLogoInto($('edit-company-logo-preview'),company.logo,company.name);
+        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
         return;
       }
 
@@ -16033,18 +16320,21 @@
         toast('Company logo must be 5 MB or smaller.');
         event.target.value='';
         state.pendingCompanyLogoFile=null;
+        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
         return;
       }
 
-      const reader=new FileReader();
-      reader.onload=()=>{
-        renderLogoInto(
-          $('edit-company-logo-preview'),
-          String(reader.result||''),
-          companyMetadata().name
-        );
-      };
-      reader.readAsDataURL(file);
+      if(!/^image\/(png|jpeg|webp)$/i.test(file.type||'')){
+        toast('Please choose a PNG, JPG, or WEBP image.');
+        event.target.value='';
+        state.pendingCompanyLogoFile=null;
+        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
+        return;
+      }
+
+      // Do not save the original yet. Let the employer crop it first.
+      state.pendingCompanyLogoFile=null;
+      openAlygnnLogoCropper(file);
     });
 
     $('close-company-editor').onclick = closeCompanyEditor;
