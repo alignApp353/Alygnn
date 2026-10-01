@@ -4419,6 +4419,11 @@ body.dark .company-link-remove{
   color:#B7C5D3 !important;
 }
 
+
+.company-logo-picker-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.company-logo-picker-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border-radius:12px;background:var(--brand);color:#fff!important;font-size:12px;font-weight:900;cursor:pointer}
+.company-logo-picker-status{font-size:11px;color:var(--muted);font-weight:700;line-height:1.35}
+html[data-theme="dark"] .company-logo-picker-status{color:#B8C6D5}
 .alygnn-crop-backdrop{
   position:fixed;inset:0;z-index:10050;
   display:none;align-items:flex-end;justify-content:center;
@@ -5830,7 +5835,11 @@ body.dark .company-link-remove{
             <div class="company-logo-upload-copy">
               <strong>Upload your company logo</strong>
               <p>Required before publishing jobs. PNG, JPG, or WEBP up to 5 MB.</p>
-              <input class="company-logo-file" id="edit-company-logo" type="file" accept="image/png,image/jpeg,image/webp">
+              <input class="company-logo-file" id="edit-company-logo" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+              <div class="company-logo-picker-row">
+                <label class="company-logo-picker-btn" for="edit-company-logo">Choose logo</label>
+                <span class="company-logo-picker-status" id="company-logo-picker-status">Choose a photo to crop</span>
+              </div>
             </div>
           </div>
         </div>
@@ -6453,7 +6462,34 @@ body.dark .company-link-remove{
 
 <div class="toast" id="toast"></div>
 
-  <script>
+  <div class="alygnn-crop-backdrop" id="alygnn-logo-cropper" aria-hidden="true">
+  <div class="alygnn-crop-sheet" role="dialog" aria-modal="true" aria-labelledby="alygnn-crop-title">
+    <div class="alygnn-crop-head">
+      <div>
+        <h3 id="alygnn-crop-title">Crop company logo</h3>
+        <p>Drag the image to reposition it, then use the slider to zoom.</p>
+      </div>
+      <button type="button" class="alygnn-crop-close" id="alygnn-crop-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="alygnn-crop-stage" id="alygnn-crop-stage">
+      <img id="alygnn-crop-image" alt="Company logo crop preview">
+      <div class="alygnn-crop-guide"></div>
+    </div>
+
+    <div class="alygnn-crop-controls">
+      <label for="alygnn-crop-zoom"><span>Zoom</span><span id="alygnn-crop-zoom-value">100%</span></label>
+      <input id="alygnn-crop-zoom" type="range" min="100" max="300" step="1" value="100">
+    </div>
+
+    <div class="alygnn-crop-actions">
+      <button type="button" class="alygnn-crop-cancel" id="alygnn-crop-cancel">Cancel</button>
+      <button type="button" class="alygnn-crop-use" id="alygnn-crop-use">Use Photo</button>
+    </div>
+  </div>
+</div>
+
+<script>
     const sb = supabase.createClient(
       'https://auth.alygnn.com',
       'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
@@ -7468,32 +7504,7 @@ body.dark .company-link-remove{
       : ''
   }
 
-<div class="alygnn-crop-backdrop" id="alygnn-logo-cropper" aria-hidden="true">
-  <div class="alygnn-crop-sheet" role="dialog" aria-modal="true" aria-labelledby="alygnn-crop-title">
-    <div class="alygnn-crop-head">
-      <div>
-        <h3 id="alygnn-crop-title">Crop company logo</h3>
-        <p>Drag the image to reposition it, then use the slider to zoom.</p>
-      </div>
-      <button type="button" class="alygnn-crop-close" id="alygnn-crop-close" aria-label="Close">×</button>
-    </div>
 
-    <div class="alygnn-crop-stage" id="alygnn-crop-stage">
-      <img id="alygnn-crop-image" alt="Company logo crop preview">
-      <div class="alygnn-crop-guide"></div>
-    </div>
-
-    <div class="alygnn-crop-controls">
-      <label for="alygnn-crop-zoom"><span>Zoom</span><span id="alygnn-crop-zoom-value">100%</span></label>
-      <input id="alygnn-crop-zoom" type="range" min="100" max="300" step="1" value="100">
-    </div>
-
-    <div class="alygnn-crop-actions">
-      <button type="button" class="alygnn-crop-cancel" id="alygnn-crop-cancel">Cancel</button>
-      <button type="button" class="alygnn-crop-use" id="alygnn-crop-use">Use Photo</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>`;
@@ -11118,6 +11129,10 @@ body.dark .company-link-remove{
 
       state.pendingCompanyLogoFile=null;
       $('edit-company-logo').value='';
+      const logoPickerStatus=$('company-logo-picker-status');
+      if(logoPickerStatus){
+        logoPickerStatus.textContent=company.logo?'Current logo loaded — choose another to replace it':'Choose a photo to crop';
+      }
       renderLogoInto($('edit-company-logo-preview'),company.logo,company.name);
 
       const editMessage=$('company-edit-message');
@@ -15945,74 +15960,12 @@ body.dark .company-link-remove{
         return;
       }
 
-      try{
-        /*
-         * Supabase is the source of truth for capacity because it includes:
-         *   - the base monthly/quarterly plan
-         *   - the standalone $150 Second Job Slot
-         *   - every active $99 Weekly Job Slot
-         *
-         * This prevents the dashboard from falling back to Growth=5 when
-         * the live server capacity is Growth 5 + Weekly 1 = 6.
-         */
-        const accessResult=await sb.rpc('get_employer_posting_access');
-
-        if(!accessResult.error && accessResult.data){
-          const access=accessResult.data;
-          const used=Math.max(0,Number(access.active_job_count||0));
-          const limit=Math.max(1,Number(access.slot_limit||1));
-
-          const hasCapacity =
-            used < limit ||
-            access.can_post === true;
-
-          if(!hasCapacity){
-            openSlotPricing(used,limit);
-            return;
-          }
-
-          // Numeric server capacity says there is room. Clear any stale paywall
-          // state from the previous 5/5 check before opening a fresh job.
-          sessionStorage.removeItem('alygnn_job_slot_gate');
-          sessionStorage.removeItem('alygnnEditJobId');
-          sessionStorage.removeItem('alygnnJobReturnStep');
-          sessionStorage.removeItem('alygnnJobDraft');
-          sessionStorage.removeItem('alygnnActiveJobDraftId');
-          location.href='app-post-job.html?capacity=available';
-          return;
-        }
-
-        if(accessResult.error){
-          console.warn(
-            'Server posting-access check unavailable; using compatibility fallback:',
-            accessResult.error
-          );
-        }
-
-        // Compatibility fallback only if the RPC itself is unavailable.
-        const [entitlement,freshJobs]=await Promise.all([
-          loadDashboardEntitlement(),
-          queryJobs(state.session.user.id)
-        ]);
-
-        state.jobs=Array.isArray(freshJobs)?freshJobs:[];
-
-        const used=state.jobs.filter(dashboardJobConsumesSlot).length;
-        const limit=dashboardSlotLimit(entitlement);
-
-        if(used>=limit){
-          openSlotPricing(used,limit);
-          return;
-        }
-
-        sessionStorage.removeItem('alygnnEditJobId');
-        sessionStorage.removeItem('alygnnJobDraft');
-        sessionStorage.removeItem('alygnnActiveJobDraftId');
-        location.href='app-post-job.html';
-      }catch(error){
-        console.error('Could not verify job-slot capacity:',error);
-        toast('Could not verify your job-slot access. Please try again.');
-      }
+      // Open the builder immediately. Capacity is checked without blocking the UI.
+      sessionStorage.removeItem('alygnnEditJobId');
+      sessionStorage.removeItem('alygnnJobReturnStep');
+      sessionStorage.removeItem('alygnnJobDraft');
+      sessionStorage.removeItem('alygnnActiveJobDraftId');
+      location.href='app-post-job.html?from=dashboard';
     }
 
     $('jobs-sort').value=jobsSortMode;
@@ -16054,39 +16007,7 @@ body.dark .company-link-remove{
       );
 
 
-    // Keep Edit Company open if Android recreates/resumes the activity after the photo picker.
-    const COMPANY_EDITOR_RESUME_KEY='alygnnCompanyEditorResumeAfterPicker';
-
-    function reopenCompanyEditorAfterPickerIfNeeded(){
-      if(sessionStorage.getItem(COMPANY_EDITOR_RESUME_KEY)!=='1')return;
-
-      let tries=0;
-      const timer=setInterval(()=>{
-        tries+=1;
-        const modal=$('company-edit-modal');
-        const ready=Boolean(state.currentUser||state.session?.user);
-
-        if(modal && ready){
-          clearInterval(timer);
-          if(modal.hidden){
-            openCompanyEditor('all');
-          }
-        }else if(tries>=24){
-          clearInterval(timer);
-        }
-      },250);
-    }
-
-    window.addEventListener('pageshow',reopenCompanyEditorAfterPickerIfNeeded);
-    window.addEventListener('focus',reopenCompanyEditorAfterPickerIfNeeded);
-    document.addEventListener('visibilitychange',()=>{
-      if(!document.hidden)reopenCompanyEditorAfterPickerIfNeeded();
-    });
-
-    $('edit-company-logo').addEventListener('click',()=>{
-      sessionStorage.setItem(COMPANY_EDITOR_RESUME_KEY,'1');
-    });
-
+    // Company logo cropper state.
     const alygnnCropState={
       sourceFile:null,
       objectUrl:'',
@@ -16121,7 +16042,6 @@ body.dark .company-link-remove{
       alygnnCropState.pointerId=null;
 
       if(!keepPickerResume){
-        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
       }
     }
 
@@ -16294,6 +16214,8 @@ body.dark .company-link-remove{
         );
 
         state.pendingCompanyLogoFile=croppedFile;
+        const pickerStatus=$('company-logo-picker-status');
+        if(pickerStatus)pickerStatus.textContent='Cropped logo ready to save';
 
         const previewUrl=URL.createObjectURL(blob);
         renderLogoInto(
@@ -16312,7 +16234,6 @@ body.dark .company-link-remove{
       if(!file){
         const company=companyMetadata();
         renderLogoInto($('edit-company-logo-preview'),company.logo,company.name);
-        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
         return;
       }
 
@@ -16320,7 +16241,6 @@ body.dark .company-link-remove{
         toast('Company logo must be 5 MB or smaller.');
         event.target.value='';
         state.pendingCompanyLogoFile=null;
-        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
         return;
       }
 
@@ -16328,7 +16248,6 @@ body.dark .company-link-remove{
         toast('Please choose a PNG, JPG, or WEBP image.');
         event.target.value='';
         state.pendingCompanyLogoFile=null;
-        sessionStorage.removeItem(COMPANY_EDITOR_RESUME_KEY);
         return;
       }
 
