@@ -875,7 +875,25 @@ function isAdditiveSlotPurchase(){
   return isAddon() || billing==='weekly' || plan==='weekly_slot';
 }
 
+function safeLocalBackTarget(){
+  const raw=String(query.get('back_to')||'').trim();
+  if(!raw) return '';
+
+  // Only allow local Alygnn app HTML destinations.
+  if(
+    raw.startsWith('app-') &&
+    !raw.includes('://') &&
+    !raw.startsWith('//')
+  ){
+    return raw;
+  }
+
+  return '';
+}
+
 function returnToPricing(){
+  const exactBack=safeLocalBackTarget();
+  if(exactBack) return exactBack;
   if(returnMode==='billing') return 'app-employer-billing.html';
   let url='app-employer-pricing.html';
   if(returnMode==='preview') url+='?return=preview';
@@ -1884,12 +1902,9 @@ async function startCheckout(){
 }
 
 $('back-btn').addEventListener('click',()=>{
-  // Return to the screen the employer actually came from.
-  // This prevents checkout -> pricing -> checkout redirect loops.
-  if(window.history.length > 1){
-    history.back();
-    return;
-  }
+  // Always return to the exact Alygnn screen that launched checkout.
+  // Do not use browser history because Android WebView history can include
+  // stale dashboard/loading entries and send the employer to the wrong page.
   location.href=returnToPricing();
 });
 $('terms').addEventListener('change',updateCheckoutButton);
