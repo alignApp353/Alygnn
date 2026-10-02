@@ -5183,7 +5183,7 @@
   </div>
 
   <nav class="bottom-nav" aria-label="Employer navigation">
-    <button class="nav-item active" data-view="dashboard" type="button" aria-label="Dashboard">
+    <button class="nav-item" data-view="dashboard" type="button" aria-label="Dashboard">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
@@ -14142,6 +14142,14 @@
 
       }finally{
         /*
+         * Lock the visible view + active bottom-tab to the resolved state
+         * BEFORE revealing the shell. This prevents Dashboard from appearing
+         * active for a frame when the real destination is Company / Jobs /
+         * Settings.
+         */
+        setView(state.currentView || 'dashboard');
+
+        /*
          * Reveal the workspace only after initialization has resolved.
          * This prevents the previous employer / old dashboard state from
          * flashing before the current account is rendered.
@@ -14170,9 +14178,10 @@
       }
     }
 
-    // Highlight the destination tab the instant the user presses it.
-    // On Android WebView, waiting for the full click event can briefly leave
-    // Dashboard highlighted before Company / Jobs / Settings becomes active.
+    // Switch the actual employer view on press, not only the nav highlight.
+    // This avoids the Android WebView frame where Dashboard stays active
+    // while the requested Company / Jobs / Settings view is still waiting
+    // for the later click event.
     document.addEventListener('pointerdown',event => {
       const nav = event.target.closest('.bottom-nav [data-view]');
       if(!nav) return;
@@ -14180,16 +14189,12 @@
       const targetView=String(nav.dataset.view||'').trim();
       if(!targetView) return;
 
-      document.querySelectorAll('.bottom-nav .nav-item').forEach(button => {
-        const active=
-          button===nav ||
-          (
-            targetView==='applicants' &&
-            button.dataset.view==='jobs'
-          );
-
-        button.classList.toggle('active',active);
-      });
+      if(
+        ['dashboard','jobs','company','settings','applicants']
+          .includes(targetView)
+      ){
+        setView(targetView);
+      }
     },{passive:true});
 
     document.addEventListener('click',event => {
