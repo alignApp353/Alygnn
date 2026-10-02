@@ -178,30 +178,44 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 </style>
 <style id="alygnn-payment-promo-ui">
   .promo-box{
-    margin-top:14px;
-    padding:14px;
-    border:1px solid var(--border);
-    border-radius:16px;
-    background:var(--card);
+    margin-top:12px;
   }
-  .promo-head{
-    display:flex;
+  .promo-toggle{
+    width:auto;
+    min-height:34px;
+    padding:0;
+    border:0;
+    background:transparent;
+    color:var(--muted);
+    display:inline-flex;
     align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:9px;
+    gap:6px;
+    font-size:10px;
+    font-weight:800;
+    text-align:left;
   }
-  .promo-head strong{
-    font-size:12px;
-    font-weight:900;
+  .promo-toggle:hover,
+  .promo-toggle:active{
     color:var(--text);
   }
-  .promo-head span{
-    font-size:9px;
-    font-weight:900;
-    letter-spacing:.6px;
-    text-transform:uppercase;
-    color:var(--muted);
+  .promo-chevron{
+    width:15px;
+    height:15px;
+    transition:transform .18s ease;
+    flex:0 0 auto;
+  }
+  .promo-toggle[aria-expanded="true"] .promo-chevron{
+    transform:rotate(180deg);
+  }
+  .promo-panel{
+    margin-top:8px;
+    padding:13px;
+    border:1px solid var(--border);
+    border-radius:15px;
+    background:var(--card);
+  }
+  .promo-panel[hidden]{
+    display:none!important;
   }
   .promo-row{
     display:grid;
@@ -248,15 +262,14 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
   .promo-status.success{color:#2E8B57}
   .promo-status.error{color:#C64F4F}
 
-  html[data-theme="dark"] .promo-box,
+  html[data-theme="dark"] .promo-panel,
   html[data-theme="dark"] .promo-row input,
   html[data-theme="dark"] .promo-apply{
     background:#131D26!important;
     border-color:#2B3E50!important;
   }
   html[data-theme="dark"] .promo-row input,
-  html[data-theme="dark"] .promo-apply,
-  html[data-theme="dark"] .promo-head strong{
+  html[data-theme="dark"] .promo-apply{
     color:#F4F7FA!important;
   }
   html[data-theme="dark"] .promo-status{
@@ -354,22 +367,32 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 
 
     <div class="promo-box" id="promo-box">
-      <div class="promo-head">
-        <strong>Promotion code</strong>
-        <span>Optional</span>
+      <button
+        class="promo-toggle"
+        id="promo-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="promo-panel">
+        <span>Have a promo code?</span>
+        <svg class="promo-chevron" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="promo-panel" id="promo-panel" hidden>
+        <div class="promo-row">
+          <input
+            id="promo-code"
+            type="text"
+            maxlength="80"
+            inputmode="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="Enter promo code">
+          <button class="promo-apply" id="promo-apply" type="button">Apply</button>
+        </div>
+        <div class="promo-status" id="promo-status"></div>
       </div>
-      <div class="promo-row">
-        <input
-          id="promo-code"
-          type="text"
-          maxlength="80"
-          inputmode="text"
-          autocomplete="off"
-          autocapitalize="characters"
-          placeholder="Enter promo code">
-        <button class="promo-apply" id="promo-apply" type="button">Apply</button>
-      </div>
-      <div class="promo-status" id="promo-status"></div>
     </div>
 
         <label class="terms" style="margin-top:14px">
@@ -2103,6 +2126,22 @@ $('back-btn').addEventListener('click',()=>{
   // Do not use browser history because Android WebView history can include
   // stale dashboard/loading entries and send the employer to the wrong page.
   location.href=returnToPricing();
+});
+
+$('promo-toggle')?.addEventListener('click',()=>{
+  const toggle=$('promo-toggle');
+  const panel=$('promo-panel');
+  if(!toggle||!panel)return;
+
+  const isOpen=toggle.getAttribute('aria-expanded')==='true';
+  toggle.setAttribute('aria-expanded',String(!isOpen));
+  panel.hidden=isOpen;
+
+  if(!isOpen){
+    requestAnimationFrame(()=>{
+      $('promo-code')?.focus();
+    });
+  }
 });
 
 $('promo-code')?.addEventListener('input',event=>{
