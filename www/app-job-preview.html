@@ -819,6 +819,55 @@ html[data-theme="dark"] .loading{
   color:var(--text);
 }
 
+/* Keep the publish confirmation in the same theme as the employer app. */
+html[data-theme="dark"] .success-screen{
+  background:
+    radial-gradient(circle at top,rgba(140,182,155,.10),transparent 34%),
+    #07121D!important;
+}
+
+html[data-theme="dark"] .success-card{
+  background:#0F1B28!important;
+  border-color:#2B3A4A!important;
+  box-shadow:0 22px 62px rgba(0,0,0,.34)!important;
+}
+
+html[data-theme="dark"] .success-card h2{
+  color:#F2F6F9!important;
+}
+
+html[data-theme="dark"] .success-card p{
+  color:#AFC0CD!important;
+}
+
+html[data-theme="dark"] .success-job{
+  background:#0B1D26!important;
+  border-color:#304452!important;
+  color:#F2F6F9!important;
+}
+
+html[data-theme="dark"] .dashboard{
+  background:#3E6FA5!important;
+  color:#FFFFFF!important;
+}
+
+html[data-theme="dark"] .view{
+  background:#0B1D26!important;
+  border-color:#3A4D5E!important;
+  color:#F2F6F9!important;
+}
+
+html[data-theme="dark"] .view:disabled,
+html[data-theme="dark"] .dashboard:disabled{
+  opacity:.52;
+  color:#AFC0CD!important;
+}
+
+html[data-theme="dark"] .success-icon{
+  background:#15392C!important;
+  color:#67D39B!important;
+}
+
 @media(max-width:390px){
   .company-top{
     grid-template-columns:55px minmax(0,1fr) 96px;
@@ -2716,6 +2765,40 @@ let draft=null;
 let liveCompany=null;
 let publishedJobId=null;
 
+function editingPublishedJob(){
+  return Boolean(
+    String(
+      draft?.edit_job_id ||
+      sessionStorage.getItem('alygnnEditJobId') ||
+      ''
+    ).trim()
+  );
+}
+
+function editingPublishedJobId(){
+  return String(
+    draft?.edit_job_id ||
+    sessionStorage.getItem('alygnnEditJobId') ||
+    ''
+  ).trim();
+}
+
+function returnToPublishedJob(){
+  const id=editingPublishedJobId();
+
+  sessionStorage.removeItem('alygnnJobDraft');
+  sessionStorage.removeItem('alygnnActiveJobDraftId');
+  sessionStorage.removeItem('alygnnJobReturnStep');
+  sessionStorage.removeItem('alygnnEditJobId');
+
+  location.replace(
+    id
+      ? 'app-employer-dashboard.html?view=jobs&open_job=' +
+        encodeURIComponent(id)
+      : 'app-employer-dashboard.html?view=jobs'
+  );
+}
+
 function initials(name){
   const parts=String(name||'Company')
     .trim()
@@ -3534,16 +3617,30 @@ function editJob(){
     );
   }
 
-  // Tell the job builder to reopen Step 5 with the saved draft.
-  // This prevents "Back to Edit" from restarting the entire flow.
   sessionStorage.setItem(
     'alygnnJobReturnStep',
     '5'
   );
 
-  // Use a return_step query param as a second source of truth. The job builder
-  // reads it before first paint, so there is no Step 1 flash.
-  location.replace('app-post-job.html?return_step=5');
+  const editId=editingPublishedJobId();
+
+  if(editId){
+    sessionStorage.setItem(
+      'alygnnEditJobId',
+      editId
+    );
+
+    location.replace(
+      'app-post-job.html?edit=' +
+      encodeURIComponent(editId) +
+      '&return_step=5'
+    );
+    return;
+  }
+
+  location.replace(
+    'app-post-job.html?return_step=5'
+  );
 }
 
 function baseJobPayload(){
@@ -3658,6 +3755,60 @@ async function insertJob(){
   return result;
 }
 
+async function updatePublishedJob(){
+  const id=editingPublishedJobId();
+
+  if(!id){
+    return{
+      error:new Error('The job being edited could not be identified.')
+    };
+  }
+
+  // Do not change created_at or consume another slot when editing.
+  const payload=extendedJobPayload();
+  delete payload.created_at;
+
+  payload.updated_at=new Date().toISOString();
+  payload.status=
+    draft.original_status ||
+    'active';
+
+  let result=await promiseTimeout(
+    sb
+      .from('jobs')
+      .update(payload)
+      .eq('id',id)
+      .eq('employer_id',session.user.id),
+    12000,
+    'Saving your changes is taking too long. Check My Jobs before trying again.'
+  );
+
+  if(
+    result.error &&
+    missingColumn(result.error)
+  ){
+    const fallback=baseJobPayload();
+    delete fallback.created_at;
+
+    fallback.updated_at=new Date().toISOString();
+    fallback.status=
+      draft.original_status ||
+      'active';
+
+    result=await promiseTimeout(
+      sb
+        .from('jobs')
+        .update(fallback)
+        .eq('id',id)
+        .eq('employer_id',session.user.id),
+      12000,
+      'Saving your changes is taking too long. Check My Jobs before trying again.'
+    );
+  }
+
+  return result;
+}
+
 async function resolvePublishedJobIdBestEffort(){
   try{
     const result=await promiseTimeout(
@@ -3720,32 +3871,45 @@ async function publishJob(){
   button.textContent='Checking access…';
 
   try{
-    // Final payment/slot check happens immediately before the database insert.
-    // This protects the Publish Job button even if someone reaches Preview
-    // without going through the dashboard or job-builder gate.
-    const hasCapacity=await enforceFinalJobSlotAccess();
+    const isEdit=editingPublishedJob();
 
-    if(!hasCapacity){
-      return;
+    if(!isEdit){
+      // Only a NEW job needs a slot/capacity check.
+      const hasCapacity=await enforceFinalJobSlotAccess();
+
+      if(!hasCapacity){
+        return;
+      }
     }
 
-    button.textContent='Publishing…';
+    button.textContent=
+      isEdit
+        ? 'Saving Changes…'
+        : 'Publishing…';
 
     const{
       error
-    }=await insertJob();
+    }=
+      isEdit
+        ? await updatePublishedJob()
+        : await insertJob();
 
     if(error){
       throw error;
     }
 
-    /* The insert is complete. Resolve the ID separately without blocking UI. */
-    publishedJobId='';
-    resolvePublishedJobIdBestEffort();
+    if(isEdit){
+      // The job already has an ID. Do not create a second listing.
+      publishedJobId=editingPublishedJobId();
+    }else{
+      /* The insert is complete. Resolve the ID separately without blocking UI. */
+      publishedJobId='';
+      resolvePublishedJobIdBestEffort();
 
-    /* Publishing finishes the draft lifecycle. Remove its cloud draft so the
-       same job does not remain under My Jobs > Drafts after going live. */
-    await deleteActiveCloudDraftBestEffort();
+      /* Publishing finishes the draft lifecycle. Remove its cloud draft so the
+         same job does not remain under My Jobs > Drafts after going live. */
+      await deleteActiveCloudDraftBestEffort();
+    }
 
     sessionStorage.removeItem(
       'alygnnJobDraft'
@@ -3763,6 +3927,8 @@ async function publishJob(){
       'alygnnJobReturnStep'
     );
 
+    const wasEditing=Boolean(publishedJobId && editingPublishedJobId());
+
     $('success-job').textContent=
       (draft.title||'Job')+
       ' · '+
@@ -3771,6 +3937,16 @@ async function publishJob(){
         liveCompany?.name||
         'Company'
       );
+
+    const successTitle=document.querySelector('#success h2');
+    const successCopy=document.querySelector('#success p');
+
+    if(wasEditing){
+      if(successTitle)successTitle.textContent='Job updated';
+      if(successCopy)successCopy.textContent='Your changes were saved and the live job has been updated.';
+      $('dashboard-btn').textContent='Back to My Jobs';
+      $('view-job-btn').textContent='View Updated Job';
+    }
 
     $('footer').hidden=true;
     $('success').hidden=false;
@@ -3783,7 +3959,7 @@ async function publishJob(){
 
     const errorText=String(error?.message||'');
 
-    if(isPostingCapacityError(error)){
+    if(!editingPublishedJob() && isPostingCapacityError(error)){
       showMessage(
         'Your included free job slot is already being used. Choose another job slot to post this role.'
       );
@@ -3803,12 +3979,25 @@ async function publishJob(){
     );
 
     button.disabled=false;
-    button.textContent='Publish Job';
+    button.textContent=
+      editingPublishedJob()
+        ? 'Save Changes'
+        : 'Publish Job';
   }
 }
 
 function wire(){
-  $('exit-draft-btn').onclick=openExitDraftConfirm;
+  $('exit-draft-btn').onclick=()=>{
+    // A published job being edited is NOT an unpublished draft.
+    // X simply leaves the edit session and returns to that job.
+    if(editingPublishedJob()){
+      returnToPublishedJob();
+      return;
+    }
+
+    openExitDraftConfirm();
+  };
+
   $('exit-draft-cancel').onclick=closeExitDraftConfirm;
   $('exit-draft-save').onclick=savePreviewDraftAndExit;
 
@@ -3889,7 +4078,7 @@ function wire(){
 
   $('dashboard-btn').onclick=()=>{
     location.replace(
-      'app-employer-dashboard.html'
+      'app-employer-dashboard.html?view=jobs'
     );
   };
 
@@ -3974,6 +4163,10 @@ function wire(){
     }
 
     render();
+
+    if(editingPublishedJob()){
+      $('publish-btn').textContent='Save Changes';
+    }
 
     $('page').hidden=false;
     $('footer').hidden=false;
