@@ -309,7 +309,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 </style>
 </head>
 <body>
-<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
+<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options" hidden>
   <div class="loading-inner">
     <div class="loading-logo">Alygnn<span>.</span></div>
     <div class="loading-title">Preparing your hiring options.</div>
@@ -348,7 +348,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <section class="free-card">
+  <section class="free-card" id="free-card">
     <div class="free-badge">Included</div>
     <div class="free-title">1 free reusable job slot is always included</div>
     <p class="free-copy">Every employer account includes 1 reusable active job slot with limited candidate access. Close or pause that job to reuse the free slot. If you want another active job at the same time, choose paid capacity below.</p>
@@ -1054,6 +1054,13 @@ function renderCurrent(){
       ? `${used} / ${limit} total slots in use`
       : `All ${limit} slot${limit===1?' is':'s are'} in use`;
 
+  // If the employer arrived because every available slot is occupied,
+  // don't leave an unusable free-slot CTA between them and the plan choices.
+  const freeCard=$('free-card');
+  if(freeCard){
+    freeCard.hidden=Boolean(SLOT_GATE_REASON && !hasAvailableSlot);
+  }
+
   const secondSection=$('additional-slot');
   const secondBtn=$('additional-slot-btn');
   const addonCopy=$('additional-slot-copy');
@@ -1698,6 +1705,10 @@ async function loadAccount(){
 }
 
 $('back-btn').addEventListener('click',()=>{
+  // Android WebView can occasionally lose/normalize query-state during a
+  // document transition. Store the target as well as passing ?view=jobs so
+  // the employer always lands on the Jobs tab.
+  sessionStorage.setItem('alygnnEmployerStartView','jobs');
   location.replace('app-employer-dashboard.html?view=jobs');
 });
 
