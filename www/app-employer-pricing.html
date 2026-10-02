@@ -88,16 +88,22 @@ button{cursor:pointer}
 }
 .icon-btn{
   width:42px;height:42px;border-radius:50%;border:1px solid var(--border);
-  background:var(--card);color:var(--text);font-size:20px;font-weight:700
+  background:var(--card);color:var(--text);display:grid;place-items:center;padding:0
 }
+.icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .brand{text-align:center;font-family:'DM Serif Display',Georgia,serif;font-size:26px;color:var(--brand)}
 .brand span{color:var(--sage)}
 .header-spacer{width:42px}
 
-.loading{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center}
-.loading-inner{display:grid;gap:12px;text-align:center;color:var(--muted);font-size:13px}
-.spinner{width:36px;height:36px;margin:auto;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin .75s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.loading{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:24px}
+.loading-inner{width:min(320px,82vw);text-align:center}
+.loading-logo{font-family:'DM Serif Display',Georgia,serif;font-size:46px;line-height:1;color:var(--brand);letter-spacing:-1px}
+.loading-logo span{color:var(--sage)}
+.loading-title{margin-top:14px;font-size:14px;font-weight:800;color:var(--text)}
+.loading-copy{margin-top:6px;font-size:11px;color:var(--muted)}
+.loading-track{width:118px;height:4px;margin:22px auto 0;border-radius:999px;background:var(--border);overflow:hidden}
+.loading-bar{width:48%;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand),var(--sage));animation:loadslide 1.15s ease-in-out infinite alternate}
+@keyframes loadslide{from{transform:translateX(-52%)}to{transform:translateX(108%)}}
 
 main{max-width:560px;margin:0 auto;padding:22px 16px 40px}
 .eyebrow{font-size:10px;font-weight:900;letter-spacing:1.25px;text-transform:uppercase;color:var(--brand)}
@@ -194,12 +200,17 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 </style>
 </head>
 <body>
-<div class="loading" id="loading">
-  <div class="loading-inner"><div class="spinner"></div><span>Checking your hiring capacity…</span></div>
+<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
+  <div class="loading-inner">
+    <div class="loading-logo">Alygnn<span>.</span></div>
+    <div class="loading-title">Preparing your hiring options.</div>
+    <div class="loading-copy">Checking your available job slots.</div>
+    <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+  </div>
 </div>
 
 <header class="app-header">
-  <button class="icon-btn" id="back-btn" type="button" aria-label="Back">←</button>
+  <button class="icon-btn" id="back-btn" type="button" aria-label="Back to Jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   <div class="brand">Alygnn<span>.</span></div>
   <div class="header-spacer"></div>
 </header>
@@ -207,7 +218,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 <main>
   <div class="eyebrow">Employer billing</div>
   <h1>Choose your hiring capacity.</h1>
-  <p class="lede">Alygnn provides reusable job slots — not individual job ads. Keep a job in a slot, close or delete it when you are done, then use that available slot for your next opening.</p>
+  <p class="lede">Alygnn uses reusable job slots. One slot holds one active job at a time. Close or pause that job, then use the available slot for another opening while your slot term is active.</p>
 
   <section class="current-card" id="current-card">
     <div class="current-top">
@@ -224,14 +235,14 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
   </section>
 
   <section class="free-card">
-    <div class="free-badge">Included</div>
-    <div class="free-title" id="free-title">Your permanent free slot is always included</div>
-    <p class="free-copy" id="free-copy">Every employer account includes 1 reusable active job slot with limited candidate access. Close or delete that job to reuse the free slot, or add paid capacity below.</p>
+    <div class="free-badge">Start free</div>
+    <div class="free-title">Your first job slot is free</div>
+    <p class="free-copy">1 active reusable job slot with access to up to 25 candidates total. No credit card required. Job Boost is available after you move to a paid Launch, Growth, or Scale plan.</p>
     <button class="btn primary full" id="free-btn" type="button">Use free job slot</button>
   </section>
 
-  <div class="section-title">Choose how long you want your hiring capacity.</div>
-  <p class="section-copy">Your permanent free slot is always included. Paid plans add reusable capacity on top of it.</p>
+  <div class="section-title">Plans</div>
+  <p class="section-copy">Choose how long you want your reusable job-slot capacity.</p>
 
   <div class="tabs" role="tablist" aria-label="Billing period">
     <button class="tab active" type="button" data-billing="quarterly">Quarterly</button>
@@ -243,18 +254,17 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 
   <section class="addon" id="additional-slot" hidden>
     <div class="addon-top">
-      <div><h3>Second Job Slot</h3></div>
-      <div class="addon-price">$150<small>/ month</small></div>
+      <div><h3>Additional reusable slot</h3></div>
+      <div class="addon-price">$150<small>monthly-plan add-on</small></div>
     </div>
-    <p>Keep your included free slot and add a second reusable job slot for $150 per month.</p>
-    <div class="plan-slots" style="margin-top:12px">1 free + 1 monthly slot = 2 total</div>
-    <button class="btn secondary full" id="additional-slot-btn" type="button">Add Second Job Slot — $150/month</button>
+    <p>Add one more reusable active job slot to an active monthly plan. Closing or pausing the job makes this slot available again during the same billing period.</p>
+    <button class="btn secondary full" id="additional-slot-btn" type="button">Add reusable slot — $150</button>
   </section>
 
-  <section class="boost">
-    <div class="boost-label">Optional visibility add-on</div>
+  <section class="boost" id="boost-section" hidden>
+    <div class="boost-label">Paid-plan visibility add-on</div>
     <h3>Boost any active job.</h3>
-    <p>Give the job currently occupying a slot priority placement in Alygnn candidate discovery. Boosting changes visibility, not your number of slots.</p>
+    <p>Available with an active Launch, Growth, or Scale plan. Give an active job priority placement in Alygnn candidate discovery. Boosting changes visibility, not your number of slots.</p>
     <div class="boost-price">$15 <span>/ day</span></div>
     <button class="btn primary full" id="boost-btn" type="button">Choose a job to boost</button>
   </section>
@@ -268,7 +278,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <p class="fineprint">The $150 Second Job Slot is available only when you are on the Free plan. Weekly Job Slots add 1 temporary reusable slot for 7 days. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled. Job Boost is separate and does not extend a slot term.</p>
+  <p class="fineprint">Weekly slots start immediately after successful purchase and expire 7 days later. Monthly and quarterly slots are reusable while the paid term remains active. Job Boost is available only with an active Launch, Growth, or Scale plan and does not extend a slot term.</p>
   <div class="message" id="message" hidden></div>
 </main>
 
@@ -281,17 +291,17 @@ const sb=supabase.createClient(
 
 const CATALOG={
   quarterly:{
-    launch:{name:'Launch',price:750,suffix:'/ 3 months',slots:3,features:['AI candidate matching','Candidate filtering','Applicant management','Resume access and downloads','Hiring analytics','Team: add 1 teammate for $99/month','Optional Job Boost · $15/day']},
-    growth:{name:'Growth',price:1140,suffix:'/ 3 months',slots:5,popular:true,features:['Everything in Launch','Urgently Hiring badge on jobs','Featured listings','Advanced candidate filtering','Advanced hiring analytics','1 teammate included · extra teammate $75/month','Optional Job Boost · $15/day']},
-    scale:{name:'Scale',price:1700,suffix:'/ 3 months',slots:8,features:['Everything in Growth','Urgently Hiring badge on jobs','Alygnn Recommended badge on eligible jobs','High-volume hiring capacity','Advanced candidate tools','2 teammates included · extra teammate $50/month','Priority support','Optional Job Boost · $15/day']}
+    launch:{name:'Launch',price:750,suffix:'/ 3 months',slots:3,features:['AI candidate matching','Candidate filtering','Applicant management','Resume access and downloads','Optional Job Boost · $15/day']},
+    growth:{name:'Growth',price:1140,suffix:'/ 3 months',slots:5,popular:true,features:['Everything in Launch','Urgently Hiring badge on jobs','Advanced candidate filtering','Featured listings','Advanced hiring analytics','Optional Job Boost · $15/day']},
+    scale:{name:'Scale',price:1700,suffix:'/ 3 months',slots:8,features:['Everything in Growth','Urgently Hiring badge on jobs','High-volume hiring capacity','Advanced candidate tools','Team access and priority support','Optional Job Boost · $15/day']}
   },
   monthly:{
-    launch:{name:'Launch',price:299,suffix:'/ month',slots:3,features:['AI candidate matching','Candidate filtering','Applicant management','Resume access and downloads','Hiring analytics','Team: add 1 teammate for $99/month','Optional Job Boost · $15/day']},
-    growth:{name:'Growth',price:449,suffix:'/ month',slots:5,popular:true,features:['Everything in Launch','Urgently Hiring badge on jobs','Featured listings','Advanced candidate filtering','Advanced hiring analytics','1 teammate included · extra teammate $75/month','Optional Job Boost · $15/day']},
-    scale:{name:'Scale',price:649,suffix:'/ month',slots:8,features:['Everything in Growth','Urgently Hiring badge on jobs','Alygnn Recommended badge on eligible jobs','High-volume hiring capacity','Advanced candidate tools','2 teammates included · extra teammate $50/month','Priority support','Optional Job Boost · $15/day']}
+    launch:{name:'Launch',price:299,suffix:'/ month',slots:3,features:['AI candidate matching','Candidate filtering','Applicant management','Resume access and downloads','Optional Job Boost · $15/day']},
+    growth:{name:'Growth',price:449,suffix:'/ month',slots:5,popular:true,features:['Everything in Launch','Urgently Hiring badge on jobs','Advanced candidate filtering','Featured listings','Advanced hiring analytics','Optional Job Boost · $15/day']},
+    scale:{name:'Scale',price:649,suffix:'/ month',slots:8,features:['Everything in Growth','Urgently Hiring badge on jobs','High-volume hiring capacity','Advanced candidate tools','Team access and priority support','Optional Job Boost · $15/day']}
   },
   weekly:{
-    weekly_slot:{name:'Weekly Job Slot',price:99,suffix:'/ 7 days',slots:1,popular:true,features:['Starts immediately after purchase','Expires 7 days after purchase','Close or pause a job and reuse the slot before expiration','AI candidate matching and applicant management','No monthly subscription required','Optional Job Boost · $15/day']}
+    weekly_slot:{name:'Weekly Job Slot',price:99,suffix:'/ 7 days',slots:1,popular:true,features:['Starts immediately after purchase','Expires 7 days after purchase','Close or pause a job and reuse the slot before expiration','AI candidate matching and applicant management','No monthly subscription required']}
   }
 };
 
@@ -329,16 +339,21 @@ function entitlementActive(){
 
 function defaultSlotLimit(){
   const p=String(entitlement?.plan||'free').toLowerCase();
-  if(p==='growth') return 6;
-  if(p==='scale') return 9;
+  if(p==='growth') return 5;
+  if(p==='scale') return 8;
   if(p==='enterprise') return Number(entitlement?.slot_limit||15);
-  if(p==='launch') return 4;
-  if(p==='weekly_slot') return 2;
+  if(p==='launch') return 3;
+  if(p==='weekly_slot') return 1;
   return 1;
 }
 
 function usedSlots(){
   return jobs.filter(job=>['active','pending'].includes(String(job.status||'active').toLowerCase())).length;
+}
+
+function basePaidPlanActive(){
+  const plan=String(entitlement?.plan||'').toLowerCase();
+  return ['launch','growth','scale'].includes(plan) && entitlementActive();
 }
 
 function renderCurrent(){
@@ -347,13 +362,12 @@ function renderCurrent(){
   $('slot-limit').textContent=String(Math.max(1,Number(entitlement?.slot_limit||defaultSlotLimit())));
   $('slot-used').textContent=String(usedSlots());
 
-  const freeUsed=entitlement?.free_job_used===true || usedSlots()>0;
+  const freeUsed=entitlement?.free_job_used===true || jobs.length>0;
   $('free-btn').disabled=freeUsed;
-  $('free-btn').textContent=freeUsed?'Free slot in use':'Use free job slot';
-  if($('free-title')) $('free-title').textContent=freeUsed?'Your permanent free slot is in use':'Your permanent free slot is always included';
-  if($('free-copy')) $('free-copy').textContent=freeUsed
-    ? 'Your first active job is using your permanent free slot. Close or delete that job to reuse the slot, or add the Second Job Slot for another active opening.'
-    : 'Every employer account includes 1 reusable active job slot with limited candidate access. Close or delete that job to reuse the free slot, or add paid capacity below.';
+  $('free-btn').textContent=freeUsed?'Free job slot already in use / used':'Use free job slot';
+
+  const boostSection=$('boost-section');
+  if(boostSection) boostSection.hidden=!basePaidPlanActive();
 }
 
 function renderPlans(){
@@ -366,7 +380,7 @@ function renderPlans(){
         <div class="plan-price">$${Number(p.price).toLocaleString('en-US')}</div>
         <div class="plan-suffix">${p.suffix}</div>
       </div>
-      <div class="plan-slots">${p.slots + 1} total job slots · ${p.slots} plan + 1 free</div>
+      <div class="plan-slots">${p.slots} active reusable job slot${p.slots===1?'':'s'}</div>
       <ul class="features">${p.features.map(x=>`<li>${x}</li>`).join('')}</ul>
       <button class="btn ${p.popular?'primary':'secondary'} full" type="button" data-plan="${key}">Choose ${p.name}</button>
     </article>
@@ -436,7 +450,7 @@ async function loadAccount(){
   $('loading').hidden=true;
 }
 
-$('back-btn').addEventListener('click',()=>location.href='app-employer-dashboard.html#settings');
+$('back-btn').addEventListener('click',()=>location.href='app-employer-dashboard.html?view=jobs');
 
 document.querySelectorAll('[data-billing]').forEach(btn=>{
   btn.addEventListener('click',()=>switchBilling(btn.dataset.billing));
@@ -448,11 +462,13 @@ $('free-btn').addEventListener('click',()=>{
 });
 
 $('additional-slot-btn').addEventListener('click',()=>{
-  const currentPlan=String(entitlement?.plan||'free').toLowerCase();
-  const onFreePlan=!entitlement || currentPlan==='free' || !entitlementActive();
+  const activeMonthly=
+    String(entitlement?.billing_period||'').toLowerCase()==='monthly' &&
+    entitlementActive() &&
+    ['launch','growth','scale'].includes(String(entitlement?.plan||'').toLowerCase());
 
-  if(!onFreePlan){
-    showMessage('The $150 Second Job Slot is available only while your account is on the Free plan. Launch, Growth, and Scale already include additional reusable job-slot capacity.');
+  if(!activeMonthly){
+    showMessage('The $150 additional reusable slot is available only with an active monthly Launch, Growth, or Scale plan.');
     return;
   }
 
@@ -460,11 +476,22 @@ $('additional-slot-btn').addEventListener('click',()=>{
 });
 
 $('boost-btn').addEventListener('click',()=>{
+  if(!basePaidPlanActive()){
+    showMessage('Job Boost is available with an active Launch, Growth, or Scale plan.');
+    return;
+  }
   location.href='app-employer-dashboard.html?view=jobs&action=boost';
 });
 
 renderPlans();
-loadAccount();
+const loadingWatchdog=setTimeout(()=>{
+  const loading=$('loading');
+  if(loading && !loading.hidden){
+    loading.hidden=true;
+    showMessage('Hiring capacity is taking longer than expected. You can still review the available options.');
+  }
+},6000);
+loadAccount().finally(()=>clearTimeout(loadingWatchdog));
 </script>
 </body>
 </html>
