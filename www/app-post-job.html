@@ -12,6 +12,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
+  const params = new URLSearchParams(location.search);
+  const previewReturnStep = params.get('return_step');
+  if(previewReturnStep){
+    sessionStorage.setItem('alygnnJobReturnStep', previewReturnStep);
+    document.documentElement.classList.add('alygnn-restoring-job');
+  }
+
   const preference =
     localStorage.getItem('alygnnEmployerTheme') ||
     localStorage.getItem('alygnnTheme') ||
@@ -34,6 +41,12 @@
   --danger:#B64040;--danger-bg:#FCEDED;--success:#18794E;--success-bg:#E8F6EE;
 }
 [hidden]{display:none!important}
+html.alygnn-restoring-job .header,
+html.alygnn-restoring-job .page,
+html.alygnn-restoring-job .footer{
+  visibility:hidden!important;
+}
+
 html,body{width:100%;min-height:100%}
 body{min-height:100vh;background:var(--bg);color:var(--text);padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font:inherit}
@@ -3041,8 +3054,13 @@ function alygnnTimeout(promise,ms,fallback){
         ? requestedReturnStep
         : 1
     );
+
+    // The correct step is now restored. Reveal the builder only now so
+    // returning from Candidate Preview never flashes Step 1.
+    document.documentElement.classList.remove('alygnn-restoring-job');
   }catch(error){
     console.error(error);
+    document.documentElement.classList.remove('alygnn-restoring-job');
     showMessage('Could not prepare the job form. Please return to the dashboard and try again.');
   }finally{
     hideLoading();
