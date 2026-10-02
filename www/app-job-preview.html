@@ -1672,6 +1672,28 @@ html[data-theme="dark"] .candidate-save-btn{
   color:#F2F6F9!important;
 }
 
+html[data-theme="dark"] .candidate-pill{
+  background:#10232D!important;
+  border-color:#304452!important;
+  color:#D7E1E8!important;
+}
+
+html[data-theme="dark"] .candidate-salary-pill{
+  background:#173652!important;
+  border-color:#315876!important;
+  color:#BFDDF5!important;
+}
+
+html[data-theme="dark"] .candidate-company-name,
+html[data-theme="dark"] .candidate-card-desc{
+  color:#B8C6D1!important;
+}
+
+html[data-theme="dark"] .candidate-overview-label,
+html[data-theme="dark"] .candidate-view-full{
+  color:#71A5D8!important;
+}
+
 html[data-theme="dark"] .candidate-skip-btn{
   background:transparent!important;
 }
@@ -1953,6 +1975,13 @@ body.preview-details-open{
   padding:0;
 }
 
+.details-close svg,
+.details-save svg{
+  display:block;
+  width:20px;
+  height:20px;
+}
+
 .details-header-title{
   text-align:center;
   font-size:13px;
@@ -2150,6 +2179,41 @@ body.preview-details-open{
   display:none!important;
 }
 
+
+.details-company-links{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:14px;
+}
+
+.details-company-link{
+  display:inline-flex;
+  align-items:center;
+  min-height:38px;
+  padding:0 13px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:#F9FBFC;
+  color:var(--brand-dark);
+  font-size:12px;
+  font-weight:800;
+  text-decoration:none;
+  max-width:100%;
+}
+
+.details-company-link span{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+html[data-theme="dark"] .details-company-link{
+  background:#0B1D26;
+  border-color:#304452;
+  color:#9CC8EF;
+}
+
 html[data-theme="dark"] .job-details-overlay{
   background:rgba(0,0,0,.62);
 }
@@ -2228,8 +2292,8 @@ html[data-theme="dark"] .details-footer{
 }
 @media(max-height:820px){
   .flip-shell{
-    height:min(455px,calc(100dvh - 235px))!important;
-    min-height:380px!important;
+    height:min(420px,calc(100dvh - 315px))!important;
+    min-height:365px!important;
   }
 }
 
@@ -2272,17 +2336,18 @@ html[data-theme="dark"] .details-footer{
   transform:scale(.97);
 }
 
-/* The progress strip was intentionally removed, so don't vertically center
-   the card in the leftover candidate-screen space. Keep the preview close to
-   the header like a normal review screen. */
+/* Employer preview should sit level in the usable space, matching the
+   candidate card placement instead of being pinned against the header. */
 .candidate-preview-swipe-area{
-  justify-content:flex-start!important;
-  padding-top:30px!important;
-  padding-bottom:22px!important;
+  justify-content:center!important;
+  padding-top:14px!important;
+  padding-bottom:18px!important;
 }
 
 .flip-shell{
-  margin-top:0!important;
+  height:min(455px,calc(100dvh - 330px))!important;
+  min-height:390px!important;
+  margin:0 auto!important;
 }
 
 .exit-draft-overlay{
@@ -2578,7 +2643,9 @@ html[data-theme="dark"] .exit-draft-card{
         id="details-close"
         type="button"
         aria-label="Back to job preview"
-      >←</button>
+      ><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg></button>
 
       <div class="details-header-title">Full job ad</div>
 
@@ -3128,6 +3195,70 @@ function escapePreviewHtml(value){
     .replaceAll("'","&#039;");
 }
 
+function previewCompanyLinks(value){
+  let links=value;
+
+  if(typeof links==='string'){
+    try{
+      links=JSON.parse(links);
+    }catch(_error){
+      links=[links];
+    }
+  }
+
+  if(!Array.isArray(links)) links=[];
+
+  const seen=new Set();
+
+  return links.map(item=>{
+    const raw=typeof item==='string' ? item : item?.url;
+    if(!raw)return null;
+
+    let url=String(raw).trim();
+    if(!/^https?:\/\//i.test(url))url='https://'+url;
+
+    try{
+      const parsed=new URL(url);
+      const key=parsed.href.replace(/\/+$/,'').toLowerCase();
+      if(seen.has(key))return null;
+      seen.add(key);
+
+      const host=parsed.hostname.replace(/^www\./,'');
+      let label=host;
+
+      if(host.includes('instagram.com'))label='Instagram';
+      else if(host.includes('linkedin.com'))label='LinkedIn';
+      else if(host.includes('facebook.com'))label='Facebook';
+      else if(host.includes('tiktok.com'))label='TikTok';
+      else if(host==='x.com'||host.includes('twitter.com'))label='X';
+      else if(host.includes('youtube.com')||host.includes('youtu.be'))label='YouTube';
+      else label=host;
+
+      return {url:parsed.href,label};
+    }catch(_error){
+      return null;
+    }
+  }).filter(Boolean);
+}
+
+function previewCompanyLinksHtml(value){
+  const links=previewCompanyLinks(value);
+  if(!links.length)return '';
+
+  return `
+    <div class="details-company-links" aria-label="Company links">
+      ${links.map(link=>`
+        <a
+          class="details-company-link"
+          href="${escapePreviewHtml(link.url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        ><span>${escapePreviewHtml(link.label)}</span></a>
+      `).join('')}
+    </div>
+  `;
+}
+
 function previewListHtml(value,fallback){
   const items=listValues(value);
 
@@ -3172,9 +3303,21 @@ function openCandidateDetailsPreview(){
     draft.company_headline||
     `${company} is hiring for this opportunity through Alygnn.`;
 
-  const logoHtml=liveCompany?.logoUrl
-    ? `<img src="${escapePreviewHtml(liveCompany.logoUrl)}" alt="">`
+  const previewLogo=
+    draft.company_logo ||
+    liveCompany?.logoUrl ||
+    liveCompany?.logo_url ||
+    '';
+
+  const logoHtml=previewLogo
+    ? `<img src="${escapePreviewHtml(previewLogo)}" alt="${escapePreviewHtml(company)} logo">`
     : escapePreviewHtml(previewInitials(company));
+
+  const companyLinks=
+    draft.company_links ||
+    liveCompany?.companyLinks ||
+    liveCompany?.company_links ||
+    [];
 
   $('details-scroll').innerHTML=`
     <article class="details-hero">
@@ -3235,6 +3378,7 @@ function openCandidateDetailsPreview(){
     <section class="details-section">
       <h2>About ${escapePreviewHtml(company)}</h2>
       <div class="details-copy">${escapePreviewHtml(aboutCompany)}</div>
+      ${previewCompanyLinksHtml(companyLinks)}
     </section>
   `;
 
