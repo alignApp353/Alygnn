@@ -4260,10 +4260,6 @@
   }
 </style>
 
-
-<style id="alygnn-retire-old-dashboard">
-#dashboard-view,[data-view="dashboard"]{display:none!important;}
-</style>
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div class="shell">
@@ -4277,7 +4273,7 @@
     </header>
 
     <main class="page">
-      <section class="view" id="dashboard-view" hidden aria-hidden="true">
+      <section class="view" id="dashboard-view">
         <div class="eyebrow">Employer workspace</div>
         <div class="welcome">
           <h1 id="greeting">Welcome back</h1>
@@ -4613,7 +4609,7 @@
         </section>
       </section>
 
-      <section class="view" id="jobs-view">
+      <section class="view" id="jobs-view" hidden>
         <div class="eyebrow">Employer workspace</div>
         <h1 class="page-title">My Jobs</h1>
         <p class="page-sub">Manage every opening, track performance, and move faster from one place.</p>
@@ -5202,7 +5198,19 @@
   </div>
 
   <nav class="bottom-nav" aria-label="Employer navigation">
-    <button class="nav-item active" data-view="jobs" type="button" aria-label="Jobs">
+    <button class="nav-item active" data-view="dashboard" type="button" aria-label="Dashboard">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </span>
+      <span>Dashboard</span>
+    </button>
+
+    <button class="nav-item" data-view="jobs" type="button" aria-label="Jobs">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="7" width="18" height="13" rx="2"></rect>
@@ -5574,7 +5582,7 @@
       companyRecord:null,
       activeCandidate:null,
       activeProfile:null,
-      currentView:'jobs',
+      currentView:'dashboard',
       selectedApplicantJobId:null,
       applicantPipelineFilter:'all',
       aiProfileComplete:false,
@@ -6884,8 +6892,6 @@
     let jobsRefreshInFlight=false;
 
     function setView(name){
-      // Dashboard is retired. Any stale route/history entry is redirected to My Jobs.
-      if(name==='dashboard') name='jobs';
       const previousView = state.currentView;
       state.currentView = name;
 
@@ -6893,7 +6899,9 @@
       // This prevents Android back navigation from replaying Dashboard -> Jobs flashes.
       try{
         const url=new URL(location.href);
-        if(['jobs','company','settings'].includes(name)){
+        if(name==='dashboard'){
+          url.searchParams.delete('view');
+        }else if(['jobs','company','settings'].includes(name)){
           url.searchParams.set('view',name);
         }
         history.replaceState(null,'',url.pathname+url.search);
@@ -14122,11 +14130,13 @@
          * Open My Jobs immediately and open the exact listing whose ID
          * was supplied by app-job-preview.html.
          */
-        if(requestedView==='company'){
-          state.currentView='company';
-        }else{
-          // Dashboard has been retired. Employer home is My Jobs.
+        if(
+          requestedJobId ||
+          requestedView==='jobs'
+        ){
           state.currentView='jobs';
+        }else if(requestedView==='company'){
+          state.currentView='company';
         }
 
         safeRenderAll();
@@ -14142,7 +14152,10 @@
           }
         }
 
-        if(requestedView!=='company'){
+        if(
+          requestedJobId ||
+          requestedView==='jobs'
+        ){
           jobsStatusTab='open';
 
           setView('jobs');
@@ -14642,9 +14655,7 @@
       }
     );
 
-    $('post-job-btn').onclick = openPostJob;
-    $('post-job-btn-2').onclick = openPostJob;
-    if($('hero-post-job')) $('hero-post-job').onclick = openPostJob;
+    $('post-job-btn').onclick = $('post-job-btn-2').onclick = $('hero-post-job').onclick = openPostJob;
     $('complete-ai-profile').onclick = () => {
       location.href='app-employer-ai-profile.html';
     };
