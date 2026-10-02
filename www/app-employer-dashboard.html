@@ -630,81 +630,6 @@
       line-height:1.45;
     }
 
-
-    /* ===== Plan-powered candidate-facing job treatments ===== */
-    .job-treatment-badges{
-      display:flex;
-      flex-wrap:wrap;
-      gap:7px;
-      margin-top:10px;
-    }
-
-    .job-treatment-badge{
-      display:inline-flex;
-      align-items:center;
-      min-height:24px;
-      padding:0 9px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      font-size:9px;
-      font-weight:900;
-      letter-spacing:.35px;
-      text-transform:uppercase;
-      white-space:nowrap;
-    }
-
-    .job-treatment-badge.featured{
-      color:var(--brand-dark);
-      border-color:rgba(93,127,163,.30);
-      background:var(--brand-soft);
-    }
-
-    .job-treatment-badge.urgent{
-      color:#9A5151;
-      border-color:rgba(215,154,154,.38);
-      background:rgba(215,154,154,.14);
-    }
-
-    .job-treatment-badge.recommended{
-      color:#fff;
-      border-color:var(--brand-dark);
-      background:linear-gradient(135deg,var(--brand-dark),var(--brand));
-      box-shadow:0 6px 16px rgba(52,95,145,.18);
-    }
-
-    .job-card.plan-featured{
-      border-left:3px solid rgba(93,127,163,.72);
-    }
-
-    .job-card.plan-recommended{
-      border-left:4px solid var(--brand-dark);
-      border-right:4px solid var(--brand-dark);
-      box-shadow:0 12px 34px rgba(52,95,145,.12);
-    }
-
-    .mini-btn.urgent-toggle-on{
-      border-color:rgba(215,154,154,.42);
-      background:rgba(215,154,154,.14);
-      color:#9A5151;
-    }
-
-    .mini-btn.urgent-toggle-off{
-      border-color:rgba(93,127,163,.34);
-      background:var(--brand-soft);
-      color:var(--brand-dark);
-    }
-
-    .mini-btn.plan-locked{
-      opacity:.68;
-      cursor:default;
-    }
-
-    html[data-theme="dark"] .job-treatment-badge.urgent,
-    html[data-theme="dark"] .mini-btn.urgent-toggle-on{
-      color:#E6AAAA;
-      background:rgba(215,154,154,.13);
-    }
-
     .free-slot-applicant-meter{
       margin-top:10px;
       max-width:290px;
@@ -1064,102 +989,30 @@
       background:var(--brand-dark);
     }
 
-    /* Branded employer boot screen — matches the current Alygnn Messages experience. */
     .loading{
       position:fixed;
       inset:0;
       z-index:120;
+      background:var(--bg);
+      color:var(--text);
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
-      background:
-        radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
-        #F6F8F7;
-      color:#172333;
-      transition:opacity .18s ease,visibility .18s ease;
+      flex-direction:column;
+      gap:13px;
     }
 
-    html[data-theme="dark"] .loading{
-      background:
-        radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
-        #0B111A;
-      color:#F3F7FA;
+    .spinner{
+      width:42px;
+      height:42px;
+      border:4px solid var(--border);
+      border-top-color:var(--brand);
+      border-radius:50%;
+      animation:spin .75s linear infinite;
     }
 
-    .loading-inner{
-      width:min(360px,88vw);
-      text-align:center;
-      transform:translateY(-3vh);
-    }
-
-    .loading-logo{
-      display:inline-block;
-      font-family:'DM Serif Display',Georgia,serif!important;
-      font-size:clamp(54px,15vw,72px);
-      line-height:.95;
-      letter-spacing:-2px;
-      color:#5D7FA3;
-      text-rendering:optimizeLegibility;
-      -webkit-font-smoothing:antialiased;
-    }
-
-    .loading-logo span{color:#8CB69B}
-
-    .loading-copy{
-      margin-top:18px;
-      color:#647282;
-      font-size:14px;
-      line-height:1.45;
-      font-weight:700;
-      letter-spacing:.01em;
-    }
-
-    html[data-theme="dark"] .loading-copy{color:#A9B5C2}
-
-    .loading-track{
-      position:relative;
-      width:116px;
-      height:3px;
-      margin:25px auto 0;
-      overflow:hidden;
-      border-radius:999px;
-      background:#DDE3E8;
-    }
-
-    html[data-theme="dark"] .loading-track{background:#293545}
-
-    .loading-bar{
-      position:absolute;
-      top:0;
-      bottom:0;
-      left:-48%;
-      width:48%;
-      border-radius:999px;
-      background:linear-gradient(90deg,#5D7FA3,#8CB69B);
-      animation:alygnn-employer-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
-    }
-
-    @keyframes alygnn-employer-loading{
-      0%{transform:translateX(0);opacity:.45}
-      45%{opacity:1}
-      100%{transform:translateX(310%);opacity:.55}
-    }
-
-    @media(prefers-reduced-motion:reduce){
-      .loading-bar{left:0;width:100%;animation:none;opacity:.8}
-    }
-
-    .notification>svg{
-      width:20px;
-      height:20px;
-      display:block;
-      fill:none;
-      stroke:currentColor;
-      stroke-width:2;
-      stroke-linecap:round;
-      stroke-linejoin:round;
-    }
+    .loading-copy{color:var(--muted);font-size:12px;font-weight:800}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
 
 
@@ -4078,23 +3931,6 @@
       line-height:1.55;
     }
 
-    /* Keep all empty-state content optically centered inside the Jobs card. */
-    #jobs-list{width:100%;}
-    .jobs-tab-empty{
-      width:100%;
-      min-height:230px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      padding:28px 18px;
-    }
-    .jobs-tab-empty strong,
-    .jobs-tab-empty span{
-      width:100%;
-      text-align:center;
-    }
-
 
   
     /* ===== Alygnn Team Members ===== */
@@ -4410,493 +4246,28 @@
 </style>
 
 
-<style id="alygnn-settings-polish-v2">
-  /* Settings: current Alygnn mobile workspace treatment */
-  #settings-view{
-    /* Keep the final Settings rows fully above the fixed bottom nav. */
-    padding-bottom:calc(104px + env(safe-area-inset-bottom));
-    scroll-margin-top:0;
-  }
-  .settings-page-head{
-    margin:0 0 18px;
-  }
-  .settings-page-head .eyebrow{margin-bottom:7px}
-  .settings-page-head .page-sub{max-width:560px}
-
-  #settings-view .settings-card{
-    margin-top:0;
-    padding:16px;
-    border-radius:20px;
-    background:var(--card);
-  }
-  #settings-view .settings-group-title,
-  #settings-view .section-kicker{
-    font-size:10px;
-    letter-spacing:1px;
-    font-weight:900;
-  }
-  #settings-view .section-kicker{
-    margin-top:22px;
-    margin-bottom:9px;
-  }
-  #settings-view .section{
-    margin-top:0;
-    border-radius:20px;
-  }
-  #settings-view .appearance-options{
-    gap:8px;
-  }
-  #settings-view .appearance-option{
-    min-height:82px;
-    padding:10px 7px;
-    border-radius:15px;
-    gap:8px;
-  }
-  #settings-view .appearance-icon{
-    width:28px;
-    height:28px;
-    display:grid;
-    place-items:center;
-    color:var(--brand-dark);
-  }
-  #settings-view .appearance-icon svg{
-    width:20px;
-    height:20px;
-    display:block;
-    fill:none;
-    stroke:currentColor;
-    stroke-width:1.8;
-    stroke-linecap:round;
-    stroke-linejoin:round;
-  }
-  #settings-view .appearance-option.active .appearance-icon{
-    color:var(--brand-dark);
-  }
-  #settings-view .preference-note{
-    margin-top:12px;
-  }
-
-  #settings-view .settings-link{
-    min-height:62px;
-    padding:8px 12px;
-    gap:10px;
-    color:var(--text);
-    -webkit-text-fill-color:var(--text);
-  }
-  #settings-view .settings-icon-label{
-    min-width:0;
-    flex:1;
-    gap:12px;
-  }
-  #settings-view .settings-icon{
-    width:38px;
-    height:38px;
-    flex:0 0 38px;
-    border-radius:12px;
-    background:var(--brand-soft);
-    color:var(--brand-dark);
-    display:grid;
-    place-items:center;
-  }
-  #settings-view .settings-icon svg{
-    width:18px;
-    height:18px;
-    display:block;
-    fill:none;
-    stroke:currentColor;
-    stroke-width:1.8;
-    stroke-linecap:round;
-    stroke-linejoin:round;
-  }
-  #settings-view .settings-copy{
-    min-width:0;
-  }
-  #settings-view .settings-copy strong{
-    display:block;
-    font-size:12.5px;
-    line-height:1.25;
-    color:var(--text);
-    -webkit-text-fill-color:var(--text);
-    opacity:1;
-    text-shadow:none;
-  }
-  #settings-view .settings-copy small{
-    display:block;
-    margin-top:4px;
-    font-size:9.5px;
-    line-height:1.35;
-    color:var(--muted);
-    -webkit-text-fill-color:var(--muted);
-    opacity:1;
-    text-shadow:none;
-  }
-  #settings-view .settings-chevron{
-    color:var(--muted);
-    font-size:18px;
-    line-height:1;
-    flex:0 0 auto;
-  }
-  #settings-view .settings-link:active{
-    background:var(--brand-soft);
-  }
-  #settings-view .settings-signout{
-    color:var(--danger)!important;
-    -webkit-text-fill-color:var(--danger)!important;
-  }
-  #settings-view .settings-signout .settings-copy strong{
-    color:var(--danger)!important;
-    -webkit-text-fill-color:var(--danger)!important;
-  }
-  #settings-view .settings-signout .settings-copy small{
-    color:var(--muted)!important;
-    -webkit-text-fill-color:var(--muted)!important;
-  }
-  #settings-view .settings-signout .settings-icon{
-    background:var(--danger-bg);
-    color:var(--danger);
-  }
-
-  /* Android WebView can otherwise keep the light-mode button text paint
-     when the page switches to dark mode. Force the intended colors. */
-  html[data-theme="dark"] #settings-view .settings-link{
-    color:#F3F7FA!important;
-    -webkit-text-fill-color:#F3F7FA!important;
-  }
-  html[data-theme="dark"] #settings-view .settings-copy strong{
-    color:#F3F7FA!important;
-    -webkit-text-fill-color:#F3F7FA!important;
-  }
-  html[data-theme="dark"] #settings-view .settings-copy small,
-  html[data-theme="dark"] #settings-view .preference-note,
-  html[data-theme="dark"] #settings-view .section-kicker,
-  html[data-theme="dark"] #settings-view .settings-group-title{
-    color:#A9B5C2!important;
-    -webkit-text-fill-color:#A9B5C2!important;
-    opacity:1!important;
-  }
-  html[data-theme="dark"] #settings-view .settings-signout,
-  html[data-theme="dark"] #settings-view .settings-signout .settings-copy strong{
-    color:#EF6B6B!important;
-    -webkit-text-fill-color:#EF6B6B!important;
-  }
-  html[data-theme="dark"] #settings-view .settings-link:active{
-    background:#172334;
-  }
-
-  /* Keep Android's compositor from showing/ghosting Settings content
-     around the fixed navigation bar in dark mode. */
-  html[data-theme="dark"] .bottom-nav{
-    background:#121B27!important;
-    backdrop-filter:none!important;
-    -webkit-backdrop-filter:none!important;
-  }
-  @media(max-width:390px){
-    #settings-view .settings-link{padding-left:10px;padding-right:10px}
-    #settings-view .settings-icon{width:36px;height:36px;flex-basis:36px}
-    #settings-view .appearance-option{min-height:78px}
-  }
-</style>
-
-
-<style id="alygnn-settings-scroll-ghost-fix">
-  /*
-   * Android WebView fix:
-   * the translucent/blurred fixed nav could briefly composite an old Settings
-   * row underneath it while the page was rubber-banding at the bottom.
-   * Keep the nav fully opaque and on its own paint layer in BOTH themes.
-   */
-  .bottom-nav{
-    background:#FFFFFF!important;
-    backdrop-filter:none!important;
-    -webkit-backdrop-filter:none!important;
-    isolation:isolate;
-    contain:paint;
-    transform:translateZ(0);
-    -webkit-transform:translateZ(0);
-    backface-visibility:hidden;
-    -webkit-backface-visibility:hidden;
-  }
-
-  html[data-theme="dark"] .bottom-nav{
-    background:#121B27!important;
-  }
-
-  /*
-   * Give Settings a clean end above the fixed nav and stop Android's
-   * bottom-edge overscroll from exposing stale composited content.
-   */
-  html,
-  body{
-    overscroll-behavior-y:none;
-  }
-
-  #settings-view{
-    padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;
-    animation:none!important;
-    transform:none!important;
-    -webkit-transform:none!important;
-    backface-visibility:hidden;
-    -webkit-backface-visibility:hidden;
-  }
-
-  /*
-   * Paint a solid footer buffer at the end of Settings. This prevents any
-   * previously rendered row (such as Help & support) from flashing through
-   * during the last few pixels of a scroll.
-   */
-  #settings-view::after{
-    content:'';
-    display:block;
-    height:18px;
-    margin-top:8px;
+<style id="alygnn-employer-clean-boot">
+  html{
     background:var(--bg);
-    pointer-events:none;
-  }
-</style>
-
-
-<style id="alygnn-settings-no-empty-scroll">
-  /*
-   * Settings already gets safe space from the page/body for the fixed bottom nav.
-   * Remove the old extra 132px Settings buffer so users cannot scroll into
-   * a large empty area below Sign out.
-   */
-  #settings-view{
-    padding-bottom:0 !important;
-  }
-</style>
-
-
-<style id="alygnn-appearance-compact">
-  /* Keep Appearance available without making it the first dominant card. */
-  #settings-view .appearance-row-end{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    flex:0 0 auto;
   }
 
-  #settings-view .appearance-current-value{
-    min-width:42px;
-    padding:5px 8px;
-    border-radius:999px;
-    background:var(--brand-soft);
-    color:var(--brand-dark);
-    font-size:9px;
-    font-weight:900;
-    text-align:center;
-    line-height:1;
-  }
-
-  #settings-view .appearance-chevron{
-    transition:transform .18s ease;
-  }
-
-  #settings-view #appearance-settings-toggle[aria-expanded="true"] .appearance-chevron{
-    transform:rotate(90deg);
-  }
-
-  #settings-view .appearance-inline-panel{
-    padding:13px 12px 14px;
-    border-top:1px solid var(--border-soft);
-    background:var(--card);
-  }
-
-  #settings-view .appearance-inline-panel .appearance-options{
-    gap:8px;
-  }
-
-  #settings-view .appearance-inline-panel .appearance-option{
-    min-height:68px;
-    padding:9px 7px;
-  }
-
-  #settings-view .appearance-inline-panel .appearance-icon{
-    width:23px;
-    height:23px;
-  }
-
-  #settings-view .appearance-inline-panel .appearance-icon svg{
-    width:18px;
-    height:18px;
-  }
-
-  #settings-view .appearance-inline-panel .preference-note{
-    margin:10px 2px 0;
-  }
-
-  html[data-theme="dark"] #settings-view .appearance-current-value{
-    background:#19283A;
-    color:#8EB5DF;
-    -webkit-text-fill-color:#8EB5DF;
-  }
-</style>
-
-
-<style id="alygnn-settings-android-paint-isolation">
-  /* Android WebView: keep each settings section/row on its own opaque paint
-     surface so text from a neighboring row cannot ghost or get squished. */
-  #settings-view .section{
-    position:relative;
-    isolation:isolate;
-    contain:paint;
-    overflow:hidden;
-    background:var(--card)!important;
-    transform:translateZ(0);
-    -webkit-transform:translateZ(0);
-  }
-
-  #settings-view .settings-link{
-    position:relative;
-    z-index:1;
-    width:100%;
-    min-height:64px!important;
-    height:auto!important;
-    overflow:hidden;
-    flex-shrink:0;
-    background:var(--card)!important;
-    transform:translateZ(0);
-    -webkit-transform:translateZ(0);
-    backface-visibility:hidden;
-    -webkit-backface-visibility:hidden;
-  }
-
-  #settings-view .settings-icon-label,
-  #settings-view .settings-copy{
-    position:relative;
-    z-index:2;
-  }
-
-  #settings-view .settings-copy strong,
-  #settings-view .settings-copy small{
-    white-space:normal;
-    overflow:visible;
-  }
-</style>
-
-
-<style id="alygnn-restored-settings-tools">
-  .restored-settings-sheet .sheet-panel{
-    max-height:88vh;
-  }
-  .restored-settings-stack{
-    display:grid;
-    gap:12px;
-    margin-top:16px;
-  }
-  .restored-settings-card{
-    padding:16px;
-    border:1px solid var(--border-soft);
-    border-radius:18px;
-    background:var(--card);
-  }
-  .restored-settings-card h3{
-    font-size:14px;
-    font-weight:900;
-  }
-  .restored-settings-card p{
-    margin-top:6px;
-    color:var(--muted);
-    font-size:11px;
-    line-height:1.55;
-  }
-  .restored-settings-card label{
-    display:block;
-    margin:13px 0 6px;
-    font-size:10px;
-    font-weight:900;
-    color:var(--text);
-  }
-  .restored-settings-card select,
-  .restored-settings-card textarea{
-    width:100%;
-    border:1px solid var(--border);
-    border-radius:13px;
-    background:var(--card);
-    color:var(--text);
-    outline:none;
-  }
-  .restored-settings-card select{
-    min-height:46px;
-    padding:0 12px;
-  }
-  .restored-settings-card textarea{
-    min-height:130px;
-    padding:12px;
-    resize:vertical;
-  }
-  .restored-settings-actions{
-    display:flex;
-    gap:9px;
-    flex-wrap:wrap;
-    margin-top:14px;
-  }
-  .restored-settings-actions button,
-  .restored-settings-actions a{
-    min-height:44px;
-    padding:0 14px;
-    border-radius:13px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    text-decoration:none;
-    font-size:11px;
-    font-weight:900;
-  }
-  .restored-settings-primary{
-    border:0;
-    background:var(--brand-dark);
-    color:#fff;
-  }
-  .restored-settings-secondary{
-    border:1px solid var(--border);
-    background:var(--card);
-    color:var(--text);
-  }
-  .restored-settings-message{
-    min-height:18px;
-    margin-top:10px;
-    font-size:11px;
-    line-height:1.45;
-    color:var(--muted);
-  }
-  .restored-settings-message.success{color:var(--green)}
-  .restored-settings-message.error{color:var(--danger)}
-  .about-version{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:14px;
-    padding:12px 0;
-    border-bottom:1px solid var(--border-soft);
-  }
-  .about-version:last-child{border-bottom:0}
-  .about-version strong{font-size:12px}
-  .about-version span{font-size:11px;color:var(--muted)}
-</style>
-
-
-<style id="alygnn-current-dashboard-clean-boot">
   body[data-dashboard-booting="true"] .shell{
     visibility:hidden!important;
   }
+
   body[data-dashboard-booting="false"] .shell{
     visibility:visible!important;
   }
 </style>
 
 </head>
-<body data-employer-dashboard-build="2026-09-30-current-dashboard" data-dashboard-booting="true">
+<body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div class="shell">
-
     <header class="header">
       <div aria-hidden="true"></div>
       <div class="logo">Alygnn<span>.</span></div>
       <button class="icon-btn notification" id="notifications-btn" type="button" aria-label="Notifications">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-          <path d="M10 21h4"></path>
-        </svg>
+        ○
         <span class="notification-badge" id="notification-count">0</span>
       </button>
     </header>
@@ -4958,7 +4329,32 @@
             </div>
           </button>
 
+          <button class="metric" type="button">
+            <div class="metric-icon calendar">□</div>
+            <div>
+              <div class="metric-label">Today’s Interviews</div>
+              <div class="metric-value" id="interviews-today">0</div>
+              <div class="metric-note" id="interview-note">Nothing scheduled</div>
+            </div>
+          </button>
+
+          <button class="metric" type="button">
+            <div class="metric-icon hired">✓</div>
+            <div>
+              <div class="metric-label">Recent Hires</div>
+              <div class="metric-value" id="hired-month">0</div>
+              <div class="metric-note" id="hired-note">Track hires here</div>
+            </div>
+          </button>
         </div>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">My Jobs</h2>
+            <button class="section-link" data-view="jobs" type="button">View all</button>
+          </div>
+          <div id="dashboard-jobs"></div>
+        </section>
 
         <section class="section">
           <div class="section-head">
@@ -5577,126 +4973,64 @@
       </section>
 
       <section class="view" id="settings-view" hidden>
-        <div class="settings-page-head">
-          <div class="eyebrow">Employer workspace</div>
-          <h1 class="page-title">Settings</h1>
-          <p class="page-sub">Personalize your workspace, manage your account, and control how Alygnn fits into your hiring process.</p>
+        <div class="eyebrow">Employer workspace</div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">Personalize your workspace, manage your account, and control how Alygnn fits into your hiring process.</p>
+
+        <div class="settings-card">
+          <div class="settings-group-title">Appearance</div>
+          <div class="appearance-options" role="radiogroup" aria-label="Appearance preference">
+            <button class="appearance-option" data-theme-choice="auto" role="radio" aria-checked="false" type="button">
+              <span class="appearance-icon">◐</span><span>Auto</span>
+            </button>
+            <button class="appearance-option" data-theme-choice="light" role="radio" aria-checked="false" type="button">
+              <span class="appearance-icon">☀</span><span>Light</span>
+            </button>
+            <button class="appearance-option" data-theme-choice="dark" role="radio" aria-checked="false" type="button">
+              <span class="appearance-icon">◒</span><span>Dark</span>
+            </button>
+          </div>
+          <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
         </div>
 
         <div class="section-kicker" id="candidate-mode-kicker" hidden>Workspace mode</div>
         <section class="section" id="candidate-mode-section" hidden>
           <button class="settings-link" id="switch-candidate-mode" type="button" onclick="switchToCandidateMode()">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"></path></svg></span>
-              <span class="settings-copy"><strong>Switch to Candidate Mode</strong><small>Browse matches, apply to jobs, and manage your applications</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">C</span><span class="settings-copy"><strong>Switch to Candidate Mode</strong><small>Browse matches, apply to jobs, and manage your applications</small></span></span><span>›</span>
           </button>
         </section>
 
         <div class="section-kicker">Workspace</div>
         <section class="section">
           <button class="settings-link" id="notification-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>
-              <span class="settings-copy"><strong>Notifications</strong><small>Application and hiring updates</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">N</span><span class="settings-copy"><strong>Notifications</strong><small>Application and hiring updates</small></span></span><span>›</span>
           </button>
           <button class="settings-link" id="team-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M16 3.5a4 4 0 0 1 0 7.5M22 21v-2a4 4 0 0 0-3-3.7"></path></svg></span>
-              <span class="settings-copy"><strong>Team members</strong><small>Recruiters and hiring managers</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">T</span><span class="settings-copy"><strong>Team members</strong><small>Recruiters and hiring managers</small></span></span><span>›</span>
           </button>
           <button class="settings-link" id="billing-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3 10h18M7 15h3"></path></svg></span>
-              <span class="settings-copy"><strong>Billing &amp; plan</strong><small>Reusable job slots, boosts, and payment details</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">$</span><span class="settings-copy"><strong>Billing &amp; plan</strong><small>Reusable job slots, boosts, and payment details</small></span></span><span>›</span>
           </button>
         </section>
 
         <div class="section-kicker">Account</div>
         <section class="section">
           <button class="settings-link" id="security-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z"></path><path d="M9.5 12 11 13.5 14.8 9.7"></path></svg></span>
-              <span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">S</span><span class="settings-copy"><strong>Account &amp; security</strong><small>Password, email, and login controls</small></span></span><span>›</span>
           </button>
           <button class="settings-link" id="privacy-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4C7 4 3.5 8 2.5 12c1 4 4.5 8 9.5 8s8.5-4 9.5-8c-1-4-4.5-8-9.5-8Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
-              <span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">P</span><span class="settings-copy"><strong>Privacy</strong><small>Data and visibility preferences</small></span></span><span>›</span>
           </button>
           <button class="settings-link" id="support-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.7 9a2.5 2.5 0 0 1 4.8.8c0 1.8-2.5 2.2-2.5 4M12 17.2h.01"></path></svg></span>
-              <span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">?</span><span class="settings-copy"><strong>Help &amp; support</strong><small>Get help with your workspace</small></span></span><span>›</span>
           </button>
           <button class="settings-link" id="about-settings" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 10.5V17M12 7h.01"></path></svg></span>
-              <span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
+            <span class="settings-icon-label"><span class="settings-icon">A</span><span class="settings-copy"><strong>About Alygnn</strong><small>Version and legal information</small></span></span><span>›</span>
           </button>
-          <button class="settings-link" id="appearance-settings-toggle" type="button" aria-expanded="false" aria-controls="appearance-settings-panel">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
-              </span>
-              <span class="settings-copy">
-                <strong>Appearance</strong>
-                <small>Choose how Alygnn looks on this device</small>
-              </span>
-            </span>
-            <span class="appearance-row-end">
-              <span class="appearance-current-value" id="appearance-current-value">Auto</span>
-              <span class="settings-chevron appearance-chevron" id="appearance-settings-chevron">›</span>
-            </span>
-          </button>
-          <div class="appearance-inline-panel" id="appearance-settings-panel" hidden>
-            <div class="appearance-options" role="radiogroup" aria-label="Appearance preference">
-              <button class="appearance-option" data-theme-choice="auto" role="radio" aria-checked="false" type="button">
-                <span class="appearance-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 1 0 16Z"></path></svg>
-                </span>
-                <span>Auto</span>
-              </button>
-              <button class="appearance-option" data-theme-choice="light" role="radio" aria-checked="false" type="button">
-                <span class="appearance-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2.5v2M12 19.5v2M4.5 4.5l1.4 1.4M18.1 18.1l1.4 1.4M2.5 12h2M19.5 12h2M4.5 19.5l1.4-1.4M18.1 5.9l1.4-1.4"></path></svg>
-                </span>
-                <span>Light</span>
-              </button>
-              <button class="appearance-option" data-theme-choice="dark" role="radio" aria-checked="false" type="button">
-                <span class="appearance-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d="M20 15.4A8 8 0 0 1 8.6 4a8.2 8.2 0 1 0 11.4 11.4Z"></path></svg>
-                </span>
-                <span>Dark</span>
-              </button>
-            </div>
-            <p class="preference-note">Auto follows your phone’s appearance. Your selection is saved on this device.</p>
-          </div>
         </section>
 
         <section class="section">
-          <button class="settings-link settings-signout" id="sign-out-btn" type="button">
-            <span class="settings-icon-label">
-              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M9 12h9"></path></svg></span>
-              <span class="settings-copy"><strong>Sign out</strong><small>Sign out of this employer workspace</small></span>
-            </span>
-            <span class="settings-chevron">›</span>
-          </button>
+          <button class="settings-link" id="sign-out-btn" type="button" style="color:var(--danger)">Sign out <span>›</span></button>
         </section>
       </section>
     </main>
@@ -6219,140 +5553,7 @@
     </div>
   </div>
 
-  
-<div class="sheet" id="security-sheet" hidden>
-  <div class="sheet-panel">
-    <div class="sheet-grip"></div>
-    <h2 class="sheet-title">Account &amp; security</h2>
-    <p class="sheet-sub">Manage the login and security details for this Alygnn account.</p>
-
-    <div class="settings-card">
-      <div class="settings-group-title">Signed-in account</div>
-      <div class="profile-list">
-        <div class="profile-list-item">
-          <strong>Email</strong>
-          <span id="security-account-email">Loading…</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-card">
-      <div class="settings-group-title">Password</div>
-      <p>Send a secure password-reset link to the email on this account.</p>
-      <div class="toolbar">
-        <button class="primary-btn" id="security-reset-password" type="button">Send password reset email</button>
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <button class="secondary-btn" id="close-security-sheet" type="button">Done</button>
-    </div>
-  </div>
-</div>
-
-<div class="sheet" id="privacy-sheet" hidden>
-  <div class="sheet-panel">
-    <div class="sheet-grip"></div>
-    <h2 class="sheet-title">Privacy</h2>
-    <p class="sheet-sub">Review how Alygnn handles your employer account and company information.</p>
-
-    <div class="settings-card">
-      <div class="settings-group-title">Employer visibility</div>
-      <p>Your company and active job information may be shown to candidates as part of the hiring experience. Private login, billing, verification, and security information is not shown as public company content.</p>
-    </div>
-
-    <div class="settings-card">
-      <div class="settings-group-title">Policies</div>
-      <div class="toolbar">
-        <button class="secondary-btn" id="open-privacy-policy" type="button">Privacy Policy</button>
-        <button class="secondary-btn" id="open-terms-policy" type="button">Terms of Use</button>
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <button class="secondary-btn" id="close-privacy-sheet" type="button">Done</button>
-    </div>
-  </div>
-</div>
-
-
-<div class="sheet restored-settings-sheet" id="support-sheet" hidden>
-  <div class="sheet-panel">
-    <div class="sheet-grip"></div>
-    <button class="icon-btn" id="close-support-sheet" style="float:right" type="button" aria-label="Close help and support">×</button>
-    <h2 class="sheet-title">Help &amp; support</h2>
-    <p class="sheet-sub">Send the Alygnn team a message without leaving the app.</p>
-
-    <div class="restored-settings-stack">
-      <section class="restored-settings-card">
-        <h3>Contact Alygnn</h3>
-        <p id="support-account-context">We’ll include your signed-in account email with your message.</p>
-
-        <label for="support-category">What do you need help with?</label>
-        <select id="support-category">
-          <option>Account &amp; login</option>
-          <option>Employer verification</option>
-          <option>Billing &amp; plan</option>
-          <option>Team access</option>
-          <option>Jobs &amp; candidates</option>
-          <option>Report a problem</option>
-          <option>Privacy request</option>
-          <option>Other</option>
-        </select>
-
-        <label for="support-message-input">Message</label>
-        <textarea id="support-message-input" maxlength="4000" placeholder="Tell us what happened or what you need help with."></textarea>
-
-        <div class="restored-settings-actions">
-          <button class="restored-settings-primary" id="send-support-message" type="button">Send message</button>
-        </div>
-        <div class="restored-settings-message" id="support-message-status"></div>
-      </section>
-
-      <section class="restored-settings-card">
-        <h3>Email support</h3>
-        <p>You can also contact Alygnn directly.</p>
-        <div class="restored-settings-actions">
-          <a class="restored-settings-secondary" href="mailto:admin@alygnn.com?subject=Alygnn%20Employer%20Support">admin@alygnn.com</a>
-        </div>
-      </section>
-    </div>
-  </div>
-</div>
-
-<div class="sheet restored-settings-sheet" id="about-sheet" hidden>
-  <div class="sheet-panel">
-    <div class="sheet-grip"></div>
-    <button class="icon-btn" id="close-about-sheet" style="float:right" type="button" aria-label="Close about Alygnn">×</button>
-    <h2 class="sheet-title">About Alygnn</h2>
-    <p class="sheet-sub">Employer workspace information and legal resources.</p>
-
-    <div class="restored-settings-stack">
-      <section class="restored-settings-card">
-        <div class="about-version"><strong>Product</strong><span>Alygnn Employer Workspace</span></div>
-        <div class="about-version"><strong>Workspace version</strong><span>V5</span></div>
-      </section>
-
-      <section class="restored-settings-card">
-        <h3>Legal</h3>
-        <div class="restored-settings-actions">
-          <button class="restored-settings-secondary" id="about-privacy-policy" type="button">Privacy Policy</button>
-          <button class="restored-settings-secondary" id="about-terms" type="button">Terms of Use</button>
-        </div>
-      </section>
-
-      <section class="restored-settings-card">
-        <h3>Support</h3>
-        <p>Need help with your employer account or workspace?</p>
-        <div class="restored-settings-actions">
-          <button class="restored-settings-primary" id="about-open-support" type="button">Contact support</button>
-        </div>
-      </section>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
+  <div class="toast" id="toast"></div>
 
   <script>
     const sb = supabase.createClient(
@@ -6368,7 +5569,6 @@
     );
 
     let jobsStatusTab = 'open';
-    let requestedInitialJobsTab = '';
     let jobsSortMode = 'performance';
 
     const state = {
@@ -6421,270 +5621,15 @@
     }
 
     function resolvedTheme(preference){
-      return preference === 'auto'
-        ? (systemTheme.matches ? 'dark' : 'light')
-        : preference;
-    }
-
-    /*
-     * Android WebView can keep the old button text paint after changing
-     * color-scheme. Paint the Settings controls explicitly whenever the
-     * appearance changes so Dark and Light both update immediately.
-     */
-    function repaintSettingsForTheme(theme){
-      const root=document.getElementById('settings-view');
-      if(!root)return;
-
-      const dark=theme==='dark';
-
-      const colors=dark
-        ?{
-          text:'#F3F7FA',
-          muted:'#A9B5C2',
-          card:'#121B27',
-          field:'#0F1823',
-          border:'#293545',
-          borderSoft:'#202C3A',
-          icon:'#79A7D5',
-          danger:'#EF6B6B'
-        }
-        :{
-          text:'#172333',
-          muted:'#68798B',
-          card:'#FFFFFF',
-          field:'#F8FAFB',
-          border:'#DDE3E8',
-          borderSoft:'#E7ECF0',
-          icon:'#396A9E',
-          danger:'#C74747'
-        };
-
-      root.style.setProperty('color',colors.text,'important');
-      root.style.setProperty('-webkit-text-fill-color',colors.text,'important');
-
-      root.querySelectorAll('.page-title,.settings-copy strong').forEach(node=>{
-        node.style.setProperty('color',colors.text,'important');
-        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
-        node.style.setProperty('opacity','1','important');
-        node.style.setProperty('text-shadow','none','important');
-      });
-
-      root.querySelectorAll(
-        '.page-sub,.preference-note,.section-kicker,.settings-group-title,.settings-copy small,.settings-chevron'
-      ).forEach(node=>{
-        node.style.setProperty('color',colors.muted,'important');
-        node.style.setProperty('-webkit-text-fill-color',colors.muted,'important');
-        node.style.setProperty('opacity','1','important');
-        node.style.setProperty('text-shadow','none','important');
-      });
-
-      root.querySelectorAll('.settings-card,.section').forEach(node=>{
-        node.style.setProperty('background',colors.card,'important');
-        node.style.setProperty('border-color',colors.border,'important');
-      });
-
-      root.querySelectorAll('.settings-link').forEach(node=>{
-        node.style.setProperty('background',colors.card,'important');
-        node.style.setProperty('color',colors.text,'important');
-        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
-        node.style.setProperty('border-color',colors.borderSoft,'important');
-        node.style.setProperty('opacity','1','important');
-        node.style.setProperty('appearance','none','important');
-        node.style.setProperty('-webkit-appearance','none','important');
-      });
-
-      root.querySelectorAll('.settings-icon').forEach(node=>{
-        node.style.setProperty(
-          'background',
-          dark ? '#19283A' : '#EEF4F9',
-          'important'
-        );
-        node.style.setProperty('color',colors.icon,'important');
-        node.style.setProperty('-webkit-text-fill-color',colors.icon,'important');
-      });
-
-      root.querySelectorAll('.appearance-option').forEach(node=>{
-        node.style.setProperty('background',colors.field,'important');
-        node.style.setProperty('border-color',colors.border,'important');
-        node.style.setProperty('color',colors.text,'important');
-        node.style.setProperty('-webkit-text-fill-color',colors.text,'important');
-        node.style.setProperty('appearance','none','important');
-        node.style.setProperty('-webkit-appearance','none','important');
-      });
-
-      root.querySelectorAll('.appearance-option.active').forEach(node=>{
-        node.style.setProperty(
-          'background',
-          dark ? '#172A40' : '#EAF2FA',
-          'important'
-        );
-        node.style.setProperty(
-          'border-color',
-          dark ? '#4B78A6' : '#396A9E',
-          'important'
-        );
-        node.style.setProperty(
-          'color',
-          dark ? '#8EB5DF' : '#396A9E',
-          'important'
-        );
-        node.style.setProperty(
-          '-webkit-text-fill-color',
-          dark ? '#8EB5DF' : '#396A9E',
-          'important'
-        );
-      });
-
-      root.querySelectorAll('.appearance-icon').forEach(node=>{
-        node.style.setProperty(
-          'color',
-          dark ? '#79A7D5' : '#396A9E',
-          'important'
-        );
-      });
-
-      const signout=root.querySelector('.settings-signout');
-      if(signout){
-        signout.style.setProperty('color',colors.danger,'important');
-        signout.style.setProperty('-webkit-text-fill-color',colors.danger,'important');
-
-        const title=signout.querySelector('.settings-copy strong');
-        if(title){
-          title.style.setProperty('color',colors.danger,'important');
-          title.style.setProperty('-webkit-text-fill-color',colors.danger,'important');
-        }
-
-        const sub=signout.querySelector('.settings-copy small');
-        if(sub){
-          sub.style.setProperty('color',colors.muted,'important');
-          sub.style.setProperty('-webkit-text-fill-color',colors.muted,'important');
-        }
-      }
-
-      const nav=document.querySelector('.bottom-nav');
-      if(nav && dark){
-        nav.style.setProperty('background','#121B27','important');
-        nav.style.setProperty('border-top-color','#293545','important');
-        nav.style.setProperty('backdrop-filter','none','important');
-        nav.style.setProperty('-webkit-backdrop-filter','none','important');
-      }else if(nav){
-        nav.style.removeProperty('background');
-        nav.style.removeProperty('border-top-color');
-        nav.style.removeProperty('backdrop-filter');
-        nav.style.removeProperty('-webkit-backdrop-filter');
-      }
-
-      // Force one repaint in Android WebView after changing color-scheme.
-      void root.offsetHeight;
+      return preference === 'auto' ? (systemTheme.matches ? 'dark' : 'light') : preference;
     }
 
     function applyTheme(preference,showConfirmation=false){
-      const safePreference =
-        ['auto','light','dark'].includes(preference)
-          ? preference
-          : 'auto';
-
-      const theme=resolvedTheme(safePreference);
-      const root=document.documentElement;
-
-      root.dataset.theme=theme;
-      root.style.colorScheme=theme;
-      root.style.backgroundColor=
-        theme==='dark'
-          ?'#0B111A'
-          :'#F6F8F7';
-
-      document.querySelector('meta[name="theme-color"]')?.setAttribute(
-        'content',
-        theme==='dark'
-          ?'#0B111A'
-          :'#F6F8F7'
-      );
-
-      document.querySelectorAll('[data-theme-choice]').forEach(button=>{
-        const active=
-          button.dataset.themeChoice===safePreference;
-
-        button.classList.toggle('active',active);
-        button.setAttribute('aria-checked',String(active));
-      });
-
-      const appearanceCurrentValue=
-        document.getElementById('appearance-current-value');
-
-      if(appearanceCurrentValue){
-        appearanceCurrentValue.textContent=
-          safePreference==='auto'
-            ?'Auto'
-            :safePreference[0].toUpperCase()+safePreference.slice(1);
-      }
-
-      repaintSettingsForTheme(theme);
-      requestAnimationFrame(()=>repaintSettingsForTheme(theme));
-
-      if(showConfirmation){
-        toast(
-          (
-            safePreference==='auto'
-              ?'Auto appearance'
-              :safePreference[0].toUpperCase()+
-                safePreference.slice(1)+
-                ' mode'
-          )+
-          ' selected.'
-        );
-      }
-    }
-
-    function setThemePreference(preference){
-      localStorage.setItem(
-        THEME_STORAGE_KEY,
-        preference
-      );
-
-      applyTheme(
-        preference,
-        true
-      );
-    }
-
-    applyTheme(
-      savedThemePreference()
-    );
-
-    systemTheme.addEventListener?.(
-      'change',
-      ()=>{
-        if(savedThemePreference()==='auto'){
-          applyTheme('auto');
-        }
-      }
-    );
-
-    window.addEventListener(
-      'pageshow',
-      ()=>{
-        applyTheme(
-          savedThemePreference()
-        );
-      }
-    );
-
-    document.addEventListener(
-      'visibilitychange',
-      ()=>{
-        if(!document.hidden){
-          applyTheme(
-            savedThemePreference()
-          );
-        }
-      }
-    );
-
-    /*
-     * Keep team permissions outside applyTheme. Previously this listener
-     * was accidentally being added every time the theme changed.
-     */
+      const safePreference = ['auto','light','dark'].includes(preference) ? preference : 'auto';
+      const theme = resolvedTheme(safePreference);
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme === 'dark' ? '#0B111A' : '#F6F8F7');
+  
     document.addEventListener(
       'click',
       event=>{
@@ -6727,6 +5672,34 @@
       true
     );
 
+    document.querySelectorAll('[data-theme-choice]').forEach(button => {
+        const active = button.dataset.themeChoice === safePreference;
+        button.classList.toggle('active',active);
+        button.setAttribute('aria-checked',String(active));
+      });
+      if(showConfirmation) toast((safePreference === 'auto' ? 'Auto appearance' : safePreference[0].toUpperCase()+safePreference.slice(1)+' mode') + ' selected.');
+    }
+
+    function setThemePreference(preference){
+      localStorage.setItem(THEME_STORAGE_KEY,preference);
+      applyTheme(preference,true);
+    }
+
+    applyTheme(savedThemePreference());
+    systemTheme.addEventListener?.('change',() => {
+      if(savedThemePreference() === 'auto') applyTheme('auto');
+    });
+
+    window.addEventListener('pageshow',() => {
+      applyTheme(savedThemePreference());
+    });
+
+    document.addEventListener('visibilitychange',() => {
+      if(!document.hidden){
+        applyTheme(savedThemePreference());
+      }
+    });
+
     const $ = id => document.getElementById(id);
 
     const els = {
@@ -6737,6 +5710,11 @@
       pausedJobs:$('paused-jobs'),
       newApplicants:$('new-applicants'),
       applicantNote:$('applicant-note'),
+      interviewsToday:$('interviews-today'),
+      interviewNote:$('interview-note'),
+      hiredMonth:$('hired-month'),
+      hiredNote:$('hired-note'),
+      dashboardJobs:$('dashboard-jobs'),
       bestFits:$('best-fits'),
       activityList:$('activity-list'),
       jobsList:$('jobs-list'),
@@ -7461,52 +6439,6 @@
       return y;
     }
 
-    async function saveResumeBlob(blob,fileName){
-      if(!blob){
-        throw new Error('No resume file was created.');
-      }
-
-      const safeName = String(fileName || 'candidate-resume.pdf')
-        .replace(/[^a-z0-9._-]+/gi,'-');
-
-      try{
-        const file = new File(
-          [blob],
-          safeName,
-          {type:blob.type || 'application/pdf'}
-        );
-
-        if(
-          navigator.share &&
-          navigator.canShare &&
-          navigator.canShare({files:[file]})
-        ){
-          await navigator.share({
-            files:[file],
-            title:safeName
-          });
-          return true;
-        }
-      }catch(error){
-        // If the native share sheet is dismissed or unavailable, fall back
-        // to a normal browser download below.
-        console.warn('Native resume save fallback:',error);
-      }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = safeName;
-      link.rel = 'noopener';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(()=>URL.revokeObjectURL(objectUrl),15000);
-      return true;
-    }
-
     async function downloadCandidateResumePdf(data){
       if(
         !window.jspdf ||
@@ -7787,8 +6719,7 @@
           .toLowerCase() +
         '-resume.pdf';
 
-      const pdfBlob = doc.output('blob');
-      await saveResumeBlob(pdfBlob,fileName);
+      doc.save(fileName);
     }
 
     async function resolveCandidateResumeUrl(data){
@@ -7958,22 +6889,23 @@
       toast.timer = setTimeout(() => els.toast.classList.remove('show'),2200);
     }
 
-    function resetEmployerWorkspaceScroll(){
-      try{
-        if('scrollRestoration' in history){
-          history.scrollRestoration='manual';
-        }
-        const root=document.scrollingElement||document.documentElement;
-        if(root)root.scrollTop=0;
-        document.documentElement.scrollTop=0;
-        document.body.scrollTop=0;
-        window.scrollTo(0,0);
-      }catch(_error){}
-    }
+    let jobsRefreshInFlight=false;
 
     function setView(name){
       const previousView = state.currentView;
       state.currentView = name;
+
+      // Keep the visible employer tab and URL in sync WITHOUT adding history entries.
+      // This prevents Android back navigation from replaying Dashboard -> Jobs flashes.
+      try{
+        const url=new URL(location.href);
+        if(name==='dashboard'){
+          url.searchParams.delete('view');
+        }else if(['jobs','company','settings'].includes(name)){
+          url.searchParams.set('view',name);
+        }
+        history.replaceState(null,'',url.pathname+url.search);
+      }catch(_error){}
 
       document.querySelectorAll('.view').forEach(view => {
         view.hidden = view.id !== name + '-view';
@@ -7995,20 +6927,8 @@
 
       const view = $(name + '-view');
       view?.classList.remove('enter');
-
-      /* Android WebView can restore the old document scroll after a hidden
-       * workspace view is revealed. Force the scrolling element itself back
-       * to zero across the next layouts so Settings always opens at its title. */
-      resetEmployerWorkspaceScroll();
-      requestAnimationFrame(()=>{
-        resetEmployerWorkspaceScroll();
-        requestAnimationFrame(()=>{
-          resetEmployerWorkspaceScroll();
-          view?.classList.add('enter');
-        });
-      });
-      setTimeout(resetEmployerWorkspaceScroll,0);
-      setTimeout(resetEmployerWorkspaceScroll,80);
+      requestAnimationFrame(() => view?.classList.add('enter'));
+      window.scrollTo({top:0,behavior:'smooth'});
 
       /*
        * Always enter My Jobs on Open.
@@ -8018,12 +6938,7 @@
        */
       if(name==='jobs'){
         if(previousView !== 'jobs'){
-          if(['open','drafts','closed'].includes(requestedInitialJobsTab)){
-            jobsStatusTab=requestedInitialJobsTab;
-            requestedInitialJobsTab='';
-          }else{
-            jobsStatusTab='open';
-          }
+          jobsStatusTab = 'open';
         }
 
         renderJobs();
@@ -8199,6 +7114,11 @@
       const currentUser=state.currentUser||state.session?.user||{};
       const currentMeta=currentUser.user_metadata||{};
 
+      /*
+       * The greeting must always address the CURRENT authenticated user.
+       * Team/company member data can briefly contain stale values while the
+       * workspace is switching accounts, so never prioritize it here.
+       */
       const name =
         currentMeta.full_name ||
         currentMeta.name ||
@@ -8237,11 +7157,7 @@
     }
 
     function renderHero(){
-      const waitingApplications = state.applications.filter(application =>
-        applicationPipelineStatus(application)==='new'
-      );
-
-      const scored = waitingApplications
+      const scored = state.applications
         .map(application => Number(application.match_score || application.alygnn_score || 0))
         .filter(score => score > 0);
 
@@ -8249,7 +7165,9 @@
         ? Math.round(scored.reduce((total,score) => total + score,0) / scored.length)
         : 0;
 
-      const fresh = waitingApplications.length;
+      const fresh = state.applications.filter(application =>
+        applicationPipelineStatus(application)==='new'
+      ).length;
 
       els.heroScore.textContent = average || '—';
       els.heroTitle.textContent = fresh
@@ -8272,6 +7190,30 @@
         applicationPipelineStatus(application)==='new'
       ).length;
 
+      const interviews = state.applications.filter(application => {
+        const status = String(application.status || '').toLowerCase();
+        const interviewDate = new Date(
+          application.interview_at ||
+          application.interview_date ||
+          application.updated_at
+        );
+
+        return status.includes('interview') &&
+          !Number.isNaN(interviewDate.getTime()) &&
+          interviewDate.toDateString() === new Date().toDateString();
+      }).length;
+
+      const now = new Date();
+      const hired = state.applications.filter(application => {
+        const status = String(application.status || '').toLowerCase();
+        const hiredDate = new Date(application.hired_at || application.updated_at);
+
+        return status.includes('hire') &&
+          !Number.isNaN(hiredDate.getTime()) &&
+          hiredDate.getMonth() === now.getMonth() &&
+          hiredDate.getFullYear() === now.getFullYear();
+      }).length;
+
       els.activeJobs.textContent = active;
       els.pausedJobs.textContent = paused + ' paused';
       if(els.newApplicants){
@@ -8283,6 +7225,10 @@
           ? fresh + ' waiting for review'
           : 'No new activity';
       }
+      els.interviewsToday.textContent = interviews;
+      els.interviewNote.textContent = interviews ? interviews + ' scheduled today' : 'Nothing scheduled';
+      els.hiredMonth.textContent = hired;
+      els.hiredNote.textContent = hired ? hired + ' this month' : 'Track hires here';
       els.notificationCount.textContent = fresh;
       els.notificationCount.hidden = fresh === 0;
     }
@@ -8492,81 +7438,6 @@
       return '';
     }
 
-
-    function dashboardEffectivePlan(){
-      const entitlement=state.entitlement||{};
-      const raw=String(
-        entitlement.test_plan||
-        entitlement.package_key||
-        entitlement.plan||
-        'free'
-      ).toLowerCase().trim();
-
-      if(raw==='business')return 'launch';
-      return raw;
-    }
-
-    function dashboardPlanAllowsFeatured(){
-      return dashboardBasePaidPlanActive() &&
-        ['launch','growth','scale','enterprise'].includes(dashboardEffectivePlan());
-    }
-
-    function dashboardPlanAllowsUrgent(){
-      return dashboardBasePaidPlanActive() &&
-        ['growth','scale','enterprise'].includes(dashboardEffectivePlan());
-    }
-
-    function dashboardPlanAllowsRecommended(){
-      return dashboardBasePaidPlanActive() &&
-        ['scale','enterprise'].includes(dashboardEffectivePlan());
-    }
-
-    function jobTreatmentBadges(job){
-      const freeSlot=postingAccessType(job)==='free';
-      const urgent=
-        !freeSlot &&
-        dashboardPlanAllowsUrgent() &&
-        job?.urgently_hiring===true;
-
-      if(!urgent)return '';
-
-      return `
-        <div class="job-treatment-badges">
-          <span class="job-treatment-badge urgent">Urgently Hiring</span>
-        </div>
-      `;
-    }
-
-    function jobTreatmentClass(job){
-      const freeSlot=postingAccessType(job)==='free';
-
-      if(!freeSlot&&job?.urgently_hiring===true&&dashboardPlanAllowsUrgent()){
-        return 'plan-urgent';
-      }
-
-      return '';
-    }
-
-    function urgentHiringAction(job){
-      if(postingAccessType(job)==='free'){
-        return '';
-      }
-
-      if(!dashboardPlanAllowsUrgent()){
-        return '';
-      }
-
-      const enabled=job?.urgently_hiring===true;
-      return `
-        <button
-          class="mini-btn ${enabled?'urgent-toggle-on':'urgent-toggle-off'}"
-          data-job-action="${enabled?'urgent-off':'urgent-on'}"
-          data-job-id="${escapeHtml(job?.id||'')}">
-          ${enabled?'Urgently Hiring: On':'Mark Urgently Hiring'}
-        </button>
-      `;
-    }
-
     function freeJobAtApplicantLimit(job){
       return (
         postingAccessType(job)==='free' &&
@@ -8597,13 +7468,12 @@
       const saves = Number(job.saves || job.save_count || 0);
 
       return `
-        <article class="job-card ${jobTreatmentClass(job)}">
+        <article class="job-card">
           <div class="job-top">
             <div>
               <div class="job-title">${escapeHtml(job.title || 'Untitled position')}</div>
               <div class="job-meta">Posted ${timeAgo(job.created_at || job.updated_at)}</div>
               ${jobAccessBadge(job)}
-              ${jobTreatmentBadges(job)}
             </div>
             <span class="status-badge ${statusClass(status)}">${escapeHtml(status)}</span>
           </div>
@@ -8620,7 +7490,6 @@
               <button class="mini-btn" data-job-action="view" data-job-id="${job.id}">View Job</button>
               <button class="mini-btn primary" data-job-action="applicants" data-job-id="${job.id}">View Applicants</button>
               <button class="mini-btn" data-job-action="edit" data-job-id="${job.id}">Edit</button>
-              ${urgentHiringAction(job)}
               ${freeJobCanBoost(job)
                 ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${job.id}">Boost · $15/day</button>`
                 : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -8675,7 +7544,6 @@
             <button class="mini-btn" data-job-action="view" data-job-id="${escapeHtml(id)}">View Job</button>
             <button class="mini-btn primary" data-job-action="applicants" data-job-id="${escapeHtml(id)}">View Applicants</button>
             <button class="mini-btn" data-job-action="edit" data-job-id="${escapeHtml(id)}">Edit</button>
-            ${urgentHiringAction(job)}
             ${freeJobCanBoost(job)
               ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${escapeHtml(id)}">Boost · $15/day</button>`
               : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -8702,14 +7570,13 @@
         `;
 
         return `
-          <article class="job-card ${jobTreatmentClass(job)}" style="display:block;visibility:visible;opacity:1">
+          <article class="job-card" style="display:block;visibility:visible;opacity:1">
             <div class="job-top">
               <div style="min-width:0">
                 <div class="job-title">${title}</div>
                 <div class="job-meta">${posted}</div>
                 <div class="job-meta" style="margin-top:7px">${location} · ${jobType}</div>
                 ${jobAccessBadge(job)}
-                ${jobTreatmentBadges(job)}
               </div>
               <span class="status-badge ${statusBadgeClass}">${status}</span>
             </div>
@@ -9275,6 +8142,28 @@
         }
       }
 
+      /*
+       * Dashboard home stays focused on published/open hiring.
+       */
+      if(els.dashboardJobs){
+        els.dashboardJobs.innerHTML=
+          sortedOpen.length
+            ?sortedOpen
+              .slice(0,3)
+              .map(job=>
+                safeJobCard(
+                  job,
+                  true
+                )
+              )
+              .join('')
+            :`
+              <div class="empty">
+                <strong>No open jobs yet</strong>
+                Post your first role to start building your candidate pipeline.
+              </div>
+            `;
+      }
     }
 
 
@@ -13163,16 +12052,17 @@
       const isOwner=
         state.teamAccess?.is_owner===true;
 
-      // Candidate-mode switching is available to added employer team members
-      // (Admin, Recruiter, or Hiring Manager). The primary employer/owner
-      // remains employer-only. Keep the section hidden by default so owners
-      // never see it flash while team access is loading.
+      // Candidate-mode switching is intentionally NOT available to the
+      // primary employer/owner. Only an added company team member whose
+      // Alygnn team role is Admin may switch between employer and candidate
+      // workspaces. Keep the section hidden by default so owners never see
+      // it flash while team access is loading.
       const teamRole=String(
         state.teamAccess?.role||''
       ).toLowerCase().trim();
 
       const candidateModeAllowed=
-        !isOwner && ['admin','recruiter','hiring_manager','hiring manager'].includes(teamRole);
+        !isOwner && teamRole==='admin';
 
       const candidateModeKicker=$('candidate-mode-kicker');
       const candidateModeSection=$('candidate-mode-section');
@@ -13251,14 +12141,10 @@
 
     document.querySelectorAll('[data-jobs-tab]').forEach(button => {
       button.addEventListener('click',() => {
-        const requestedTab = String(button.dataset.jobsTab || 'open').toLowerCase();
-        jobsStatusTab = ['open','drafts','closed'].includes(requestedTab)
-          ? requestedTab
-          : 'open';
-
-        try{
-          sessionStorage.setItem('alygnnEmployerJobsTab',jobsStatusTab);
-        }catch(_){}
+        jobsStatusTab =
+          button.dataset.jobsTab === 'closed'
+            ? 'closed'
+            : 'open';
 
         renderJobs();
       });
@@ -13935,56 +12821,6 @@
         return;
       }
 
-
-      if(action==='urgent-on'||action==='urgent-off'){
-        if(postingAccessType(job)==='free'){
-          toast('The included Free Job Slot cannot use Urgently Hiring.');
-          return;
-        }
-
-        if(!dashboardPlanAllowsUrgent()){
-          toast('Urgently Hiring is available only with Growth and Scale.');
-          return;
-        }
-
-        const nextValue=action==='urgent-on';
-
-        try{
-          const {data,error}=await sb
-            .from('jobs')
-            .update({
-              urgently_hiring:nextValue,
-              updated_at:new Date().toISOString()
-            })
-            .eq('id',id)
-            .select('urgently_hiring,featured_employer,alygnn_recommended')
-            .single();
-
-          if(error)throw error;
-
-          job.urgently_hiring=data?.urgently_hiring===true;
-          if(data && 'featured_employer' in data){
-            job.featured_employer=data.featured_employer===true;
-          }
-          if(data && 'alygnn_recommended' in data){
-            job.alygnn_recommended=data.alygnn_recommended===true;
-          }
-
-          renderAll();
-
-          if(nextValue && job.urgently_hiring){
-            toast('Urgently Hiring is now shown to candidates.');
-          }else if(!nextValue && !job.urgently_hiring){
-            toast('Urgently Hiring turned off for this job.');
-          }else{
-            toast('Run the latest Alygnn plan-badges SQL patch, then try again.');
-          }
-        }catch(error){
-          console.error('Urgently Hiring update failed:',error);
-          toast(error?.message||'Could not update Urgently Hiring.');
-        }
-        return;
-      }
 
       if(action === 'duplicate'){
         const copy = {...job};
@@ -15061,6 +13897,8 @@
 
     async function refreshJobsView(){
       if(!state.session?.user?.id) return;
+      if(jobsRefreshInFlight) return;
+      jobsRefreshInFlight=true;
 
       if(els.jobsList){
         els.jobsList.style.display='block';
@@ -15131,6 +13969,8 @@
             </div>
           `;
         }
+      }finally{
+        jobsRefreshInFlight=false;
       }
     }
 
@@ -15144,9 +13984,12 @@
         }
 
         state.session = data.session;
+
+        // Never carry volatile identity/team data across employer account switches.
         state.currentTeamMember=null;
         state.teamAccess=null;
         state.sharedCompanyContext=null;
+
         await refreshCurrentUser();
 
         /*
@@ -15279,17 +14122,6 @@
             ''
           ).trim();
 
-        const requestedJobsTab=
-          String(
-            initialParams.get('jobs_tab') ||
-            ''
-          ).toLowerCase().trim();
-
-        requestedInitialJobsTab=
-          ['open','drafts','closed'].includes(requestedJobsTab)
-            ?requestedJobsTab
-            :'';
-
         /*
          * IMPORTANT:
          * If the employer came from "Job published -> View Job",
@@ -15303,12 +14135,8 @@
           requestedView==='jobs'
         ){
           state.currentView='jobs';
-        }else if(
-          requestedView==='company' ||
-          requestedView==='settings' ||
-          requestedView==='dashboard'
-        ){
-          state.currentView=requestedView;
+        }else if(requestedView==='company'){
+          state.currentView='company';
         }
 
         safeRenderAll();
@@ -15322,29 +14150,22 @@
               0
             );
           }
-        }else if(requestedView==='settings'){
-          setView('settings');
-        }else if(requestedView==='dashboard'){
-          setView('dashboard');
         }
 
         if(
           requestedJobId ||
           requestedView==='jobs'
         ){
-          if(requestedJobId){
-            jobsStatusTab='open';
-            requestedInitialJobsTab='';
-          }
+          jobsStatusTab='open';
 
           setView('jobs');
 
-          /* Only a direct published-job request should force Open and launch
-             the job sheet. A normal ?view=jobs&jobs_tab=drafts route keeps
-             the requested Drafts tab selected. */
-          if(requestedJobId){
-            openRequestedDashboardJob();
-          }
+          /*
+           * state.jobs is already loaded above, so this normally opens
+           * immediately. openRequestedDashboardJob() also has its own
+           * retry behavior for a just-published record.
+           */
+          openRequestedDashboardJob();
         }
 
       }catch(error){
@@ -15356,9 +14177,12 @@
         safeRenderAll();
 
       }finally{
+        /*
+         * Reveal the workspace only after initialization has resolved.
+         * This prevents the previous employer / old dashboard state from
+         * flashing before the current account is rendered.
+         */
         document.body.dataset.dashboardBooting='false';
-        resetEmployerWorkspaceScroll();
-        setTimeout(resetEmployerWorkspaceScroll,80);
 
         /*
          * Do not require a second tap on Open Jobs.
@@ -15367,17 +14191,17 @@
         const pendingJobId=
           requestedDashboardJobId();
 
-        if(pendingJobId){
+        if(
+          state.currentView==='jobs' ||
+          pendingJobId
+        ){
           jobsStatusTab='open';
-          requestedInitialJobsTab='';
 
           if(state.currentView!=='jobs'){
             setView('jobs');
           }
 
           openRequestedDashboardJob();
-        }else if(state.currentView==='jobs'){
-          renderJobs();
         }
       }
     }
@@ -15385,9 +14209,6 @@
     document.addEventListener('click',event => {
       const nav = event.target.closest('[data-view]');
       if(nav){
-        event.preventDefault();
-        try{nav.blur();}catch(_error){}
-        resetEmployerWorkspaceScroll();
         if(
           nav.dataset.view==='applicants' &&
           nav.dataset.applicantsScope==='all'
@@ -15918,13 +14739,10 @@
       const teamRole=String(state.teamAccess?.role||'').toLowerCase().trim();
 
       // Never allow the main employer/owner to enter candidate mode from
-      // the employer workspace. Added Admin, Recruiter, and Hiring Manager
-      // team members can return to their personal candidate workspace.
-      const canSwitchToCandidate=
-        !isOwner && ['admin','recruiter','hiring_manager','hiring manager'].includes(teamRole);
-
-      if(!canSwitchToCandidate){
-        toast('Candidate Mode is available only to added team members with a candidate workspace.');
+      // the employer workspace. This guard also blocks manual/programmatic
+      // calls even when the Settings button is hidden.
+      if(isOwner || teamRole!=='admin'){
+        toast('Candidate Mode is available only to added Admin team members.');
         return;
       }
 
@@ -15952,138 +14770,10 @@
 
       location.href='app-employer-billing.html';
     };
-    $('security-settings').onclick = () => { location.href='app-employer-account-security.html'; };
-
-    $('privacy-settings').onclick = () => {
-      $('privacy-sheet').hidden=false;
-    };
-
-    $('close-privacy-sheet').onclick=()=>{$('privacy-sheet').hidden=true};
-
-    $('security-sheet').addEventListener('click',event=>{
-      if(event.target===$('security-sheet'))$('security-sheet').hidden=true;
-    });
-
-    $('privacy-sheet').addEventListener('click',event=>{
-      if(event.target===$('privacy-sheet'))$('privacy-sheet').hidden=true;
-    });
-
-    $('security-reset-password').onclick=async()=>{
-      const button=$('security-reset-password');
-      const original=button.textContent;
-
-      try{
-        button.disabled=true;
-        button.textContent='Sending…';
-
-        const {data:{session},error:sessionError}=await sb.auth.getSession();
-        if(sessionError)throw sessionError;
-
-        const email=String(session?.user?.email||'').trim();
-        if(!email)throw new Error('No email is attached to this account.');
-
-        const {error}=await sb.auth.resetPasswordForEmail(
-          email,
-          {redirectTo:'https://alygnn.com/reset-password.html'}
-        );
-        if(error)throw error;
-
-        toast('Password reset email sent.');
-      }catch(error){
-        console.error('Password reset failed:',error);
-        toast(error?.message||'Could not send the password reset email.');
-      }finally{
-        button.disabled=false;
-        button.textContent=original;
-      }
-    };
-
-    $('open-privacy-policy').onclick=()=>{
-      location.href='privacy.html?from=employer-app';
-    };
-
-    $('open-terms-policy').onclick=()=>{
-      location.href='terms.html?from=employer-app';
-    };
-    $('support-settings').onclick = async () => {
-      const sheet=$('support-sheet');
-      const context=$('support-account-context');
-      const status=$('support-message-status');
-      if(status){status.textContent='';status.className='restored-settings-message';}
-      try{
-        const {data:{session}}=await sb.auth.getSession();
-        const email=session?.user?.email||state.currentUser?.email||'this Alygnn account';
-        if(context)context.textContent=`Signed in as ${email}. We’ll include this account context with your message.`;
-      }catch(_){}
-      sheet.hidden=false;
-    };
-
-    $('close-support-sheet').onclick=()=>{$('support-sheet').hidden=true};
-    $('support-sheet').addEventListener('click',event=>{
-      if(event.target===$('support-sheet'))$('support-sheet').hidden=true;
-    });
-
-    $('send-support-message').onclick=async()=>{
-      const button=$('send-support-message');
-      const status=$('support-message-status');
-      const category=String($('support-category').value||'Other');
-      const message=String($('support-message-input').value||'').trim();
-
-      status.textContent='';
-      status.className='restored-settings-message';
-
-      if(message.length<10){
-        status.textContent='Tell us a little more so the Alygnn team can help.';
-        status.className='restored-settings-message error';
-        return;
-      }
-
-      const original=button.textContent;
-      button.disabled=true;
-      button.textContent='Sending…';
-
-      try{
-        const {data:{session}}=await sb.auth.getSession();
-        const email=String(session?.user?.email||state.currentUser?.email||'').trim();
-        const name=String(
-          session?.user?.user_metadata?.full_name||
-          session?.user?.user_metadata?.name||
-          email.split('@')[0]||
-          'Alygnn Employer'
-        ).trim();
-
-        if(!email)throw new Error('Your signed-in email could not be found.');
-
-        const body=`[Employer support: ${category}]\n\n${message}`;
-
-        const {error}=await sb.functions.invoke('send-contact-message',{
-          body:{name,email,message:body}
-        });
-        if(error)throw error;
-
-        $('support-message-input').value='';
-        status.textContent='Message sent. The Alygnn team will reply to your account email.';
-        status.className='restored-settings-message success';
-      }catch(error){
-        console.error('Employer support message failed:',error);
-        status.textContent='Could not send the message right now. You can email admin@alygnn.com below.';
-        status.className='restored-settings-message error';
-      }finally{
-        button.disabled=false;
-        button.textContent=original;
-      }
-    };
-    $('about-settings').onclick=()=>{$('about-sheet').hidden=false};
-    $('close-about-sheet').onclick=()=>{$('about-sheet').hidden=true};
-    $('about-sheet').addEventListener('click',event=>{
-      if(event.target===$('about-sheet'))$('about-sheet').hidden=true;
-    });
-    $('about-privacy-policy').onclick=()=>{location.href='privacy.html?from=employer-app'};
-    $('about-terms').onclick=()=>{location.href='terms.html?from=employer-app'};
-    $('about-open-support').onclick=()=>{
-      $('about-sheet').hidden=true;
-      $('support-settings').click();
-    };
+    $('security-settings').onclick = () => toast('Account and security controls will connect here.');
+    $('privacy-settings').onclick = () => toast('Privacy controls will connect here.');
+    $('support-settings').onclick = () => toast('Help and support will connect here.');
+    $('about-settings').onclick = () => toast('Alygnn Employer Workspace V5');
     $('notifications-btn').onclick = () => {
       renderNotifications();
       $('notifications-sheet').hidden = false;
@@ -16308,37 +14998,8 @@
     $('pro-modal').addEventListener('click',event => {
       if(event.target === $('pro-modal')) $('pro-modal').hidden = true;
     });
-    const appearanceSettingsToggle=
-      document.getElementById('appearance-settings-toggle');
-    const appearanceSettingsPanel=
-      document.getElementById('appearance-settings-panel');
-
-    appearanceSettingsToggle?.addEventListener('click',()=>{
-      const willOpen=appearanceSettingsPanel?.hidden!==false;
-
-      if(appearanceSettingsPanel){
-        appearanceSettingsPanel.hidden=!willOpen;
-      }
-
-      appearanceSettingsToggle.setAttribute(
-        'aria-expanded',
-        String(willOpen)
-      );
-    });
-
     document.querySelectorAll('[data-theme-choice]').forEach(button => {
-      button.addEventListener('click',() => {
-        setThemePreference(button.dataset.themeChoice);
-
-        if(appearanceSettingsPanel){
-          appearanceSettingsPanel.hidden=true;
-        }
-
-        appearanceSettingsToggle?.setAttribute(
-          'aria-expanded',
-          'false'
-        );
-      });
+      button.addEventListener('click',() => setThemePreference(button.dataset.themeChoice));
     });
     applyTheme(savedThemePreference());
 
@@ -16492,23 +15153,31 @@
         const blob =
           await response.blob();
 
-        const extension = (()=>{
-          const type = String(blob.type || '').toLowerCase();
-          if(type.includes('pdf')) return '.pdf';
-          if(type.includes('wordprocessingml')) return '.docx';
-          if(type.includes('msword')) return '.doc';
-          return '';
-        })();
+        const objectUrl =
+          URL.createObjectURL(blob);
 
-        const fileName =
+        const link =
+          document.createElement('a');
+
+        link.href =
+          objectUrl;
+
+        link.download =
           (data.name || 'candidate')
             .replace(/[^a-z0-9]+/gi,'-')
-            .replace(/^-|-$/g,'')
-            .toLowerCase()
-          + '-resume'
-          + extension;
+          + '-resume';
 
-        await saveResumeBlob(blob,fileName);
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+
+        setTimeout(
+          ()=>URL.revokeObjectURL(objectUrl),
+          1000
+        );
 
       }catch(error){
         console.error(
@@ -16669,17 +15338,13 @@
           return;
         }
 
-        const response = await fetch(resumeUrl);
-        if(!response.ok){
-          throw new Error('Could not download the stored resume.');
-        }
-        const blob = await response.blob();
-        const extension = String(blob.type || '').toLowerCase().includes('pdf') ? '.pdf' : '';
-        const fileName = (data.name || 'candidate')
-          .replace(/[^a-z0-9]+/gi,'-')
-          .replace(/^-|-$/g,'')
-          .toLowerCase() + '-resume' + extension;
-        await saveResumeBlob(blob,fileName);
+        const link = document.createElement('a');
+        link.href = resumeUrl;
+        link.download = (data.name || 'candidate').replace(/[^a-z0-9]+/gi,'-') + '-resume';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       }catch(error){
         console.error('Could not download candidate resume:',error);
         toast('Could not download this resume.');
