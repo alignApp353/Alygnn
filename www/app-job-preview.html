@@ -11,6 +11,26 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  const preference =
+    localStorage.getItem('alygnnEmployerTheme') ||
+    localStorage.getItem('alygnnTheme') ||
+    'auto';
+
+  const dark =
+    preference === 'dark' ||
+    (preference === 'auto' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    'content',
+    dark ? '#07121D' : '#F5F8F8'
+  );
+})();
+</script>
 
 <style>
 *{
@@ -590,6 +610,33 @@ button{
   transition:opacity .18s ease,visibility .18s ease;
 }
 
+html[data-theme="dark"]{
+  --bg:#07121D;
+  --card:#0F1B28;
+  --text:#F2F6F9;
+  --muted:#9FB0BF;
+  --border:#2B3A4A;
+  --soft:#102330;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .page{
+  background:#07121D!important;
+  color:#F2F6F9!important;
+}
+
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .footer{
+  background:rgba(7,18,29,.98)!important;
+  border-color:#2B3A4A!important;
+}
+
+html[data-theme="dark"] .secondary{
+  background:#0F1B28!important;
+  color:#F2F6F9!important;
+  border-color:#2B3A4A!important;
+}
+
 html[data-theme="dark"] .loading{
   background:
     radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
@@ -938,6 +985,7 @@ html[data-theme="dark"] .loading{
 }
 .preview-job-badge.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
 .preview-job-badge.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
+.preview-job-badge.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
 
 .candidate-card-pills{
   display:flex;
@@ -2575,7 +2623,7 @@ html[data-theme="dark"] .exit-draft-card{
       </button>
 
       <button class="view" id="view-job-btn" type="button">
-        View Published Job
+        View Live Job
       </button>
     </div>
   </div>
@@ -2969,6 +3017,9 @@ function render(){
     if(!freeSlot&&draft.urgently_hiring===true){
       badges.push('<span class="preview-job-badge urgent">Urgently Hiring</span>');
     }
+    if(draft.featured_employer===true){
+      badges.push('<span class="preview-job-badge featured">Featured Employer</span>');
+    }
 
     previewBadges.innerHTML=badges.join('');
     previewBadges.hidden=!badges.length;
@@ -3346,7 +3397,9 @@ function editJob(){
     '5'
   );
 
-  location.href='app-post-job.html';
+  // Use a return_step query param as a second source of truth. The job builder
+  // reads it before first paint, so there is no Step 1 flash.
+  location.replace('app-post-job.html?return_step=5');
 }
 
 function baseJobPayload(){
@@ -3362,7 +3415,7 @@ function baseJobPayload(){
     requirements:draft.requirements,
     benefits:draft.benefits,
     posting_access_type:draft.posting_access_type||null,
-    featured_employer:false,
+    featured_employer:draft.featured_employer===true,
     urgently_hiring:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.urgently_hiring===true,
     alygnn_recommended:draft.alygnn_recommended===true,
     status:'active',
@@ -3698,11 +3751,13 @@ function wire(){
 
   $('view-job-btn').onclick=()=>{
     if(publishedJobId){
-      // Keep employers inside the employer workspace and open the exact
-      // listing that was just published.
+      // Employer live-view is a terminal preview, not another step in the
+      // job-builder history. Replace the success screen and tell the details
+      // page to return directly to My Jobs.
       location.replace(
-        'app-employer-dashboard.html?view=jobs&open_job='+
-        encodeURIComponent(publishedJobId)
+        'app-job-details.html?id='+
+        encodeURIComponent(publishedJobId)+
+        '&from=employer-live'
       );
       return;
     }
@@ -3759,7 +3814,10 @@ function wire(){
     }
 
     liveCompany=
-      await resolveCompanyLive();
+      await Promise.race([
+        resolveCompanyLive(),
+        new Promise(resolve=>setTimeout(()=>resolve(null),3500))
+      ]);
 
     if(liveCompany?.name){
       draft.company=
