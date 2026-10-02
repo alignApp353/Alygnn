@@ -296,14 +296,14 @@ html[data-theme="dark"] .free-slot-notice{
       <div class="field">
         <label for="title">Job title</label>
         <div class="suggest-wrap">
-<input class="input" id="title" type="text" maxlength="90" placeholder="e.g. Sales Account Manager" autocomplete="off">
+<input class="input" id="title" type="text" maxlength="90" placeholder="Type a job title" autocomplete="off">
 <div class="suggest-list" id="title-suggestions"></div>
 </div>
       </div>
 <div class="field">
         <label for="location">Location</label>
         <div class="suggest-wrap">
-<input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC" autocomplete="off">
+<input class="input" id="location" type="text" maxlength="120" placeholder="City, state, or ZIP" autocomplete="off">
 <div class="suggest-list" id="location-suggestions"></div>
 </div>
 <div class="help">Start typing a U.S. city, then select it from the suggestions.</div>
@@ -990,7 +990,7 @@ function setupSuggestions(){
   });
 
   titleInput.addEventListener('focus',()=>{
-    if(titleInput.value.trim().length>=2)runTitleSearch();
+    if(titleInput.value.trim().length>=3)runTitleSearch();
   });
 
   titleInput.addEventListener('blur',()=>{
@@ -1003,7 +1003,7 @@ function setupSuggestions(){
   });
 
   locationInput.addEventListener('focus',()=>{
-    if(locationInput.value.trim().length>=2)runLocationSearch();
+    if(locationInput.value.trim().length>=3)runLocationSearch();
   });
 
   locationInput.addEventListener('blur',()=>{
