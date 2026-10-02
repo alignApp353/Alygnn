@@ -961,6 +961,8 @@
       font-size:8px;
       font-weight:900;
       position:relative;
+      touch-action:manipulation;
+      -webkit-tap-highlight-color:transparent;
     }
 
     .nav-icon{
@@ -14167,6 +14169,28 @@
         }
       }
     }
+
+    // Highlight the destination tab the instant the user presses it.
+    // On Android WebView, waiting for the full click event can briefly leave
+    // Dashboard highlighted before Company / Jobs / Settings becomes active.
+    document.addEventListener('pointerdown',event => {
+      const nav = event.target.closest('.bottom-nav [data-view]');
+      if(!nav) return;
+
+      const targetView=String(nav.dataset.view||'').trim();
+      if(!targetView) return;
+
+      document.querySelectorAll('.bottom-nav .nav-item').forEach(button => {
+        const active=
+          button===nav ||
+          (
+            targetView==='applicants' &&
+            button.dataset.view==='jobs'
+          );
+
+        button.classList.toggle('active',active);
+      });
+    },{passive:true});
 
     document.addEventListener('click',event => {
       const nav = event.target.closest('[data-view]');
