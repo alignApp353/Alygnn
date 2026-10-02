@@ -79,13 +79,20 @@ button{cursor:pointer}
   display:grid;grid-template-columns:48px 1fr 48px;align-items:center;background:color-mix(in srgb,var(--bg) 94%,transparent);
   border-bottom:1px solid var(--border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
 }
-.icon-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:20px}
+.icon-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);display:grid;place-items:center;padding:0}
+.icon-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .brand{text-align:center;font-family:'DM Serif Display',Georgia,serif;font-size:26px;color:var(--brand)}.brand span{color:var(--sage)}
 main{max-width:560px;margin:0 auto;padding:22px 16px 40px}
 
-.loading{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center}
-.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin .75s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
+.loading{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:24px}
+.loading-inner{width:min(320px,82vw);text-align:center}
+.loading-logo{font-family:'DM Serif Display',Georgia,serif;font-size:46px;line-height:1;color:var(--brand);letter-spacing:-1px}
+.loading-logo span{color:var(--sage)}
+.loading-title{margin-top:14px;font-size:14px;font-weight:800;color:var(--text)}
+.loading-copy{margin-top:6px;font-size:11px;color:var(--muted)}
+.loading-track{width:118px;height:4px;margin:22px auto 0;border-radius:999px;background:var(--border);overflow:hidden}
+.loading-bar{width:48%;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--brand),var(--sage));animation:loadslide 1.15s ease-in-out infinite alternate}
+@keyframes loadslide{from{transform:translateX(-52%)}to{transform:translateX(108%)}}
 
 .eyebrow{font-size:10px;font-weight:900;letter-spacing:1.2px;text-transform:uppercase;color:var(--brand)}
 h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;margin:7px 0 9px}
@@ -169,103 +176,19 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 .address-loading{padding:10px 12px;font-size:9px;color:var(--muted)}
 
 </style>
-
-<style id="alygnn-payment-promo-ui">
-  .promo-box{
-    margin-top:14px;
-    padding:14px;
-    border:1px solid var(--border);
-    border-radius:16px;
-    background:var(--card);
-  }
-  .promo-head{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:9px;
-  }
-  .promo-head strong{
-    font-size:12px;
-    font-weight:900;
-    color:var(--text);
-  }
-  .promo-head span{
-    font-size:9px;
-    font-weight:900;
-    letter-spacing:.6px;
-    text-transform:uppercase;
-    color:var(--muted);
-  }
-  .promo-row{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:8px;
-  }
-  .promo-row input{
-    min-width:0;
-    height:46px;
-    padding:0 12px;
-    border:1px solid var(--border);
-    border-radius:13px;
-    outline:none;
-    background:var(--card);
-    color:var(--text);
-    font:inherit;
-    font-size:12px;
-    font-weight:800;
-    text-transform:uppercase;
-  }
-  .promo-row input:focus{
-    border-color:var(--brand);
-    box-shadow:0 0 0 3px rgba(93,127,163,.12);
-  }
-  .promo-apply{
-    min-width:82px;
-    height:46px;
-    padding:0 13px;
-    border:1px solid var(--border);
-    border-radius:13px;
-    background:var(--card);
-    color:var(--text);
-    font-size:11px;
-    font-weight:900;
-  }
-  .promo-apply:disabled{opacity:.6}
-  .promo-status{
-    min-height:16px;
-    margin-top:8px;
-    font-size:10px;
-    line-height:1.45;
-    color:var(--muted);
-  }
-  .promo-status.success{color:#2E8B57}
-  .promo-status.error{color:#C64F4F}
-
-  html[data-theme="dark"] .promo-box,
-  html[data-theme="dark"] .promo-row input,
-  html[data-theme="dark"] .promo-apply{
-    background:#131D26!important;
-    border-color:#2B3E50!important;
-  }
-  html[data-theme="dark"] .promo-row input,
-  html[data-theme="dark"] .promo-apply,
-  html[data-theme="dark"] .promo-head strong{
-    color:#F4F7FA!important;
-  }
-  html[data-theme="dark"] .promo-status{
-    color:#A9B6C5;
-  }
-  html[data-theme="dark"] .promo-status.success{color:#65D39A}
-  html[data-theme="dark"] .promo-status.error{color:#FF9B9B}
-</style>
-
 </head>
 <body>
-<div class="loading" id="loading"><div class="spinner"></div></div>
+<div class="loading" id="loading" aria-label="Alygnn is preparing checkout">
+  <div class="loading-inner">
+    <div class="loading-logo">Alygnn<span>.</span></div>
+    <div class="loading-title">Preparing your checkout.</div>
+    <div class="loading-copy">Loading your selected hiring plan.</div>
+    <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+  </div>
+</div>
 
 <header class="app-header">
-  <button class="icon-btn" id="back-btn" type="button" aria-label="Back">←</button>
+  <button class="icon-btn" id="back-btn" type="button" aria-label="Back to pricing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   <div class="brand">Alygnn<span>.</span></div>
   <div style="width:42px"></div>
 </header>
@@ -337,25 +260,6 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
           <input id="billing-postal" autocomplete="postal-code" placeholder="ZIP or postal code">
         </label>
       </div>
-    </div>
-
-    <div class="promo-box" id="promo-box">
-      <div class="promo-head">
-        <strong>Promotion code</strong>
-        <span>Optional</span>
-      </div>
-      <div class="promo-row">
-        <input
-          id="promo-code"
-          type="text"
-          maxlength="80"
-          inputmode="text"
-          autocomplete="off"
-          autocapitalize="characters"
-          placeholder="Enter promo code">
-        <button class="promo-apply" id="promo-apply" type="button">Apply</button>
-      </div>
-      <div class="promo-status" id="promo-status"></div>
     </div>
 
     <label class="terms" style="margin-top:14px">
@@ -882,90 +786,6 @@ function showMessage(text){
 function clearMessage(){
   $('message').hidden=true;
   $('message').textContent='';
-}
-
-let validatedPromotionCode='';
-
-function checkoutPromotionCode(){
-  return String(
-    $('promo-code')?.value||
-    validatedPromotionCode||
-    ''
-  ).trim().toUpperCase();
-}
-
-function setPromoStatus(text,type=''){
-  const node=$('promo-status');
-  if(!node)return;
-  node.textContent=text||'';
-  node.className=
-    'promo-status'+
-    (type?' '+type:'');
-}
-
-async function validatePromotionCode(){
-  const code=checkoutPromotionCode();
-  const button=$('promo-apply');
-
-  if(!code){
-    validatedPromotionCode='';
-    setPromoStatus('');
-    return;
-  }
-
-  button.disabled=true;
-  const original=button.textContent;
-  button.textContent='Checking…';
-  setPromoStatus('Checking code…');
-
-  try{
-    const response=await fetch(CHECKOUT_ENDPOINT,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+session.access_token
-      },
-      body:JSON.stringify({
-        action:'validate_promo',
-        promotion_code:code
-      })
-    });
-
-    let data={};
-    try{data=await response.json();}catch(_){}
-
-    if(!response.ok){
-      throw new Error(
-        data.error||
-        'This promotion code could not be applied.'
-      );
-    }
-
-    validatedPromotionCode=code;
-
-    const detail=
-      data.percent_off!=null
-        ?`${Number(data.percent_off)}% off`
-        :data.amount_off_cents!=null
-          ?`${money(Number(data.amount_off_cents)/100)} off`
-          :'Promotion code accepted';
-
-    setPromoStatus(`${detail} — applied at secure checkout.`,'success');
-    button.textContent='Applied';
-  }catch(error){
-    validatedPromotionCode='';
-    setPromoStatus(
-      error?.message||
-      'This promotion code could not be applied.',
-      'error'
-    );
-    button.textContent='Apply';
-  }finally{
-    button.disabled=false;
-    if(button.textContent==='Checking…'){
-      button.textContent=original;
-    }
-  }
 }
 
 function isAddon(){
@@ -1531,7 +1351,6 @@ async function executeExistingPlanChange(){
           checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
           terms_accepted:true,
           terms_version:TERMS_VERSION,
-          promotion_code:checkoutPromotionCode(),
           billing_address:change.upgrade?billingAddressPayload():undefined
         })
       }
@@ -2010,7 +1829,6 @@ async function startCheckout(){
       payment_ui:useNative?'payment_sheet':'checkout',
       native_payment_sheet:useNative,
       checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
-      promotion_code:checkoutPromotionCode(),
       billing_address:address,
       success_url:
         'https://alygnn.com/employer-dashboard.html?'+successParams.toString(),
@@ -2065,24 +1883,15 @@ async function startCheckout(){
   }
 }
 
-$('back-btn').addEventListener('click',()=>location.href=returnToPricing());
-
-$('promo-code')?.addEventListener('input',event=>{
-  event.target.value=String(event.target.value||'').toUpperCase();
-  validatedPromotionCode='';
-  setPromoStatus('');
-  if($('promo-apply'))$('promo-apply').textContent='Apply';
-});
-
-$('promo-code')?.addEventListener('keydown',event=>{
-  if(event.key==='Enter'){
-    event.preventDefault();
-    validatePromotionCode();
+$('back-btn').addEventListener('click',()=>{
+  // Return to the screen the employer actually came from.
+  // This prevents checkout -> pricing -> checkout redirect loops.
+  if(window.history.length > 1){
+    history.back();
+    return;
   }
+  location.href=returnToPricing();
 });
-
-$('promo-apply')?.addEventListener('click',validatePromotionCode);
-
 $('terms').addEventListener('change',updateCheckoutButton);
 $('checkout-btn').addEventListener('click',startCheckout);
 
