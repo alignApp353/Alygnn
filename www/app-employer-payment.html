@@ -176,6 +176,96 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 .address-loading{padding:10px 12px;font-size:9px;color:var(--muted)}
 
 </style>
+<style id="alygnn-payment-promo-ui">
+  .promo-box{
+    margin-top:14px;
+    padding:14px;
+    border:1px solid var(--border);
+    border-radius:16px;
+    background:var(--card);
+  }
+  .promo-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:9px;
+  }
+  .promo-head strong{
+    font-size:12px;
+    font-weight:900;
+    color:var(--text);
+  }
+  .promo-head span{
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.6px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .promo-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+  }
+  .promo-row input{
+    min-width:0;
+    height:46px;
+    padding:0 12px;
+    border:1px solid var(--border);
+    border-radius:13px;
+    outline:none;
+    background:var(--card);
+    color:var(--text);
+    font:inherit;
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+  }
+  .promo-row input:focus{
+    border-color:var(--brand);
+    box-shadow:0 0 0 3px rgba(93,127,163,.12);
+  }
+  .promo-apply{
+    min-width:82px;
+    height:46px;
+    padding:0 13px;
+    border:1px solid var(--border);
+    border-radius:13px;
+    background:var(--card);
+    color:var(--text);
+    font-size:11px;
+    font-weight:900;
+  }
+  .promo-apply:disabled{opacity:.6}
+  .promo-status{
+    min-height:16px;
+    margin-top:8px;
+    font-size:10px;
+    line-height:1.45;
+    color:var(--muted);
+  }
+  .promo-status.success{color:#2E8B57}
+  .promo-status.error{color:#C64F4F}
+
+  html[data-theme="dark"] .promo-box,
+  html[data-theme="dark"] .promo-row input,
+  html[data-theme="dark"] .promo-apply{
+    background:#131D26!important;
+    border-color:#2B3E50!important;
+  }
+  html[data-theme="dark"] .promo-row input,
+  html[data-theme="dark"] .promo-apply,
+  html[data-theme="dark"] .promo-head strong{
+    color:#F4F7FA!important;
+  }
+  html[data-theme="dark"] .promo-status{
+    color:#A9B6C5;
+  }
+  html[data-theme="dark"] .promo-status.success{color:#65D39A}
+  html[data-theme="dark"] .promo-status.error{color:#FF9B9B}
+</style>
+
 </head>
 <body>
 <div class="loading" id="loading" aria-label="Alygnn is preparing checkout">
@@ -262,7 +352,27 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
       </div>
     </div>
 
-    <label class="terms" style="margin-top:14px">
+
+    <div class="promo-box" id="promo-box">
+      <div class="promo-head">
+        <strong>Promotion code</strong>
+        <span>Optional</span>
+      </div>
+      <div class="promo-row">
+        <input
+          id="promo-code"
+          type="text"
+          maxlength="80"
+          inputmode="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          placeholder="Enter promo code">
+        <button class="promo-apply" id="promo-apply" type="button">Apply</button>
+      </div>
+      <div class="promo-status" id="promo-status"></div>
+    </div>
+
+        <label class="terms" style="margin-top:14px">
       <input type="checkbox" id="terms">
       <span>I agree to Alygnn’s <a href="https://alygnn.com/terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="https://alygnn.com/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
     </label>
@@ -787,6 +897,91 @@ function clearMessage(){
   $('message').hidden=true;
   $('message').textContent='';
 }
+
+let validatedPromotionCode='';
+
+function checkoutPromotionCode(){
+  return String(
+    $('promo-code')?.value||
+    validatedPromotionCode||
+    ''
+  ).trim().toUpperCase();
+}
+
+function setPromoStatus(text,type=''){
+  const node=$('promo-status');
+  if(!node)return;
+  node.textContent=text||'';
+  node.className=
+    'promo-status'+
+    (type?' '+type:'');
+}
+
+async function validatePromotionCode(){
+  const code=checkoutPromotionCode();
+  const button=$('promo-apply');
+
+  if(!code){
+    validatedPromotionCode='';
+    setPromoStatus('');
+    return;
+  }
+
+  button.disabled=true;
+  const original=button.textContent;
+  button.textContent='Checking…';
+  setPromoStatus('Checking code…');
+
+  try{
+    const response=await fetch(CHECKOUT_ENDPOINT,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+session.access_token
+      },
+      body:JSON.stringify({
+        action:'validate_promo',
+        promotion_code:code
+      })
+    });
+
+    let data={};
+    try{data=await response.json();}catch(_){}
+
+    if(!response.ok){
+      throw new Error(
+        data.error||
+        'This promotion code could not be applied.'
+      );
+    }
+
+    validatedPromotionCode=code;
+
+    const detail=
+      data.percent_off!=null
+        ?`${Number(data.percent_off)}% off`
+        :data.amount_off_cents!=null
+          ?`${money(Number(data.amount_off_cents)/100)} off`
+          :'Promotion code accepted';
+
+    setPromoStatus(`${detail} — applied at secure checkout.`,'success');
+    button.textContent='Applied';
+  }catch(error){
+    validatedPromotionCode='';
+    setPromoStatus(
+      error?.message||
+      'This promotion code could not be applied.',
+      'error'
+    );
+    button.textContent='Apply';
+  }finally{
+    button.disabled=false;
+    if(button.textContent==='Checking…'){
+      button.textContent=original;
+    }
+  }
+}
+
 
 function isAddon(){
   return product==='additional_slot';
@@ -1369,6 +1564,7 @@ async function executeExistingPlanChange(){
           checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
           terms_accepted:true,
           terms_version:TERMS_VERSION,
+          promotion_code:checkoutPromotionCode(),
           billing_address:change.upgrade?billingAddressPayload():undefined
         })
       }
@@ -1847,6 +2043,7 @@ async function startCheckout(){
       payment_ui:useNative?'payment_sheet':'checkout',
       native_payment_sheet:useNative,
       checkout_request_id:(window.crypto?.randomUUID?.()||('alygnn-'+Date.now()+'-'+Math.random())),
+      promotion_code:checkoutPromotionCode(),
       billing_address:address,
       success_url:
         'https://alygnn.com/employer-dashboard.html?'+successParams.toString(),
@@ -1907,6 +2104,23 @@ $('back-btn').addEventListener('click',()=>{
   // stale dashboard/loading entries and send the employer to the wrong page.
   location.href=returnToPricing();
 });
+
+$('promo-code')?.addEventListener('input',event=>{
+  event.target.value=String(event.target.value||'').toUpperCase();
+  validatedPromotionCode='';
+  setPromoStatus('');
+  if($('promo-apply'))$('promo-apply').textContent='Apply';
+});
+
+$('promo-code')?.addEventListener('keydown',event=>{
+  if(event.key==='Enter'){
+    event.preventDefault();
+    validatePromotionCode();
+  }
+});
+
+$('promo-apply')?.addEventListener('click',validatePromotionCode);
+
 $('terms').addEventListener('change',updateCheckoutButton);
 $('checkout-btn').addEventListener('click',startCheckout);
 
