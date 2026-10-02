@@ -90,6 +90,7 @@ button{cursor:pointer}
   width:42px;height:42px;border-radius:50%;border:1px solid var(--border);
   background:var(--card);color:var(--text);font-size:20px;font-weight:700
 }
+.icon-btn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .brand{text-align:center;font-family:'DM Serif Display',Georgia,serif;font-size:26px;color:var(--brand)}
 .brand span{color:var(--sage)}
 .header-spacer{width:42px}
@@ -308,12 +309,17 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 </style>
 </head>
 <body>
-<div class="loading" id="loading">
-  <div class="loading-inner"><div class="spinner"></div><span>Checking your hiring capacity…</span></div>
+<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
+  <div class="loading-inner">
+    <div class="loading-logo">Alygnn<span>.</span></div>
+    <div class="loading-title">Preparing your hiring options.</div>
+    <div class="loading-copy">Checking your available job slots.</div>
+    <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+  </div>
 </div>
 
 <header class="app-header">
-  <button class="icon-btn" id="back-btn" type="button" aria-label="Back">←</button>
+  <button class="icon-btn" id="back-btn" type="button" aria-label="Back to Jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   <div class="brand">Alygnn<span>.</span></div>
   <div class="header-spacer"></div>
 </header>
@@ -1692,14 +1698,7 @@ async function loadAccount(){
 }
 
 $('back-btn').addEventListener('click',()=>{
-  if(SAME_ROLE_PAID_ACCESS_REASON){
-    location.href='app-post-job.html?return=free-role-rule';
-    return;
-  }
-
-  location.href=SLOT_GATE_REASON
-    ?'app-employer-dashboard.html?view=jobs'
-    :'app-employer-dashboard.html#settings';
+  location.replace('app-employer-dashboard.html?view=jobs');
 });
 
 document.querySelectorAll('[data-billing]').forEach(btn=>{
