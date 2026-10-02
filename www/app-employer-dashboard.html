@@ -14067,11 +14067,22 @@
             ''
           ).trim();
 
+        const storedStartView=
+          String(
+            sessionStorage.getItem('alygnnEmployerStartView') ||
+            ''
+          ).trim();
+
         const requestedView=
           String(
             initialParams.get('view') ||
+            storedStartView ||
             ''
           ).trim();
+
+        if(storedStartView){
+          sessionStorage.removeItem('alygnnEmployerStartView');
+        }
 
         /*
          * IMPORTANT:
@@ -14498,6 +14509,10 @@
         checked_at:new Date().toISOString(),
         source:'app-employer-dashboard'
       }));
+
+      // Preserve the originating employer tab across Android WebView navigation.
+      // Pricing/back should always return to Jobs, never the Dashboard overview.
+      sessionStorage.setItem('alygnnEmployerStartView','jobs');
 
       const params=new URLSearchParams({
         reason:'slot_limit',
