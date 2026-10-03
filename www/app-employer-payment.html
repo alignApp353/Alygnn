@@ -1188,7 +1188,7 @@ function isAdditiveSlotPurchase(){
 }
 
 function safeLocalBackTarget(){
-  const raw=String(query.get('back_to')||'').trim();
+  const raw=String(PAGE_QUERY.get('back_to')||'').trim();
   if(!raw) return '';
 
   // Only allow local Alygnn app HTML destinations.
