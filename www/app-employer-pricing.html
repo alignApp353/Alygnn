@@ -496,6 +496,31 @@ function escapeHtml(value){
   );
 }
 
+
+function paymentHandoffUrl(params){
+  const backTarget=
+    'app-employer-pricing.html'+
+    (location.search||'');
+
+  params.set('back_to',backTarget);
+  params.set('from_pricing','1');
+
+  const handoff={
+    created_at:Date.now(),
+    back_to:backTarget,
+    plan:String(params.get('plan')||''),
+    product:String(params.get('product')||''),
+    billing:String(params.get('billing')||'')
+  };
+
+  sessionStorage.setItem(
+    'alygnnEmployerPricingHandoff',
+    JSON.stringify(handoff)
+  );
+
+  return 'app-employer-payment.html?'+params.toString();
+}
+
 function clearMessage(){
   const box=$('message');
   if(!box)return;
@@ -1256,10 +1281,7 @@ function renderPlans(){
           billing:
             basePaidPlanActive()
               ?activeBillingPeriod()
-              :billing,
-          back_to:
-            'app-employer-pricing.html'+
-            (location.search||'')
+              :billing
         });
 
         if(
@@ -1276,8 +1298,7 @@ function renderPlans(){
         }
 
         location.href=
-          'app-employer-payment.html?'+
-          params.toString();
+          paymentHandoffUrl(params);
       });
     });
   }
@@ -1754,7 +1775,12 @@ $('additional-slot-btn').addEventListener('click',()=>{
     return;
   }
 
-  location.href='app-employer-payment.html?product=additional_slot&billing=monthly&back_to='+encodeURIComponent('app-employer-pricing.html'+(location.search||''));
+  const params=new URLSearchParams({
+    product:'additional_slot',
+    billing:'monthly'
+  });
+
+  location.href=paymentHandoffUrl(params);
 });
 
 switchBilling(billing);
