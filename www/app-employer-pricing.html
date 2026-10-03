@@ -471,12 +471,9 @@ const SLOT_GATE_LIMIT=Math.max(
 
 let session=null;
 
-let billing=
-  SAME_ROLE_PAID_ACCESS_REASON
-    ?'monthly'
-    :SLOT_GATE_REASON
-      ?'weekly'
-      :'quarterly';
+// Always open Hiring Capacity on Quarterly first.
+// The employer can intentionally switch to Monthly or Weekly after landing.
+let billing='quarterly';
 let entitlement=null;
 let postingAccess=null;
 let jobs=[];
