@@ -1056,10 +1056,15 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   function handleSingleJobSlot(){
     if(currentSession && currentRole === 'employer'){
-      if(currentAccess?.second_slot_eligible!==true){
-        if(currentAccess?.active_paid_plan===true) switchView('monthly');
+      if(currentAccess?.active_paid_plan===true){
+        switchView('monthly');
         return;
       }
+
+      if(currentAccess?.second_slot_active===true){
+        return;
+      }
+
       window.location.href = 'payment.html?product=additional_slot&billing=monthly';
     }else{
       try{
