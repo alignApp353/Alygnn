@@ -339,7 +339,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 
     <div class="billing-location" id="billing-location">
       <div class="billing-title">Billing address</div>
-      <div class="billing-copy">Used to calculate applicable taxes before the Stripe payment sheet opens.</div>
+      <div class="billing-copy">Used to calculate applicable taxes before the Stripe payment sheet opens. Start typing your street address for Google Maps suggestions.</div>
       <div class="billing-grid">
         <label class="billing-field billing-wide">
           <span>Country</span>
@@ -513,6 +513,100 @@ let suppressAddressAutocomplete=false;
 let nativePaymentHandled=false;
 let nativePendingContext=null;
 let stripeListenersInstalled=false;
+
+const PAGE_QUERY=new URLSearchParams(location.search);
+
+function pricingFallbackUrl(){
+  try{
+    const gateRaw=sessionStorage.getItem('alygnn_job_slot_gate');
+
+    if(gateRaw){
+      const gate=JSON.parse(gateRaw);
+      const used=Math.max(0,Number(gate?.used||0)||0);
+      const limit=Math.max(1,Number(gate?.limit||1)||1);
+
+      const params=new URLSearchParams({
+        reason:'slot_limit',
+        used:String(used),
+        limit:String(limit)
+      });
+
+      return 'app-employer-pricing.html?'+params.toString();
+    }
+  }catch(_){}
+
+  return 'app-employer-pricing.html';
+}
+
+function validPricingHandoff(){
+  if(PAGE_QUERY.get('from_pricing')!=='1'){
+    return false;
+  }
+
+  try{
+    const raw=sessionStorage.getItem('alygnnEmployerPricingHandoff');
+    if(!raw)return false;
+
+    const handoff=JSON.parse(raw);
+    const age=Date.now()-Number(handoff?.created_at||0);
+
+    if(!Number.isFinite(age)||age<0||age>15*60*1000){
+      return false;
+    }
+
+    return (
+      String(handoff?.plan||'')===String(PAGE_QUERY.get('plan')||'') &&
+      String(handoff?.product||'')===String(PAGE_QUERY.get('product')||'') &&
+      String(handoff?.billing||'')===String(PAGE_QUERY.get('billing')||'')
+    );
+  }catch(_){
+    return false;
+  }
+}
+
+function enforcePricingFirst(){
+  if(validPricingHandoff())return true;
+
+  location.replace(pricingFallbackUrl());
+  return false;
+}
+
+async function getActiveEmployerSession(){
+  const timeout=(ms)=>new Promise(resolve=>{
+    setTimeout(()=>resolve({timedOut:true}),ms);
+  });
+
+  try{
+    const first=await Promise.race([
+      sb.auth.getSession(),
+      timeout(3500)
+    ]);
+
+    if(!first?.timedOut){
+      const active=first?.data?.session||null;
+      if(active)return active;
+    }
+  }catch(error){
+    console.warn('Initial employer session read failed:',error);
+  }
+
+  try{
+    const second=await Promise.race([
+      sb.auth.refreshSession(),
+      timeout(3500)
+    ]);
+
+    if(!second?.timedOut){
+      const active=second?.data?.session||null;
+      if(active)return active;
+    }
+  }catch(error){
+    console.warn('Employer session refresh failed:',error);
+  }
+
+  return null;
+}
+
 
 function stripePlugin(){
   return window.Capacitor?.Plugins?.Stripe||null;
@@ -1826,86 +1920,6 @@ function addonIneligibleMessage(){
 async function initialize(){
   const query=new URLSearchParams(location.search);
 
-
-function pricingFallbackUrl(){
-  try{
-    const gateRaw=
-      sessionStorage.getItem('alygnn_job_slot_gate');
-
-    if(gateRaw){
-      const gate=JSON.parse(gateRaw);
-      const used=Math.max(0,Number(gate?.used||0)||0);
-      const limit=Math.max(1,Number(gate?.limit||1)||1);
-
-      const params=new URLSearchParams({
-        reason:'slot_limit',
-        used:String(used),
-        limit:String(limit)
-      });
-
-      return 'app-employer-pricing.html?'+params.toString();
-    }
-  }catch(_){}
-
-  return 'app-employer-pricing.html';
-}
-
-function validPricingHandoff(){
-  if(query.get('from_pricing')!=='1'){
-    return false;
-  }
-
-  try{
-    const raw=
-      sessionStorage.getItem('alygnnEmployerPricingHandoff');
-
-    if(!raw){
-      return false;
-    }
-
-    const handoff=JSON.parse(raw);
-    const age=Date.now()-Number(handoff?.created_at||0);
-
-    if(
-      !Number.isFinite(age) ||
-      age<0 ||
-      age>15*60*1000
-    ){
-      return false;
-    }
-
-    const requestedPlan=
-      String(query.get('plan')||'');
-
-    const requestedProduct=
-      String(query.get('product')||'');
-
-    const requestedBilling=
-      String(query.get('billing')||'');
-
-    return (
-      String(handoff?.plan||'')===requestedPlan &&
-      String(handoff?.product||'')===requestedProduct &&
-      String(handoff?.billing||'')===requestedBilling
-    );
-  }catch(_){
-    return false;
-  }
-}
-
-function enforcePricingFirst(){
-  if(validPricingHandoff()){
-    return true;
-  }
-
-  // Never let a restored Android WebView, stale history entry, or direct URL
-  // skip the Hiring Capacity screen.
-  location.replace(pricingFallbackUrl());
-  return false;
-}
-
-
-
   returnMode=query.get('return')==='billing'?'billing':(query.get('return')==='preview'?'preview':'dashboard');
 
   product=String(query.get('product')||'job_plan').toLowerCase();
@@ -1970,16 +1984,28 @@ function enforcePricingFirst(){
     );
   }
 
-  const {data:{session:active},error}=await sb.auth.getSession();
+  // Resolve the persisted employer session with a timeout + refresh fallback.
+  // Never leave the account card stuck on "Loading…".
+  $('email').textContent='Checking account…';
 
-  if(error||!active){
-    location.replace('app-employer-login.html');
+  const active=await getActiveEmployerSession();
+
+  if(!active){
+    $('email').textContent='Session expired — sign in again';
+    setTimeout(()=>{
+      location.replace('app-employer-login.html');
+    },700);
     return;
   }
 
   session=active;
 
-  const email=session.user.email||'Employer account';
+  const email=String(
+    session.user?.email ||
+    session.user?.user_metadata?.email ||
+    'Employer account'
+  ).trim();
+
   $('email').textContent=email;
   $('avatar').textContent=(email[0]||'A').toUpperCase();
 
@@ -2205,40 +2231,26 @@ async function startCheckout(){
   }
 }
 
-let hiringCapacityBackStarted=false;
+let paymentBackStarted=false;
 
-function goBackToHiringCapacity(){
-  if(hiringCapacityBackStarted)return;
-  hiringCapacityBackStarted=true;
-
-  const target=returnToPricing();
-
-  // Clear only the one-time pricing->payment handoff.
-  // Keep slot-gate state so Hiring Capacity can rebuild the exact first screen.
-  sessionStorage.removeItem(
-    'alygnnEmployerPricingHandoff'
-  );
-
-  location.replace(target);
-}
-
-const paymentBackButton=$('back-btn');
-
-paymentBackButton.onclick=event=>{
-  event.preventDefault();
-  event.stopPropagation();
-  goBackToHiringCapacity();
-};
-
-// Android WebView can occasionally delay/suppress a synthesized click after a tap.
-// pointerup gives the header back button a direct mobile path.
-paymentBackButton.addEventListener('pointerup',event=>{
-  if(event.pointerType==='touch'){
+function goBackToHiringCapacity(event){
+  if(event){
     event.preventDefault();
     event.stopPropagation();
-    goBackToHiringCapacity();
   }
-});
+
+  if(paymentBackStarted)return;
+  paymentBackStarted=true;
+
+  // Never depend on Android WebView history here.
+  // Confirmation always goes straight back to Hiring Capacity.
+  location.replace(returnToPricing());
+}
+
+$('back-btn').addEventListener(
+  'click',
+  goBackToHiringCapacity
+);
 
 $('promo-toggle')?.addEventListener('click',()=>{
   const toggle=$('promo-toggle');
