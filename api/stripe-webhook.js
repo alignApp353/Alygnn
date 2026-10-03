@@ -132,20 +132,9 @@ async function rpc(name, body) {
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
-
-  // Stripe should provide current_period_end, but a verified active subscription
-  // must never be written with a NULL expiry. This fallback keeps the paid
-  // Second Job Slot usable until a later Stripe event supplies the exact date.
-  let effectiveExpiresAt=expiresAt||null;
-  if(active&&!effectiveExpiresAt){
-    const fallback=new Date();
-    fallback.setUTCMonth(fallback.getUTCMonth()+1);
-    effectiveExpiresAt=fallback.toISOString();
-  }
-
   const patch={
     addon_slot_count:active?1:0,
-    addon_slots_expires_at:active?effectiveExpiresAt:null,
+    addon_slots_expires_at:active?(expiresAt||null):null,
     updated_at:new Date().toISOString()
   };
 
@@ -170,7 +159,7 @@ async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
       body:JSON.stringify({
         employer_id:employerId,
         addon_slot_count:1,
-        addon_slots_expires_at:effectiveExpiresAt,
+        addon_slots_expires_at:expiresAt||null,
         updated_at:new Date().toISOString()
       })
     });
@@ -296,6 +285,33 @@ async function setCandidateAccessLock(employerId, locked, reason=null, subscript
 function subscriptionUnitAmount(subscription, fallback=0) {
   const value=subscription?.items?.data?.[0]?.price?.unit_amount;
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
+}
+
+async function clearPendingPlanChangeState(employerId) {
+  if (!employerId) return;
+
+  const patchUrl = new URL(`${supabaseBase()}/rest/v1/employer_entitlements`);
+  patchUrl.searchParams.set('employer_id', 'eq.' + employerId);
+
+  const response = await fetch(patchUrl, {
+    method: 'PATCH',
+    headers: serviceHeaders({ Prefer: 'return=minimal' }),
+    body: JSON.stringify({
+      pending_plan: null,
+      pending_billing_period: null,
+      pending_plan_effective_at: null,
+      stripe_plan_schedule_id: null,
+      plan_change_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      'Could not clear stale pending plan change: ' +
+      await response.text()
+    );
+  }
 }
 
 async function clearPendingIfApplied(employerId, activePlan) {
@@ -599,7 +615,16 @@ async function fulfillSubscription(subscription, forceStatus) {
     await setCandidateAccessLock(employerId, false, null, status);
   }
 
-  await clearPendingIfApplied(employerId, meta.plan);
+  /*
+   * A fully ended paid plan cannot have a valid future downgrade.
+   * Clear every pending plan-change field so a canceled plan can never
+   * later appear as "Downgrade to Launch scheduled".
+   */
+  if(terminal){
+    await clearPendingPlanChangeState(employerId);
+  }else{
+    await clearPendingIfApplied(employerId, meta.plan);
+  }
 }
 
 async function handleInvoicePaymentProblem(invoice, reason) {
