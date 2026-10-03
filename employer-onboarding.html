@@ -160,67 +160,6 @@
     color: #8f4747;
   }
 
-
-  /* Hiring Priorities: match the mobile onboarding presentation. */
-  .step[data-title="Hiring Priorities"] .rank-picker {
-    margin-top: 28px;
-  }
-  .step[data-title="Hiring Priorities"] .hiring-priority-head {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:14px;
-    margin-bottom:14px;
-  }
-  .step[data-title="Hiring Priorities"] .hiring-priority-label {
-    font-size:13px;
-    font-weight:700;
-    color:var(--text);
-  }
-  .step[data-title="Hiring Priorities"] .hiring-priority-pill {
-    min-width:56px;
-    height:34px;
-    padding:0 14px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:999px;
-    background:rgba(93,127,163,.10);
-    color:var(--brand);
-    font-size:12px;
-    font-weight:700;
-    white-space:nowrap;
-  }
-  .step[data-title="Hiring Priorities"] .rank-list {
-    margin-top:0;
-    gap:10px;
-  }
-  .step[data-title="Hiring Priorities"] .rank-item {
-    min-height:62px;
-    padding:10px 12px;
-    border-radius:14px;
-  }
-  .step[data-title="Hiring Priorities"] .rank-number {
-    width:34px;
-    height:34px;
-    border-radius:10px;
-    font-weight:700;
-  }
-  .step[data-title="Hiring Priorities"] .rank-name {
-    font-weight:600;
-  }
-  .step[data-title="Hiring Priorities"] .rank-note {
-    margin-top:16px;
-    font-size:12px;
-    line-height:1.55;
-  }
-  .step[data-title="Hiring Priorities"] .rank-picker.is-complete .rank-input-row,
-  .step[data-title="Hiring Priorities"] .rank-picker.is-complete > .counter {
-    display:none;
-  }
-  .step[data-title="Hiring Priorities"] .rank-picker:not(.is-complete) .hiring-priority-head {
-    margin-bottom:14px;
-  }
   .rank-item { grid-template-columns: 34px 1fr auto auto; }
 
   .overview-grid { display: grid; gap: 14px; margin-top: 24px; }
@@ -385,24 +324,16 @@
 <div class="step" data-title="Hiring Priorities">
   <div class="eyebrow">Hiring priorities</div><h1>What matters most when hiring?</h1>
   <p class="intro">We started you with exactly 5 common hiring priorities. Reorder them from most important to least important, or remove one and replace it with your own.</p>
-
-  <div class="rank-picker" id="candidate-priority-picker">
-    <div class="hiring-priority-head">
-      <div class="hiring-priority-label">Your top 5 hiring priorities</div>
-      <div class="hiring-priority-pill" id="candidate-priority-pill">5 / 5</div>
-    </div>
-
-    <div class="rank-list" id="candidate-priorities"></div>
-
-    <p class="rank-note">Drag the cards to reorder them. Alygnn will use this order when weighting candidate matches.</p>
-
+  <div class="rank-picker">
     <div class="rank-input-row suggest-wrap">
-      <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Type your own hiring priority">
+      <input id="candidate-priority-input" type="text" autocomplete="off" spellcheck="true" autocapitalize="words" placeholder="Start typing a hiring priority">
       <button class="rank-add" id="candidate-priority-add" type="button">Add</button>
       <div id="candidate-priority-suggestions" class="suggestions"></div>
     </div>
-    <div class="counter"><span>Add a replacement</span><span id="candidate-priority-counter">5 of 5 selected</span></div>
+    <div class="counter"><span>Choose exactly 5</span><span id="candidate-priority-counter">0 of 5 selected</span></div>
   </div>
+  <div class="rank-list" id="candidate-priorities"></div>
+  <p class="rank-note">Drag any selected item to rank it. Use × to remove one and choose something different.</p>
 </div>
 
 <div class="step" data-title="Overview">
@@ -830,12 +761,6 @@ function updateRankPickerState(listId){
   if(input)input.disabled=count>=5;
   if(add)add.disabled=count>=5;
 
-  if(listId==='candidate-priorities'){
-    const picker=document.getElementById('candidate-priority-picker');
-    const pill=document.getElementById('candidate-priority-pill');
-    if(picker)picker.classList.toggle('is-complete',count>=5);
-    if(pill)pill.textContent=`${count} / 5`;
-  }
 }
 function editDistance(a,b){
   const x=String(a||'').toLowerCase(),y=String(b||'').toLowerCase();
