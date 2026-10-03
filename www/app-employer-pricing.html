@@ -78,6 +78,20 @@ button,a{font:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
 
+/*
+ * Prevent the temporary default 0/1 slot state from flashing.
+ * The header remains visible; the main capacity content is revealed
+ * only after the real employer/job-slot state has been resolved.
+ */
+body[data-capacity-ready="false"] main{
+  visibility:hidden;
+}
+
+body[data-capacity-ready="true"] main{
+  visibility:visible;
+}
+
+
 .app-header{
   position:sticky;top:0;z-index:20;
   padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
@@ -308,7 +322,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 }
 </style>
 </head>
-<body>
+<body data-capacity-ready="false">
 <div class="loading" id="loading" aria-label="Alygnn is preparing hiring options" hidden>
   <div class="loading-inner">
     <div class="loading-logo">Alygnn<span>.</span></div>
@@ -553,6 +567,8 @@ function hideCapacityLoading(){
   if(loading){
     loading.hidden=true;
   }
+
+  document.body.dataset.capacityReady='true';
 }
 
 function fallbackPostingAccess(){
@@ -1792,11 +1808,8 @@ switchBilling(billing);
 const capacityLoadingWatchdog=
   setTimeout(
     ()=>{
-      const loading=$('loading');
-
       if(
-        loading &&
-        !loading.hidden
+        document.body.dataset.capacityReady!=='true'
       ){
         console.warn(
           'Capacity loading watchdog released the pricing screen.'
