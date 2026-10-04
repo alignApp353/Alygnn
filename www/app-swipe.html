@@ -3495,6 +3495,39 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+
+<style id="alygnn-no-jobs-nav-tap-fix">
+  /*
+   * Empty-state content must never sit above the candidate bottom nav.
+   * Only the two empty-state action buttons need pointer input.
+   */
+  #empty-screen{
+    z-index:1!important;
+    pointer-events:none!important;
+  }
+
+  #empty-screen .no-jobs-actions{
+    position:relative!important;
+    z-index:2!important;
+    pointer-events:auto!important;
+  }
+
+  #no-jobs-retry,
+  #no-jobs-preferences{
+    pointer-events:auto!important;
+  }
+
+  #candidate-bottom-nav{
+    z-index:100!important;
+    pointer-events:auto!important;
+  }
+
+  #candidate-bottom-nav .nav-item{
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+  }
+</style>
+
 </head>
 
 <body data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -4208,45 +4241,6 @@ async function attachEmployerLogos(jobRows){
   if(!employerIds.length&&!companyIds.length)return rows;
 
   const companyById=new Map();
-  const companyByName=new Map();
-
-  function rememberCompanyRecord(data){
-    if(!data||typeof data!=='object')return;
-
-    const normalized={
-      company_name:
-        data.company_name||
-        data.legal_name||
-        data.name||
-        '',
-      company_logo_url:candidateExternalUrl(
-        data.company_logo_url||
-        data.company_logo||
-        data.logo_url||
-        data.logo
-      ),
-      company_website:candidateExternalUrl(
-        data.company_website||
-        data.website||
-        data.public_website_url
-      )
-    };
-
-    if(data.id){
-      companyById.set(String(data.id),normalized);
-    }
-
-    [
-      data.company_name,
-      data.legal_name,
-      data.name
-    ].filter(Boolean).forEach(name=>{
-      companyByName.set(
-        String(name).trim().toLowerCase(),
-        normalized
-      );
-    });
-  }
 
   // Jobs created in the employer app are tied to companies.id.
   // Resolve the canonical company record too, because that is where
@@ -4260,47 +4254,27 @@ async function attachEmployerLogos(jobRows){
         .maybeSingle();
 
       if(!error&&data){
-        rememberCompanyRecord(data);
+        companyById.set(String(companyId),{
+          company_name:
+            data.company_name||
+            data.legal_name||
+            data.name||
+            '',
+          company_logo_url:candidateExternalUrl(
+            data.company_logo_url||
+            data.company_logo||
+            data.logo_url||
+            data.logo
+          ),
+          company_website:candidateExternalUrl(
+            data.company_website||
+            data.website||
+            data.public_website_url
+          )
+        });
       }
     }catch(error){
       console.warn('Could not load public company record:',companyId,error);
-    }
-  }));
-
-  /*
-   * Older job rows can have company/employer_id but no company_id/logo snapshot.
-   * Candidate Discover must still resolve the public company logo. Try the
-   * canonical companies table by the visible company name as a fallback.
-   */
-  const missingCompanyNames=[
-    ...new Set(
-      rows
-        .filter(job=>!job.company_id)
-        .map(job=>String(job.company_name||job.company||'').trim())
-        .filter(Boolean)
-    )
-  ];
-
-  await Promise.all(missingCompanyNames.map(async companyName=>{
-    const key=companyName.toLowerCase();
-    if(companyByName.has(key))return;
-
-    const lookupColumns=['company_name','legal_name','name'];
-
-    for(const column of lookupColumns){
-      try{
-        const {data,error}=await sb
-          .from('companies')
-          .select('*')
-          .ilike(column,companyName)
-          .limit(1)
-          .maybeSingle();
-
-        if(!error&&data){
-          rememberCompanyRecord(data);
-          break;
-        }
-      }catch(_error){}
     }
   }));
 
@@ -4382,11 +4356,6 @@ async function attachEmployerLogos(jobRows){
 
     const companyRecord=
       companyById.get(String(job.company_id||''))||
-      companyByName.get(
-        String(job.company_name||job.company||'')
-          .trim()
-          .toLowerCase()
-      )||
       {};
 
     return {
