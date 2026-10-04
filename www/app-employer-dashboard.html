@@ -10251,6 +10251,7 @@
       const setup = shared.onboarding_profile || meta.onboarding_company_profile || {};
       const aiProfile = shared.ai_profile || meta.employer_ai_profile || {};
       const verification = state.employerVerification || {};
+      const employerProfile = state.employerProfile || {};
       const company = state.companyRecord || {};
       const firstJob = state.jobs[0] || {};
 
@@ -10325,6 +10326,9 @@
           meta.benefits
         )),
         logo:firstValue(
+          employerProfile.company_logo_url,
+          employerProfile.company_logo,
+          employerProfile.logo_url,
           aiProfile.company_logo,
           aiProfile.company_logo_url,
           setup.company_logo,
@@ -10336,7 +10340,10 @@
           company.company_logo,
           meta.company_logo_url,
           meta.company_logo,
-          meta.logo_url
+          meta.logo_url,
+          firstJob.company_logo_url,
+          firstJob.company_logo,
+          firstJob.logo_url
         ),
         links:mergeCompanyLinks(
           aiProfile.company_links,
@@ -10678,6 +10685,11 @@
               'Company logo could not be synchronized to profiles.company_logo_url:',
               profileLogoError
             );
+          }else{
+            state.employerProfile={
+              ...(state.employerProfile||{}),
+              company_logo_url:logoUrl
+            };
           }
         }catch(profileLogoError){
           console.warn(
@@ -13700,6 +13712,35 @@
       if(!userId) return;
 
       /*
+       * 0. Load the employer's public profile.
+       *
+       * Alygnn's company-logo upload flow has historically saved the canonical
+       * public logo in profiles.company_logo_url. The dashboard must read that
+       * field before attempting to repair existing job rows.
+       */
+      try{
+        const {data:employerProfile,error:employerProfileError}=await sb
+          .from('profiles')
+          .select('*')
+          .eq('id',userId)
+          .maybeSingle();
+
+        if(!employerProfileError){
+          state.employerProfile=employerProfile||null;
+        }else{
+          console.warn(
+            'Employer public profile could not be loaded:',
+            employerProfileError
+          );
+        }
+      }catch(employerProfileError){
+        console.warn(
+          'Employer public profile load failed:',
+          employerProfileError
+        );
+      }
+
+      /*
        * 1. Load the employer verification record.
        */
       const verificationResult=await sb
@@ -14671,7 +14712,7 @@
       }
 
       try{
-        const {error:jobError}=await sb
+        let jobSync=await sb
           .from('jobs')
           .update({
             company_logo:logoUrl,
@@ -14679,10 +14720,21 @@
           })
           .eq('employer_id',userId);
 
-        if(jobError){
+        // Some schema generations use company_logo_url instead.
+        if(jobSync.error){
+          jobSync=await sb
+            .from('jobs')
+            .update({
+              company_logo_url:logoUrl,
+              updated_at:new Date().toISOString()
+            })
+            .eq('employer_id',userId);
+        }
+
+        if(jobSync.error){
           console.warn(
             'Existing job logo sync was unavailable:',
-            jobError
+            jobSync.error
           );
           return;
         }
@@ -14690,7 +14742,8 @@
         if(Array.isArray(state.jobs)){
           state.jobs=state.jobs.map(job=>({
             ...job,
-            company_logo:logoUrl
+            company_logo:logoUrl,
+            company_logo_url:logoUrl
           }));
         }
       }catch(error){
