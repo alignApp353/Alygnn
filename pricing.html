@@ -531,9 +531,9 @@
       <div class="plan-tag">Flexible</div>
       <div class="plan-name">Weekly job slot</div>
       <div class="plan-price">$99 <span>/ 7 days</span></div>
-      <div class="plan-postings">+1 temporary job slot on top of your paid plan</div>
+      <div class="plan-postings">+1 temporary reusable job slot</div>
       <ul class="plan-features">
-        <li>Requires an active Launch, Growth, or Scale plan</li>
+        <li>Available on Free, Launch, Growth, or Scale</li>
         <li>One-time $99 purchase · no weekly auto-renewal</li>
         <li>Starts immediately and expires exactly 7 days after purchase</li>
         <li>Close or delete a job and reuse the slot before expiration</li>
@@ -936,9 +936,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       singleSlotBtn.style.opacity=secondSlotAvailable?'':'.6';
       singleSlotBtn.style.cursor=secondSlotAvailable?'':'not-allowed';
     }
-    // $99 Weekly is available at all times while Launch/Growth/Scale is active.
-    if(weeklyTab) weeklyTab.style.display=paid?'':'none';
-    if(!paid && weeklyView?.classList.contains('active')) switchView('monthly');
+    // $99 Weekly Job Slot is available to every employer account.
+    if(weeklyTab) weeklyTab.style.display='';
 
     if(!guidanceWrap||!guidanceTitle||!guidanceCopy||!guidanceBtn) return;
 
@@ -992,7 +991,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     guidanceCopy.textContent=`Your paid plan includes ${Math.max(0,limit-weeklyCount)} base slots including the permanent free slot. Need one temporary opening? Add +1 slot for $99 for 7 days.`;
     guidanceBtn.textContent='Add Weekly Job Slot';
-    guidanceBtn.onclick=()=>switchView('weekly');
+    guidanceBtn.onclick=()=>choosePlan('weekly_slot','weekly');
   }
 
   function loginForPlan(plan){
@@ -1017,10 +1016,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       // second subscription.
 
       if(plan==='weekly_slot'){
-        if(!activePaidPlanForPricing()){
-          switchView('monthly');
-          return;
-        }
+        // Weekly Job Slot is available regardless of the employer's current plan.
       }
 
       const params = new URLSearchParams({ plan });
