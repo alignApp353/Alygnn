@@ -508,7 +508,14 @@
     const b = document.getElementById('msg-box');
     b.className = 'msg-box info';
     b.style.display = 'block';
-    b.textContent = 'This is an employer account. Continue with employer account login.';
+    b.textContent = 'This is an employer account. Please use Employer sign in.';
+  }
+
+  function showJobSeekerAccountNotice(destination) {
+    const b = document.getElementById('msg-box');
+    b.className = 'msg-box info';
+    b.style.display = 'block';
+    b.textContent = 'This is a Job Seeker account. Please use Job Seeker sign in.';
   }
 
   function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
@@ -579,11 +586,15 @@
 
       const destination = await redirectForUser(signedInUser, currentRole);
 
-      // If an employer account is entered while the Job Seeker side is selected,
-      // do not silently send the person into the employer flow. Explain the
-      // account type first and let them continue intentionally.
+      // If the account type does not match the selected sign-in side,
+      // stop here and tell the user which Alygnn login they should use.
       if (currentRole === 'seeker' && /\/employer-(?:onboarding|dashboard)\.html(?:$|[?#])/.test(destination)) {
         showEmployerAccountNotice(destination);
+        return;
+      }
+
+      if (currentRole === 'employer' && /\/account\.html(?:$|[?#])/.test(destination)) {
+        showJobSeekerAccountNotice(destination);
         return;
       }
 
