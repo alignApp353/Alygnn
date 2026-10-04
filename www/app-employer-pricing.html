@@ -308,76 +308,91 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 }
 </style>
 
-<style id="alygnn-pricing-single-loading-state">
+
+
+
+<style id="alygnn-unified-modern-loader">
+  .alygnn-unified-loader{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:grid;
+    place-items:center;
+    background:var(--bg,#F6F8F7);
+    transition:opacity .16s ease;
+  }
+
+  .alygnn-unified-loader[hidden]{
+    display:none!important;
+  }
+
+  .alygnn-unified-loader-inner{
+    display:grid;
+    justify-items:center;
+    gap:14px;
+    transform:translateY(-2vh);
+  }
+
+  .alygnn-unified-loader-logo{
+    font-family:'DM Serif Display',Georgia,serif;
+    font-size:30px;
+    line-height:1;
+    letter-spacing:-.6px;
+    color:var(--brand,#5D7FA3);
+  }
+
+  .alygnn-unified-loader-logo span{
+    color:var(--sage,#8CB69B);
+  }
+
+  .alygnn-unified-loader-dots{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .alygnn-unified-loader-dots i{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--brand,#5D7FA3);
+    opacity:.28;
+    animation:alygnnLoaderDot 1.05s ease-in-out infinite;
+  }
+
+  .alygnn-unified-loader-dots i:nth-child(2){animation-delay:.14s}
+  .alygnn-unified-loader-dots i:nth-child(3){animation-delay:.28s}
+
+  @keyframes alygnnLoaderDot{
+    0%,70%,100%{opacity:.22;transform:translateY(0)}
+    35%{opacity:1;transform:translateY(-3px)}
+  }
+
+  html[data-effective-theme="dark"] .alygnn-unified-loader,
+  html[data-theme="dark"] .alygnn-unified-loader{
+    background:#061821!important;
+  }
+</style>
+
+
+<style id="alygnn-pricing-ready-guard">
   body:not(.pricing-ready) > .app-header,
   body:not(.pricing-ready) > main{
     visibility:hidden!important;
-  }
-
-  body.pricing-ready > .app-header,
-  body.pricing-ready > main{
-    visibility:visible!important;
-  }
-
-  #loading{
-    display:grid;
-    place-items:center;
-  }
-
-  #loading[hidden]{
-    display:none!important;
-  }
-
-  #loading .loading-inner{
-    width:min(320px,80vw);
-    display:grid;
-    gap:12px;
-    text-align:center;
-  }
-
-  #loading .loading-logo{
-    font-family:'DM Serif Display',Georgia,serif;
-    font-size:18px;
-    color:var(--muted);
-    line-height:1;
-  }
-
-  #loading .loading-logo span{
-    color:var(--sage);
-  }
-
-  #loading .loading-title{
-    color:var(--muted);
-    font-size:13px;
-    line-height:1.45;
-    font-weight:500;
-  }
-
-  #loading .loading-copy{
-    color:var(--muted);
-    font-size:12px;
-    line-height:1.45;
-    font-weight:500;
-  }
-
-  #loading .loading-track,
-  #loading .loading-bar,
-  #loading .spinner{
-    display:none!important;
   }
 </style>
 
 </head>
 <body>
-<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
-  <div class="loading-inner">
-    <div class="loading-logo">Alygnn<span>.</span></div>
-    <div class="loading-title">Preparing your hiring options.</div>
-    <div class="loading-copy">Checking your available job slots.</div>
-    <div class="loading-track" aria-hidden="true"><div class="loading-bar"></div></div>
+<div id="loading" class="alygnn-unified-loader" role="status" aria-label="Loading">
+  <div class="alygnn-unified-loader-inner">
+    <div class="alygnn-unified-loader-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-unified-loader-dots" aria-hidden="true">
+      <i></i><i></i><i></i>
+    </div>
   </div>
 </div>
-
 <header class="app-header">
   <button class="icon-btn" id="back-btn" type="button" aria-label="Back to Jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   <div class="brand">Alygnn<span>.</span></div>
