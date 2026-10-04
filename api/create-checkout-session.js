@@ -145,6 +145,41 @@ async function getEmployerPostingAccess(token) {
   return data||{};
 }
 
+async function getEmployerEntitlement(token,userId) {
+  const base=(process.env.SUPABASE_URL||'https://auth.alygnn.com').replace(/\/$/,'');
+  const anon=process.env.SUPABASE_ANON_KEY;
+  if(!anon) throw new Error('SUPABASE_ANON_KEY is not configured.');
+
+  const url=new URL(base+'/rest/v1/employer_entitlements');
+  url.searchParams.set('employer_id','eq.'+userId);
+  url.searchParams.set('select','plan,test_plan,test_mode,subscription_status,current_period_end');
+  url.searchParams.set('limit','1');
+
+  const response=await fetch(url,{
+    headers:{
+      apikey:anon,
+      Authorization:'Bearer '+token
+    }
+  });
+
+  const rows=await response.json().catch(()=>[]);
+  if(!response.ok) return null;
+  return Array.isArray(rows) ? (rows[0]||null) : null;
+}
+
+function entitlementHasActivePaidPlan(entitlement) {
+  const ent=entitlement||{};
+  let plan=String(ent.test_plan||ent.plan||'').toLowerCase();
+  if(plan==='business') plan='launch';
+  if(plan==='enterprise') plan='growth';
+
+  const status=String(ent.subscription_status||'').toLowerCase();
+
+  return ent.test_mode!==true &&
+    ['launch','growth','scale'].includes(plan) &&
+    ['active','trialing','past_due'].includes(status);
+}
+
 async function getMyTeamAccess(token) {
   const base=(process.env.SUPABASE_URL||'https://auth.alygnn.com').replace(/\/$/,'');
   const anon=process.env.SUPABASE_ANON_KEY;
@@ -2165,10 +2200,16 @@ module.exports = async function handler(req, res) {
     if (product === 'single_job') product = 'additional_slot';
 
     if (product === 'additional_slot') {
-      const access = await getEmployerPostingAccess(token);
+      const [access, entitlement] = await Promise.all([
+        getEmployerPostingAccess(token),
+        getEmployerEntitlement(token, user.id)
+      ]);
+      const hasPaidPlan =
+        access?.active_paid_plan === true ||
+        entitlementHasActivePaidPlan(entitlement);
 
-      if (!additionalSlotEligible(access)) {
-        const message = access?.active_paid_plan === true
+      if (hasPaidPlan || !additionalSlotEligible(access)) {
+        const message = hasPaidPlan
           ? 'The $150/month Second Job Slot is only for Free employers. Use a $99 Weekly Job Slot or upgrade your plan.'
           : 'Your Second Job Slot is already active.';
         return send(res, 400, { error: message });
@@ -2219,26 +2260,24 @@ module.exports = async function handler(req, res) {
       billing = 'weekly';
       plan = 'weekly_slot';
 
-      const access = await getEmployerPostingAccess(token);
+      const [access, entitlement] = await Promise.all([
+        getEmployerPostingAccess(token),
+        getEmployerEntitlement(token, user.id)
+      ]);
       if (access?.candidate_access_locked === true) {
         return send(res, 402, {
           error: 'Update your payment method before adding another Weekly Job Slot.',
           payment_issue: true
         });
       }
-      if (access?.active_paid_plan !== true) {
+
+      const hasPaidPlan =
+        access?.active_paid_plan === true ||
+        entitlementHasActivePaidPlan(entitlement);
+
+      if (!hasPaidPlan) {
         return send(res, 400, {
           error: 'The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.'
-        });
-      }
-      if (access?.weekly_purchase_allowed !== true) {
-        const recommended = String(access?.recommended_upgrade_plan || '').toLowerCase();
-        return send(res, 409, {
-          error: recommended
-            ? `You already have one active Weekly Job Slot. Upgrade to ${recommended.charAt(0).toUpperCase()+recommended.slice(1)} for better ongoing value.`
-            : 'Another Weekly Job Slot is not available for this plan right now.',
-          recommended_upgrade_plan: recommended || null,
-          manage_plan: !!recommended
         });
       }
 
