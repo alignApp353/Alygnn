@@ -10326,10 +10326,15 @@
         )),
         logo:firstValue(
           aiProfile.company_logo,
+          aiProfile.company_logo_url,
           setup.company_logo,
+          setup.company_logo_url,
           verification.company_logo,
+          verification.company_logo_url,
+          company.company_logo_url,
           company.logo_url,
           company.company_logo,
+          meta.company_logo_url,
           meta.company_logo,
           meta.logo_url
         ),
@@ -10656,6 +10661,70 @@
         if(updateData?.user){
           state.currentUser=updateData.user;
           if(state.session) state.session={...state.session,user:updateData.user};
+        }
+
+        // Keep one public canonical logo on the employer profile.
+        // Candidate surfaces already know how to read profiles.company_logo_url.
+        try{
+          const {error:profileLogoError}=await sb
+            .from('profiles')
+            .update({
+              company_logo_url:logoUrl
+            })
+            .eq('id',user.id);
+
+          if(profileLogoError){
+            console.warn(
+              'Company logo could not be synchronized to profiles.company_logo_url:',
+              profileLogoError
+            );
+          }
+        }catch(profileLogoError){
+          console.warn(
+            'Company logo profile sync failed:',
+            profileLogoError
+          );
+        }
+
+        // Best-effort sync to the canonical company row as well.
+        // Different Alygnn schema generations have used logo_url/company_logo.
+        if(state.companyRecord?.id){
+          try{
+            let companyLogoSync=await sb
+              .from('companies')
+              .update({
+                logo_url:logoUrl
+              })
+              .eq('id',state.companyRecord.id);
+
+            if(companyLogoSync.error){
+              companyLogoSync=await sb
+                .from('companies')
+                .update({
+                  company_logo:logoUrl
+                })
+                .eq('id',state.companyRecord.id);
+            }
+
+            if(companyLogoSync.error){
+              console.warn(
+                'Company row logo sync was unavailable:',
+                companyLogoSync.error
+              );
+            }else{
+              state.companyRecord={
+                ...(state.companyRecord||{}),
+                logo_url:logoUrl,
+                company_logo:logoUrl,
+                company_logo_url:logoUrl
+              };
+            }
+          }catch(companyLogoError){
+            console.warn(
+              'Company row logo sync failed:',
+              companyLogoError
+            );
+          }
         }
 
         const dbUpdate=await sb
@@ -13746,23 +13815,7 @@
         .select(`
           company_id,
           membership_status,
-          companies(
-            id,
-            account_number,
-            account_status,
-            verification_status,
-            company_name,
-            legal_name,
-            name,
-            industry,
-            company_size,
-            size,
-            headquarters,
-            location,
-            website,
-            company_description,
-            description
-          )
+          companies(*)
         `)
         .eq('user_id',userId)
         .in('membership_status',['active','pending'])
@@ -14580,6 +14633,74 @@
       }
     }
 
+    async function syncEmployerLogoToExistingJobs(){
+      const userId=
+        state.currentUser?.id||
+        state.session?.user?.id||
+        '';
+
+      if(!userId)return;
+
+      const logoUrl=String(
+        companyMetadata().logo||
+        ''
+      ).trim();
+
+      if(!logoUrl)return;
+
+      try{
+        // Keep the public profile canonical for candidate-side fallback.
+        const {error:profileError}=await sb
+          .from('profiles')
+          .update({
+            company_logo_url:logoUrl
+          })
+          .eq('id',userId);
+
+        if(profileError){
+          console.warn(
+            'Public employer logo sync was unavailable:',
+            profileError
+          );
+        }
+      }catch(error){
+        console.warn(
+          'Public employer logo sync failed:',
+          error
+        );
+      }
+
+      try{
+        const {error:jobError}=await sb
+          .from('jobs')
+          .update({
+            company_logo:logoUrl,
+            updated_at:new Date().toISOString()
+          })
+          .eq('employer_id',userId);
+
+        if(jobError){
+          console.warn(
+            'Existing job logo sync was unavailable:',
+            jobError
+          );
+          return;
+        }
+
+        if(Array.isArray(state.jobs)){
+          state.jobs=state.jobs.map(job=>({
+            ...job,
+            company_logo:logoUrl
+          }));
+        }
+      }catch(error){
+        console.warn(
+          'Existing job logo sync failed:',
+          error
+        );
+      }
+    }
+
     async function initialize(){
       try{
         const { data,error } = await sb.auth.getSession();
@@ -14700,6 +14821,10 @@
 
         const initialJobs = await queryJobsReliably(state.session.user.id);
         state.jobs = Array.isArray(initialJobs) ? initialJobs : [];
+
+        // Repair older listings that were published before the company-logo
+        // snapshot was consistently written to jobs.company_logo.
+        await syncEmployerLogoToExistingJobs();
 
         try{
           await refreshApplicationsForCurrentJobs();
