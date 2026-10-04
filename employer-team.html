@@ -358,8 +358,18 @@ nav{
     <script>
       (() => {
         try {
+          const cachedCompanyName = String(
+            sessionStorage.getItem('alygnn_employer_company_name') || ''
+          ).trim();
+
+          if (cachedCompanyName) {
+            document.getElementById('header-company-name').textContent = cachedCompanyName;
+            return;
+          }
+
           const tabId = sessionStorage.getItem('alygnn_auth_tab_id');
           if (!tabId) return;
+
           const raw = sessionStorage.getItem(`alygnn-auth-${tabId}`);
           if (!raw) return;
 
@@ -368,7 +378,9 @@ nav{
           const user = cachedSession?.user || cached?.user || null;
           const name = String(user?.user_metadata?.company_name || '').trim();
 
-          if (name) document.getElementById('header-company-name').textContent = name;
+          if (name) {
+            document.getElementById('header-company-name').textContent = name;
+          }
         } catch (_) {}
       })();
     </script>
@@ -565,6 +577,11 @@ async function loadHeaderCompanyName(){
     }
 
     $('header-company-name').textContent=name;
+    try{
+      if(name && name!=='Employer'){
+        sessionStorage.setItem('alygnn_employer_company_name',name);
+      }
+    }catch(_){}
   }catch(_){
     $('header-company-name').textContent=
       session?.user?.user_metadata?.company_name||
