@@ -133,10 +133,10 @@ nav{
   background:rgba(246,248,247,.92);
   backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);
-  display:flex;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
   align-items:center;
-  justify-content:space-between;
-  gap:0;
+  gap:24px;
 }
 .logo{
   font-family:'DM Serif Display',serif;
@@ -152,9 +152,10 @@ nav{
   display:flex;
   gap:24px;
   align-items:center;
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
+  position:static;
+  transform:none;
+  justify-self:center;
+  min-width:0;
 }
 .account-nav-links a{
   text-decoration:none;
@@ -176,7 +177,9 @@ nav{
   display:flex;
   align-items:center;
   gap:16px;
-  margin-left:auto;
+  margin-left:0;
+  justify-self:end;
+  min-width:0;
 }
 .nav-name{
   font-size:14px;
@@ -260,7 +263,12 @@ nav{
 /* Team page begins directly below the same 64px employer header */
 .page{padding-top:112px}
 
+@media(max-width:1120px){
+  .account-nav-links .nav-home{display:none}
+}
+
 @media(max-width:900px){
+  nav{grid-template-columns:auto 1fr}
   .account-nav-links{display:none}
   .nav-right{gap:8px}
   .nav-post-job{display:none}
