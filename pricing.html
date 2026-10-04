@@ -846,11 +846,26 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     });
   }
 
+  function activePaidPlanForPricing(){
+    const ent=currentEntitlement||{};
+    const testPlan=normalizedPaidPlan(ent.test_plan);
+    const storedPlan=normalizedPaidPlan(ent.plan);
+    const plan=ent.test_mode===true ? '' : (testPlan||storedPlan);
+    const status=String(ent.subscription_status||'').toLowerCase();
+
+    return currentAccess?.active_paid_plan===true ||
+      (
+        ent.test_mode!==true &&
+        !!plan &&
+        ['active','trialing','past_due'].includes(status)
+      );
+  }
+
   function applyAccountPricingRules(){
     applyCurrentPlanState();
     if(!currentAccess) return;
 
-    const paid=currentAccess.active_paid_plan===true;
+    const paid=activePaidPlanForPricing();
     const used=Math.max(0,Number(currentAccess.active_job_count||0));
     const limit=Math.max(1,Number(currentAccess.slot_limit||1));
     const firstFreeSlotHasBeenUsed=freeJobUsed || used>0;
@@ -921,7 +936,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       singleSlotBtn.style.opacity=secondSlotAvailable?'':'.6';
       singleSlotBtn.style.cursor=secondSlotAvailable?'':'not-allowed';
     }
-    // $99 Weekly is a paid-plan add-on only.
+    // $99 Weekly is available at all times while Launch/Growth/Scale is active.
     if(weeklyTab) weeklyTab.style.display=paid?'':'none';
     if(!paid && weeklyView?.classList.contains('active')) switchView('monthly');
 
@@ -975,16 +990,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    if(currentAccess.weekly_purchase_allowed===true){
-      guidanceCopy.textContent=`Your paid plan includes ${limit-weeklyCount} base slots including the permanent free slot. Need one temporary opening? Add +1 slot for $99 for 7 days.`;
-      guidanceBtn.textContent='Add Weekly Job Slot';
-      guidanceBtn.onclick=()=>switchView('weekly');
-      return;
-    }
-
-    guidanceCopy.textContent='Your current plan is active. Compare the next plan whenever you need more ongoing hiring capacity.';
-    guidanceBtn.textContent='Compare plans';
-    guidanceBtn.onclick=()=>switchView('monthly');
+    guidanceCopy.textContent=`Your paid plan includes ${Math.max(0,limit-weeklyCount)} base slots including the permanent free slot. Need one temporary opening? Add +1 slot for $99 for 7 days.`;
+    guidanceBtn.textContent='Add Weekly Job Slot';
+    guidanceBtn.onclick=()=>switchView('weekly');
   }
 
   function loginForPlan(plan){
@@ -1009,15 +1017,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       // second subscription.
 
       if(plan==='weekly_slot'){
-        if(currentAccess?.active_paid_plan!==true){
+        if(!activePaidPlanForPricing()){
           switchView('monthly');
-          return;
-        }
-        if(currentAccess?.weekly_purchase_allowed!==true){
-          const recommended=String(currentAccess?.recommended_upgrade_plan||'');
-          if(recommended){
-            choosePlan(recommended,currentAccess?.billing_period||'monthly');
-          }
           return;
         }
       }
