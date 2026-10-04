@@ -2903,7 +2903,117 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     return data || [];
   }
 
+  let notificationItemsCache = [];
+
+
+  function isApplicantNotification(n) {
+    return (
+      String(n?.type || '').toLowerCase().includes('applicant') ||
+      String(n?.title || '').toLowerCase().includes('applicant') ||
+      String(n?.body || '').toLowerCase().includes('applied')
+    );
+  }
+
+  async function applicantNotificationDestination(n) {
+    const rawLink = String(n?.link || '').trim();
+
+    try {
+      const url = new URL(rawLink || location.href, location.origin);
+      const applicationId =
+        url.searchParams.get('application') ||
+        url.searchParams.get('application_id') ||
+        url.searchParams.get('app');
+      const jobId =
+        url.searchParams.get('job') ||
+        url.searchParams.get('job_id');
+
+      if (applicationId && jobId) {
+        const params = new URLSearchParams({ job: jobId, application: applicationId });
+        return 'candidates.html?' + params.toString();
+      }
+    } catch (_) {}
+
+    if (!currentUserId) return rawLink || 'candidates.html';
+
+    const { data: jobs, error: jobsError } = await sb
+      .from('jobs')
+      .select('id,title')
+      .eq('employer_id', currentUserId);
+
+    if (jobsError || !(jobs || []).length) return rawLink || 'candidates.html';
+
+    const jobIds = jobs.map(job => job.id).filter(Boolean);
+    const { data: apps, error: appsError } = await sb
+      .from('applications')
+      .select('id,job_id,candidate_id,applied_at')
+      .in('job_id', jobIds)
+      .order('applied_at', { ascending: false });
+
+    if (appsError || !(apps || []).length) return rawLink || 'candidates.html';
+
+    const candidateIds = [...new Set((apps || []).map(app => app.candidate_id).filter(Boolean))];
+    const { data: profiles } = candidateIds.length
+      ? await sb.from('profiles').select('id,full_name').in('id', candidateIds)
+      : { data: [] };
+
+    const jobMap = new Map((jobs || []).map(job => [String(job.id), job]));
+    const profileMap = new Map((profiles || []).map(profile => [String(profile.id), profile]));
+    const haystack = `${n?.title || ''} ${n?.body || ''}`.toLowerCase();
+
+    const scored = (apps || []).map(app => {
+      const job = jobMap.get(String(app.job_id)) || {};
+      const profile = profileMap.get(String(app.candidate_id)) || {};
+      const name = String(profile.full_name || '').trim().toLowerCase();
+      const jobTitle = String(job.title || '').trim().toLowerCase();
+      let score = 0;
+
+      if (name && haystack.includes(name)) score += 60;
+      if (jobTitle && haystack.includes(jobTitle)) score += 50;
+
+      if (n?.created_at && app.applied_at) {
+        const diff = Math.abs(new Date(n.created_at).getTime() - new Date(app.applied_at).getTime());
+        if (Number.isFinite(diff)) {
+          if (diff < 5 * 60 * 1000) score += 20;
+          else if (diff < 60 * 60 * 1000) score += 10;
+          else if (diff < 24 * 60 * 60 * 1000) score += 4;
+        }
+      }
+
+      return { app, score };
+    }).sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    if (best?.score > 0) {
+      const params = new URLSearchParams({
+        job: best.app.job_id,
+        application: best.app.id
+      });
+      return 'candidates.html?' + params.toString();
+    }
+
+    return rawLink || 'candidates.html';
+  }
+
+  async function handleApplicantNotification(event, id) {
+    if (event) event.preventDefault();
+
+    const n = notificationItemsCache.find(item => item.id === id);
+    if (!n) return;
+
+    await sb
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('recipient_id', currentUserId);
+
+    const dropdown = document.getElementById('notif-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+
+    window.location.href = await applicantNotificationDestination(n);
+  }
+
   function renderNotifDropdown(items) {
+    notificationItemsCache = items || [];
     const badge = document.getElementById('notif-badge');
     const list = document.getElementById('notif-list');
     const unreadCount = items.filter(n => !n.read_at).length;
@@ -2920,13 +3030,26 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    list.innerHTML = items.slice(0, 6).map(n => `
-      <a class="notif-item ${n.read_at ? '' : 'unread'}" href="${n.link ? escapeHtml(n.link) : '#'}" onclick="markNotificationRead('${n.id}')">
-        <div class="notif-item-title">${escapeHtml(n.title)}</div>
-        ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
-        <div class="notif-item-time">${timeAgo(n.created_at)}</div>
-      </a>
-    `).join('');
+    list.innerHTML = items.slice(0, 6).map(n => {
+      if (isApplicantNotification(n)) {
+        return `
+          <a class="notif-item ${n.read_at ? '' : 'unread'}" href="#"
+             onclick="handleApplicantNotification(event, '${n.id}')">
+            <div class="notif-item-title">${escapeHtml(n.title)}</div>
+            ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
+            <div class="notif-item-time">${timeAgo(n.created_at)}</div>
+          </a>
+        `;
+      }
+
+      return `
+        <a class="notif-item ${n.read_at ? '' : 'unread'}" href="${n.link ? escapeHtml(n.link) : '#'}" onclick="markNotificationRead('${n.id}')">
+          <div class="notif-item-title">${escapeHtml(n.title)}</div>
+          ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
+          <div class="notif-item-time">${timeAgo(n.created_at)}</div>
+        </a>
+      `;
+    }).join('');
   }
 
   async function markNotificationRead(id) {
