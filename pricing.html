@@ -941,17 +941,26 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     if(!paid){
-      if(currentAccess.second_slot_active===true){
-        guidanceCopy.textContent='You have the Free slot + Second Job Slot = 2 total. If you need more ongoing capacity, Launch gives you 4 total slots.';
-        guidanceBtn.textContent='Compare Launch';
-        guidanceBtn.onclick=()=>switchView('monthly');
+      if(secondSlotActive){
+        guidanceCopy.textContent='You have the Free slot + Second Job Slot = 2 total. Both slots are currently in use.';
+        guidanceBtn.textContent='Second Job Slot active';
+        guidanceBtn.disabled=true;
+        guidanceBtn.onclick=null;
+        guidanceBtn.style.opacity='.65';
+        guidanceBtn.style.cursor='default';
       }else if(used>=1){
         guidanceCopy.textContent='Your permanent Free slot is in use. Need a second active opening? Add the $150/month Second Job Slot for 2 total jobs.';
         guidanceBtn.textContent='View Second Job Slot';
+        guidanceBtn.disabled=false;
+        guidanceBtn.style.opacity='';
+        guidanceBtn.style.cursor='';
         guidanceBtn.onclick=()=>document.getElementById('single-job-slot')?.scrollIntoView({behavior:'smooth'});
       }else{
         guidanceCopy.textContent='Your permanent Free slot is ready. Your first job uses it automatically at no charge. If you later need a second active opening, the $150/month Second Job Slot is available on Free.';
         guidanceBtn.textContent='Post first job free';
+        guidanceBtn.disabled=false;
+        guidanceBtn.style.opacity='';
+        guidanceBtn.style.cursor='';
         guidanceBtn.onclick=()=>choosePlan('free');
       }
       return;
