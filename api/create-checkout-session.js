@@ -2260,10 +2260,7 @@ module.exports = async function handler(req, res) {
       billing = 'weekly';
       plan = 'weekly_slot';
 
-      const [access, entitlement] = await Promise.all([
-        getEmployerPostingAccess(token),
-        getEmployerEntitlement(token, user.id)
-      ]);
+      const access = await getEmployerPostingAccess(token);
       if (access?.candidate_access_locked === true) {
         return send(res, 402, {
           error: 'Update your payment method before adding another Weekly Job Slot.',
@@ -2271,16 +2268,7 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      const hasPaidPlan =
-        access?.active_paid_plan === true ||
-        entitlementHasActivePaidPlan(entitlement);
-
-      if (!hasPaidPlan) {
-        return send(res, 400, {
-          error: 'The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.'
-        });
-      }
-
+      // Weekly Job Slot is available regardless of the employer's current plan.
       const item = CHECKOUT_CATALOG.weekly.weekly_slot;
       name = item.name;
       cents = item.cents;
