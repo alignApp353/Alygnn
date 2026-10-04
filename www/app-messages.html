@@ -1278,6 +1278,62 @@ html[data-effective-theme="light"] body.employer-mode .bottom-nav.employer{
 }
 </style>
 
+
+<style id="alygnn-candidate-messages-one-canvas-final">
+/*
+ * Candidate Messages must use one continuous canvas.
+ * An employer-only root background rule later in this file can expose #0B111A
+ * underneath the candidate shell when the conversation list is short.
+ */
+html[data-effective-theme="dark"]:has(body.candidate-mode),
+html[data-theme="dark"]:has(body.candidate-mode){
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="light"]:has(body.candidate-mode),
+html[data-theme="light"]:has(body.candidate-mode){
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+
+body.candidate-mode{
+  min-height:100dvh!important;
+}
+
+body.candidate-mode .shell{
+  min-height:100dvh!important;
+  padding-bottom:calc(108px + env(safe-area-inset-bottom))!important;
+  background:var(--bg)!important;
+  background-color:var(--bg)!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="dark"] body.candidate-mode,
+html[data-theme="dark"] body.candidate-mode,
+html[data-effective-theme="dark"] body.candidate-mode .shell,
+html[data-theme="dark"] body.candidate-mode .shell,
+html[data-effective-theme="dark"] body.candidate-mode .bottom-nav.candidate,
+html[data-theme="dark"] body.candidate-mode .bottom-nav.candidate{
+  background:#061821!important;
+  background-color:#061821!important;
+  background-image:none!important;
+}
+
+html[data-effective-theme="light"] body.candidate-mode,
+html[data-theme="light"] body.candidate-mode,
+html[data-effective-theme="light"] body.candidate-mode .shell,
+html[data-theme="light"] body.candidate-mode .shell,
+html[data-effective-theme="light"] body.candidate-mode .bottom-nav.candidate,
+html[data-theme="light"] body.candidate-mode .bottom-nav.candidate{
+  background:#F6F8F7!important;
+  background-color:#F6F8F7!important;
+  background-image:none!important;
+}
+</style>
+
 </head>
 
 <body class="messages-booting">
