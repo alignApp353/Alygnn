@@ -4725,22 +4725,69 @@
   .about-version span{font-size:11px;color:var(--muted)}
 </style>
 
+
+<style id="alygnn-original-loader-restored">
+  #dashboard-loading.original-loading{
+    position:fixed;
+    inset:0;
+    z-index:120;
+    display:grid;
+    place-items:center;
+    background:var(--bg);
+    color:var(--text);
+    transition:opacity .18s ease;
+  }
+
+  #dashboard-loading .original-loading-inner{
+    width:min(320px,80vw);
+    display:grid;
+    gap:12px;
+    text-align:center;
+  }
+
+  #dashboard-loading .original-loading-logo{
+    font-family:'DM Serif Display',Georgia,serif;
+    font-size:18px;
+    line-height:1;
+    color:var(--muted);
+    letter-spacing:-.2px;
+  }
+
+  #dashboard-loading .original-loading-logo span{
+    color:var(--sage);
+  }
+
+  #dashboard-loading .original-loading-title{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.45;
+    font-weight:500;
+  }
+
+  #dashboard-loading .original-loading-copy{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.45;
+    font-weight:500;
+  }
+
+  #dashboard-loading .spinner{
+    display:none!important;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
 
-  <div id="dashboard-loading" class="loading" role="status" aria-live="polite">
-    <div style="
-      font-family:'DM Serif Display',Georgia,serif;
-      font-size:34px;
-      line-height:1;
-      color:var(--brand);
-      letter-spacing:-.7px;
-    ">Alygnn<span style="color:var(--sage)">.</span></div>
-
-    <div class="spinner" aria-hidden="true"></div>
-
-    <div id="dashboard-loading-copy" class="loading-copy">
-      Loading your employer workspace...
+  <div id="dashboard-loading" class="loading original-loading" role="status" aria-live="polite">
+    <div class="original-loading-inner">
+      <div class="original-loading-logo">Alygnn<span>.</span></div>
+      <div id="dashboard-loading-title" class="original-loading-title">
+        Preparing your employer workspace.
+      </div>
+      <div id="dashboard-loading-copy" class="original-loading-copy">
+        Loading your jobs and hiring activity.
+      </div>
     </div>
   </div>
 
@@ -4748,19 +4795,23 @@
   (function(){
     try{
       const params=new URLSearchParams(location.search);
+      const title=document.getElementById('dashboard-loading-title');
       const copy=document.getElementById('dashboard-loading-copy');
 
-      if(!copy)return;
+      if(!title||!copy)return;
 
       if(
         params.get('view')==='jobs' ||
         params.get('from')==='pricing'
       ){
-        copy.textContent='Returning to your jobs...';
+        title.textContent='Preparing your jobs.';
+        copy.textContent='Returning to your employer workspace.';
       }else if(params.get('view')==='company'){
-        copy.textContent='Opening your company workspace...';
+        title.textContent='Preparing your company workspace.';
+        copy.textContent='Loading your company details.';
       }else{
-        copy.textContent='Loading your employer workspace...';
+        title.textContent='Preparing your employer workspace.';
+        copy.textContent='Loading your hiring activity.';
       }
     }catch(_error){}
   })();
