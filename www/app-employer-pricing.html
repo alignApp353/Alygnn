@@ -1370,16 +1370,23 @@ function renderPlans(){
           return;
         }
 
-        const params=new URLSearchParams({
+        const checkoutBilling=
+          selected==='weekly_slot'
+            ?'weekly'
+            :(
+                basePaidPlanActive()
+                  ?activeBillingPeriod()
+                  :billing
+              );
+
+        const checkoutPayload={
+          product:'job_plan',
           plan:selected,
-          billing:
-            basePaidPlanActive()
-              ?activeBillingPeriod()
-              :billing,
+          billing:checkoutBilling,
           back_to:
             'app-employer-pricing.html'+
             (location.search||'')
-        });
+        };
 
         if(
           basePaidPlanActive() &&
@@ -1388,11 +1395,21 @@ function renderPlans(){
           ) &&
           selected!==activePlanCode()
         ){
-          params.set(
-            'change',
-            'plan'
-          );
+          checkoutPayload.change='plan';
         }
+
+        try{
+          sessionStorage.setItem(
+            'alygnn_pending_employer_checkout',
+            JSON.stringify({
+              ...checkoutPayload,
+              created_at:Date.now()
+            })
+          );
+        }catch(_error){}
+
+        const params=
+          new URLSearchParams(checkoutPayload);
 
         location.href=
           'app-employer-payment.html?'+
