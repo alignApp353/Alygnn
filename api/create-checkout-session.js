@@ -176,13 +176,10 @@ function teamSeatPrice(plan){
 
 function additionalSlotEligible(access) {
   // The $150/month Second Job Slot is FREE-ACCOUNT ONLY and can exist only once.
-  // Block only when a paid plan is active or the Second Job Slot is actually active.
-  const secondSlotActuallyActive =
-    access?.second_slot_active === true ||
-    Number(access?.addon_slot_count || 0) > 0;
-
-  return access?.active_paid_plan !== true &&
-    !secondSlotActuallyActive;
+  // The database RPC is the source of truth so direct checkout URLs cannot bypass it.
+  return access?.second_slot_eligible === true &&
+    access?.active_paid_plan !== true &&
+    Number(access?.addon_slot_count || 0) < 1;
 }
 
 function fixedUpgradePrice(currentPlan,targetPlan,billing){
@@ -643,6 +640,207 @@ function manageServiceHeaders(extra={}){
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!key)throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   return {apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',...extra};
+}
+
+async function manageRpc(name, body){
+  const response=await fetch(
+    manageBase()+'/rest/v1/rpc/'+encodeURIComponent(name),
+    {
+      method:'POST',
+      headers:manageServiceHeaders(),
+      body:JSON.stringify(body||{})
+    }
+  );
+  const data=await response.json().catch(()=>null);
+  if(!response.ok){
+    throw new Error(
+      (data&&(data.message||data.error))||
+      `Supabase RPC ${name} failed.`
+    );
+  }
+  return data;
+}
+
+async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
+  const normalized=String(status||'').toLowerCase();
+  const active=['active','trialing','past_due'].includes(normalized);
+  const patch={
+    addon_slot_count:active?1:0,
+    addon_slots_expires_at:active?(expiresAt||null):null,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(patch)
+  });
+
+  if(!response.ok){
+    throw new Error(
+      'Could not sync Second Job Slot entitlement: '+await response.text()
+    );
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(active&&(!Array.isArray(rows)||rows.length===0)){
+    response=await fetch(
+      manageBase()+'/rest/v1/employer_entitlements',
+      {
+        method:'POST',
+        headers:manageServiceHeaders({Prefer:'return=minimal'}),
+        body:JSON.stringify({
+          employer_id:employerId,
+          addon_slot_count:1,
+          addon_slots_expires_at:expiresAt||null,
+          updated_at:new Date().toISOString()
+        })
+      }
+    );
+
+    if(!response.ok){
+      throw new Error(
+        'Could not create Second Job Slot entitlement: '+await response.text()
+      );
+    }
+  }
+}
+
+async function syncVerifiedSecondSlotSubscription(employerId,subscription,paymentReference,amountCents=null){
+  if(!subscription?.id){
+    throw new Error('Second Job Slot subscription could not be verified.');
+  }
+
+  const metadata=subscription.metadata||{};
+  const product=String(metadata.product||'').toLowerCase();
+  const metadataEmployerId=String(metadata.employer_id||'');
+
+  if(
+    metadataEmployerId!==String(employerId) ||
+    !['additional_slot','single_job'].includes(product)
+  ){
+    const error=new Error('This Second Job Slot subscription does not belong to this employer.');
+    error.status=403;
+    throw error;
+  }
+
+  const status=String(subscription.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Second Job Slot subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const expiresAt=subscription.current_period_end
+    ?new Date(Number(subscription.current_period_end)*1000).toISOString()
+    :null;
+
+  try{
+    await manageRpc('sync_second_job_slot_subscription',{
+      p_employer_id:employerId,
+      p_status:status,
+      p_expires_at:expiresAt,
+      p_payment_reference:paymentReference||null,
+      p_amount_cents:Number.isFinite(Number(amountCents))
+        ?Number(amountCents)
+        :(
+            Number.isFinite(Number(subscription?.items?.data?.[0]?.price?.unit_amount))
+              ?Number(subscription.items.data[0].price.unit_amount)
+              :15000
+          )
+    });
+  }catch(error){
+    console.warn(
+      'Second Job Slot RPC sync failed; applying verified entitlement fallback:',
+      error?.message||error
+    );
+  }
+
+  await ensureSecondSlotEntitlementRow(employerId,status,expiresAt);
+
+  return {
+    synced:true,
+    product:'additional_slot',
+    subscription_id:subscription.id,
+    subscription_status:status,
+    current_period_end:expiresAt
+  };
+}
+
+async function syncSecondSlotCheckoutBySession(employerId,checkoutSessionId){
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(checkoutSessionId),
+    {'expand[]':'subscription'}
+  );
+
+  const metadata=session?.metadata||{};
+  if(
+    String(metadata.employer_id||'')!==String(employerId) ||
+    !['additional_slot','single_job'].includes(
+      String(metadata.product||'').toLowerCase()
+    )
+  ){
+    const error=new Error('This checkout session does not belong to this employer.');
+    error.status=403;
+    throw error;
+  }
+
+  const paymentStatus=String(session.payment_status||'').toLowerCase();
+  if(
+    !['paid','no_payment_required'].includes(paymentStatus) &&
+    session.mode!=='subscription'
+  ){
+    const error=new Error('The Second Job Slot checkout is not complete yet.');
+    error.status=409;
+    throw error;
+  }
+
+  let subscription=session.subscription;
+  if(typeof subscription==='string'){
+    subscription=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  return await syncVerifiedSecondSlotSubscription(
+    employerId,
+    subscription,
+    session.id,
+    Number.isFinite(Number(session.amount_total))
+      ?Number(session.amount_total)
+      :null
+  );
+}
+
+async function reconcileSecondSlotCheckout(employerId){
+  const subscription=await resolveSecondSlotSubscription(employerId);
+  if(!subscription){
+    const error=new Error('No active Second Job Slot subscription was found for this employer.');
+    error.status=404;
+    throw error;
+  }
+
+  let verified=subscription;
+  if(!subscription?.items?.data?.[0]?.price){
+    verified=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription.id),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  return await syncVerifiedSecondSlotSubscription(
+    employerId,
+    verified,
+    null,
+    null
+  );
 }
 async function manageCurrentUser(token){
   const anon=process.env.SUPABASE_ANON_KEY;
@@ -1684,6 +1882,24 @@ module.exports = async function handler(req, res) {
         valid:true,
         ...promotionDiscountPreview(resolved)
       });
+    }
+
+    if(billingAction==='sync_second_slot_checkout'){
+      const checkoutSessionId=String(input.checkout_session_id||'').trim();
+      if(!checkoutSessionId){
+        return send(res,400,{error:'Checkout session ID is required.'});
+      }
+
+      const result=await syncSecondSlotCheckoutBySession(
+        user.id,
+        checkoutSessionId
+      );
+      return send(res,200,result);
+    }
+
+    if(billingAction==='reconcile_second_slot_checkout'){
+      const result=await reconcileSecondSlotCheckout(user.id);
+      return send(res,200,result);
     }
 
     if ([
