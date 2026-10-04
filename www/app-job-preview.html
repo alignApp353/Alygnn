@@ -3643,24 +3643,19 @@ function editJob(){
   );
 }
 
-function publishedCompanyLogo(){
-  return String(
-    draft.company_logo ||
-    liveCompany?.logoUrl ||
-    liveCompany?.logo_url ||
-    ''
-  ).trim();
-}
-
 function baseJobPayload(){
   return{
     employer_id:session.user.id,
     title:draft.title,
     company:draft.company,
 
-    // Preserve the employer logo on the published job so candidate Discover
-    // can render the real logo instead of falling back to company initials.
-    company_logo:publishedCompanyLogo(),
+    company_logo:String(
+      draft.company_logo ||
+      liveCompany?.company_logo_url ||
+      liveCompany?.logo_url ||
+      liveCompany?.company_logo ||
+      ''
+    ).trim(),
 
     location:draft.location,
     job_type:draft.job_type,
@@ -4177,12 +4172,12 @@ function wire(){
     }
 
     if(!draft.company_logo){
-      draft.company_logo=
-        String(
-          liveCompany?.logoUrl ||
-          liveCompany?.logo_url ||
-          ''
-        ).trim();
+      draft.company_logo=String(
+        liveCompany?.company_logo_url ||
+        liveCompany?.logo_url ||
+        liveCompany?.company_logo ||
+        ''
+      ).trim();
     }
 
     render();
