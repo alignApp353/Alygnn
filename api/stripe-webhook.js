@@ -129,20 +129,6 @@ async function rpc(name, body) {
   return data;
 }
 
-function secondSlotExpiryIso(subscription){
-  const direct=Number(subscription?.current_period_end||0);
-  const item=Number(subscription?.items?.data?.[0]?.current_period_end||0);
-  const unix=direct||item;
-
-  if(unix>0){
-    return new Date(unix*1000).toISOString();
-  }
-
-  const fallback=new Date();
-  fallback.setUTCMonth(fallback.getUTCMonth()+1);
-  return fallback.toISOString();
-}
-
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
@@ -433,7 +419,9 @@ async function fulfillCheckout(session) {
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
       const status=normalizedSubscriptionStatus(subscription);
-      const expiresAt=secondSlotExpiryIso(subscription);
+      const expiresAt=subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
       try {
         await rpc('sync_second_job_slot_subscription', {
           p_employer_id: employerId,
@@ -562,6 +550,68 @@ async function fulfillPaymentIntent(intent){
   }
 }
 
+
+function jobConsumesPaidCapacity(job){
+  const status=String(job?.status||'active').toLowerCase();
+  return !['paused','closed','draft','inactive','archived','deleted'].includes(status);
+}
+
+function jobCreatedTime(job){
+  const value=new Date(job?.created_at||job?.updated_at||0).getTime();
+  return Number.isFinite(value)?value:0;
+}
+
+async function reconcileJobsAfterPaidPlanEnds(employerId){
+  if(!employerId)return;
+
+  const url=new URL(`${supabaseBase()}/rest/v1/jobs`);
+  url.searchParams.set('employer_id','eq.'+employerId);
+  url.searchParams.set('select','id,status,posting_access_type,created_at,updated_at');
+
+  const response=await fetch(url,{headers:serviceHeaders()});
+  if(!response.ok){
+    throw new Error('Could not load employer jobs for expired-plan reconciliation: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  const live=(Array.isArray(rows)?rows:[]).filter(jobConsumesPaidCapacity);
+  if(!live.length)return;
+
+  const explicitFree=live
+    .filter(job=>String(job?.posting_access_type||'').toLowerCase()==='free')
+    .sort((a,b)=>jobCreatedTime(b)-jobCreatedTime(a));
+
+  const keepJob=explicitFree[0]||[...live].sort((a,b)=>jobCreatedTime(a)-jobCreatedTime(b))[0];
+  if(!keepJob)return;
+
+  if(String(keepJob.posting_access_type||'').toLowerCase()!=='free'){
+    const keepUrl=new URL(`${supabaseBase()}/rest/v1/jobs`);
+    keepUrl.searchParams.set('id','eq.'+keepJob.id);
+    const keepResponse=await fetch(keepUrl,{
+      method:'PATCH',
+      headers:serviceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({posting_access_type:'free',updated_at:new Date().toISOString()})
+    });
+    if(!keepResponse.ok){
+      throw new Error('Could not preserve the included free-slot job: '+await keepResponse.text());
+    }
+  }
+
+  const jobsToPause=live.filter(job=>String(job.id)!==String(keepJob.id));
+  for(const job of jobsToPause){
+    const patchUrl=new URL(`${supabaseBase()}/rest/v1/jobs`);
+    patchUrl.searchParams.set('id','eq.'+job.id);
+    const patchResponse=await fetch(patchUrl,{
+      method:'PATCH',
+      headers:serviceHeaders({Prefer:'return=minimal'}),
+      body:JSON.stringify({status:'paused',pause_reason:'plan_expired',updated_at:new Date().toISOString()})
+    });
+    if(!patchResponse.ok){
+      throw new Error(`Could not pause job ${job.id} after paid plan ended: `+await patchResponse.text());
+    }
+  }
+}
+
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
@@ -575,7 +625,9 @@ async function fulfillSubscription(subscription, forceStatus) {
   if(status==='incomplete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    const expiresAt=secondSlotExpiryIso(subscription);
+    const expiresAt=subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
     try {
       await rpc('sync_second_job_slot_subscription', {
         p_employer_id: employerId,
@@ -632,6 +684,7 @@ async function fulfillSubscription(subscription, forceStatus) {
    */
   if(terminal){
     await clearPendingPlanChangeState(employerId);
+    await reconcileJobsAfterPaidPlanEnds(employerId);
   }else{
     await clearPendingIfApplied(employerId, meta.plan);
   }
