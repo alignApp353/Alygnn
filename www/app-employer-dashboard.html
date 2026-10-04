@@ -14881,40 +14881,69 @@
           return;
         }
 
-        try{
-          state.entitlement=await loadDashboardEntitlement();
-        }catch(entitlementError){
+        applyTeamAccessToWorkspace();
+
+        const [entitlementResult,jobsResult]=await Promise.allSettled([
+          loadDashboardEntitlement(),
+          queryJobsReliably(state.session.user.id)
+        ]);
+
+        if(entitlementResult.status==='fulfilled'){
+          state.entitlement=entitlementResult.value||null;
+        }else{
           console.warn(
             'Could not load billing entitlement during dashboard initialization:',
-            entitlementError
+            entitlementResult.reason
           );
           state.entitlement=null;
         }
 
-        applyTeamAccessToWorkspace();
+        state.jobs=
+          jobsResult.status==='fulfilled' && Array.isArray(jobsResult.value)
+            ?jobsResult.value
+            :[];
 
-        const initialJobs = await queryJobsReliably(state.session.user.id);
-        state.jobs = Array.isArray(initialJobs) ? initialJobs : [];
+        if(jobsResult.status==='rejected'){
+          console.warn(
+            'Could not load employer jobs during dashboard initialization:',
+            jobsResult.reason
+          );
+        }
 
         // Match live jobs to the authoritative capacity before rendering.
         // Example: expired plan => limit 1, three live jobs => keep one, pause two.
+        // This is the only blocking reconciliation needed during startup.
         await reconcileJobsToAuthoritativeCapacity();
 
-        // Additional safety net for old ended-plan records.
-        await reconcileEndedPlanJobsOnDashboard();
+        /*
+         * Do NOT block the first paint on non-critical enrichment.
+         *
+         * Logo repair and applicant aggregation can involve several network
+         * requests. Run them immediately after the workspace becomes visible,
+         * then refresh the UI when each finishes.
+         */
+        setTimeout(()=>{
+          syncEmployerLogoToExistingJobs()
+            .then(()=>safeRenderAll())
+            .catch(error=>{
+              console.warn(
+                'Background company-logo sync failed:',
+                error
+              );
+            });
 
-        // Repair older listings that were published before the company-logo
-        // snapshot was consistently written to jobs.company_logo.
-        await syncEmployerLogoToExistingJobs();
-
-        try{
-          await refreshApplicationsForCurrentJobs();
-        }catch(applicationError){
-          console.error(
-            'Applications could not load during employer initialization:',
-            applicationError
-          );
-        }
+          refreshApplicationsForCurrentJobs()
+            .then(()=>{
+              safeRenderAll();
+              refreshEmployerMessageBadge();
+            })
+            .catch(applicationError=>{
+              console.error(
+                'Applications could not load after employer startup:',
+                applicationError
+              );
+            });
+        },0);
 
         const initialParams=
           new URLSearchParams(location.search);
@@ -15484,24 +15513,30 @@
           !keep.some(saved=>String(saved.id)===String(job.id))
         );
 
-        for(const job of toPause){
-          const {error:pauseError}=await sb
-            .from('jobs')
-            .update({
-              status:'paused',
-              pause_reason:'capacity_expired',
-              updated_at:new Date().toISOString()
-            })
-            .eq('id',job.id);
+        await Promise.all(
+          toPause.map(async job=>{
+            const {error:pauseError}=await sb
+              .from('jobs')
+              .update({
+                status:'paused',
+                pause_reason:'capacity_expired',
+                updated_at:new Date().toISOString()
+              })
+              .eq('id',job.id);
 
-          if(pauseError){
-            console.warn('Could not auto-pause excess job:',job.id,pauseError);
-            continue;
-          }
+            if(pauseError){
+              console.warn(
+                'Could not auto-pause excess job:',
+                job.id,
+                pauseError
+              );
+              return;
+            }
 
-          job.status='paused';
-          job.pause_reason='capacity_expired';
-        }
+            job.status='paused';
+            job.pause_reason='capacity_expired';
+          })
+        );
 
         return toPause.length>0;
       }catch(error){
