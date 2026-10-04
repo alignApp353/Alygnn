@@ -782,6 +782,190 @@ async function syncVerifiedSecondSlotSubscription(employerId,subscription,paymen
   };
 }
 
+function planCheckoutPeriodEndIso(subscription,billing){
+  const direct=Number(subscription?.current_period_end||0);
+  const item=Number(subscription?.items?.data?.[0]?.current_period_end||0);
+  const unix=direct||item;
+
+  if(unix>0){
+    return new Date(unix*1000).toISOString();
+  }
+
+  const fallback=new Date();
+  if(String(billing||'').toLowerCase()==='quarterly'){
+    fallback.setUTCMonth(fallback.getUTCMonth()+3);
+  }else{
+    fallback.setUTCMonth(fallback.getUTCMonth()+1);
+  }
+  return fallback.toISOString();
+}
+
+async function ensurePlanEntitlementRow(employerId,subscription,plan,billing){
+  const normalizedPlan=String(plan||'').toLowerCase();
+  const normalizedBilling=String(billing||'').toLowerCase();
+
+  if(!['launch','growth','scale'].includes(normalizedPlan)){
+    throw new Error('Completed checkout has an invalid Alygnn plan.');
+  }
+  if(!['monthly','quarterly'].includes(normalizedBilling)){
+    throw new Error('Completed checkout has an invalid billing period.');
+  }
+
+  const status=String(subscription?.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Alygnn plan subscription is not active yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const catalog=MANAGE_CATALOG[normalizedBilling]?.[normalizedPlan];
+  if(!catalog){
+    throw new Error('Could not resolve Alygnn plan capacity.');
+  }
+
+  const customerId=
+    typeof subscription?.customer==='string'
+      ?subscription.customer
+      :(subscription?.customer?.id||null);
+
+  const scheduleId=
+    typeof subscription?.schedule==='string'
+      ?subscription.schedule
+      :(subscription?.schedule?.id||null);
+
+  const row={
+    employer_id:employerId,
+    plan:planLegacyName(normalizedPlan),
+    test_plan:normalizedPlan,
+    test_mode:false,
+    subscription_status:status,
+    current_period_end:planCheckoutPeriodEndIso(subscription,normalizedBilling),
+    slot_limit:catalog.slots,
+    billing_period:normalizedBilling,
+    urgently_hiring:['growth','scale'].includes(normalizedPlan),
+    plan_amount_cents:catalog.cents,
+    stripe_plan_subscription_id:subscription.id,
+    stripe_plan_customer_id:customerId,
+    stripe_plan_schedule_id:scheduleId,
+    pending_plan:null,
+    pending_billing_period:null,
+    pending_plan_effective_at:null,
+    updated_at:new Date().toISOString()
+  };
+
+  const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+  url.searchParams.set('employer_id','eq.'+employerId);
+
+  let response=await fetch(url,{
+    method:'PATCH',
+    headers:manageServiceHeaders({Prefer:'return=representation'}),
+    body:JSON.stringify(row)
+  });
+
+  if(!response.ok){
+    throw new Error('Could not sync paid-plan entitlement: '+await response.text());
+  }
+
+  const rows=await response.json().catch(()=>[]);
+  if(!Array.isArray(rows)||rows.length===0){
+    response=await fetch(
+      manageBase()+'/rest/v1/employer_entitlements',
+      {
+        method:'POST',
+        headers:manageServiceHeaders({Prefer:'return=minimal'}),
+        body:JSON.stringify(row)
+      }
+    );
+    if(!response.ok){
+      throw new Error('Could not create paid-plan entitlement: '+await response.text());
+    }
+  }
+
+  return {
+    synced:true,
+    product:'job_plan',
+    plan:normalizedPlan,
+    billing:normalizedBilling,
+    subscription_status:status,
+    current_period_end:row.current_period_end,
+    slot_limit:catalog.slots
+  };
+}
+
+async function syncPlanCheckoutBySession(employerId,checkoutSessionId){
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(checkoutSessionId),
+    {'expand[]':'subscription'}
+  );
+
+  const metadata=session?.metadata||{};
+  const product=String(metadata.product||'').toLowerCase();
+
+  if(
+    String(metadata.employer_id||'')!==String(employerId) ||
+    product!=='job_plan'
+  ){
+    const error=new Error('This checkout session does not belong to this employer.');
+    error.status=403;
+    throw error;
+  }
+
+  if(session.mode!=='subscription'){
+    const error=new Error('This checkout session is not a plan subscription.');
+    error.status=409;
+    throw error;
+  }
+
+  const paymentStatus=String(session.payment_status||'').toLowerCase();
+  if(!['paid','no_payment_required'].includes(paymentStatus)){
+    // A 100%-off subscription can still be complete with no payment required.
+    // If Stripe says subscription mode but the session is not complete yet, do
+    // not grant access early.
+    const sessionStatus=String(session.status||'').toLowerCase();
+    if(sessionStatus!=='complete'){
+      const error=new Error('The Alygnn plan checkout is not complete yet.');
+      error.status=409;
+      throw error;
+    }
+  }
+
+  let subscription=session.subscription;
+  if(typeof subscription==='string'){
+    subscription=await manageStripe(
+      'GET',
+      'subscriptions/'+encodeURIComponent(subscription),
+      {'expand[]':'items.data.price'}
+    );
+  }
+
+  if(!subscription?.id){
+    const error=new Error('Stripe did not return the completed plan subscription.');
+    error.status=409;
+    throw error;
+  }
+
+  const subMeta=subscription.metadata||{};
+  const plan=String(subMeta.plan||metadata.plan||'').toLowerCase();
+  const billing=String(subMeta.billing||metadata.billing||'').toLowerCase();
+
+  if(
+    String(subMeta.employer_id||metadata.employer_id||'')!==String(employerId) ||
+    String(subMeta.product||product).toLowerCase()!=='job_plan'
+  ){
+    const error=new Error('The plan subscription does not belong to this employer.');
+    error.status=403;
+    throw error;
+  }
+
+  return await ensurePlanEntitlementRow(
+    employerId,
+    subscription,
+    plan,
+    billing
+  );
+}
+
 async function syncSecondSlotCheckoutBySession(employerId,checkoutSessionId){
   const session=await manageStripe(
     'GET',
@@ -1894,6 +2078,19 @@ module.exports = async function handler(req, res) {
         valid:true,
         ...promotionDiscountPreview(resolved)
       });
+    }
+
+    if(billingAction==='sync_checkout_session'){
+      const checkoutSessionId=String(input.checkout_session_id||'').trim();
+      if(!checkoutSessionId){
+        return send(res,400,{error:'Checkout session ID is required.'});
+      }
+
+      const result=await syncPlanCheckoutBySession(
+        user.id,
+        checkoutSessionId
+      );
+      return send(res,200,result);
     }
 
     if(billingAction==='sync_second_slot_checkout'){
