@@ -78,20 +78,6 @@ button,a{font:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
 
-/*
- * Prevent the temporary default 0/1 slot state from flashing.
- * The header remains visible; the main capacity content is revealed
- * only after the real employer/job-slot state has been resolved.
- */
-body[data-capacity-ready="false"] main{
-  visibility:hidden;
-}
-
-body[data-capacity-ready="true"] main{
-  visibility:visible;
-}
-
-
 .app-header{
   position:sticky;top:0;z-index:20;
   padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
@@ -322,8 +308,8 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 }
 </style>
 </head>
-<body data-capacity-ready="false">
-<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options" hidden>
+<body>
+<div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
   <div class="loading-inner">
     <div class="loading-logo">Alygnn<span>.</span></div>
     <div class="loading-title">Preparing your hiring options.</div>
@@ -362,7 +348,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <section class="free-card" id="free-card">
+  <section class="free-card">
     <div class="free-badge">Included</div>
     <div class="free-title">1 free reusable job slot is always included</div>
     <p class="free-copy">Every employer account includes 1 reusable active job slot with limited candidate access. Close or pause that job to reuse the free slot. If you want another active job at the same time, choose paid capacity below.</p>
@@ -485,9 +471,12 @@ const SLOT_GATE_LIMIT=Math.max(
 
 let session=null;
 
-// Always open Hiring Capacity on Quarterly first.
-// The employer can intentionally switch to Monthly or Weekly after landing.
-let billing='quarterly';
+let billing=
+  SAME_ROLE_PAID_ACCESS_REASON
+    ?'monthly'
+    :SLOT_GATE_REASON
+      ?'weekly'
+      :'quarterly';
 let entitlement=null;
 let postingAccess=null;
 let jobs=[];
@@ -505,31 +494,6 @@ function escapeHtml(value){
       "'":'&#039;'
     }[char])
   );
-}
-
-
-function paymentHandoffUrl(params){
-  const backTarget=
-    'app-employer-pricing.html'+
-    (location.search||'');
-
-  params.set('back_to',backTarget);
-  params.set('from_pricing','1');
-
-  const handoff={
-    created_at:Date.now(),
-    back_to:backTarget,
-    plan:String(params.get('plan')||''),
-    product:String(params.get('product')||''),
-    billing:String(params.get('billing')||'')
-  };
-
-  sessionStorage.setItem(
-    'alygnnEmployerPricingHandoff',
-    JSON.stringify(handoff)
-  );
-
-  return 'app-employer-payment.html?'+params.toString();
 }
 
 function clearMessage(){
@@ -567,8 +531,6 @@ function hideCapacityLoading(){
   if(loading){
     loading.hidden=true;
   }
-
-  document.body.dataset.capacityReady='true';
 }
 
 function fallbackPostingAccess(){
@@ -1092,13 +1054,6 @@ function renderCurrent(){
       ? `${used} / ${limit} total slots in use`
       : `All ${limit} slot${limit===1?' is':'s are'} in use`;
 
-  // If the employer arrived because every available slot is occupied,
-  // don't leave an unusable free-slot CTA between them and the plan choices.
-  const freeCard=$('free-card');
-  if(freeCard){
-    freeCard.hidden=Boolean(SLOT_GATE_REASON && !hasAvailableSlot);
-  }
-
   const secondSection=$('additional-slot');
   const secondBtn=$('additional-slot-btn');
   const addonCopy=$('additional-slot-copy');
@@ -1294,7 +1249,10 @@ function renderPlans(){
           billing:
             basePaidPlanActive()
               ?activeBillingPeriod()
-              :billing
+              :billing,
+          back_to:
+            'app-employer-pricing.html'+
+            (location.search||'')
         });
 
         if(
@@ -1311,7 +1269,8 @@ function renderPlans(){
         }
 
         location.href=
-          paymentHandoffUrl(params);
+          'app-employer-payment.html?'+
+          params.toString();
       });
     });
   }
@@ -1434,6 +1393,84 @@ async function queryPricingJobs(userId,companyId){
   });
 
   return collected;
+}
+
+async function reconcilePricingJobsToCurrentCapacity(){
+  const limit=Math.max(1,Number(effectiveSlotLimit()||1));
+  const live=(jobs||[]).filter(jobConsumesSlot);
+
+  if(live.length<=limit)return false;
+
+  const createdTime=job=>{
+    const time=new Date(job?.created_at||job?.updated_at||0).getTime();
+    return Number.isFinite(time)?time:0;
+  };
+
+  const freeJobs=live
+    .filter(job=>String(job?.posting_access_type||'').toLowerCase()==='free')
+    .sort((a,b)=>createdTime(b)-createdTime(a));
+
+  const keep=[];
+  if(freeJobs[0])keep.push(freeJobs[0]);
+
+  const remaining=live
+    .filter(job=>!keep.some(saved=>String(saved.id)===String(job.id)))
+    .sort((a,b)=>createdTime(a)-createdTime(b));
+
+  while(keep.length<limit && remaining.length){
+    keep.push(remaining.shift());
+  }
+
+  if(limit===1 && keep[0] && String(keep[0]?.posting_access_type||'').toLowerCase()!=='free'){
+    const {error}=await sb
+      .from('jobs')
+      .update({
+        posting_access_type:'free',
+        updated_at:new Date().toISOString()
+      })
+      .eq('id',keep[0].id);
+
+    if(!error){
+      keep[0].posting_access_type='free';
+    }else{
+      console.warn('Could not mark surviving pricing job as free slot:',error);
+    }
+  }
+
+  const toPause=live.filter(job=>
+    !keep.some(saved=>String(saved.id)===String(job.id))
+  );
+
+  for(const job of toPause){
+    const {error}=await sb
+      .from('jobs')
+      .update({
+        status:'paused',
+        pause_reason:'capacity_expired',
+        updated_at:new Date().toISOString()
+      })
+      .eq('id',job.id);
+
+    if(error){
+      console.warn('Could not auto-pause excess pricing job:',job.id,error);
+      continue;
+    }
+
+    job.status='paused';
+    job.pause_reason='capacity_expired';
+  }
+
+  if(postingAccess){
+    const current=(jobs||[]).filter(jobConsumesSlot).length;
+    postingAccess={
+      ...postingAccess,
+      active_job_count:current,
+      slot_limit:limit,
+      can_post:current<limit
+    };
+  }
+
+  return toPause.length>0;
 }
 
 async function loadPostingAccess(){
@@ -1677,6 +1714,10 @@ async function loadAccount(){
       postingAccess||
       fallbackPostingAccess();
 
+    // Never render an impossible over-capacity state such as 3 / 1.
+    // If paid capacity expired, preserve valid capacity and pause only the excess jobs.
+    await reconcilePricingJobsToCurrentCapacity();
+
     console.log(
       'Alygnn pricing slot usage:',
       {
@@ -1739,10 +1780,6 @@ async function loadAccount(){
 }
 
 $('back-btn').addEventListener('click',()=>{
-  // Android WebView can occasionally lose/normalize query-state during a
-  // document transition. Store the target as well as passing ?view=jobs so
-  // the employer always lands on the Jobs tab.
-  sessionStorage.setItem('alygnnEmployerStartView','jobs');
   location.replace('app-employer-dashboard.html?view=jobs');
 });
 
@@ -1788,12 +1825,7 @@ $('additional-slot-btn').addEventListener('click',()=>{
     return;
   }
 
-  const params=new URLSearchParams({
-    product:'additional_slot',
-    billing:'monthly'
-  });
-
-  location.href=paymentHandoffUrl(params);
+  location.href='app-employer-payment.html?product=additional_slot&billing=monthly&back_to='+encodeURIComponent('app-employer-pricing.html'+(location.search||''));
 });
 
 switchBilling(billing);
@@ -1808,8 +1840,11 @@ switchBilling(billing);
 const capacityLoadingWatchdog=
   setTimeout(
     ()=>{
+      const loading=$('loading');
+
       if(
-        document.body.dataset.capacityReady!=='true'
+        loading &&
+        !loading.hidden
       ){
         console.warn(
           'Capacity loading watchdog released the pricing screen.'
