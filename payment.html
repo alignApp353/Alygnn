@@ -784,7 +784,11 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(!postingAccess) return true;
 
     if(isAddon()){
-      if(postingAccess.second_slot_eligible!==true || postingAccess.active_paid_plan===true){
+      const secondSlotActuallyActive=
+        postingAccess.second_slot_active===true ||
+        Number(postingAccess.addon_slot_count||0)>0;
+
+      if(postingAccess.active_paid_plan===true || secondSlotActuallyActive){
         showMessage(
           postingAccess.active_paid_plan===true
             ? 'The $150/month Second Job Slot is only available on the Free plan. Paid plans use the $99 Weekly Job Slot or a plan upgrade.'
