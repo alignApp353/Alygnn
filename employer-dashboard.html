@@ -2487,9 +2487,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function syncCompletedBoostCheckoutOnReturn() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('boost') !== 'success') return null;
-
     const checkoutSessionId = String(params.get('session_id') || '').trim();
+
+    // Some Stripe Job Boost returns contain only session_id. Let the secure
+    // backend verify whether that session is actually a Job Boost instead of
+    // requiring boost=success to already be present in the URL.
     if (!checkoutSessionId) return null;
 
     try {
@@ -2509,12 +2511,18 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       });
 
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || result?.synced !== true) {
-        throw new Error(result?.error || 'Could not sync the completed Job Boost.');
+
+      // A session_id can also belong to another Alygnn checkout. In that case
+      // leave it alone so the existing plan/slot return handlers can process it.
+      if (!response.ok || result?.synced !== true || result?.product !== 'job_boost') {
+        return null;
       }
 
       const clean = new URL(window.location.href);
       clean.searchParams.delete('session_id');
+      clean.searchParams.set('boost', 'success');
+      if (result?.job_id) clean.searchParams.set('job', result.job_id);
+      if (result?.days) clean.searchParams.set('days', String(result.days));
       history.replaceState({}, '', clean.pathname + clean.search + (window.location.hash || '#jobs'));
 
       return result;
