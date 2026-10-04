@@ -2420,6 +2420,269 @@ body[data-theme="dark"]{
   }
 </style>
 
+
+<style id="alygnn-candidate-settings-polish-final">
+/* Candidate Settings: compact, consumer-app treatment. */
+.settings-view{
+  padding-top:26px!important;
+  padding-bottom:34px!important;
+}
+
+.settings-view .settings-title{
+  margin-top:9px!important;
+}
+
+.settings-view .settings-subtitle{
+  margin-top:7px!important;
+  line-height:1.5!important;
+}
+
+.settings-view .settings-card{
+  margin-top:15px!important;
+  padding:14px!important;
+  border-radius:22px!important;
+  box-shadow:none!important;
+}
+
+.settings-view .settings-card-title{
+  margin:2px 2px 7px!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  color:var(--muted)!important;
+  letter-spacing:.9px!important;
+  text-transform:uppercase!important;
+}
+
+.settings-card-compact{
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+.settings-view .settings-row{
+  min-height:60px!important;
+  margin-top:8px!important;
+  padding:11px 12px!important;
+  border-radius:15px!important;
+}
+
+.settings-view .settings-row-first{
+  margin-top:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+
+.settings-view .settings-row-copy strong{
+  font-size:12.5px!important;
+}
+
+.settings-view .settings-row-copy small{
+  margin-top:2px!important;
+  font-size:9.5px!important;
+}
+
+.settings-row-icon{
+  width:36px;
+  height:36px;
+  flex:0 0 36px;
+  display:grid;
+  place-items:center;
+  border-radius:12px;
+  background:var(--brand-soft);
+  color:var(--brand-dark);
+}
+
+.settings-row-icon svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.settings-row-side{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:850;
+}
+
+.settings-appearance-row{
+  gap:11px!important;
+}
+
+.settings-view .settings-toggle{
+  min-width:36px!important;
+  padding:5px 8px!important;
+  font-size:8.5px!important;
+}
+
+.settings-view .settings-logout{
+  min-height:50px!important;
+  margin-top:16px!important;
+  border-radius:16px!important;
+}
+
+/* Appearance bottom sheet */
+.candidate-settings-sheet-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:140;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  background:rgba(4,11,16,.48);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+}
+
+.candidate-settings-sheet-backdrop[hidden]{
+  display:none!important;
+}
+
+.candidate-settings-sheet{
+  width:min(100%,560px);
+  padding:8px 16px calc(18px + env(safe-area-inset-bottom));
+  border:1px solid var(--border);
+  border-bottom:0;
+  border-radius:26px 26px 0 0;
+  background:var(--card);
+  color:var(--text);
+  box-shadow:0 -24px 70px rgba(0,0,0,.24);
+}
+
+.candidate-settings-sheet-handle{
+  width:42px;
+  height:4px;
+  margin:2px auto 13px;
+  border-radius:999px;
+  background:var(--border);
+}
+
+.candidate-settings-sheet-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:2px 2px 12px;
+}
+
+.candidate-settings-sheet-title{
+  font-size:20px;
+  line-height:1.2;
+  font-weight:900;
+}
+
+.candidate-settings-sheet-copy{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+
+.candidate-settings-sheet-close{
+  width:36px;
+  height:36px;
+  flex:0 0 36px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:transparent;
+  color:var(--text);
+  font-size:20px;
+}
+
+.candidate-theme-list{
+  overflow:hidden;
+  border:1px solid var(--border);
+  border-radius:18px;
+  background:var(--bg);
+}
+
+.candidate-theme-option{
+  width:100%;
+  min-height:59px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:11px 14px;
+  border:0;
+  border-bottom:1px solid var(--border);
+  background:transparent;
+  color:var(--text);
+  text-align:left;
+}
+
+.candidate-theme-option:last-child{
+  border-bottom:0;
+}
+
+.candidate-theme-option strong{
+  display:block;
+  font-size:12.5px;
+  font-weight:900;
+}
+
+.candidate-theme-option small{
+  display:block;
+  margin-top:2px;
+  color:var(--muted);
+  font-size:9.5px;
+  line-height:1.4;
+  font-weight:700;
+}
+
+.candidate-theme-check{
+  width:25px;
+  height:25px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  color:transparent;
+  font-size:12px;
+  font-weight:900;
+}
+
+.candidate-theme-option.active .candidate-theme-check{
+  border-color:var(--brand-dark);
+  background:var(--brand-dark);
+  color:#fff;
+}
+
+html[data-effective-theme="dark"] .candidate-settings-sheet{
+  background:#10232D!important;
+  border-color:#29404C!important;
+}
+
+html[data-effective-theme="dark"] .candidate-theme-list{
+  background:#061821!important;
+  border-color:#29404C!important;
+}
+
+html[data-effective-theme="dark"] .candidate-theme-option{
+  color:#F3F7FA!important;
+  border-color:#29404C!important;
+}
+
+html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
+  background:transparent!important;
+}
+
+@media(max-width:390px){
+  .settings-view .settings-card{
+    padding:12px!important;
+  }
+}
+</style>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -2856,34 +3119,23 @@ body[data-theme="dark"]{
 
   <div id="settings-message" class="settings-message" hidden></div>
 
-  <section class="settings-card">
-    <div class="settings-card-title">Appearance</div>
-
-    <div class="settings-choice-grid">
-      <button class="settings-choice" type="button" data-theme-option="system" onclick="setCandidateTheme('system')">
-        <span>
-          <strong>System Default</strong>
-          <small>Follow your device appearance</small>
-        </span>
-        <span class="settings-choice-check">✓</span>
-      </button>
-
-      <button class="settings-choice" type="button" data-theme-option="light" onclick="setCandidateTheme('light')">
-        <span>
-          <strong>Light Mode</strong>
-          <small>Use Alygnn's light workspace</small>
-        </span>
-        <span class="settings-choice-check">✓</span>
-      </button>
-
-      <button class="settings-choice" type="button" data-theme-option="dark" onclick="setCandidateTheme('dark')">
-        <span>
-          <strong>Dark Mode</strong>
-          <small>Use a darker workspace</small>
-        </span>
-        <span class="settings-choice-check">✓</span>
-      </button>
-    </div>
+  <section class="settings-card settings-card-compact">
+    <button class="settings-row settings-row-first settings-appearance-row" type="button" onclick="openCandidateAppearanceSheet()">
+      <span class="settings-row-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+      </span>
+      <span class="settings-row-copy">
+        <strong>Appearance</strong>
+        <small>Choose how Alygnn looks on this device</small>
+      </span>
+      <span class="settings-row-side">
+        <span id="candidate-appearance-value">System</span>
+        <span class="settings-arrow">›</span>
+      </span>
+    </button>
   </section>
 
   <section class="settings-card">
@@ -2983,6 +3235,46 @@ body[data-theme="dark"]{
   </button>
 </main>
 
+
+
+<div class="candidate-settings-sheet-backdrop" id="candidate-appearance-sheet" hidden onclick="closeCandidateAppearanceSheet(event)">
+  <section class="candidate-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="candidate-appearance-title" onclick="event.stopPropagation()">
+    <div class="candidate-settings-sheet-handle"></div>
+    <div class="candidate-settings-sheet-head">
+      <div>
+        <div class="candidate-settings-sheet-title" id="candidate-appearance-title">Appearance</div>
+        <div class="candidate-settings-sheet-copy">Choose how Alygnn looks on this device.</div>
+      </div>
+      <button class="candidate-settings-sheet-close" type="button" onclick="closeCandidateAppearanceSheet()" aria-label="Close">×</button>
+    </div>
+
+    <div class="candidate-theme-list">
+      <button class="candidate-theme-option" type="button" data-theme-option="system" onclick="chooseCandidateAppearance('system')">
+        <span>
+          <strong>System</strong>
+          <small>Follow your phone's appearance</small>
+        </span>
+        <span class="candidate-theme-check">✓</span>
+      </button>
+
+      <button class="candidate-theme-option" type="button" data-theme-option="light" onclick="chooseCandidateAppearance('light')">
+        <span>
+          <strong>Light</strong>
+          <small>Use Alygnn's light workspace</small>
+        </span>
+        <span class="candidate-theme-check">✓</span>
+      </button>
+
+      <button class="candidate-theme-option" type="button" data-theme-option="dark" onclick="chooseCandidateAppearance('dark')">
+        <span>
+          <strong>Dark</strong>
+          <small>Use Alygnn's dark workspace</small>
+        </span>
+        <span class="candidate-theme-check">✓</span>
+      </button>
+    </div>
+  </section>
+</div>
 
 <div class="profile-edit-overlay" id="profile-edit-overlay" hidden>
   <section class="profile-edit-sheet" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title">
@@ -3373,6 +3665,27 @@ function getCandidateTheme(){
   );
 }
 
+function openCandidateAppearanceSheet(){
+  const sheet=document.getElementById('candidate-appearance-sheet');
+  if(!sheet) return;
+  refreshCandidateSettingsUI();
+  sheet.hidden=false;
+  document.body.style.overflow='hidden';
+}
+
+function closeCandidateAppearanceSheet(event){
+  const sheet=document.getElementById('candidate-appearance-sheet');
+  if(!sheet) return;
+  if(event && event.target!==sheet) return;
+  sheet.hidden=true;
+  document.body.style.overflow='';
+}
+
+function chooseCandidateAppearance(theme){
+  setCandidateTheme(theme);
+  closeCandidateAppearanceSheet();
+}
+
 function setCandidateTheme(theme){
   const allowed=new Set(['system','light','dark']);
   const next=allowed.has(theme)?theme:'system';
@@ -3394,6 +3707,15 @@ function setCandidateTheme(theme){
 
 function refreshCandidateSettingsUI(){
   const theme=getCandidateTheme();
+
+  const appearanceValue=document.getElementById('candidate-appearance-value');
+  if(appearanceValue){
+    appearanceValue.textContent={
+      system:'System',
+      light:'Light',
+      dark:'Dark'
+    }[theme] || 'System';
+  }
 
   if(window.AlygnnCandidateTheme){
     window.AlygnnCandidateTheme.apply(theme);
