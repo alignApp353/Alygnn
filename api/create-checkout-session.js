@@ -175,11 +175,21 @@ function teamSeatPrice(plan){
 }
 
 function additionalSlotEligible(access) {
-  // The $150/month Second Job Slot is FREE-ACCOUNT ONLY and can exist only once.
-  // The database RPC is the source of truth so direct checkout URLs cannot bypass it.
+  // The $150/month Second Job Slot is available only after the employer has
+  // posted the permanent free-slot job, while the account is still on Free,
+  // and only when no standalone Second Job Slot is already active.
+  const secondSlotActuallyActive =
+    access?.second_job_slot_active === true ||
+    access?.second_slot_active === true ||
+    Number(access?.addon_slot_count || 0) > 0;
+
+  const hasPostedFirstJob =
+    Number(access?.active_job_count || 0) >= 1;
+
   return access?.second_slot_eligible === true &&
     access?.active_paid_plan !== true &&
-    Number(access?.addon_slot_count || 0) < 1;
+    !secondSlotActuallyActive &&
+    hasPostedFirstJob;
 }
 
 function fixedUpgradePrice(currentPlan,targetPlan,billing){
