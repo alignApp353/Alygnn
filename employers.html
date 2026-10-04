@@ -8,6 +8,37 @@
 <link rel="canonical" href="https://alygnn.com/employers.html">
 
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<script>
+  // Pre-paint employer nav hint from this tab's cached Supabase session.
+  // This only affects initial visibility; the existing Supabase auth check below
+  // still performs the real navigation verification.
+  (() => {
+    try {
+      const tabId = sessionStorage.getItem('alygnn_auth_tab_id');
+      if (!tabId) return;
+
+      const raw = sessionStorage.getItem(`alygnn-auth-${tabId}`);
+      if (!raw) return;
+
+      const cached = JSON.parse(raw);
+      const session = cached?.currentSession || cached?.session || cached;
+      const user = session?.user || cached?.user || null;
+      if (!user) return;
+
+      const role = String(
+        user.user_metadata?.role ||
+        user.user_metadata?.account_type ||
+        user.app_metadata?.role ||
+        user.app_metadata?.account_type ||
+        ''
+      ).toLowerCase();
+
+      if (role === 'employer') {
+        document.documentElement.classList.add('employer-session-cached');
+      }
+    } catch (_) {}
+  })();
+</script>
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Alygnn">
@@ -91,6 +122,8 @@
   .nav-pricing-slot { display: none; min-width: 44px; text-align: center; }
   #nav-pricing-link { display: inline-block !important; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
   #nav-pricing-link.auth-ready { visibility: visible; opacity: 1; pointer-events: auto; }
+  html.employer-session-cached .nav-pricing-slot { display: list-item; }
+  html.employer-session-cached #nav-pricing-link { visibility: visible; opacity: 1; pointer-events: auto; }
   .nav-cta:hover { opacity: 0.88; }
 
   /* Employer hero — premium first impression only. */
