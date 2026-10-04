@@ -454,9 +454,7 @@ button,a{font:inherit}
 
 
 .company-logo,
-.company-card-logo{
-  overflow:hidden;
-}
+.company-card-logo{overflow:hidden}
 
 .company-logo img,
 .company-card-logo img{
@@ -1931,137 +1929,73 @@ function candidateExternalUrl(value){
   if(!raw)return '';
 
   try{
-    const url=new URL(
-      /^https?:\/\//i.test(raw)
-        ?raw
-        :'https://'+raw
-    );
-
-    return ['http:','https:'].includes(url.protocol)
-      ?url.href
-      :'';
+    const url=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw);
+    return ['http:','https:'].includes(url.protocol)?url.href:'';
   }catch(_error){
     return '';
   }
 }
 
-function setCompanyLogoElement(elementId,logoUrl,company){
+function paintCompanyLogo(elementId,logoUrl,companyName){
   const element=document.getElementById(elementId);
   if(!element)return;
 
-  const initial=initials(company);
+  const fallback=initials(companyName);
   const logo=candidateExternalUrl(logoUrl);
 
   element.innerHTML='';
 
   if(!logo){
-    element.textContent=initial;
+    element.textContent=fallback;
     return;
   }
 
   const image=document.createElement('img');
+  image.alt=`${companyName} logo`;
   image.src=logo;
-  image.alt=company+' logo';
 
-  image.addEventListener('error',()=>{
+  image.onerror=()=>{
     element.innerHTML='';
-    element.textContent=initial;
-  },{once:true});
+    element.textContent=fallback;
+  };
 
   element.appendChild(image);
 }
 
-async function resolveCandidateCompanyLogo(jobRow){
+async function resolvePublicCompanyLogo(jobRow){
   const direct=candidateExternalUrl(
     jobRow?.company_logo_url||
     jobRow?.company_logo||
     jobRow?.logo_url
   );
-
   if(direct)return direct;
 
-  const ownerId=String(
-    jobRow?.employer_id||
-    jobRow?.owner_user_id||
-    jobRow?.created_by||
-    jobRow?.user_id||
+  const employerId=String(jobRow?.employer_id||'').trim();
+  const companyId=String(jobRow?.company_id||'').trim();
+  const companyName=String(
+    jobRow?.company_name||
+    jobRow?.company||
     ''
   ).trim();
 
-  let companyId=String(jobRow?.company_id||'').trim();
-
-  if(companyId){
-    try{
-      const {data,error}=await sb
-        .from('companies')
-        .select('*')
-        .eq('id',companyId)
-        .maybeSingle();
-
-      if(!error&&data){
-        const companyLogo=candidateExternalUrl(
-          data.company_logo_url||
-          data.company_logo||
-          data.logo_url||
-          data.logo
-        );
-
-        if(companyLogo)return companyLogo;
-      }
-    }catch(_error){}
-  }
-
-  if(ownerId){
+  // Public RPC is the safest candidate-facing source.
+  if(employerId){
     try{
       const {data,error}=await sb.rpc(
         'get_public_employer_profile',
-        {target_employer:ownerId}
+        {target_employer:employerId}
       );
 
       if(!error){
-        const profile=Array.isArray(data)
-          ?(data[0]||null)
-          :(data||null);
-
-        const publicLogo=candidateExternalUrl(
+        const profile=Array.isArray(data)?data[0]:data;
+        const logo=candidateExternalUrl(
           profile?.company_logo_url||
           profile?.company_logo||
           profile?.logo_url
         );
-
-        if(publicLogo)return publicLogo;
+        if(logo)return logo;
       }
     }catch(_error){}
-
-    try{
-      const {data,error}=await sb
-        .from('profiles')
-        .select('company_logo_url')
-        .eq('id',ownerId)
-        .maybeSingle();
-
-      if(!error){
-        const profileLogo=candidateExternalUrl(
-          data?.company_logo_url
-        );
-
-        if(profileLogo)return profileLogo;
-      }
-    }catch(_error){}
-
-    if(!companyId){
-      try{
-        const {data,error}=await sb
-          .from('employer_verifications')
-          .select('company_id')
-          .eq('user_id',ownerId)
-          .maybeSingle();
-
-        if(!error&&data?.company_id){
-          companyId=String(data.company_id);
-        }
-      }catch(_error){}
-    }
   }
 
   if(companyId){
@@ -2073,14 +2007,39 @@ async function resolveCandidateCompanyLogo(jobRow){
         .maybeSingle();
 
       if(!error&&data){
-        return candidateExternalUrl(
+        const logo=candidateExternalUrl(
           data.company_logo_url||
           data.company_logo||
           data.logo_url||
           data.logo
         );
+        if(logo)return logo;
       }
     }catch(_error){}
+  }
+
+  // Critical fallback for older published jobs that do not carry company_id.
+  if(companyName){
+    for(const column of ['company_name','legal_name','name']){
+      try{
+        const {data,error}=await sb
+          .from('companies')
+          .select('*')
+          .ilike(column,companyName)
+          .limit(1)
+          .maybeSingle();
+
+        if(!error&&data){
+          const logo=candidateExternalUrl(
+            data.company_logo_url||
+            data.company_logo||
+            data.logo_url||
+            data.logo
+          );
+          if(logo)return logo;
+        }
+      }catch(_error){}
+    }
   }
 
   return '';
@@ -2105,16 +2064,19 @@ function renderJob(){
   document.getElementById('hero-match').textContent='★ '+score+'% Match';
   document.getElementById('job-title').textContent=job.title||'Job Opportunity';
   document.getElementById('company-name').textContent=company;
-  setCompanyLogoElement(
+
+  paintCompanyLogo(
     'company-logo',
     job.company_logo_url||job.company_logo||job.logo_url,
     company
   );
-  setCompanyLogoElement(
+
+  paintCompanyLogo(
     'company-card-logo',
     job.company_logo_url||job.company_logo||job.logo_url,
     company
   );
+
   document.getElementById('company-card-name').textContent=company;
   document.getElementById('posted-time').textContent=postedText(job.created_at);
 
@@ -2488,19 +2450,16 @@ document.getElementById('apply-btn').addEventListener('click',handlePrimaryActio
     job=jobData;
 
     try{
-      const resolvedLogo=await resolveCandidateCompanyLogo(job);
+      const publicLogo=await resolvePublicCompanyLogo(job);
 
-      if(resolvedLogo){
+      if(publicLogo){
         job={
           ...job,
-          company_logo_url:resolvedLogo
+          company_logo_url:publicLogo
         };
       }
     }catch(logoError){
-      console.warn(
-        'Could not resolve employer logo for candidate job details:',
-        logoError
-      );
+      console.warn('Candidate logo resolution failed:',logoError);
     }
 
     try{
