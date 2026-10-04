@@ -452,6 +452,22 @@ button,a{font:inherit}
   font-size:12px;
 }
 
+
+.company-logo,
+.company-card-logo{
+  overflow:hidden;
+}
+
+.company-logo img,
+.company-card-logo img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:6px;
+  background:#fff;
+  display:block;
+}
+
 /* LOADING/ERROR */
 .state{
   min-height:55vh;
@@ -1909,6 +1925,167 @@ function setBreakdown(id,value){
   });
 }
 
+
+function candidateExternalUrl(value){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+
+  try{
+    const url=new URL(
+      /^https?:\/\//i.test(raw)
+        ?raw
+        :'https://'+raw
+    );
+
+    return ['http:','https:'].includes(url.protocol)
+      ?url.href
+      :'';
+  }catch(_error){
+    return '';
+  }
+}
+
+function setCompanyLogoElement(elementId,logoUrl,company){
+  const element=document.getElementById(elementId);
+  if(!element)return;
+
+  const initial=initials(company);
+  const logo=candidateExternalUrl(logoUrl);
+
+  element.innerHTML='';
+
+  if(!logo){
+    element.textContent=initial;
+    return;
+  }
+
+  const image=document.createElement('img');
+  image.src=logo;
+  image.alt=company+' logo';
+
+  image.addEventListener('error',()=>{
+    element.innerHTML='';
+    element.textContent=initial;
+  },{once:true});
+
+  element.appendChild(image);
+}
+
+async function resolveCandidateCompanyLogo(jobRow){
+  const direct=candidateExternalUrl(
+    jobRow?.company_logo_url||
+    jobRow?.company_logo||
+    jobRow?.logo_url
+  );
+
+  if(direct)return direct;
+
+  const ownerId=String(
+    jobRow?.employer_id||
+    jobRow?.owner_user_id||
+    jobRow?.created_by||
+    jobRow?.user_id||
+    ''
+  ).trim();
+
+  let companyId=String(jobRow?.company_id||'').trim();
+
+  if(companyId){
+    try{
+      const {data,error}=await sb
+        .from('companies')
+        .select('*')
+        .eq('id',companyId)
+        .maybeSingle();
+
+      if(!error&&data){
+        const companyLogo=candidateExternalUrl(
+          data.company_logo_url||
+          data.company_logo||
+          data.logo_url||
+          data.logo
+        );
+
+        if(companyLogo)return companyLogo;
+      }
+    }catch(_error){}
+  }
+
+  if(ownerId){
+    try{
+      const {data,error}=await sb.rpc(
+        'get_public_employer_profile',
+        {target_employer:ownerId}
+      );
+
+      if(!error){
+        const profile=Array.isArray(data)
+          ?(data[0]||null)
+          :(data||null);
+
+        const publicLogo=candidateExternalUrl(
+          profile?.company_logo_url||
+          profile?.company_logo||
+          profile?.logo_url
+        );
+
+        if(publicLogo)return publicLogo;
+      }
+    }catch(_error){}
+
+    try{
+      const {data,error}=await sb
+        .from('profiles')
+        .select('company_logo_url')
+        .eq('id',ownerId)
+        .maybeSingle();
+
+      if(!error){
+        const profileLogo=candidateExternalUrl(
+          data?.company_logo_url
+        );
+
+        if(profileLogo)return profileLogo;
+      }
+    }catch(_error){}
+
+    if(!companyId){
+      try{
+        const {data,error}=await sb
+          .from('employer_verifications')
+          .select('company_id')
+          .eq('user_id',ownerId)
+          .maybeSingle();
+
+        if(!error&&data?.company_id){
+          companyId=String(data.company_id);
+        }
+      }catch(_error){}
+    }
+  }
+
+  if(companyId){
+    try{
+      const {data,error}=await sb
+        .from('companies')
+        .select('*')
+        .eq('id',companyId)
+        .maybeSingle();
+
+      if(!error&&data){
+        return candidateExternalUrl(
+          data.company_logo_url||
+          data.company_logo||
+          data.logo_url||
+          data.logo
+        );
+      }
+    }catch(_error){}
+  }
+
+  return '';
+}
+
 function renderJob(){
   const company=firstValue(job.company,job.company_name,'Employer');
   const location=firstValue(
@@ -1928,8 +2105,16 @@ function renderJob(){
   document.getElementById('hero-match').textContent='★ '+score+'% Match';
   document.getElementById('job-title').textContent=job.title||'Job Opportunity';
   document.getElementById('company-name').textContent=company;
-  document.getElementById('company-logo').textContent=logoInitials;
-  document.getElementById('company-card-logo').textContent=logoInitials;
+  setCompanyLogoElement(
+    'company-logo',
+    job.company_logo_url||job.company_logo||job.logo_url,
+    company
+  );
+  setCompanyLogoElement(
+    'company-card-logo',
+    job.company_logo_url||job.company_logo||job.logo_url,
+    company
+  );
   document.getElementById('company-card-name').textContent=company;
   document.getElementById('posted-time').textContent=postedText(job.created_at);
 
@@ -2301,6 +2486,22 @@ document.getElementById('apply-btn').addEventListener('click',handlePrimaryActio
     if(!jobData)throw new Error('This job is no longer available.');
 
     job=jobData;
+
+    try{
+      const resolvedLogo=await resolveCandidateCompanyLogo(job);
+
+      if(resolvedLogo){
+        job={
+          ...job,
+          company_logo_url:resolvedLogo
+        };
+      }
+    }catch(logoError){
+      console.warn(
+        'Could not resolve employer logo for candidate job details:',
+        logoError
+      );
+    }
 
     try{
       const {data:profileData,error:profileError}=await sb
