@@ -14904,6 +14904,11 @@
         const initialJobs = await queryJobsReliably(state.session.user.id);
         state.jobs = Array.isArray(initialJobs) ? initialJobs : [];
 
+        // Match live jobs to the authoritative capacity before rendering.
+        // Example: expired plan => limit 1, three live jobs => keep one, pause two.
+        await reconcileJobsToAuthoritativeCapacity();
+
+        // Additional safety net for old ended-plan records.
         await reconcileEndedPlanJobsOnDashboard();
 
         // Repair older listings that were published before the company-logo
@@ -15433,6 +15438,84 @@
         job.pause_reason='plan_expired';
       }
       return true;
+    }
+
+    async function reconcileJobsToAuthoritativeCapacity(){
+      if(!Array.isArray(state.jobs)||!state.jobs.length)return false;
+
+      try{
+        const {data:access,error}=await sb.rpc('get_employer_posting_access');
+        if(error)throw error;
+
+        const limit=Math.max(1,Number(access?.slot_limit||1));
+        const live=state.jobs.filter(dashboardJobConsumesSlot);
+
+        if(live.length<=limit)return false;
+
+        const createdTime=job=>{
+          const time=new Date(job?.created_at||job?.updated_at||0).getTime();
+          return Number.isFinite(time)?time:0;
+        };
+
+        const freeJobs=live
+          .filter(job=>postingAccessType(job)==='free')
+          .sort((a,b)=>createdTime(b)-createdTime(a));
+
+        const keep=[];
+        if(freeJobs[0])keep.push(freeJobs[0]);
+
+        const remaining=live
+          .filter(job=>!keep.some(saved=>String(saved.id)===String(job.id)))
+          .sort((a,b)=>createdTime(a)-createdTime(b));
+
+        while(keep.length<limit && remaining.length){
+          keep.push(remaining.shift());
+        }
+
+        if(limit===1 && keep[0] && postingAccessType(keep[0])!=='free'){
+          const {error:freeError}=await sb
+            .from('jobs')
+            .update({
+              posting_access_type:'free',
+              updated_at:new Date().toISOString()
+            })
+            .eq('id',keep[0].id);
+
+          if(!freeError){
+            keep[0].posting_access_type='free';
+          }else{
+            console.warn('Could not mark surviving job as included free slot:',freeError);
+          }
+        }
+
+        const toPause=live.filter(job=>
+          !keep.some(saved=>String(saved.id)===String(job.id))
+        );
+
+        for(const job of toPause){
+          const {error:pauseError}=await sb
+            .from('jobs')
+            .update({
+              status:'paused',
+              pause_reason:'capacity_expired',
+              updated_at:new Date().toISOString()
+            })
+            .eq('id',job.id);
+
+          if(pauseError){
+            console.warn('Could not auto-pause excess job:',job.id,pauseError);
+            continue;
+          }
+
+          job.status='paused';
+          job.pause_reason='capacity_expired';
+        }
+
+        return toPause.length>0;
+      }catch(error){
+        console.warn('Could not reconcile jobs to authoritative capacity:',error);
+        return false;
+      }
     }
 
     async function loadDashboardEntitlement(){
