@@ -307,6 +307,66 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
   main{padding-top:32px}
 }
 </style>
+
+<style id="alygnn-pricing-single-loading-state">
+  body:not(.pricing-ready) > .app-header,
+  body:not(.pricing-ready) > main{
+    visibility:hidden!important;
+  }
+
+  body.pricing-ready > .app-header,
+  body.pricing-ready > main{
+    visibility:visible!important;
+  }
+
+  #loading{
+    display:grid;
+    place-items:center;
+  }
+
+  #loading[hidden]{
+    display:none!important;
+  }
+
+  #loading .loading-inner{
+    width:min(320px,80vw);
+    display:grid;
+    gap:12px;
+    text-align:center;
+  }
+
+  #loading .loading-logo{
+    font-family:'DM Serif Display',Georgia,serif;
+    font-size:18px;
+    color:var(--muted);
+    line-height:1;
+  }
+
+  #loading .loading-logo span{
+    color:var(--sage);
+  }
+
+  #loading .loading-title{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.45;
+    font-weight:500;
+  }
+
+  #loading .loading-copy{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.45;
+    font-weight:500;
+  }
+
+  #loading .loading-track,
+  #loading .loading-bar,
+  #loading .spinner{
+    display:none!important;
+  }
+</style>
+
 </head>
 <body>
 <div class="loading" id="loading" aria-label="Alygnn is preparing hiring options">
@@ -527,6 +587,8 @@ function withTimeout(promise,ms=5000,label='Request'){
 
 function hideCapacityLoading(){
   const loading=$('loading');
+
+  document.body.classList.add('pricing-ready');
 
   if(loading){
     loading.hidden=true;
@@ -1833,7 +1895,12 @@ $('additional-slot-btn').addEventListener('click',()=>{
   location.href='app-employer-payment.html?product=additional_slot&billing=monthly&back_to='+encodeURIComponent('app-employer-pricing.html'+(location.search||''));
 });
 
-switchBilling(billing);
+billing='quarterly';
+
+/*
+ * Render only after live capacity/account data has resolved.
+ * This prevents the temporary Weekly/0-of-1 screen from flashing first.
+ */
 
 /*
  * Hard safety net:
@@ -1882,34 +1949,12 @@ loadAccount().finally(()=>{
   clearTimeout(
     capacityLoadingWatchdog
   );
+
+  billing='quarterly';
+  switchBilling('quarterly');
 });
 </script>
 
-<script id="alygnn-slot-limit-fast-entry">
-(function(){
-  try{
-    const params=new URLSearchParams(location.search);
-    const reason=String(params.get('reason')||'').toLowerCase();
-
-    if(reason==='slot_limit'){
-      const hideGateLoader=()=>{
-        const loader=document.getElementById('loading');
-        if(loader){
-          loader.style.display='none';
-          loader.hidden=true;
-          loader.setAttribute('aria-hidden','true');
-        }
-      };
-
-      if(document.readyState==='loading'){
-        document.addEventListener('DOMContentLoaded',hideGateLoader,{once:true});
-      }else{
-        hideGateLoader();
-      }
-    }
-  }catch(_error){}
-})();
-</script>
 
 </body>
 </html>
