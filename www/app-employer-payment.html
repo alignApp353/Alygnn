@@ -1480,12 +1480,12 @@ function renderAll(){
   }else if(billing==='weekly' || plan==='weekly_slot'){
     $('checkout-heading').textContent='Add a weekly job slot.';
     $('checkout-lede').textContent=
-      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This $99 Weekly Job Slot adds 1 more for 7 days, giving you ${addedSlotTotal()} total while active.`;
+      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This $99 Weekly Job Slot adds 1 additional reusable slot for 7 days, giving you ${addedSlotTotal()} total while this weekly slot is active.`;
     $('plan-panel-title').textContent='1. Confirm your Weekly Job Slot';
   }else{
     $('checkout-heading').textContent='Confirm your job-slot plan.';
     $('checkout-lede').textContent=
-      'Every monthly or quarterly plan includes its listed plan job slots PLUS Alygnn’s always-included free reusable slot. Any capacity beyond that total is added with $99 Weekly Job Slots.';
+      'Weekly Job Slots are available to every employer account. Each $99 Weekly Job Slot adds 1 reusable slot for 7 days on top of your current capacity — whether you are on Free, a standalone slot, Launch, Growth, or Scale.';
     $('plan-panel-title').textContent='1. Confirm your plan';
   }
 
@@ -1918,28 +1918,14 @@ function boostIneligibleMessage(){
 }
 
 function weeklyCheckoutAllowed(){
-  if(!postingAccess)return true;
-
-  if(!basePaidPlanActive())return true;
-
-  const count=Math.max(
-    0,
-    Number(postingAccess?.weekly_slot_count||0)
-  );
-
-  if(count<1)return true;
-
-  // Launch/Growth should upgrade after the first Weekly extra.
-  return !paymentNextUpgrade();
+  // Weekly Job Slots are universal additive capacity.
+  // They can be purchased by Free, standalone-slot, Launch, Growth,
+  // or Scale employers, and multiple active weekly slots may stack.
+  return true;
 }
 
 function weeklyIneligibleMessage(){
-  const next=paymentNextUpgrade();
-  const nextName=next==='growth'?'Growth':'Scale';
-
-  return next
-    ? `You already have one active $99 Weekly Job Slot. Upgrade to ${nextName} for better ongoing value instead of stacking another weekly slot.`
-    : 'This Weekly Job Slot is not available for this account right now.';
+  return '';
 }
 
 function addonIneligibleMessage(){
