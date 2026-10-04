@@ -543,11 +543,7 @@ function validPricingHandoff(){
     return false;
   }
 
-  try{
-    const raw=sessionStorage.getItem('alygnnEmployerPricingHandoff');
-    if(!raw)return false;
-
-    const handoff=JSON.parse(raw);
+  const matchesPage=(handoff)=>{
     const age=Date.now()-Number(handoff?.created_at||0);
 
     if(!Number.isFinite(age)||age<0||age>15*60*1000){
@@ -559,6 +555,30 @@ function validPricingHandoff(){
       String(handoff?.product||'')===String(PAGE_QUERY.get('product')||'') &&
       String(handoff?.billing||'')===String(PAGE_QUERY.get('billing')||'')
     );
+  };
+
+  try{
+    const primaryRaw=
+      sessionStorage.getItem(
+        'alygnnEmployerPricingHandoff'
+      );
+
+    if(primaryRaw){
+      const primary=JSON.parse(primaryRaw);
+      if(matchesPage(primary))return true;
+    }
+
+    const fallbackRaw=
+      sessionStorage.getItem(
+        'alygnn_pending_employer_checkout'
+      );
+
+    if(fallbackRaw){
+      const fallback=JSON.parse(fallbackRaw);
+      if(matchesPage(fallback))return true;
+    }
+
+    return false;
   }catch(_){
     return false;
   }
@@ -2146,6 +2166,9 @@ async function initialize(){
   try{
     sessionStorage.removeItem(
       'alygnn_pending_employer_checkout'
+    );
+    sessionStorage.removeItem(
+      'alygnnEmployerPricingHandoff'
     );
   }catch(_error){}
 
