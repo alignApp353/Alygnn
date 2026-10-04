@@ -376,6 +376,7 @@
       const navAuthLink = document.getElementById('nav-auth-link');
       const navCtaBtn = document.getElementById('nav-cta-btn');
       const navPricingLink = document.getElementById('nav-pricing-link');
+      const heroPricingBtn = document.getElementById('hero-pricing-btn');
 
       if (navAuthLink) {
         navAuthLink.textContent = 'My account';
@@ -393,6 +394,11 @@
         const pricingSlot = navPricingLink.closest('.nav-pricing-slot');
         if (pricingSlot) pricingSlot.style.display = 'list-item';
         navPricingLink.classList.add('auth-ready');
+      }
+
+      if (heroPricingBtn) {
+        heroPricingBtn.style.display = '';
+        heroPricingBtn.onclick = () => window.location.href = 'pricing.html';
       }
     } catch (_) {}
   })();
