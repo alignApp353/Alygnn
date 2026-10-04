@@ -2683,6 +2683,138 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 }
 </style>
 
+
+<style id="alygnn-candidate-settings-quiet-final">
+/* Quiet, native-feeling candidate Settings */
+.settings-view{
+  padding-top:26px!important;
+  padding-bottom:34px!important;
+}
+
+.settings-view .settings-title{
+  margin-top:9px!important;
+}
+
+.settings-view .settings-subtitle{
+  margin-top:7px!important;
+  max-width:390px!important;
+  line-height:1.5!important;
+}
+
+.settings-view .settings-card{
+  margin-top:18px!important;
+  padding:0!important;
+  border-radius:20px!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+
+.settings-view .settings-card-title{
+  margin:0!important;
+  padding:12px 14px 7px!important;
+  font-size:9px!important;
+  line-height:1.2!important;
+  color:var(--muted)!important;
+  letter-spacing:1px!important;
+  text-transform:uppercase!important;
+  background:transparent!important;
+}
+
+.settings-view .settings-row{
+  min-height:58px!important;
+  margin:0!important;
+  padding:11px 14px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+
+.settings-view .settings-row + .settings-row{
+  border-top:1px solid var(--border)!important;
+}
+
+.settings-view .settings-row-copy strong{
+  font-size:12px!important;
+  line-height:1.25!important;
+}
+
+.settings-view .settings-row-copy small{
+  margin-top:2px!important;
+  font-size:9px!important;
+  line-height:1.3!important;
+}
+
+.settings-row-side{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:var(--muted);
+  font-size:10.5px;
+  font-weight:800;
+}
+
+.settings-view .settings-arrow{
+  font-size:17px!important;
+}
+
+.settings-view .settings-toggle{
+  min-width:34px!important;
+  padding:5px 8px!important;
+  font-size:8px!important;
+}
+
+.settings-preferences-card{
+  margin-top:14px!important;
+}
+
+.settings-appearance-row{
+  min-height:54px!important;
+}
+
+.settings-view .settings-logout{
+  min-height:50px!important;
+  margin-top:18px!important;
+  border-radius:16px!important;
+}
+
+/* Keep the appearance sheet understated too */
+.candidate-settings-sheet{
+  border-radius:24px 24px 0 0!important;
+}
+
+.candidate-settings-sheet-title{
+  font-size:18px!important;
+}
+
+.candidate-settings-sheet-copy{
+  font-size:10px!important;
+}
+
+.candidate-theme-option{
+  min-height:56px!important;
+}
+
+.candidate-theme-option strong{
+  font-size:12px!important;
+}
+
+.candidate-theme-option small{
+  font-size:9px!important;
+}
+
+@media(max-width:390px){
+  .settings-view .settings-card-title{
+    padding-left:13px!important;
+    padding-right:13px!important;
+  }
+  .settings-view .settings-row{
+    padding-left:13px!important;
+    padding-right:13px!important;
+  }
+}
+</style>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -3119,17 +3251,13 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 
   <div id="settings-message" class="settings-message" hidden></div>
 
-  <section class="settings-card settings-card-compact">
+  <section class="settings-card settings-card-compact settings-preferences-card">
+    <div class="settings-card-title">Preferences</div>
+
     <button class="settings-row settings-row-first settings-appearance-row" type="button" onclick="openCandidateAppearanceSheet()">
-      <span class="settings-row-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
-        </svg>
-      </span>
       <span class="settings-row-copy">
         <strong>Appearance</strong>
-        <small>Choose how Alygnn looks on this device</small>
+        <small>Theme and display</small>
       </span>
       <span class="settings-row-side">
         <span id="candidate-appearance-value">System</span>
