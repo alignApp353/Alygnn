@@ -4190,7 +4190,12 @@ async function attachEmployerLogos(jobRows){
   const employerIds=[
     ...new Set(
       rows
-        .map(job=>job.employer_id)
+        .flatMap(job=>[
+          job.employer_id,
+          job.owner_user_id,
+          job.created_by,
+          job.user_id
+        ])
         .filter(Boolean)
         .map(String)
     )
@@ -4243,6 +4248,56 @@ async function attachEmployerLogos(jobRows){
     }catch(error){
       console.warn('Could not load public company record:',companyId,error);
     }
+  }));
+
+  const verificationCompanyByEmployer=new Map();
+
+  await Promise.all(employerIds.map(async employerId=>{
+    try{
+      const {data,error}=await sb
+        .from('employer_verifications')
+        .select('company_id')
+        .eq('user_id',employerId)
+        .maybeSingle();
+
+      if(!error&&data?.company_id){
+        verificationCompanyByEmployer.set(
+          String(employerId),
+          String(data.company_id)
+        );
+
+        if(!companyById.has(String(data.company_id))){
+          try{
+            const {data:companyData,error:companyError}=await sb
+              .from('companies')
+              .select('*')
+              .eq('id',data.company_id)
+              .maybeSingle();
+
+            if(!companyError&&companyData){
+              companyById.set(String(data.company_id),{
+                company_name:
+                  companyData.company_name||
+                  companyData.legal_name||
+                  companyData.name||
+                  '',
+                company_logo_url:candidateExternalUrl(
+                  companyData.company_logo_url||
+                  companyData.company_logo||
+                  companyData.logo_url||
+                  companyData.logo
+                ),
+                company_website:candidateExternalUrl(
+                  companyData.company_website||
+                  companyData.website||
+                  companyData.public_website_url
+                )
+              });
+            }
+          }catch(_error){}
+        }
+      }
+    }catch(_error){}
   }));
 
   const publicProfileByEmployer=new Map();
@@ -4317,12 +4372,26 @@ async function attachEmployerLogos(jobRows){
   }));
 
   return rows.map(job=>{
+    const ownerId=String(
+      job.employer_id||
+      job.owner_user_id||
+      job.created_by||
+      job.user_id||
+      ''
+    );
+
     const profile=
-      publicProfileByEmployer.get(String(job.employer_id||''))||
+      publicProfileByEmployer.get(ownerId)||
       {};
 
+    const resolvedCompanyId=String(
+      job.company_id||
+      verificationCompanyByEmployer.get(ownerId)||
+      ''
+    );
+
     const companyRecord=
-      companyById.get(String(job.company_id||''))||
+      companyById.get(resolvedCompanyId)||
       {};
 
     return {
