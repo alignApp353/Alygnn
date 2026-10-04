@@ -4726,96 +4726,84 @@
 </style>
 
 
-<style id="alygnn-original-loader-restored">
-  #dashboard-loading.original-loading{
+
+
+
+<style id="alygnn-unified-modern-loader">
+  .alygnn-unified-loader{
     position:fixed;
     inset:0;
-    z-index:120;
+    z-index:9999;
     display:grid;
     place-items:center;
-    background:var(--bg);
-    color:var(--text);
-    transition:opacity .18s ease;
+    background:var(--bg,#F6F8F7);
+    transition:opacity .16s ease;
   }
 
-  #dashboard-loading .original-loading-inner{
-    width:min(320px,80vw);
-    display:grid;
-    gap:12px;
-    text-align:center;
-  }
-
-  #dashboard-loading .original-loading-logo{
-    font-family:'DM Serif Display',Georgia,serif;
-    font-size:18px;
-    line-height:1;
-    color:var(--muted);
-    letter-spacing:-.2px;
-  }
-
-  #dashboard-loading .original-loading-logo span{
-    color:var(--sage);
-  }
-
-  #dashboard-loading .original-loading-title{
-    color:var(--muted);
-    font-size:13px;
-    line-height:1.45;
-    font-weight:500;
-  }
-
-  #dashboard-loading .original-loading-copy{
-    color:var(--muted);
-    font-size:12px;
-    line-height:1.45;
-    font-weight:500;
-  }
-
-  #dashboard-loading .spinner{
+  .alygnn-unified-loader[hidden]{
     display:none!important;
+  }
+
+  .alygnn-unified-loader-inner{
+    display:grid;
+    justify-items:center;
+    gap:14px;
+    transform:translateY(-2vh);
+  }
+
+  .alygnn-unified-loader-logo{
+    font-family:'DM Serif Display',Georgia,serif;
+    font-size:30px;
+    line-height:1;
+    letter-spacing:-.6px;
+    color:var(--brand,#5D7FA3);
+  }
+
+  .alygnn-unified-loader-logo span{
+    color:var(--sage,#8CB69B);
+  }
+
+  .alygnn-unified-loader-dots{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .alygnn-unified-loader-dots i{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--brand,#5D7FA3);
+    opacity:.28;
+    animation:alygnnLoaderDot 1.05s ease-in-out infinite;
+  }
+
+  .alygnn-unified-loader-dots i:nth-child(2){animation-delay:.14s}
+  .alygnn-unified-loader-dots i:nth-child(3){animation-delay:.28s}
+
+  @keyframes alygnnLoaderDot{
+    0%,70%,100%{opacity:.22;transform:translateY(0)}
+    35%{opacity:1;transform:translateY(-3px)}
+  }
+
+  html[data-effective-theme="dark"] .alygnn-unified-loader,
+  html[data-theme="dark"] .alygnn-unified-loader{
+    background:#061821!important;
   }
 </style>
 
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
 
-  <div id="dashboard-loading" class="loading original-loading" role="status" aria-live="polite">
-    <div class="original-loading-inner">
-      <div class="original-loading-logo">Alygnn<span>.</span></div>
-      <div id="dashboard-loading-title" class="original-loading-title">
-        Preparing your employer workspace.
-      </div>
-      <div id="dashboard-loading-copy" class="original-loading-copy">
-        Loading your jobs and hiring activity.
+  <div id="dashboard-loading" class="alygnn-unified-loader" role="status" aria-label="Loading">
+    <div class="alygnn-unified-loader-inner">
+      <div class="alygnn-unified-loader-logo">Alygnn<span>.</span></div>
+      <div class="alygnn-unified-loader-dots" aria-hidden="true">
+        <i></i><i></i><i></i>
       </div>
     </div>
   </div>
-
-  <script>
-  (function(){
-    try{
-      const params=new URLSearchParams(location.search);
-      const title=document.getElementById('dashboard-loading-title');
-      const copy=document.getElementById('dashboard-loading-copy');
-
-      if(!title||!copy)return;
-
-      if(
-        params.get('view')==='jobs' ||
-        params.get('from')==='pricing'
-      ){
-        title.textContent='Preparing your jobs.';
-        copy.textContent='Returning to your employer workspace.';
-      }else if(params.get('view')==='company'){
-        title.textContent='Preparing your company workspace.';
-        copy.textContent='Loading your company details.';
-      }else{
-        title.textContent='Preparing your employer workspace.';
-        copy.textContent='Loading your hiring activity.';
-      }
-    }catch(_error){}
-  })();
-  </script>
 
   <div class="shell">
     <header class="header">
