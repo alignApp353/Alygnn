@@ -347,6 +347,56 @@
     </button>
   </div>
 </nav>
+<script>
+  // Prime employer-only navigation from the cached tab session immediately so
+  // Pricing / My account / Dashboard do not appear late while Supabase loads.
+  (() => {
+    try {
+      const tabId = window.sessionStorage.getItem('alygnn_auth_tab_id');
+      if (!tabId) return;
+
+      const raw = window.sessionStorage.getItem(`alygnn-auth-${tabId}`);
+      if (!raw) return;
+
+      const cached = JSON.parse(raw);
+      const cachedSession = cached?.currentSession || cached?.session || cached;
+      const user = cachedSession?.user || cached?.user || null;
+      if (!user) return;
+
+      const role = String(
+        user.user_metadata?.role ||
+        user.user_metadata?.account_type ||
+        user.app_metadata?.role ||
+        user.app_metadata?.account_type ||
+        ''
+      ).toLowerCase();
+
+      if (role !== 'employer') return;
+
+      const navAuthLink = document.getElementById('nav-auth-link');
+      const navCtaBtn = document.getElementById('nav-cta-btn');
+      const navPricingLink = document.getElementById('nav-pricing-link');
+
+      if (navAuthLink) {
+        navAuthLink.textContent = 'My account';
+        navAuthLink.href = 'employer-account.html';
+        navAuthLink.classList.add('auth-ready');
+      }
+
+      if (navCtaBtn) {
+        navCtaBtn.textContent = 'Dashboard';
+        navCtaBtn.onclick = () => window.location.href = 'employer-dashboard.html';
+        navCtaBtn.classList.add('auth-ready');
+      }
+
+      if (navPricingLink) {
+        const pricingSlot = navPricingLink.closest('.nav-pricing-slot');
+        if (pricingSlot) pricingSlot.style.display = 'list-item';
+        navPricingLink.classList.add('auth-ready');
+      }
+    } catch (_) {}
+  })();
+</script>
 <div class="mobile-menu" id="mobile-menu">
   <a href="#how">How it works</a>
   <a href="pricing.html" id="mobile-pricing-link" style="display:none;">Pricing</a>
