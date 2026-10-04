@@ -901,24 +901,25 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
     }
 
-    // $150 Second Job Slot is visible ONLY on Free.
-    if(second) second.style.display=paid?'none':'';
+    // $150 Second Job Slot is available only after the permanent free slot is
+    // already in use, only while the employer remains on Free, and only before
+    // the standalone Second Job Slot has been purchased.
+    const secondSlotActive =
+      currentAccess.second_job_slot_active===true ||
+      currentAccess.second_slot_active===true ||
+      Number(currentAccess.addon_slot_count||0)>0;
+    const secondSlotAvailable = !paid && used>=1 && !secondSlotActive;
+
+    if(second) second.style.display=secondSlotAvailable?'':'none';
     // $15/day Job Boost is visible ONLY after a Launch/Growth/Scale plan is active.
     if(boostSection) boostSection.style.display=paid?'':'none';
 
     const singleSlotBtn=document.getElementById('single-slot-btn');
-    if(singleSlotBtn && !paid){
-      if(currentAccess.second_slot_active===true){
-        singleSlotBtn.textContent='Second Job Slot active';
-        singleSlotBtn.disabled=true;
-        singleSlotBtn.style.opacity='.6';
-        singleSlotBtn.style.cursor='not-allowed';
-      }else{
-        singleSlotBtn.textContent='Add Second Job Slot — $150/month';
-        singleSlotBtn.disabled=false;
-        singleSlotBtn.style.opacity='';
-        singleSlotBtn.style.cursor='';
-      }
+    if(singleSlotBtn){
+      singleSlotBtn.textContent='Add Second Job Slot — $150/month';
+      singleSlotBtn.disabled=!secondSlotAvailable;
+      singleSlotBtn.style.opacity=secondSlotAvailable?'':'.6';
+      singleSlotBtn.style.cursor=secondSlotAvailable?'':'not-allowed';
     }
     // $99 Weekly is a paid-plan add-on only.
     if(weeklyTab) weeklyTab.style.display=paid?'':'none';
@@ -1056,12 +1057,18 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   function handleSingleJobSlot(){
     if(currentSession && currentRole === 'employer'){
-      if(currentAccess?.active_paid_plan===true){
-        switchView('monthly');
-        return;
-      }
+      const secondSlotActive =
+        currentAccess?.second_job_slot_active===true ||
+        currentAccess?.second_slot_active===true ||
+        Number(currentAccess?.addon_slot_count||0)>0;
+      const hasPostedFirstJob =
+        Number(currentAccess?.active_job_count||0)>=1;
 
-      if(currentAccess?.second_slot_active===true){
+      if(
+        currentAccess?.active_paid_plan===true ||
+        secondSlotActive ||
+        !hasPostedFirstJob
+      ){
         return;
       }
 
