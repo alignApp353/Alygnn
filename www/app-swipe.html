@@ -4190,12 +4190,7 @@ async function attachEmployerLogos(jobRows){
   const employerIds=[
     ...new Set(
       rows
-        .flatMap(job=>[
-          job.employer_id,
-          job.owner_user_id,
-          job.created_by,
-          job.user_id
-        ])
+        .map(job=>job.employer_id)
         .filter(Boolean)
         .map(String)
     )
@@ -4213,6 +4208,45 @@ async function attachEmployerLogos(jobRows){
   if(!employerIds.length&&!companyIds.length)return rows;
 
   const companyById=new Map();
+  const companyByName=new Map();
+
+  function rememberCompanyRecord(data){
+    if(!data||typeof data!=='object')return;
+
+    const normalized={
+      company_name:
+        data.company_name||
+        data.legal_name||
+        data.name||
+        '',
+      company_logo_url:candidateExternalUrl(
+        data.company_logo_url||
+        data.company_logo||
+        data.logo_url||
+        data.logo
+      ),
+      company_website:candidateExternalUrl(
+        data.company_website||
+        data.website||
+        data.public_website_url
+      )
+    };
+
+    if(data.id){
+      companyById.set(String(data.id),normalized);
+    }
+
+    [
+      data.company_name,
+      data.legal_name,
+      data.name
+    ].filter(Boolean).forEach(name=>{
+      companyByName.set(
+        String(name).trim().toLowerCase(),
+        normalized
+      );
+    });
+  }
 
   // Jobs created in the employer app are tied to companies.id.
   // Resolve the canonical company record too, because that is where
@@ -4226,78 +4260,48 @@ async function attachEmployerLogos(jobRows){
         .maybeSingle();
 
       if(!error&&data){
-        companyById.set(String(companyId),{
-          company_name:
-            data.company_name||
-            data.legal_name||
-            data.name||
-            '',
-          company_logo_url:candidateExternalUrl(
-            data.company_logo_url||
-            data.company_logo||
-            data.logo_url||
-            data.logo
-          ),
-          company_website:candidateExternalUrl(
-            data.company_website||
-            data.website||
-            data.public_website_url
-          )
-        });
+        rememberCompanyRecord(data);
       }
     }catch(error){
       console.warn('Could not load public company record:',companyId,error);
     }
   }));
 
-  const verificationCompanyByEmployer=new Map();
+  /*
+   * Older job rows can have company/employer_id but no company_id/logo snapshot.
+   * Candidate Discover must still resolve the public company logo. Try the
+   * canonical companies table by the visible company name as a fallback.
+   */
+  const missingCompanyNames=[
+    ...new Set(
+      rows
+        .filter(job=>!job.company_id)
+        .map(job=>String(job.company_name||job.company||'').trim())
+        .filter(Boolean)
+    )
+  ];
 
-  await Promise.all(employerIds.map(async employerId=>{
-    try{
-      const {data,error}=await sb
-        .from('employer_verifications')
-        .select('company_id')
-        .eq('user_id',employerId)
-        .maybeSingle();
+  await Promise.all(missingCompanyNames.map(async companyName=>{
+    const key=companyName.toLowerCase();
+    if(companyByName.has(key))return;
 
-      if(!error&&data?.company_id){
-        verificationCompanyByEmployer.set(
-          String(employerId),
-          String(data.company_id)
-        );
+    const lookupColumns=['company_name','legal_name','name'];
 
-        if(!companyById.has(String(data.company_id))){
-          try{
-            const {data:companyData,error:companyError}=await sb
-              .from('companies')
-              .select('*')
-              .eq('id',data.company_id)
-              .maybeSingle();
+    for(const column of lookupColumns){
+      try{
+        const {data,error}=await sb
+          .from('companies')
+          .select('*')
+          .ilike(column,companyName)
+          .limit(1)
+          .maybeSingle();
 
-            if(!companyError&&companyData){
-              companyById.set(String(data.company_id),{
-                company_name:
-                  companyData.company_name||
-                  companyData.legal_name||
-                  companyData.name||
-                  '',
-                company_logo_url:candidateExternalUrl(
-                  companyData.company_logo_url||
-                  companyData.company_logo||
-                  companyData.logo_url||
-                  companyData.logo
-                ),
-                company_website:candidateExternalUrl(
-                  companyData.company_website||
-                  companyData.website||
-                  companyData.public_website_url
-                )
-              });
-            }
-          }catch(_error){}
+        if(!error&&data){
+          rememberCompanyRecord(data);
+          break;
         }
-      }
-    }catch(_error){}
+      }catch(_error){}
+    }
   }));
 
   const publicProfileByEmployer=new Map();
@@ -4372,26 +4376,17 @@ async function attachEmployerLogos(jobRows){
   }));
 
   return rows.map(job=>{
-    const ownerId=String(
-      job.employer_id||
-      job.owner_user_id||
-      job.created_by||
-      job.user_id||
-      ''
-    );
-
     const profile=
-      publicProfileByEmployer.get(ownerId)||
+      publicProfileByEmployer.get(String(job.employer_id||''))||
       {};
 
-    const resolvedCompanyId=String(
-      job.company_id||
-      verificationCompanyByEmployer.get(ownerId)||
-      ''
-    );
-
     const companyRecord=
-      companyById.get(resolvedCompanyId)||
+      companyById.get(String(job.company_id||''))||
+      companyByName.get(
+        String(job.company_name||job.company||'')
+          .trim()
+          .toLowerCase()
+      )||
       {};
 
     return {
