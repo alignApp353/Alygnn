@@ -184,6 +184,7 @@ nav{
 .nav-name{
   font-size:14px;
   color:var(--muted);
+  width:170px;
   max-width:170px;
   white-space:nowrap;
   overflow:hidden;
@@ -272,7 +273,7 @@ nav{
   .account-nav-links{display:none}
   .nav-right{gap:8px}
   .nav-post-job{display:none}
-  .nav-name{max-width:110px}
+  .nav-name{width:110px;max-width:110px}
 }
 
 
@@ -354,6 +355,23 @@ nav{
     </div>
 
     <span class="nav-name" id="header-company-name">Employer</span>
+    <script>
+      (() => {
+        try {
+          const tabId = sessionStorage.getItem('alygnn_auth_tab_id');
+          if (!tabId) return;
+          const raw = sessionStorage.getItem(`alygnn-auth-${tabId}`);
+          if (!raw) return;
+
+          const cached = JSON.parse(raw);
+          const cachedSession = cached?.currentSession || cached?.session || cached;
+          const user = cachedSession?.user || cached?.user || null;
+          const name = String(user?.user_metadata?.company_name || '').trim();
+
+          if (name) document.getElementById('header-company-name').textContent = name;
+        } catch (_) {}
+      })();
+    </script>
 
     <a href="employer-dashboard.html#post"
        class="nav-post-job">+ Add a job slot</a>
