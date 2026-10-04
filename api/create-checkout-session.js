@@ -661,6 +661,20 @@ async function manageRpc(name, body){
   return data;
 }
 
+function secondSlotExpiryIso(subscription){
+  const direct=Number(subscription?.current_period_end||0);
+  const item=Number(subscription?.items?.data?.[0]?.current_period_end||0);
+  const unix=direct||item;
+
+  if(unix>0){
+    return new Date(unix*1000).toISOString();
+  }
+
+  const fallback=new Date();
+  fallback.setUTCMonth(fallback.getUTCMonth()+1);
+  return fallback.toISOString();
+}
+
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
@@ -734,9 +748,7 @@ async function syncVerifiedSecondSlotSubscription(employerId,subscription,paymen
     throw error;
   }
 
-  const expiresAt=subscription.current_period_end
-    ?new Date(Number(subscription.current_period_end)*1000).toISOString()
-    :null;
+  const expiresAt=secondSlotExpiryIso(subscription);
 
   try{
     await manageRpc('sync_second_job_slot_subscription',{
