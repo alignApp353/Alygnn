@@ -1393,6 +1393,11 @@ body[data-theme="light"]{
   color-scheme:light;
 }
 
+
+  .old-action-layout .btn-undo .undo-svg{
+    pointer-events:none!important;
+  }
+
 </style>
 
 <style id="candidate-four-tab-nav">
@@ -2747,10 +2752,21 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 
   .old-action-layout .btn-undo{
-    width:48px!important;
-    height:48px!important;
-    color:var(--text)!important;
-    font-size:19px!important;
+    width:60px!important;
+    height:60px!important;
+    color:var(--brand-dark)!important;
+    font-size:0!important;
+  }
+
+  .old-action-layout .btn-undo .undo-svg{
+    width:24px!important;
+    height:24px!important;
+    display:block!important;
+    fill:none!important;
+    stroke:currentColor!important;
+    stroke-width:1.9!important;
+    stroke-linecap:round!important;
+    stroke-linejoin:round!important;
   }
 
   .old-action-layout .btn-skip{
@@ -3527,7 +3543,12 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
   <div class="action-buttons old-action-layout">
     <div class="action-wrap">
-      <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">↩</button>
+      <button class="action-btn btn-undo" id="undo-button" type="button" aria-label="Undo last choice">
+        <svg class="undo-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 8H5v-4"></path>
+          <path d="M5.5 8.5A8 8 0 1 1 5 15"></path>
+        </svg>
+      </button>
       <div class="action-label">Undo</div>
     </div>
 
@@ -4165,6 +4186,7 @@ function candidateCompanyLogoHtml(job,company){
 
 async function attachEmployerLogos(jobRows){
   const rows=Array.isArray(jobRows)?jobRows:[];
+
   const employerIds=[
     ...new Set(
       rows
@@ -4174,7 +4196,54 @@ async function attachEmployerLogos(jobRows){
     )
   ];
 
-  if(!employerIds.length)return rows;
+  const companyIds=[
+    ...new Set(
+      rows
+        .map(job=>job.company_id)
+        .filter(Boolean)
+        .map(String)
+    )
+  ];
+
+  if(!employerIds.length&&!companyIds.length)return rows;
+
+  const companyById=new Map();
+
+  // Jobs created in the employer app are tied to companies.id.
+  // Resolve the canonical company record too, because that is where
+  // the employer posting flow reads logo_url/company_logo from.
+  await Promise.all(companyIds.map(async companyId=>{
+    try{
+      const {data,error}=await sb
+        .from('companies')
+        .select('*')
+        .eq('id',companyId)
+        .maybeSingle();
+
+      if(!error&&data){
+        companyById.set(String(companyId),{
+          company_name:
+            data.company_name||
+            data.legal_name||
+            data.name||
+            '',
+          company_logo_url:candidateExternalUrl(
+            data.company_logo_url||
+            data.company_logo||
+            data.logo_url||
+            data.logo
+          ),
+          company_website:candidateExternalUrl(
+            data.company_website||
+            data.website||
+            data.public_website_url
+          )
+        });
+      }
+    }catch(error){
+      console.warn('Could not load public company record:',companyId,error);
+    }
+  }));
 
   const publicProfileByEmployer=new Map();
 
@@ -4252,18 +4321,24 @@ async function attachEmployerLogos(jobRows){
       publicProfileByEmployer.get(String(job.employer_id||''))||
       {};
 
+    const companyRecord=
+      companyById.get(String(job.company_id||''))||
+      {};
+
     return {
       ...job,
 
       company:
         job.company||
         job.company_name||
+        companyRecord.company_name||
         profile.company_name||
         '',
 
       company_name:
         job.company_name||
         job.company||
+        companyRecord.company_name||
         profile.company_name||
         '',
 
@@ -4273,6 +4348,7 @@ async function attachEmployerLogos(jobRows){
           job.company_logo||
           job.logo_url
         )||
+        companyRecord.company_logo_url||
         profile.company_logo_url||
         '',
 
@@ -4287,6 +4363,7 @@ async function attachEmployerLogos(jobRows){
           job.website||
           job.public_website_url
         )||
+        companyRecord.company_website||
         profile.company_website||
         '',
 
