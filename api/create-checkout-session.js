@@ -176,10 +176,13 @@ function teamSeatPrice(plan){
 
 function additionalSlotEligible(access) {
   // The $150/month Second Job Slot is FREE-ACCOUNT ONLY and can exist only once.
-  // The database RPC is the source of truth so direct checkout URLs cannot bypass it.
-  return access?.second_slot_eligible === true &&
-    access?.active_paid_plan !== true &&
-    Number(access?.addon_slot_count || 0) < 1;
+  // Block only when a paid plan is active or the Second Job Slot is actually active.
+  const secondSlotActuallyActive =
+    access?.second_slot_active === true ||
+    Number(access?.addon_slot_count || 0) > 0;
+
+  return access?.active_paid_plan !== true &&
+    !secondSlotActuallyActive;
 }
 
 function fixedUpgradePrice(currentPlan,targetPlan,billing){
@@ -269,6 +272,81 @@ async function stripeNativeRequest(method,path,params={},extraHeaders={}){
     throw error;
   }
   return data;
+}
+
+
+function normalizePromotionCode(value){
+  return String(value||'').trim().toUpperCase();
+}
+
+async function resolvePromotionCode(code){
+  const normalized=normalizePromotionCode(code);
+  if(!normalized)return null;
+
+  const result=await stripeNativeRequest(
+    'GET',
+    'promotion_codes',
+    {
+      code:normalized,
+      active:'true',
+      limit:10,
+      'expand[]':'data.coupon'
+    }
+  );
+
+  const promotion=(result?.data||[]).find(row=>
+    row?.active===true &&
+    String(row?.code||'').trim().toUpperCase()===normalized
+  );
+
+  if(!promotion){
+    const error=new Error('That promotion code is invalid or no longer active.');
+    error.status=400;
+    throw error;
+  }
+
+  let coupon=promotion.coupon||null;
+
+  if(!coupon && promotion?.promotion?.type==='coupon'){
+    coupon=promotion.promotion.coupon||null;
+  }
+
+  if(typeof coupon==='string'){
+    coupon=await stripeNativeRequest(
+      'GET',
+      'coupons/'+encodeURIComponent(coupon)
+    );
+  }
+
+  if(!coupon || coupon.valid===false){
+    const error=new Error('That promotion code is no longer valid.');
+    error.status=400;
+    throw error;
+  }
+
+  return{
+    promotion,
+    coupon,
+    code:normalized
+  };
+}
+
+function promotionDiscountPreview(resolved){
+  const coupon=resolved?.coupon||{};
+
+  return{
+    promotion_code_id:resolved?.promotion?.id||null,
+    code:resolved?.code||'',
+    percent_off:
+      Number.isFinite(Number(coupon.percent_off))
+        ?Number(coupon.percent_off)
+        :null,
+    amount_off_cents:
+      Number.isFinite(Number(coupon.amount_off))
+        ?Number(coupon.amount_off)
+        :null,
+    currency:String(coupon.currency||'').toLowerCase()||null
+  };
 }
 
 function nativePaymentSheetRequested(input){
@@ -427,7 +505,7 @@ async function createNativeSubscription({
   quantity,
   metadata,
   requestId,
-  promotionCodeId
+  promotionCodeId=null
 }){
   const params={
     customer:customerId,
@@ -488,7 +566,7 @@ async function createNativePaymentSheetCheckout({
   name,
   metadata,
   preferredCustomerId,
-  promotionCodeId
+  resolvedPromotion=null
 }){
   const publishableKey=process.env.STRIPE_PUBLISHABLE_KEY;
   if(!publishableKey)throw new Error('STRIPE_PUBLISHABLE_KEY is not configured.');
@@ -508,9 +586,12 @@ async function createNativePaymentSheetCheckout({
         customerId:customer.id,
         priceId,
         quantity,
-        metadata,
+        metadata:{
+          ...metadata,
+          promotion_code:resolvedPromotion?.code||''
+        },
         requestId,
-        promotionCodeId
+        promotionCodeId:resolvedPromotion?.promotion?.id||null
       })
     :await createNativePaymentIntent({
         user,
@@ -660,53 +741,6 @@ async function manageStripe(method,path,params){
   const data=await r.json().catch(()=>({}));
   if(!r.ok){const err=new Error(data?.error?.message||'Stripe request failed.');err.status=r.status;err.stripe=data?.error||null;throw err;}
   return data;
-}
-
-
-async function resolvePromotionCode(code){
-  const normalized=String(code||'').trim().toUpperCase();
-  if(!normalized)return null;
-
-  const result=await manageStripe(
-    'GET',
-    'promotion_codes',
-    {
-      code:normalized,
-      active:'true',
-      limit:1,
-      'expand[]':'data.coupon'
-    }
-  );
-
-  const promotion=(result?.data||[])[0]||null;
-  if(!promotion||promotion.active!==true)return null;
-
-  let coupon=
-    promotion.coupon ||
-    promotion.promotion?.coupon ||
-    null;
-
-  if(typeof coupon==='string'){
-    coupon=await manageStripe(
-      'GET',
-      'coupons/'+encodeURIComponent(coupon)
-    );
-  }
-
-  if(coupon?.valid===false)return null;
-
-  return{promotion,coupon};
-}
-
-function promotionSummary(resolved){
-  const coupon=resolved?.coupon||{};
-  return{
-    id:resolved?.promotion?.id||null,
-    code:resolved?.promotion?.code||null,
-    percent_off:coupon?.percent_off==null?null:Number(coupon.percent_off),
-    amount_off_cents:coupon?.amount_off==null?null:Number(coupon.amount_off),
-    currency:coupon?.currency||null
-  };
 }
 
 async function ensureRecurringPrice(plan,billing){
@@ -1083,6 +1117,14 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const customerId=stripeCustomerId(sub,ent);
   if(!customerId)throw new Error('Stripe customer could not be identified.');
 
+  const upgradePromotionCode=
+    normalizePromotionCode(input.promotion_code);
+
+  const resolvedUpgradePromotion=
+    upgradePromotionCode
+      ?await resolvePromotionCode(upgradePromotionCode)
+      :null;
+
   // Do NOT modify the recurring subscription until the upgrade difference has
   // succeeded. The verified webhook swaps the recurring Price afterward.
   const targetPrice=await ensureRecurringPrice(targetPlan,billing);
@@ -1102,7 +1144,10 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     terms_version:String(input.terms_version||'')
   };
 
-  if(nativePaymentSheetRequested(input)){
+  if(
+    nativePaymentSheetRequested(input) &&
+    !resolvedUpgradePromotion
+  ){
     const native=await createNativePaymentSheetCheckout({
       user:{email:input.employer_email||null},
       employerId,
@@ -1153,6 +1198,13 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto'
   };
+
+  if(resolvedUpgradePromotion?.promotion?.id){
+    params['discounts[0][promotion_code]']=
+      resolvedUpgradePromotion.promotion.id;
+  }else{
+    params.allow_promotion_codes='true';
+  }
 
   Object.entries(metadata).forEach(([key,value])=>{
     if(value===undefined||value===null||value==='')return;
@@ -1417,48 +1469,6 @@ async function runManageAction(res,user,input){
   }
 
   if(action==='summary'){
-    /*
-     * Self-heal stale scheduled-plan data.
-     *
-     * A canceled/terminal job-plan subscription can leave pending_plan,
-     * pending_billing_period, or pending_plan_effective_at behind from an
-     * earlier test downgrade. That must never make a Free account look as
-     * though Launch (or another plan) will start automatically.
-     */
-    let planSummary=subscriptionSummary(ent,sub);
-
-    const hasStalePendingPlan=
-      planSummary.current_plan==='free' &&
-      (
-        !!ent?.pending_plan ||
-        !!ent?.pending_billing_period ||
-        !!ent?.pending_plan_effective_at ||
-        !!ent?.stripe_plan_schedule_id
-      );
-
-    if(hasStalePendingPlan){
-      try{
-        if(sub){
-          await releaseSchedule(sub,ent);
-        }
-      }catch(error){
-        console.warn(
-          'Could not release stale plan schedule while cleaning billing summary:',
-          error?.message||error
-        );
-      }
-
-      await patchEntitlement(user.id,{
-        stripe_plan_schedule_id:null,
-        pending_plan:null,
-        pending_billing_period:null,
-        pending_plan_effective_at:null
-      });
-
-      ent=await getEntitlement(user.id);
-      planSummary=subscriptionSummary(ent,sub);
-    }
-
     let secondSlot=null;
 
     try{
@@ -1495,7 +1505,7 @@ async function runManageAction(res,user,input){
     return send(res,200,{
       ok:true,
       summary:{
-        ...planSummary,
+        ...subscriptionSummary(ent,sub),
         second_job_slot:secondSlotSummary(secondSlot),
         billing_account:billingAccount
       }
@@ -1670,18 +1680,12 @@ module.exports = async function handler(req, res) {
 
     if(billingAction==='validate_promo'){
       const resolved=await resolvePromotionCode(input.promotion_code);
-
-      if(!resolved){
-        return send(res,400,{
-          error:'This promotion code is invalid, expired, or inactive.'
-        });
-      }
-
       return send(res,200,{
-        ok:true,
-        ...promotionSummary(resolved)
+        valid:true,
+        ...promotionDiscountPreview(resolved)
       });
     }
+
     if ([
       'summary',
       'change_plan',
@@ -1843,22 +1847,13 @@ module.exports = async function handler(req, res) {
 
     if (!priceId) return send(res, 500, { error: 'Stripe Price ID is not configured for this Alygnn product.' });
 
-    const requestedPromotionCode=
-      String(input.promotion_code||'').trim().toUpperCase();
+    const enteredPromotionCode=
+      normalizePromotionCode(input.promotion_code);
 
     const resolvedPromotion=
-      requestedPromotionCode
-        ?await resolvePromotionCode(requestedPromotionCode)
+      enteredPromotionCode
+        ?await resolvePromotionCode(enteredPromotionCode)
         :null;
-
-    if(requestedPromotionCode&&!resolvedPromotion){
-      return send(res,400,{
-        error:'This promotion code is invalid, expired, or inactive.'
-      });
-    }
-
-    const promotionCodeId=
-      resolvedPromotion?.promotion?.id||'';
 
     const metadata = {
       employer_id: user.id,
@@ -1873,14 +1868,13 @@ module.exports = async function handler(req, res) {
       stripe_price_id: priceId,
       source: String(input.source || 'website'),
       terms_version: String(input.terms_version || ''),
-      promotion_code: requestedPromotionCode || ''
+      promotion_code: resolvedPromotion?.code || ''
     };
 
-    const useNativePaymentSheet=
+    if (
       nativePaymentSheetRequested(input) &&
-      !(promotionCodeId && mode==='payment');
-
-    if (useNativePaymentSheet) {
+      !(resolvedPromotion && mode==='payment')
+    ) {
       let preferredCustomerId=null;
 
       // Reuse the plan customer whenever one already exists. This keeps saved
@@ -1905,7 +1899,7 @@ module.exports = async function handler(req, res) {
         name,
         metadata,
         preferredCustomerId,
-        promotionCodeId
+        resolvedPromotion
       });
 
       return send(res,200,native);
@@ -1922,8 +1916,9 @@ module.exports = async function handler(req, res) {
       billing_address_collection: 'auto'
     };
 
-    if(promotionCodeId){
-      params['discounts[0][promotion_code]']=promotionCodeId;
+    if(resolvedPromotion?.promotion?.id){
+      params['discounts[0][promotion_code]']=
+        resolvedPromotion.promotion.id;
     }else{
       params.allow_promotion_codes='true';
     }
