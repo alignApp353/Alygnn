@@ -2815,6 +2815,19 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 }
 </style>
 
+
+<style id="alygnn-appearance-inside-account-final">
+.settings-view .settings-card .settings-appearance-row{
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+.settings-view .settings-card .settings-appearance-row + .settings-row{
+  border-top:1px solid var(--border)!important;
+}
+</style>
+
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -3251,20 +3264,6 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 
   <div id="settings-message" class="settings-message" hidden></div>
 
-  <section class="settings-card settings-card-compact settings-preferences-card">
-    <div class="settings-card-title">Preferences</div>
-
-    <button class="settings-row settings-row-first settings-appearance-row" type="button" onclick="openCandidateAppearanceSheet()">
-      <span class="settings-row-copy">
-        <strong>Appearance</strong>
-        <small>Theme and display</small>
-      </span>
-      <span class="settings-row-side">
-        <span id="candidate-appearance-value">System</span>
-        <span class="settings-arrow">›</span>
-      </span>
-    </button>
-  </section>
 
   <section class="settings-card">
     <div class="settings-card-title">Notifications</div>
@@ -3300,6 +3299,17 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 
   <section class="settings-card">
     <div class="settings-card-title">Account</div>
+
+    <button class="settings-row settings-appearance-row" type="button" onclick="openCandidateAppearanceSheet()">
+      <span class="settings-row-copy">
+        <strong>Appearance</strong>
+        <small>Theme and display</small>
+      </span>
+      <span class="settings-row-side">
+        <span id="candidate-appearance-value">System</span>
+        <span class="settings-arrow">›</span>
+      </span>
+    </button>
 
     <button class="settings-row" type="button" onclick="openPreferencesFromSettings()">
       <span class="settings-row-copy">
