@@ -13656,6 +13656,26 @@
           return;
         }
 
+        let activatingIntoFreeSlot=false;
+
+        if(action==='activate'){
+          try{
+            const {data:postingAccess,error:postingAccessError}=await sb.rpc('get_employer_posting_access');
+            if(postingAccessError)throw postingAccessError;
+            const used=Math.max(0,Number(postingAccess?.active_job_count||0));
+            const limit=Math.max(1,Number(postingAccess?.slot_limit||1));
+            if(used>=limit&&postingAccess?.can_post!==true){
+              openSlotPricing(used,limit);
+              return;
+            }
+            activatingIntoFreeSlot=limit===1&&used===0&&!dashboardBasePaidPlanActive();
+          }catch(capacityError){
+            console.error('Could not verify capacity before activating job:',capacityError);
+            toast('Could not verify your available job slots. Please try again.');
+            return;
+          }
+        }
+
         const status =
           action === 'pause'
             ? 'paused'
@@ -13666,13 +13686,19 @@
             ? 'manual'
             : null;
 
+        const jobPatch={
+          status,
+          pause_reason:pauseReason,
+          updated_at:new Date().toISOString()
+        };
+
+        if(action==='activate'&&activatingIntoFreeSlot){
+          jobPatch.posting_access_type='free';
+        }
+
         const { error } = await sb
           .from('jobs')
-          .update({
-            status,
-            pause_reason:pauseReason,
-            updated_at:new Date().toISOString()
-          })
+          .update(jobPatch)
           .eq('id',id);
 
         if(error){
@@ -13687,6 +13713,9 @@
 
         job.status=status;
         job.pause_reason=pauseReason;
+        if(action==='activate'&&activatingIntoFreeSlot){
+          job.posting_access_type='free';
+        }
 
         renderAll();
 
@@ -14875,6 +14904,8 @@
         const initialJobs = await queryJobsReliably(state.session.user.id);
         state.jobs = Array.isArray(initialJobs) ? initialJobs : [];
 
+        await reconcileEndedPlanJobsOnDashboard();
+
         // Repair older listings that were published before the company-logo
         // snapshot was consistently written to jobs.company_logo.
         await syncEmployerLogoToExistingJobs();
@@ -15342,6 +15373,66 @@
     function dashboardJobConsumesSlot(job){
       const status=String(job?.status||'active').toLowerCase();
       return !['paused','closed','draft','inactive','archived','deleted'].includes(status);
+    }
+
+    function dashboardPaidPlanEnded(entitlement){
+      if(!entitlement)return false;
+      const effectivePlan=String(entitlement.test_plan||entitlement.package_key||entitlement.plan||'').toLowerCase();
+      const hadPaidPlan=['launch','growth','scale','business','enterprise'].includes(effectivePlan);
+      if(!hadPaidPlan)return false;
+      const status=String(entitlement.subscription_status||'').toLowerCase();
+      if(status==='past_due')return false;
+      if(['canceled','unpaid','incomplete_expired','inactive'].includes(status))return true;
+      const end=entitlement.current_period_end;
+      if(!end)return false;
+      const time=new Date(end).getTime();
+      return Number.isFinite(time)&&time<=Date.now();
+    }
+
+    function dashboardJobTime(job){
+      const time=new Date(job?.created_at||job?.updated_at||0).getTime();
+      return Number.isFinite(time)?time:0;
+    }
+
+    async function reconcileEndedPlanJobsOnDashboard(){
+      if(!dashboardPaidPlanEnded(state.entitlement))return false;
+      const live=(state.jobs||[]).filter(dashboardJobConsumesSlot);
+      if(live.length<=1)return false;
+
+      const explicitFree=live
+        .filter(job=>postingAccessType(job)==='free')
+        .sort((a,b)=>dashboardJobTime(b)-dashboardJobTime(a));
+
+      const keepJob=explicitFree[0]||[...live].sort((a,b)=>dashboardJobTime(a)-dashboardJobTime(b))[0];
+      if(!keepJob)return false;
+
+      if(postingAccessType(keepJob)!=='free'){
+        const {error:keepError}=await sb.from('jobs').update({
+          posting_access_type:'free',
+          updated_at:new Date().toISOString()
+        }).eq('id',keepJob.id);
+        if(keepError){
+          console.warn('Could not mark the surviving job as the free slot:',keepError);
+          return false;
+        }
+        keepJob.posting_access_type='free';
+      }
+
+      const toPause=live.filter(job=>String(job.id)!==String(keepJob.id));
+      for(const job of toPause){
+        const {error}=await sb.from('jobs').update({
+          status:'paused',
+          pause_reason:'plan_expired',
+          updated_at:new Date().toISOString()
+        }).eq('id',job.id);
+        if(error){
+          console.warn('Could not pause an expired-plan job:',job.id,error);
+          continue;
+        }
+        job.status='paused';
+        job.pause_reason='plan_expired';
+      }
+      return true;
     }
 
     async function loadDashboardEntitlement(){
