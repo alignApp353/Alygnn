@@ -1399,17 +1399,32 @@ function renderPlans(){
         }
 
         try{
+          const handoff={
+            ...checkoutPayload,
+            created_at:Date.now()
+          };
+
+          /*
+           * app-employer-payment.html validates this exact key before it
+           * allows a direct checkout. Without it, Payment intentionally
+           * redirects back to Pricing.
+           */
+          sessionStorage.setItem(
+            'alygnnEmployerPricingHandoff',
+            JSON.stringify(handoff)
+          );
+
+          // Keep the newer fallback too for Capacitor query-state recovery.
           sessionStorage.setItem(
             'alygnn_pending_employer_checkout',
-            JSON.stringify({
-              ...checkoutPayload,
-              created_at:Date.now()
-            })
+            JSON.stringify(handoff)
           );
         }catch(_error){}
 
         const params=
           new URLSearchParams(checkoutPayload);
+
+        params.set('from_pricing','1');
 
         location.href=
           'app-employer-payment.html?'+
