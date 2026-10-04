@@ -993,6 +993,7 @@
 
     .loading{
       position:fixed;
+      transition:opacity .18s ease;
       inset:0;
       z-index:120;
       background:var(--bg);
@@ -4726,6 +4727,45 @@
 
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
+
+  <div id="dashboard-loading" class="loading" role="status" aria-live="polite">
+    <div style="
+      font-family:'DM Serif Display',Georgia,serif;
+      font-size:34px;
+      line-height:1;
+      color:var(--brand);
+      letter-spacing:-.7px;
+    ">Alygnn<span style="color:var(--sage)">.</span></div>
+
+    <div class="spinner" aria-hidden="true"></div>
+
+    <div id="dashboard-loading-copy" class="loading-copy">
+      Loading your employer workspace...
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    try{
+      const params=new URLSearchParams(location.search);
+      const copy=document.getElementById('dashboard-loading-copy');
+
+      if(!copy)return;
+
+      if(
+        params.get('view')==='jobs' ||
+        params.get('from')==='pricing'
+      ){
+        copy.textContent='Returning to your jobs...';
+      }else if(params.get('view')==='company'){
+        copy.textContent='Opening your company workspace...';
+      }else{
+        copy.textContent='Loading your employer workspace...';
+      }
+    }catch(_error){}
+  })();
+  </script>
+
   <div class="shell">
     <header class="header">
       <div aria-hidden="true"></div>
@@ -15042,6 +15082,18 @@
          * This prevents the previous employer / old dashboard state from
          * flashing before the current account is rendered.
          */
+        const dashboardLoader=
+          document.getElementById('dashboard-loading');
+
+        if(dashboardLoader){
+          dashboardLoader.style.opacity='0';
+          dashboardLoader.style.pointerEvents='none';
+
+          setTimeout(()=>{
+            dashboardLoader.remove();
+          },180);
+        }
+
         document.body.dataset.dashboardBooting='false';
 
         /*
