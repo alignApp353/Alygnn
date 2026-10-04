@@ -6971,26 +6971,6 @@
       `
       : ''
   }
-
-<script id="alygnn-pricing-return-to-jobs-fix">
-(function(){
-  try{
-    const params=new URLSearchParams(location.search);
-
-    if(
-      params.get('view')==='jobs' ||
-      params.get('from')==='pricing'
-    ){
-      sessionStorage.setItem('alygnnEmployerStartView','jobs');
-
-      // Remove stale gate state so returning from pricing never bounces the
-      // employer into the purchase flow again.
-      sessionStorage.removeItem('alygnn_job_slot_gate');
-    }
-  }catch(_error){}
-})();
-</script>
-
 </body>
 </html>`;
     }
@@ -16574,5 +16554,22 @@
     }, 60000);
 
 </script>
+
+<script id="alygnn-pricing-return-to-jobs-fix">
+(function(){
+  try{
+    const params=new URLSearchParams(location.search);
+
+    if(
+      params.get('view')==='jobs' ||
+      params.get('from')==='pricing'
+    ){
+      sessionStorage.setItem('alygnnEmployerStartView','jobs');
+      sessionStorage.removeItem('alygnn_job_slot_gate');
+    }
+  }catch(_error){}
+})();
+</script>
+
 </body>
 </html>
