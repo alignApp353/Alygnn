@@ -140,6 +140,154 @@ async function safeCount(supabase, table, column, value) {
   return Number(count || 0);
 }
 
+
+async function stripeRequest(method, path, params = {}) {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) {
+    const error = new Error('Stripe billing cleanup is not configured on the server.');
+    error.status = 500;
+    throw error;
+  }
+
+  const url = new URL('https://api.stripe.com/v1/' + String(path || '').replace(/^\/+/, ''));
+  const options = {
+    method,
+    headers: { Authorization: 'Bearer ' + secret }
+  };
+
+  if (method === 'GET') {
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value === undefined || value === null || value === '') continue;
+      url.searchParams.append(key, String(value));
+    }
+  } else if (Object.keys(params || {}).length) {
+    const body = new URLSearchParams();
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value === undefined || value === null) continue;
+      body.append(key, String(value));
+    }
+    options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    options.body = body;
+  }
+
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || 'Stripe billing cleanup failed.');
+    error.status = response.status;
+    error.stripeCode = data?.error?.code || '';
+    throw error;
+  }
+
+  return data;
+}
+
+async function stripeSubscriptionIdsForEmployer(supabase, userId, ownedCompanyIds) {
+  const ids = new Set();
+
+  const entitlements = await safeSelect(
+    supabase,
+    'employer_entitlements',
+    'stripe_plan_subscription_id',
+    'employer_id',
+    userId
+  );
+  for (const row of entitlements) {
+    if (row?.stripe_plan_subscription_id) ids.add(String(row.stripe_plan_subscription_id));
+  }
+
+  const seatRows = await safeSelect(
+    supabase,
+    'company_team_seat_subscriptions',
+    'stripe_subscription_id',
+    'employer_id',
+    userId
+  );
+  for (const row of seatRows) {
+    if (row?.stripe_subscription_id) ids.add(String(row.stripe_subscription_id));
+  }
+
+  for (const companyId of ownedCompanyIds || []) {
+    const companySeatRows = await safeSelect(
+      supabase,
+      'company_team_seat_subscriptions',
+      'stripe_subscription_id',
+      'company_id',
+      companyId
+    );
+    for (const row of companySeatRows) {
+      if (row?.stripe_subscription_id) ids.add(String(row.stripe_subscription_id));
+    }
+  }
+
+  let page = '';
+  for (let i = 0; i < 10; i += 1) {
+    const result = await stripeRequest('GET', 'subscriptions/search', {
+      query: `metadata['employer_id']:'${userId}'`,
+      limit: 100,
+      page: page || undefined
+    });
+
+    for (const subscription of result?.data || []) {
+      if (subscription?.id) ids.add(String(subscription.id));
+    }
+
+    if (!result?.has_more || !result?.next_page) break;
+    page = result.next_page;
+  }
+
+  return [...ids].filter(id => /^sub_/.test(id));
+}
+
+async function cancelEmployerStripeSubscriptions(supabase, userId, ownedCompanyIds) {
+  if (!(ownedCompanyIds || []).length) return [];
+
+  const subscriptionIds = await stripeSubscriptionIdsForEmployer(
+    supabase,
+    userId,
+    ownedCompanyIds
+  );
+
+  const canceled = [];
+
+  for (const subscriptionId of subscriptionIds) {
+    let subscription;
+    try {
+      subscription = await stripeRequest(
+        'GET',
+        'subscriptions/' + encodeURIComponent(subscriptionId)
+      );
+    } catch (error) {
+      if (error?.status === 404 || error?.stripeCode === 'resource_missing') continue;
+      throw error;
+    }
+
+    if (String(subscription?.status || '').toLowerCase() === 'canceled') continue;
+
+    // Clear the employer binding first so the later Stripe cancellation webhook
+    // cannot recreate billing entitlements after this Alygnn account is removed.
+    await stripeRequest(
+      'POST',
+      'subscriptions/' + encodeURIComponent(subscriptionId),
+      { 'metadata[employer_id]': '' }
+    );
+
+    try {
+      await stripeRequest(
+        'DELETE',
+        'subscriptions/' + encodeURIComponent(subscriptionId)
+      );
+      canceled.push(subscriptionId);
+    } catch (error) {
+      if (error?.status === 404 || error?.stripeCode === 'resource_missing') continue;
+      throw error;
+    }
+  }
+
+  return canceled;
+}
+
 async function candidateState(supabase, targetUser, profileOverride = null) {
   const id = targetUser.id;
   const profile = profileOverride || await profileFor(supabase, id, '*') || {};
@@ -494,6 +642,8 @@ async function cleanupCompanyData(supabase, userId) {
   await safeDeleteBy(supabase, 'company_activity_log', 'actor_user_id', userId);
   await safeDeleteBy(supabase, 'company_activity_log', 'target_user_id', userId);
   await safeDeleteBy(supabase, 'company_members', 'user_id', userId);
+  await safeDeleteBy(supabase, 'company_team_seat_subscriptions', 'employer_id', userId);
+  await safeDeleteBy(supabase, 'employer_addon_slot_purchases', 'employer_id', userId);
   await safeDeleteBy(supabase, 'employer_profile_update_requests', 'employer_id', userId);
 
   for (const companyId of ownedCompanyIds) {
@@ -507,6 +657,7 @@ async function cleanupCompanyData(supabase, userId) {
       'company_activity_log',
       'company_blueprints',
       'company_members',
+      'company_team_seat_subscriptions',
       'employer_profile_update_requests'
     ];
 
@@ -532,6 +683,11 @@ async function permanentlyDeleteUser(supabase, targetUser) {
     userId
   );
   const ownedCompanyIds = ownedCompanies.map(row => row?.id).filter(Boolean);
+
+  // An employer owner must not leave live recurring Stripe billing behind after
+  // permanent account deletion. Team-only/candidate deletions never enter this
+  // cleanup because they do not own a company.
+  await cancelEmployerStripeSubscriptions(supabase, userId, ownedCompanyIds);
 
   await cleanupStorage(supabase, userId, profile, ownedCompanyIds);
   await cleanupCandidateData(supabase, userId);
