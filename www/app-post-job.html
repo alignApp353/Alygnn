@@ -1399,6 +1399,10 @@ async function loadExistingJobForEdit(
 
     company_logo:
       job.company_logo||
+      currentCompany?.company_logo_url||
+      currentCompany?.logo_url||
+      currentCompany?.company_logo||
+      profile?.company_logo_url||
       profile?.company_logo||
       profile?.logo_url||
       localStorage.getItem('companyLogo')||
@@ -2211,8 +2215,10 @@ function currentCompanyLogo(){
     setup.company_logo,
     metadata.company_logo,
     metadata.logo_url,
+    currentCompany?.company_logo_url,
     currentCompany?.logo_url,
     currentCompany?.company_logo,
+    profile?.company_logo_url,
     profile?.company_logo,
     profile?.logo_url,
     localStorage.getItem('companyLogo')
