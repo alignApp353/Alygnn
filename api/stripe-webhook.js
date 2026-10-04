@@ -129,6 +129,20 @@ async function rpc(name, body) {
   return data;
 }
 
+function secondSlotExpiryIso(subscription){
+  const direct=Number(subscription?.current_period_end||0);
+  const item=Number(subscription?.items?.data?.[0]?.current_period_end||0);
+  const unix=direct||item;
+
+  if(unix>0){
+    return new Date(unix*1000).toISOString();
+  }
+
+  const fallback=new Date();
+  fallback.setUTCMonth(fallback.getUTCMonth()+1);
+  return fallback.toISOString();
+}
+
 async function ensureSecondSlotEntitlementRow(employerId,status,expiresAt){
   const normalized=String(status||'').toLowerCase();
   const active=['active','trialing','past_due'].includes(normalized);
@@ -419,9 +433,7 @@ async function fulfillCheckout(session) {
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
       const status=normalizedSubscriptionStatus(subscription);
-      const expiresAt=subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
+      const expiresAt=secondSlotExpiryIso(subscription);
       try {
         await rpc('sync_second_job_slot_subscription', {
           p_employer_id: employerId,
@@ -563,9 +575,7 @@ async function fulfillSubscription(subscription, forceStatus) {
   if(status==='incomplete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    const expiresAt=subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000).toISOString()
-      : null;
+    const expiresAt=secondSlotExpiryIso(subscription);
     try {
       await rpc('sync_second_job_slot_subscription', {
         p_employer_id: employerId,
