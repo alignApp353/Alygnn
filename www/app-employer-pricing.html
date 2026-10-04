@@ -531,7 +531,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Weekly Job Slots add 1 temporary reusable slot for 7 days and can be added to Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
+  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Every $99 Weekly Job Slot adds 1 temporary reusable slot for 7 days on top of your current capacity and can be purchased on Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
   <div class="message" id="message" hidden></div>
 </main>
 
@@ -554,7 +554,7 @@ const CATALOG={
     scale:{name:'Scale',price:649,suffix:'/ month',slots:8,features:['Everything in Growth','Urgently Hiring badge on jobs','Alygnn Recommended badge on eligible jobs','High-volume hiring capacity','Advanced candidate tools','Team access and priority support']}
   },
   weekly:{
-    weekly_slot:{name:'Weekly Job Slot',price:99,suffix:'/ 7 days',slots:1,popular:true,features:['Adds 1 reusable job slot to your current capacity','Starts immediately after purchase','Expires 7 days after purchase','Close or pause a job and reuse the slot before expiration','Available with or without a monthly/quarterly plan']}
+    weekly_slot:{name:'Weekly Job Slot',price:99,suffix:'/ 7 days',slots:1,popular:true,features:['Adds 1 reusable job slot on top of your current capacity','Starts immediately after purchase','Expires 7 days after purchase','Close or pause a job and reuse the slot before expiration','Available on Free, Launch, Growth, or Scale','Additional Weekly Job Slots can be added when more temporary capacity is needed']}
   }
 };
 
@@ -1134,7 +1134,7 @@ function renderSlotGateNotice(){
         `Upgrade to ${nextName} and save on ongoing capacity.`;
 
       $('slot-gate-copy').textContent=
-        `You already added one $99 Weekly Job Slot and all ${limit} slots are in use. ${upgradeSavingsCopy()} That is better ongoing value than stacking another $99 weekly slot.`;
+        `All ${limit} current slots are in use. Add another $99 Weekly Job Slot to increase capacity by 1 more reusable slot for 7 days.`;
     }else{
       $('slot-gate-copy').textContent=
         `You are using all ${limit} available slots. Add one Weekly Job Slot for $99 to reach ${limit+1} total slots for 7 days.`;
@@ -1260,7 +1260,7 @@ function renderPlans(){
         </div>
 
         <ul class="features">
-          <li>You already have one active $99 Weekly Job Slot</li>
+          <li>Your active Weekly Job Slots are added on top of your current capacity</li>
           <li>${difference!=null
             ? `Upgrade costs only $${difference.toLocaleString('en-US')} more ${period==='quarterly'?'per 3-month term':'per month'} than your current plan`
             : 'Move to the next plan for better ongoing capacity'
