@@ -1011,6 +1011,72 @@ async function syncPlanCheckoutBySession(employerId,checkoutSessionId){
   );
 }
 
+
+async function syncBoostCheckoutBySession(employerId,checkoutSessionId){
+  const session=await manageStripe(
+    'GET',
+    'checkout/sessions/'+encodeURIComponent(checkoutSessionId),
+    {}
+  );
+
+  const metadata=session?.metadata||{};
+  if(
+    String(metadata.employer_id||'')!==String(employerId) ||
+    String(metadata.product||'').toLowerCase()!=='job_boost'
+  ){
+    const error=new Error('This Job Boost checkout session does not belong to this employer.');
+    error.status=403;
+    throw error;
+  }
+
+  const paymentStatus=String(session.payment_status||'').toLowerCase();
+  const sessionStatus=String(session.status||'').toLowerCase();
+
+  if(
+    !['paid','no_payment_required'].includes(paymentStatus) ||
+    sessionStatus!=='complete'
+  ){
+    const error=new Error('The Job Boost checkout is not complete yet.');
+    error.status=409;
+    throw error;
+  }
+
+  const jobId=String(metadata.job_id||'').trim();
+  if(!jobId){
+    const error=new Error('The completed Job Boost checkout is missing its job.');
+    error.status=409;
+    throw error;
+  }
+
+  const days=Math.max(
+    1,
+    Math.min(30,Number.parseInt(metadata.days||'1',10)||1)
+  );
+
+  const paymentReference=
+    typeof session.payment_intent==='string'
+      ? session.payment_intent
+      : (session.payment_intent?.id||session.id);
+
+  await manageRpc('activate_paid_job_boost',{
+    p_employer_id:employerId,
+    p_job_id:jobId,
+    p_days:days,
+    p_payment_reference:paymentReference,
+    p_amount_cents:Number.isFinite(Number(session.amount_total))
+      ? Number(session.amount_total)
+      : null
+  });
+
+  return{
+    synced:true,
+    product:'job_boost',
+    job_id:jobId,
+    days,
+    payment_status:paymentStatus
+  };
+}
+
 async function syncSecondSlotCheckoutBySession(employerId,checkoutSessionId){
   const session=await manageStripe(
     'GET',
@@ -2132,6 +2198,19 @@ module.exports = async function handler(req, res) {
       }
 
       const result=await syncPlanCheckoutBySession(
+        user.id,
+        checkoutSessionId
+      );
+      return send(res,200,result);
+    }
+
+    if(billingAction==='sync_boost_checkout'){
+      const checkoutSessionId=String(input.checkout_session_id||'').trim();
+      if(!checkoutSessionId){
+        return send(res,400,{error:'Checkout session ID is required.'});
+      }
+
+      const result=await syncBoostCheckoutBySession(
         user.id,
         checkoutSessionId
       );
