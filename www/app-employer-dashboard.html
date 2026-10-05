@@ -11233,7 +11233,7 @@
     };
 
     const TEAM_CHECKOUT_ENDPOINT=
-      'https://alygnn.com/api/create-checkout-session';
+      'https://alygnn.com/api/create-app-checkout-session';
 
     /*
      * Team invite email is called with a CORS-safelisted text/plain POST.
@@ -14922,6 +14922,79 @@
       }
     }
 
+
+    const WEEKLY_PENDING_CHECKOUT_KEY='alygnn_pending_weekly_checkout';
+    const BILLING_CHECKOUT_ENDPOINT='https://alygnn.com/api/create-app-checkout-session';
+
+    function pendingWeeklyCheckout(){
+      try{
+        const raw=localStorage.getItem(WEEKLY_PENDING_CHECKOUT_KEY);
+        if(!raw)return null;
+
+        const value=JSON.parse(raw);
+        const age=Date.now()-Number(value?.created_at||0);
+
+        if(
+          !value?.checkout_session_id ||
+          age<0 ||
+          age>24*60*60*1000
+        ){
+          localStorage.removeItem(WEEKLY_PENDING_CHECKOUT_KEY);
+          return null;
+        }
+
+        return value;
+      }catch(_error){
+        return null;
+      }
+    }
+
+    async function reconcilePendingWeeklyCheckout(){
+      const pending=pendingWeeklyCheckout();
+
+      if(!pending || !state.session?.access_token){
+        return false;
+      }
+
+      try{
+        const response=await fetch(
+          BILLING_CHECKOUT_ENDPOINT,
+          {
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              'Authorization':'Bearer '+state.session.access_token
+            },
+            body:JSON.stringify({
+              action:'sync_weekly_slot_checkout',
+              checkout_session_id:pending.checkout_session_id
+            })
+          }
+        );
+
+        let data={};
+        try{data=await response.json();}catch(_error){}
+
+        if(!response.ok){
+          // 409 simply means the Stripe checkout was not completed.
+          if(response.status===409)return false;
+          throw new Error(
+            data.error||
+            'Weekly Job Slot reconciliation failed.'
+          );
+        }
+
+        localStorage.removeItem(WEEKLY_PENDING_CHECKOUT_KEY);
+        return data?.synced===true;
+      }catch(error){
+        console.warn(
+          'Pending Weekly Job Slot reconciliation was unavailable:',
+          error
+        );
+        return false;
+      }
+    }
+
     async function initialize(){
       try{
         const { data,error } = await sb.auth.getSession();
@@ -14932,6 +15005,14 @@
         }
 
         state.session = data.session;
+
+        /*
+         * A 100%-off Weekly Job Slot uses Stripe hosted Checkout because
+         * PaymentSheet cannot represent a $0 PaymentIntent. If Alygnn was
+         * backgrounded or reopened after that checkout, reconcile the
+         * completed Stripe session before loading capacity and jobs.
+         */
+        await reconcilePendingWeeklyCheckout();
 
         // Never carry volatile identity/team data across employer account switches.
         state.currentTeamMember=null;
