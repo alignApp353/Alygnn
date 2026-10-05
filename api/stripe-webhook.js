@@ -469,7 +469,7 @@ async function fulfillCheckout(session) {
     await rpc('grant_weekly_job_slot', {
       p_employer_id: employerId,
       p_payment_reference: session.id,
-      p_amount_cents: session.amount_total || 9900,
+      p_amount_cents: Number.isFinite(Number(session.amount_total)) ? Number(session.amount_total) : 9900,
       p_days: 7
     });
     return;
