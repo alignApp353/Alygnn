@@ -260,8 +260,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     },
     weekly: {
       weekly_slot: {
-        name:'Weekly Job Slot', price:99, suffix:'/ 7 days', billing:'Weekly', kind:'fixed_term', slots:'+1 temporary job slot on top of your paid plan',
-        features:['Requires an active Launch, Growth, or Scale plan','Starts immediately after purchase','Expires 7 days after purchase','Job using this Weekly slot automatically closes after 7 days','Job, applications, and history remain saved','AI candidate matching and applicant management','Launch/Growth: upgrade is recommended after the first Weekly slot','Optional Job Boost · $15/day']
+        name:'Weekly Job Slot', price:99, suffix:'/ 7 days', billing:'Weekly', kind:'fixed_term', slots:'+1 temporary reusable job slot',
+        features:['Available on Free, Launch, Growth, or Scale','Starts immediately after purchase','Expires 7 days after purchase','Job using this Weekly slot automatically closes after 7 days','Job, applications, and history remain saved','AI candidate matching and applicant management','Optional Job Boost · $15/day']
       }
     }
   };
@@ -809,22 +809,6 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(selectedBilling==='weekly'){
       if(postingAccess.candidate_access_locked===true){
         showMessage('Candidate access is paused because of a payment issue. Update billing before adding a Weekly Job Slot.','info');
-        document.getElementById('checkout-btn').disabled=true;
-        return false;
-      }
-      if(postingAccess.active_paid_plan!==true){
-        showMessage('The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.','info');
-        document.getElementById('checkout-btn').disabled=true;
-        return false;
-      }
-      if(postingAccess.weekly_purchase_allowed!==true){
-        const recommended=postingAccess.recommended_upgrade_plan;
-        showMessage(
-          recommended
-            ? `You already have one Weekly Job Slot. Upgrade to ${titleCasePlan(recommended)} for better ongoing value.`
-            : 'Another Weekly Job Slot is not available right now.',
-          'info'
-        );
         document.getElementById('checkout-btn').disabled=true;
         return false;
       }
