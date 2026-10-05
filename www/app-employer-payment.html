@@ -414,7 +414,7 @@ const sb=supabase.createClient(
   {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
 );
 
-const CHECKOUT_ENDPOINT='https://alygnn.com/api/create-checkout-session';
+const CHECKOUT_ENDPOINT='https://alygnn.com/api/create-app-checkout-session';
 const TERMS_VERSION='2026-08-26';
 
 const CATALOG={
@@ -630,6 +630,152 @@ async function getActiveEmployerSession(){
 
 function stripePlugin(){
   return window.Capacitor?.Plugins?.Stripe||null;
+}
+
+
+function capacitorBrowser(){
+  return window.Capacitor?.Plugins?.Browser||null;
+}
+
+function capacitorApp(){
+  return window.Capacitor?.Plugins?.App||null;
+}
+
+const WEEKLY_PENDING_CHECKOUT_KEY='alygnn_pending_weekly_checkout';
+
+function savePendingWeeklyCheckout(checkoutSessionId){
+  if(
+    !checkoutSessionId ||
+    !(billing==='weekly'||plan==='weekly_slot')
+  )return;
+
+  try{
+    localStorage.setItem(
+      WEEKLY_PENDING_CHECKOUT_KEY,
+      JSON.stringify({
+        checkout_session_id:String(checkoutSessionId),
+        created_at:Date.now()
+      })
+    );
+  }catch(_error){}
+}
+
+function readPendingWeeklyCheckout(){
+  try{
+    const raw=localStorage.getItem(WEEKLY_PENDING_CHECKOUT_KEY);
+    if(!raw)return null;
+
+    const value=JSON.parse(raw);
+    const age=Date.now()-Number(value?.created_at||0);
+
+    if(!value?.checkout_session_id || age<0 || age>24*60*60*1000){
+      localStorage.removeItem(WEEKLY_PENDING_CHECKOUT_KEY);
+      return null;
+    }
+
+    return value;
+  }catch(_error){
+    return null;
+  }
+}
+
+async function reconcilePendingWeeklyCheckout(){
+  const pending=readPendingWeeklyCheckout();
+  if(!pending || !session?.access_token)return false;
+
+  try{
+    const response=await fetch(
+      CHECKOUT_ENDPOINT,
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+session.access_token
+        },
+        body:JSON.stringify({
+          action:'sync_weekly_slot_checkout',
+          checkout_session_id:pending.checkout_session_id
+        })
+      }
+    );
+
+    let data={};
+    try{data=await response.json();}catch(_error){}
+
+    if(!response.ok){
+      if(response.status===409)return false;
+      throw new Error(data.error||'Alygnn could not confirm the Weekly Job Slot.');
+    }
+
+    localStorage.removeItem(WEEKLY_PENDING_CHECKOUT_KEY);
+
+    showMessage(
+      data.amount_total_cents===0
+        ?'Promo applied. Your Weekly Job Slot is active.'
+        :'Payment confirmed. Your Weekly Job Slot is active.'
+    );
+
+    setTimeout(()=>{
+      location.replace('app-employer-dashboard.html?view=jobs');
+    },350);
+
+    return true;
+  }catch(error){
+    console.warn('Weekly checkout reconciliation failed:',error);
+    return false;
+  }
+}
+
+let hostedCheckoutListenersInstalled=false;
+
+async function installHostedCheckoutReturnListeners(){
+  if(hostedCheckoutListenersInstalled)return;
+  hostedCheckoutListenersInstalled=true;
+
+  const browser=capacitorBrowser();
+  const app=capacitorApp();
+
+  try{
+    if(browser?.addListener){
+      await browser.addListener(
+        'browserFinished',
+        ()=>reconcilePendingWeeklyCheckout()
+      );
+    }
+  }catch(error){
+    console.warn('Browser return listener unavailable:',error);
+  }
+
+  try{
+    if(app?.addListener){
+      await app.addListener(
+        'appStateChange',
+        ({isActive})=>{
+          if(isActive)reconcilePendingWeeklyCheckout();
+        }
+      );
+    }
+  }catch(error){
+    console.warn('App resume listener unavailable:',error);
+  }
+}
+
+async function openHostedCheckoutInApp(url,checkoutSessionId){
+  savePendingWeeklyCheckout(checkoutSessionId);
+  await installHostedCheckoutReturnListeners();
+
+  const browser=capacitorBrowser();
+
+  if(browser?.open){
+    await browser.open({
+      url:String(url),
+      presentationStyle:'popover'
+    });
+    return;
+  }
+
+  // Non-native fallback only.
+  location.href=String(url);
 }
 
 function nativeStripeAvailable(){
@@ -2063,6 +2209,17 @@ async function initialize(){
 
   session=active;
 
+  /*
+   * If Android returned to this page after a hosted promo checkout,
+   * confirm the Stripe session before rendering another payment attempt.
+   */
+  const reconciledWeekly=
+    await reconcilePendingWeeklyCheckout();
+
+  if(reconciledWeekly){
+    return;
+  }
+
   const email=String(
     session.user?.email ||
     session.user?.user_metadata?.email ||
@@ -2287,8 +2444,16 @@ async function startCheckout(){
     }
 
     if(data.url){
-      // Browser fallback is retained only for non-native environments.
-      location.href=data.url;
+      /*
+       * Promo codes on one-time products use Stripe Checkout instead of
+       * PaymentSheet. Open that URL with Capacitor Browser so Alygnn stays
+       * alive underneath it, then reconcile the verified Checkout Session
+       * when the browser closes / the app resumes.
+       */
+      await openHostedCheckoutInApp(
+        data.url,
+        data.id||data.checkout_session_id||''
+      );
       return;
     }
 
