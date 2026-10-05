@@ -3954,6 +3954,15 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
+    // Team members (Recruiter, Hiring Manager, Admin) already have the
+    // company's candidate data loaded in this dashboard. Open the exact
+    // applicant profile here instead of sending the teammate through the
+    // owner-only candidates page flow.
+    if (isTeamMember && teamCan('candidates_manage')) {
+      openCandidateModal(c.applicationId);
+      return;
+    }
+
     const params = new URLSearchParams({
       job: c.job.id,
       application: c.applicationId
