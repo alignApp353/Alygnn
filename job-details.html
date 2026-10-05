@@ -672,6 +672,11 @@ nav{
     <div id="job-benefits"></div>
   </div>
 
+  <div class="section" id="work-authorization-section" style="display:none;">
+    <h2>Work authorization & sponsorship</h2>
+    <div id="job-work-authorization"></div>
+  </div>
+
   <div class="section" id="details-section" style="display:none;">
     <h2>Details</h2>
     <div class="field-grid" id="job-field-grid"></div>
@@ -1099,6 +1104,49 @@ const DETAIL_FIELD_MAP = [
   { key: 'industry', label: 'Industry' },
 ];
 
+
+function renderWorkAuthorizationSupport(value){
+  let values = [];
+
+  if(Array.isArray(value)){
+    values = value;
+  } else if(typeof value === 'string'){
+    const trimmed = value.trim();
+
+    if(trimmed.startsWith('[')){
+      try{
+        const parsed = JSON.parse(trimmed);
+        if(Array.isArray(parsed)) values = parsed;
+      }catch(e){}
+    }
+
+    if(!values.length && trimmed){
+      values = trimmed
+        .split(/[\n,]/)
+        .map(item => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  const labels = {
+    opt: 'Open to OPT',
+    stem_opt: 'STEM OPT extension support',
+    cpt: 'Open to CPT',
+    h1b_sponsorship: 'H-1B sponsorship available',
+    h1b_transfer: 'H-1B transfer support',
+    no_sponsorship: 'No employment visa sponsorship'
+  };
+
+  const items = values
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .map(value => labels[value] || value);
+
+  if(!items.length) return '';
+
+  return '<ul>' + items.map(item => `<li>${escapeHtml(item)}</li>`).join('') + '</ul>';
+}
+
 function renderJob(job, appInfo, interviewInfo){
   document.title = `${job.title || 'Job'} — Alygnn`;
 
@@ -1182,6 +1230,12 @@ if(job.job_type) badges.push({ text: job.job_type, cls: 'plain' });
   if(job.benefits){
     document.getElementById('benefits-section').style.display = '';
     document.getElementById('job-benefits').innerHTML = renderListOrText(job.benefits);
+  }
+
+  const workAuthorizationHtml = renderWorkAuthorizationSupport(job.work_authorization_support);
+  if(workAuthorizationHtml){
+    document.getElementById('work-authorization-section').style.display = '';
+    document.getElementById('job-work-authorization').innerHTML = workAuthorizationHtml;
   }
 
   const gridEl = document.getElementById('job-field-grid');
