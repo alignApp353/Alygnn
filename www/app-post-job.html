@@ -1551,6 +1551,11 @@ function showSlotSourceNotice(access){
     usesFreeSlot=!freeSlotInUse;
   }
 
+  // Never offer a second free slot when the included free slot is occupied.
+  if(freeSlotInUse){
+    usesFreeSlot=false;
+  }
+
   if(!usesFreeSlot){
     return;
   }
@@ -1656,6 +1661,16 @@ async function augmentPostingAccessWithActualSlotUsage(
 
     return{
       ...(access||{}),
+
+      // Actual live jobs are authoritative for current usage.
+      active_job_count:active.length,
+      can_post:
+        active.length <
+        Math.max(
+          1,
+          Number(access?.slot_limit||1)
+        ),
+
       free_slot_in_use:freeSlotsInUse>=1,
       free_slots_in_use:freeSlotsInUse,
       plan_slots_in_use:planSlotsInUse,
