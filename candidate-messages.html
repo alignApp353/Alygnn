@@ -969,17 +969,23 @@ body.candidate-role #nav-swipe-link[hidden]{
   .alygnn-loader-logo{
     position:absolute;
     top:0;
-    left:50%;
-    transform:translateX(-50%);
+    left:0;
+    right:0;
+    margin:0 auto;
     width:220px;
     text-align:center;
     white-space:nowrap;
-    font-family:'DM Serif Display',Georgia,serif;
+    font-family:'DM Serif Display',serif;
     font-size:32px;
+    font-style:normal;
+    font-weight:400;
+    font-synthesis:none;
     line-height:1;
     letter-spacing:-.6px;
     color:#5D7FA3;
     opacity:0;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:geometricPrecision;
   }
   .alygnn-loader-logo.font-ready{opacity:1;}
   .alygnn-loader-logo span{color:#8CB69B}
@@ -2049,12 +2055,18 @@ init()
   const messageEl = loader.querySelector('.alygnn-loader-message');
   const logoEl = loader.querySelector('.alygnn-loader-logo');
 
-  const showLogo = () => logoEl && logoEl.classList.add('font-ready');
+  const showLogo = () => {
+    if (!logoEl) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => logoEl.classList.add('font-ready'));
+    });
+  };
+
   if (document.fonts && document.fonts.load) {
-    Promise.race([
-      document.fonts.load("32px 'DM Serif Display'"),
-      new Promise(resolve => setTimeout(resolve, 1200))
-    ]).then(showLogo).catch(showLogo);
+    document.fonts.load("400 32px 'DM Serif Display'")
+      .then(() => document.fonts.ready)
+      .then(showLogo)
+      .catch(showLogo);
   } else {
     showLogo();
   }
