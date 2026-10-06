@@ -3452,10 +3452,6 @@
       padding:12px 18px calc(28px + env(safe-area-inset-bottom));
     }
 
-    .job-preview-kicker{
-      display:none;
-    }
-
     .job-preview-title{
       margin-top:7px;
       padding-right:48px;
@@ -3494,16 +3490,12 @@
 
     .job-preview-pill.salary{
       color:var(--brand-dark);
-      background:#EEF4FB;
-      border-color:#C8D7EB;
+      background:#EAF2FA;
+      border-color:#C9DAEC;
+      font-size:12px;
       font-weight:900;
-      box-shadow:inset 0 0 0 1px rgba(52,95,145,.04);
-    }
-
-    html[data-theme="dark"] .job-preview-pill.salary{
-      color:#C9DDF2;
-      background:#172A40;
-      border-color:#35506D;
+      min-height:36px;
+      padding:0 14px;
     }
 
     .job-preview-section{
@@ -3534,21 +3526,17 @@
       margin-top:10px;
       color:var(--muted);
       font-size:12px;
-      line-height:1.72;
+      line-height:1.62;
+      white-space:normal;
       overflow-wrap:anywhere;
     }
 
     .job-preview-copy p{
-      margin:0 0 11px;
-      color:inherit;
-      font-size:inherit;
-      line-height:inherit;
+      margin:0 0 10px;
     }
 
-    .job-preview-copy p:last-child{margin-bottom:0}
-
     .job-preview-copy ul{
-      margin:9px 0 0 18px;
+      margin:8px 0 0 18px;
       padding:0;
       display:grid;
       gap:8px;
@@ -3556,8 +3544,7 @@
 
     .job-preview-copy li{
       padding-left:2px;
-      color:var(--muted);
-      line-height:1.62;
+      line-height:1.5;
     }
 
     .job-preview-note{
@@ -5941,7 +5928,6 @@
         aria-label="Close job preview"
       >×</button>
 
-      
       <h2 class="job-preview-title" id="job-preview-title">Job</h2>
       <div class="job-preview-company" id="job-preview-company">Company</div>
 
@@ -5954,17 +5940,17 @@
 
       <section class="job-preview-section">
         <h3>About this role</h3>
-        <div class="job-preview-copy" id="job-preview-description">No job description added yet.</div>
+        <p id="job-preview-description">No job description added yet.</p>
       </section>
 
       <section class="job-preview-section">
         <h3>What we're looking for</h3>
-        <div class="job-preview-copy" id="job-preview-requirements">No requirements added yet.</div>
+        <p id="job-preview-requirements">No requirements added yet.</p>
       </section>
 
       <section class="job-preview-section">
         <h3>Benefits &amp; details</h3>
-        <div class="job-preview-copy" id="job-preview-benefits">No additional benefits or details added yet.</div>
+        <p id="job-preview-benefits">No additional benefits or details added yet.</p>
       </section>
 
       <div class="job-preview-note">
@@ -13320,7 +13306,7 @@
           .filter(Boolean);
 
         return cleaned.length
-          ? cleaned.join('\n')
+          ? cleaned.join(' • ')
           : fallback;
       }
 
@@ -13331,7 +13317,7 @@
           .filter(Boolean);
 
         return cleaned.length
-          ? cleaned.join('\n')
+          ? cleaned.join(' • ')
           : fallback;
       }
 
@@ -13339,54 +13325,45 @@
       return text || fallback;
     }
 
-    function escapeJobPreviewHtml(value){
-      return String(value ?? '')
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
-    }
+    function renderJobPreviewCopy(elementId,value,fallback){
+      const el=$(elementId);
+      if(!el)return;
 
-    function formatJobPreviewHtml(value,fallback){
-      const raw=jobPreviewCopy(value,fallback);
-      const normalized=String(raw || '').replace(/\r/g,'').trim();
+      const text=jobPreviewCopy(value,fallback)
+        .replace(/\s*•\s*/g,' • ')
+        .replace(/\s*\n+\s*/g,' • ')
+        .trim();
 
-      if(!normalized){
-        return '<p>'+escapeJobPreviewHtml(fallback)+'</p>';
-      }
-
-      // Turn inline bullets into real list items and preserve normal prose as paragraphs.
-      const bulletExpanded=normalized
-        .replace(/\s+[•●▪◦]\s*/g,'\n• ')
-        .replace(/^[-–—]\s+/gm,'• ');
-
-      const lines=bulletExpanded
-        .split(/\n+/)
-        .map(line=>line.trim())
+      const parts=text
+        .split(/\s+•\s+/)
+        .map(part=>part.trim())
         .filter(Boolean);
 
-      const blocks=[];
-      let list=[];
+      el.innerHTML='';
 
-      const flushList=()=>{
-        if(!list.length)return;
-        blocks.push('<ul>'+list.map(item=>'<li>'+escapeJobPreviewHtml(item)+'</li>').join('')+'</ul>');
-        list=[];
-      };
+      if(parts.length<=1){
+        const p=document.createElement('p');
+        p.textContent=parts[0] || fallback;
+        el.appendChild(p);
+        return;
+      }
 
-      lines.forEach(line=>{
-        if(/^•\s*/.test(line)){
-          list.push(line.replace(/^•\s*/,''));
-          return;
-        }
+      const first=parts.shift();
+      if(first){
+        const p=document.createElement('p');
+        p.textContent=first;
+        el.appendChild(p);
+      }
 
-        flushList();
-        blocks.push('<p>'+escapeJobPreviewHtml(line)+'</p>');
-      });
-
-      flushList();
-      return blocks.join('');
+      if(parts.length){
+        const ul=document.createElement('ul');
+        parts.forEach(item=>{
+          const li=document.createElement('li');
+          li.textContent=item;
+          ul.appendChild(li);
+        });
+        el.appendChild(ul);
+      }
     }
 
     function openJobPreview(id){
@@ -13437,36 +13414,36 @@
       $('job-preview-salary').textContent =
         jobPreviewSalary(job);
 
-      $('job-preview-description').innerHTML =
-        formatJobPreviewHtml(
-          firstValue(
-            job.description,
-            job.job_description,
-            job.summary
-          ),
-          'No job description added yet.'
-        );
+      renderJobPreviewCopy(
+        'job-preview-description',
+        firstValue(
+          job.description,
+          job.job_description,
+          job.summary
+        ),
+        'No job description added yet.'
+      );
 
-      $('job-preview-requirements').innerHTML =
-        formatJobPreviewHtml(
-          firstValue(
-            job.requirements,
-            job.qualifications,
-            job.skills_required,
-            job.skills
-          ),
-          'No requirements added yet.'
-        );
+      renderJobPreviewCopy(
+        'job-preview-requirements',
+        firstValue(
+          job.requirements,
+          job.qualifications,
+          job.skills_required,
+          job.skills
+        ),
+        'No requirements added yet.'
+      );
 
-      $('job-preview-benefits').innerHTML =
-        formatJobPreviewHtml(
-          firstValue(
-            job.benefits,
-            job.perks,
-            job.additional_details
-          ),
-          'No additional benefits or details added yet.'
-        );
+      renderJobPreviewCopy(
+        'job-preview-benefits',
+        firstValue(
+          job.benefits,
+          job.perks,
+          job.additional_details
+        ),
+        'No additional benefits or details added yet.'
+      );
 
       $('job-preview-edit').dataset.jobId = String(id);
 
