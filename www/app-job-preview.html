@@ -11,26 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-(function(){
-  const preference =
-    localStorage.getItem('alygnnEmployerTheme') ||
-    localStorage.getItem('alygnnTheme') ||
-    'auto';
-
-  const dark =
-    preference === 'dark' ||
-    (preference === 'auto' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-
-  document.querySelector('meta[name="theme-color"]')?.setAttribute(
-    'content',
-    dark ? '#07121D' : '#F5F8F8'
-  );
-})();
-</script>
 
 <style>
 *{
@@ -99,8 +79,12 @@ button{
   border-radius:50%;
   background:#fff;
   color:var(--text);
-  font-size:20px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  box-shadow:0 5px 14px rgba(23,35,51,.04);
 }
+.back svg{display:block}
 
 .logo{
   text-align:center;
@@ -595,116 +579,29 @@ button{
 .loading{
   position:fixed;
   inset:0;
-  z-index:120;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    24px
-    calc(24px + env(safe-area-inset-bottom));
-  background:
-    radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),
-    var(--bg);
-  color:var(--text);
-  transition:opacity .18s ease,visibility .18s ease;
+  z-index:100;
+  display:grid;
+  place-items:center;
+  background:rgba(245,248,248,.98);
 }
 
-html[data-theme="dark"]{
-  --bg:#07121D;
-  --card:#0F1B28;
-  --text:#F2F6F9;
-  --muted:#9FB0BF;
-  --border:#2B3A4A;
-  --soft:#102330;
+.spinner{
+  width:42px;
+  height:42px;
+  margin:auto;
+  border:4px solid #E1E7EB;
+  border-top-color:var(--brand-dark);
+  border-radius:50%;
+  animation:spin .75s linear infinite;
 }
 
-html[data-theme="dark"] body,
-html[data-theme="dark"] .page{
-  background:#07121D!important;
-  color:#F2F6F9!important;
-}
-
-html[data-theme="dark"] .header,
-html[data-theme="dark"] .footer{
-  background:rgba(7,18,29,.98)!important;
-  border-color:#2B3A4A!important;
-}
-
-html[data-theme="dark"] .secondary{
-  background:#0F1B28!important;
-  color:#F2F6F9!important;
-  border-color:#2B3A4A!important;
-}
-
-html[data-theme="dark"] .loading{
-  background:
-    radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
-    var(--bg);
-}
-
-.alygnn-loader{
-  width:min(360px,88vw);
-  text-align:center;
-  transform:translateY(-3vh);
-}
-
-.alygnn-loader-logo{
-  display:inline-block;
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:clamp(54px,15vw,72px);
-  line-height:.95;
-  letter-spacing:-2px;
-  color:var(--brand);
-  text-rendering:optimizeLegibility;
-  -webkit-font-smoothing:antialiased;
-}
-
-.alygnn-loader-logo span{
-  color:var(--sage);
-}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 .loading-copy{
-  margin-top:18px;
+  margin-top:12px;
   color:var(--muted);
-  font-size:14px;
-  line-height:1.45;
-  font-weight:700;
-  letter-spacing:.01em;
-}
-
-.alygnn-loading-track{
-  position:relative;
-  width:116px;
-  height:3px;
-  margin:25px auto 0;
-  overflow:hidden;
-  border-radius:999px;
-  background:var(--border);
-}
-
-.alygnn-loading-bar{
-  position:absolute;
-  inset:0 auto 0 -48%;
-  width:48%;
-  border-radius:999px;
-  background:linear-gradient(90deg,var(--brand),var(--sage));
-  animation:alygnn-loading 1.15s cubic-bezier(.4,0,.2,1) infinite;
-}
-
-@keyframes alygnn-loading{
-  0%{transform:translateX(0);opacity:.45}
-  45%{opacity:1}
-  100%{transform:translateX(310%);opacity:.55}
-}
-
-@media (prefers-reduced-motion:reduce){
-  .alygnn-loading-bar{
-    left:0;
-    width:100%;
-    animation:none;
-    opacity:.8;
-  }
+  font-size:11px;
+  font-weight:800;
 }
 
 .error-state{
@@ -819,55 +716,6 @@ html[data-theme="dark"] .loading{
   color:var(--text);
 }
 
-/* Keep the publish confirmation in the same theme as the employer app. */
-html[data-theme="dark"] .success-screen{
-  background:
-    radial-gradient(circle at top,rgba(140,182,155,.10),transparent 34%),
-    #07121D!important;
-}
-
-html[data-theme="dark"] .success-card{
-  background:#0F1B28!important;
-  border-color:#2B3A4A!important;
-  box-shadow:0 22px 62px rgba(0,0,0,.34)!important;
-}
-
-html[data-theme="dark"] .success-card h2{
-  color:#F2F6F9!important;
-}
-
-html[data-theme="dark"] .success-card p{
-  color:#AFC0CD!important;
-}
-
-html[data-theme="dark"] .success-job{
-  background:#0B1D26!important;
-  border-color:#304452!important;
-  color:#F2F6F9!important;
-}
-
-html[data-theme="dark"] .dashboard{
-  background:#3E6FA5!important;
-  color:#FFFFFF!important;
-}
-
-html[data-theme="dark"] .view{
-  background:#0B1D26!important;
-  border-color:#3A4D5E!important;
-  color:#F2F6F9!important;
-}
-
-html[data-theme="dark"] .view:disabled,
-html[data-theme="dark"] .dashboard:disabled{
-  opacity:.52;
-  color:#AFC0CD!important;
-}
-
-html[data-theme="dark"] .success-icon{
-  background:#15392C!important;
-  color:#67D39B!important;
-}
-
 @media(max-width:390px){
   .company-top{
     grid-template-columns:55px minmax(0,1fr) 96px;
@@ -894,1709 +742,95 @@ html[data-theme="dark"] .success-icon{
     font-size:27px;
   }
 }
-
-/* =====================================================
-   CANDIDATE PREVIEW — MATCH ACTUAL DISCOVER CARD
-   Match percentage intentionally omitted because it is
-   personalized for each candidate.
-===================================================== */
-
-.candidate-card-preview{
-  padding:24px!important;
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.08),transparent 28%),
-    #fff!important;
-  border:1px solid var(--border)!important;
-  border-radius:30px!important;
-  box-shadow:0 22px 60px rgba(27,43,63,.12)!important;
-  display:flex!important;
-  flex-direction:column!important;
-  overflow:hidden!important;
-}
-
-.candidate-card-toolbar{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  min-height:36px;
-  margin-bottom:18px;
-}
-
-.candidate-card-actions{
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-
-.candidate-icon-btn,
-.candidate-save-btn{
-  width:36px;
-  height:36px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:0;
-  box-shadow:0 5px 16px rgba(23,35,51,.04);
-}
-
-.candidate-icon-btn{
-  font-size:17px;
-}
-
-.candidate-save-btn{
-  font-size:19px;
-}
-
-.candidate-card-top{
-  display:flex;
-  gap:15px;
-  margin-bottom:18px;
-  align-items:flex-start;
-}
-
-.candidate-company-logo{
-  width:68px!important;
-  height:68px!important;
-  border-radius:22px!important;
-  background:linear-gradient(145deg,#F5F8FA,#E5ECF2)!important;
-  border:1px solid var(--border)!important;
-  color:var(--brand-dark)!important;
-  font-family:'DM Sans',Arial,sans-serif!important;
-  font-size:23px!important;
-  font-weight:900!important;
-  flex:0 0 68px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
-}
-
-.candidate-company-logo img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-.candidate-title-block{
-  min-width:0;
-  flex:1;
-  padding-top:2px;
-}
-
-.candidate-job-title{
-  margin:0!important;
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:31px!important;
-  line-height:1.02!important;
-  letter-spacing:-.4px!important;
-  color:var(--text)!important;
-  overflow-wrap:anywhere;
-}
-
-.candidate-company-line{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin-top:6px;
-}
-
-.candidate-company-name{
-  color:var(--muted)!important;
-  font-size:15px!important;
-  font-weight:400!important;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.candidate-verified{
-  width:17px;
-  height:17px;
-  flex:0 0 17px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:0!important;
-  margin:0!important;
-  background:var(--brand)!important;
-  color:#fff!important;
-  font-size:10px!important;
-  font-weight:900!important;
-}
-
-
-.preview-job-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
-.preview-job-badge{
-  display:inline-flex;align-items:center;min-height:27px;padding:0 9px;border-radius:999px;
-  font-size:9px;font-weight:900;border:1px solid var(--border)
-}
-.preview-job-badge.urgent{background:#FFF3DD;border-color:#F1D19A;color:#9A6211}
-.preview-job-badge.recommended{background:#EDF5FC;border-color:#BED4E8;color:var(--brand-dark)}
-.preview-job-badge.featured{background:#EDF7F1;border-color:#C8E2D2;color:#377A55}
-
-.candidate-card-pills{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:18px;
-}
-
-.candidate-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  padding:8px 12px;
-  border:1px solid var(--border);
-  border-radius:999px;
-  background:rgba(250,252,253,.92);
-  color:var(--muted);
-  font-size:12px;
-  font-weight:800;
-  line-height:1.25;
-}
-
-.candidate-salary-pill{
-  background:#EDF3F8;
-  color:var(--brand-dark);
-}
-
-.candidate-overview{
-  margin-top:12px;
-  padding-top:11px;
-  border-top:1px solid rgba(93,127,163,.18);
-}
-
-.candidate-overview-label{
-  margin-bottom:5px;
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:1.15px;
-  text-transform:uppercase;
-  color:var(--brand-dark);
-}
-
-.candidate-card-desc{
-  margin-top:0!important;
-  color:var(--muted)!important;
-  font-size:12px!important;
-  line-height:1.5!important;
-  max-width:100%;
-  display:-webkit-box!important;
-  -webkit-box-orient:vertical!important;
-  -webkit-line-clamp:3!important;
-  overflow:hidden!important;
-}
-
-.candidate-preview-chips{
-  margin-top:14px!important;
-}
-
-.candidate-preview-chips .chip{
-  padding:8px 11px;
-  background:var(--soft);
-  color:var(--brand);
-  font-size:10px;
-  font-weight:800;
-}
-
-.candidate-card-bottom{
-  margin-top:auto;
-  padding-top:11px;
-  border-top:1px solid var(--border);
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-}
-
-.candidate-view-full{
-  width:auto;
-  min-height:36px;
-  padding:5px 2px 5px 12px;
-  border:0;
-  border-radius:10px;
-  background:transparent;
-  color:var(--brand-dark);
-  display:inline-flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:7px;
-  font-size:12px;
-  font-weight:900;
-}
-
-.candidate-view-full-arrow{
-  font-size:15px;
-  line-height:1;
-}
-
-/* Preview-only toolbar buttons are visual examples, not actions. */
-.candidate-icon-btn,
-.candidate-save-btn{
-  pointer-events:none;
-}
-
-@media(max-width:390px){
-  .candidate-card-preview{
-    padding:20px!important;
-  }
-
-  .candidate-company-logo{
-    width:62px!important;
-    height:62px!important;
-    flex-basis:62px;
-    border-radius:20px!important;
-  }
-
-  .candidate-job-title{
-    font-size:28px!important;
-  }
-
-  .candidate-pill{
-    font-size:11px;
-    padding:7px 10px;
-  }
-}
-
-
-/* =====================================================
-   EMPLOYER PREVIEW — REAL DISCOVER FLOATING CARD
-   Keep the preview at the same visual scale as the
-   candidate swipe deck instead of stretching vertically.
-===================================================== */
-
-.page{
-  max-width:480px!important;
-  padding:14px 18px 28px!important;
-}
-
-/* Keep the preview header light so the card is the focus. */
-.page-title{
-  display:none!important;
-}
-
-.page-copy{
-  margin:3px auto 0!important;
-  max-width:360px;
-  text-align:center;
-  font-size:10px!important;
-  line-height:1.45!important;
-}
-
-.eyebrow{
-  text-align:center;
-  font-size:9px!important;
-  letter-spacing:1.25px!important;
-}
-
-.status-wrap{
-  justify-content:center;
-  margin-top:7px!important;
-}
-
-/* Approved status already appears as the blue verified check
-   inside the candidate card. Only warning states need space. */
-.status-wrap:empty{
-  display:none!important;
-}
-
-.flip-shell{
-  position:relative!important;
-  width:100%!important;
-  max-width:430px!important;
-  height:min(440px,calc(100dvh - 265px))!important;
-  min-height:400px!important;
-  margin:14px auto 0!important;
-  perspective:1600px!important;
-  isolation:isolate;
-}
-
-/* Two subtle cards behind the preview recreate the real swipe deck. */
-.flip-shell::before,
-.flip-shell::after{
-  content:'';
-  position:absolute;
-  inset:0;
-  border:1px solid var(--border);
-  border-radius:30px;
-  background:#fff;
-  pointer-events:none;
-  transform-origin:center bottom;
-}
-
-.flip-shell::before{
-  z-index:0;
-  transform:scale(.94) translateY(20px);
-  opacity:.62;
-  box-shadow:0 15px 42px rgba(27,43,63,.06);
-}
-
-.flip-shell::after{
-  z-index:1;
-  transform:scale(.97) translateY(10px);
-  opacity:.82;
-  box-shadow:0 17px 48px rgba(27,43,63,.08);
-}
-
-.flip-shadow{
-  left:28px!important;
-  right:28px!important;
-  bottom:-18px!important;
-  height:54px!important;
-  opacity:.75;
-  z-index:-1;
-}
-
-.flip-inner{
-  z-index:3;
-}
-
-.card-face{
-  border-radius:30px!important;
-  box-shadow:0 22px 60px rgba(27,43,63,.12)!important;
-}
-
-/* Exact candidate-card content should not contain employer-only skill chips. */
-.candidate-preview-chips{
-  display:none!important;
-}
-
-.candidate-card-preview{
-  padding:24px!important;
-  min-height:0!important;
-}
-
-.candidate-card-toolbar{
-  margin-bottom:18px!important;
-}
-
-.candidate-card-top{
-  margin-bottom:18px!important;
-}
-
-.candidate-card-pills{
-  margin-bottom:18px!important;
-}
-
-.candidate-overview{
-  margin-top:12px!important;
-}
-
-.candidate-card-bottom{
-  margin-top:auto!important;
-}
-
-/* Full job remains contained inside the same floating card. */
-.card-back{
-  height:100%!important;
-}
-
-.full-job{
-  min-height:0!important;
-}
-
-/* Short phones use the same compact rule as candidate Discover. */
-@media(max-height:760px){
-  .page{
-    padding-top:9px!important;
-  }
-
-  .page-copy{
-    display:none!important;
-  }
-
-  .flip-shell{
-    height:min(415px,calc(100dvh - 230px))!important;
-    min-height:370px!important;
-    margin-top:9px!important;
-  }
-
-  .candidate-card-preview{
-    padding:19px!important;
-  }
-
-  .candidate-job-title{
-    font-size:25px!important;
-  }
-
-  .candidate-card-toolbar,
-  .candidate-card-top,
-  .candidate-card-pills{
-    margin-bottom:13px!important;
-  }
-}
-
-@media(max-width:390px){
-  .page{
-    padding-left:16px!important;
-    padding-right:16px!important;
-  }
-
-  .flip-shell{
-    max-width:100%!important;
-  }
-}
-
-
-/* ==========================================================
-   EMPLOYER CANDIDATE PREVIEW — DISCOVER PORTAL SHELL
-   Uses the same layout/proportions as app-swipe.html.
-   ========================================================== */
-
-/* The employer preview now behaves like the candidate Discover screen. */
-.page{
-  width:100%!important;
-  max-width:none!important;
-  min-height:calc(100dvh - 78px - 84px)!important;
-  margin:0!important;
-  padding:0!important;
-  display:flex!important;
-  flex-direction:column!important;
-  background:var(--bg)!important;
-}
-
-/* Remove the old employer-preview heading area entirely. */
-.page > .eyebrow,
-.page > .page-title,
-.page > .page-copy{
-  display:none!important;
-}
-
-/* Candidate Discover progress card */
-.candidate-progress-shell{
-  width:100%;
-  padding:12px 18px 0;
-  flex:none;
-}
-
-.candidate-progress-card{
-  width:100%;
-  max-width:430px;
-  margin:0 auto;
-  background:rgba(255,255,255,.88);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:12px 14px;
-  display:grid;
-  grid-template-columns:repeat(3,1fr) 1.4fr;
-  gap:8px;
-  align-items:center;
-  box-shadow:0 8px 22px rgba(25,40,60,.05);
-}
-
-.candidate-stat{
-  text-align:center;
-}
-
-.candidate-stat-value{
-  font-size:18px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.candidate-stat-label{
-  margin-top:2px;
-  font-size:9px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:.8px;
-  font-weight:800;
-}
-
-.candidate-job-progress{
-  border-left:1px solid var(--border);
-  padding-left:12px;
-}
-
-.candidate-progress-copy{
-  font-size:11px;
-  font-weight:800;
-  color:var(--text);
-  text-align:center;
-  margin-bottom:6px;
-}
-
-.candidate-progress-track{
-  width:100%;
-  height:7px;
-  background:#E8EDF2;
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.candidate-progress-fill{
-  width:100%;
-  height:100%;
-  background:var(--brand);
-  border-radius:inherit;
-}
-
-/* Only show verification problems here. Approved employers have no banner. */
-.status-wrap{
-  width:100%;
-  max-width:430px;
-  margin:8px auto 0!important;
-  padding:0 18px;
-}
-
-.status-wrap:empty{
-  display:none!important;
-}
-
-.status-wrap .status-pill{
-  width:100%;
-  text-align:center;
-}
-
-/* This is the actual candidate swipe-area layout:
-   center the card + candidate action bar in the available viewport. */
-.candidate-preview-swipe-area{
-  width:100%;
-  flex:1;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:14px 18px 24px;
-}
-
-/* Match candidate card-stack dimensions exactly. */
-.flip-shell{
-  position:relative!important;
-  width:100%!important;
-  max-width:430px!important;
-  height:min(440px,calc(100dvh - 405px))!important;
-  min-height:390px!important;
-  margin:0 auto!important;
-  perspective:1600px!important;
-}
-
-/* Candidate stack shells */
-.flip-shell::before,
-.flip-shell::after{
-  content:'';
-  position:absolute;
-  inset:0;
-  border:1px solid var(--border);
-  border-radius:30px;
-  background:#fff;
-  pointer-events:none;
-  transform-origin:center bottom;
-}
-
-.flip-shell::before{
-  z-index:0;
-  transform:scale(.94) translateY(20px);
-  opacity:.62;
-}
-
-.flip-shell::after{
-  z-index:1;
-  transform:scale(.97) translateY(10px);
-  opacity:.82;
-}
-
-.flip-inner{
-  position:relative;
-  z-index:3;
-  width:100%;
-  height:100%;
-}
-
-.card-face{
-  border-radius:30px!important;
-}
-
-.candidate-card-preview{
-  padding:24px!important;
-  height:100%!important;
-  min-height:0!important;
-  background:
-    radial-gradient(circle at top right,rgba(93,127,163,.08),transparent 28%),
-    #fff!important;
-  border:1px solid var(--border)!important;
-  box-shadow:0 22px 60px rgba(27,43,63,.12)!important;
-}
-
-/* The real candidate portal has a left Match badge.
-   Employer preview intentionally leaves that space empty because
-   the score does not exist until a specific candidate sees the job. */
-.candidate-card-toolbar{
-  min-height:36px!important;
-  display:flex!important;
-  justify-content:flex-end!important;
-  align-items:center!important;
-  margin-bottom:18px!important;
-}
-
-/* Candidate toolbar icons */
-.candidate-card-actions{
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-
-.candidate-icon-btn,
-.candidate-save-btn{
-  width:36px!important;
-  height:36px!important;
-  border-radius:50%!important;
-  border:1px solid var(--border)!important;
-  background:#fff!important;
-  color:var(--text)!important;
-  box-shadow:none!important;
-}
-
-/* Candidate front-card sizing */
-.candidate-card-top{
-  gap:15px!important;
-  margin-bottom:18px!important;
-}
-
-.candidate-company-logo{
-  width:68px!important;
-  height:68px!important;
-  flex-basis:68px!important;
-  border-radius:22px!important;
-}
-
-.candidate-job-title{
-  font-size:31px!important;
-  line-height:1.02!important;
-}
-
-.candidate-company-name{
-  font-size:15px!important;
-}
-
-.candidate-card-pills{
-  gap:8px!important;
-  margin-bottom:18px!important;
-}
-
-.candidate-pill{
-  padding:8px 12px!important;
-  font-size:12px!important;
-}
-
-.candidate-overview{
-  margin-top:12px!important;
-  padding-top:11px!important;
-}
-
-.candidate-card-desc{
-  font-size:12px!important;
-  line-height:1.5!important;
-  -webkit-line-clamp:3!important;
-}
-
-/* Employer-only generated skill chips do not appear on the actual front card. */
-.candidate-preview-chips{
-  display:none!important;
-}
-
-.candidate-card-bottom{
-  margin-top:auto!important;
-  padding-top:11px!important;
-}
-
-/* Exact candidate Discover action tray */
-.candidate-preview-actions{
-  width:100%;
-  max-width:430px;
-  display:grid;
-  grid-template-columns:82px minmax(0,1fr) minmax(0,1.45fr);
-  gap:10px;
-  margin-top:14px;
-  padding:11px;
-  border:1px solid var(--border);
-  border-radius:20px;
-  background:rgba(252,252,250,.94);
-  box-shadow:0 10px 30px rgba(27,43,63,.08);
-  pointer-events:none;
-  user-select:none;
-}
-
-.candidate-action-btn{
-  min-width:0;
-  height:68px;
-  border-radius:16px;
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:0;
-}
-
-.candidate-undo-btn{
-  flex-direction:column;
-  gap:3px;
-}
-
-.candidate-action-undo{
-  font-size:22px;
-  line-height:1;
-}
-
-.candidate-action-main{
-  display:block;
-  font-size:12px;
-  line-height:1.15;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-.candidate-action-sub{
-  display:block;
-  margin-top:4px;
-  font-size:9px;
-  line-height:1.1;
-  color:var(--muted);
-  font-weight:700;
-  white-space:nowrap;
-}
-
-.candidate-skip-btn{
-  flex-direction:column;
-  padding:0 10px;
-  border-color:var(--brand);
-  background:transparent;
-}
-
-.candidate-apply-btn{
-  position:relative;
-  flex-direction:column;
-  align-items:flex-start;
-  padding:0 34px 0 17px;
-  border-color:transparent;
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1);
-  color:#fff;
-}
-
-.candidate-apply-btn .candidate-action-sub{
-  color:rgba(255,255,255,.76);
-}
-
-.candidate-action-arrow{
-  position:absolute;
-  right:15px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:20px;
-  line-height:1;
-}
-
-/* Employer publishing footer remains visually separate from the simulated
-   candidate portal. */
-.footer{
-  min-height:84px;
-}
-
-.footer-inner{
-  max-width:430px!important;
-}
-
-/* Dark mode for candidate portal preview */
-html[data-theme="dark"] .candidate-progress-card,
-html[data-theme="dark"] .candidate-card-preview,
-html[data-theme="dark"] .flip-shell::before,
-html[data-theme="dark"] .flip-shell::after,
-html[data-theme="dark"] .candidate-preview-actions,
-html[data-theme="dark"] .candidate-action-btn{
-  background:#0F1B28!important;
-  border-color:#2B3A4A!important;
-}
-
-html[data-theme="dark"] .candidate-progress-track{
-  background:#243443;
-}
-
-html[data-theme="dark"] .candidate-icon-btn,
-html[data-theme="dark"] .candidate-save-btn{
-  background:#0F1B28!important;
-  color:#F2F6F9!important;
-}
-
-html[data-theme="dark"] .candidate-pill{
-  background:#10232D!important;
-  border-color:#304452!important;
-  color:#D7E1E8!important;
-}
-
-html[data-theme="dark"] .candidate-salary-pill{
-  background:#173652!important;
-  border-color:#315876!important;
-  color:#BFDDF5!important;
-}
-
-html[data-theme="dark"] .candidate-company-name,
-html[data-theme="dark"] .candidate-card-desc{
-  color:#B8C6D1!important;
-}
-
-html[data-theme="dark"] .candidate-overview-label,
-html[data-theme="dark"] .candidate-view-full{
-  color:#71A5D8!important;
-}
-
-html[data-theme="dark"] .candidate-skip-btn{
-  background:transparent!important;
-}
-
-html[data-theme="dark"] .candidate-apply-btn{
-  background:linear-gradient(135deg,#4E7EAE,#73A2D1)!important;
-  color:#fff!important;
-}
-
-/* Match the compact candidate portal behavior on shorter Android screens. */
-@media(max-height:820px){
-  .candidate-progress-shell{
-    padding-top:8px;
-  }
-
-  .candidate-progress-card{
-    padding:9px 12px;
-  }
-
-  .candidate-stat-value{
-    font-size:16px;
-  }
-
-  .candidate-preview-swipe-area{
-    padding-top:9px;
-    padding-bottom:15px;
-  }
-
-  .flip-shell{
-    height:min(405px,calc(100dvh - 370px))!important;
-    min-height:350px!important;
-  }
-
-  .candidate-card-preview{
-    padding:19px!important;
-  }
-
-  .candidate-card-toolbar,
-  .candidate-card-top,
-  .candidate-card-pills{
-    margin-bottom:13px!important;
-  }
-
-  .candidate-job-title{
-    font-size:27px!important;
-  }
-
-  .candidate-preview-actions{
-    margin-top:10px;
-    padding:9px;
-  }
-
-  .candidate-action-btn{
-    height:62px;
-  }
-}
-
-@media(max-width:390px){
-  .candidate-preview-swipe-area{
-    padding-left:14px;
-    padding-right:14px;
-  }
-
-  .candidate-preview-actions{
-    grid-template-columns:72px minmax(0,1fr) minmax(0,1.35fr);
-    gap:8px;
-  }
-
-  .candidate-action-main{
-    font-size:11px;
-  }
-
-  .candidate-action-sub{
-    font-size:8px;
-  }
-
-  .candidate-apply-btn{
-    padding-left:13px;
-    padding-right:29px;
-  }
-
-  .candidate-action-arrow{
-    right:11px;
-  }
-}
-
-
-/* Candidate-style preview header */
-.header{
-  min-height:92px!important;
-  padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
-  grid-template-columns:70px 1fr 70px!important;
-  background:rgba(246,248,247,.96)!important;
-}
-
-.header .back{
-  width:46px!important;
-  height:46px!important;
-  justify-self:start;
-  background:rgba(93,127,163,.07)!important;
-}
-
-.header .logo{
-  font-size:31px!important;
-}
-
-
-/* ==========================================================
-   FULL JOB DETAIL VIEW
-   Use a real page state instead of a 3D card flip.
-   This is more reliable in Android WebView and allows
-   normal vertical scrolling inside the full job.
-   ========================================================== */
-
-/* Front is the default candidate card. Full detail is hidden. */
-#card-back{
-  display:none!important;
-}
-
-/* When the user taps "View full job ad", show a normal detail page. */
-.page.detail-open .flip-shell{
-  height:min(560px,calc(100dvh - 350px))!important;
-  min-height:455px!important;
-  max-width:430px!important;
-}
-
-.page.detail-open .flip-shell::before,
-.page.detail-open .flip-shell::after,
-.page.detail-open .flip-shadow{
-  display:none!important;
-}
-
-.page.detail-open .flip-inner{
-  transform:none!important;
-  transition:none!important;
-  transform-style:flat!important;
-  height:100%!important;
-}
-
-.page.detail-open #card-front{
-  display:none!important;
-}
-
-.page.detail-open #card-back{
-  position:relative!important;
-  inset:auto!important;
-  width:100%!important;
-  height:100%!important;
-  display:flex!important;
-  flex-direction:column!important;
-  transform:none!important;
-  backface-visibility:visible!important;
-  -webkit-backface-visibility:visible!important;
-  overflow:hidden!important;
-  border-radius:30px!important;
-  background:#fff!important;
-  border:1px solid var(--border)!important;
-  box-shadow:0 22px 60px rgba(27,43,63,.12)!important;
-}
-
-.page.detail-open .back-header{
-  flex:0 0 auto!important;
-  padding:17px 18px 14px!important;
-}
-
-.page.detail-open .full-job{
-  flex:1!important;
-  min-height:0!important;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
-  -webkit-overflow-scrolling:touch!important;
-  overscroll-behavior:contain!important;
-  touch-action:pan-y!important;
-  padding:19px 18px 34px!important;
-}
-
-/* Keep candidate action tray visible below the detail page,
-   matching the candidate portal layout. */
-.page.detail-open .candidate-preview-actions{
-  margin-top:12px!important;
-}
-
-/* The back button inside full details is interactive. */
-.page.detail-open #summary-btn{
-  pointer-events:auto!important;
-  cursor:pointer!important;
-}
-
-/* Dark mode */
-html[data-theme="dark"] .page.detail-open #card-back{
-  background:#0F1B28!important;
-  border-color:#2B3A4A!important;
-}
-
-/* Short Android screens */
-@media(max-height:820px){
-  .page.detail-open .flip-shell{
-    height:min(500px,calc(100dvh - 325px))!important;
-    min-height:410px!important;
-  }
-}
-
-
-/* ==========================================================
-   FULL JOB AD — SAME SHEET AS CANDIDATE DISCOVER
-   Employer preview omits only candidate-specific Match data.
-   ========================================================== */
-body.preview-details-open{
-  overflow:hidden!important;
-}
-
-.job-details-overlay{
-  position:fixed;
-  inset:0;
-  z-index:500;
-  background:rgba(23,35,51,.42);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-  display:flex;
-  align-items:flex-end;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .22s ease;
-}
-
-.job-details-overlay.open{
-  opacity:1;
-  pointer-events:auto;
-}
-
-.job-details-sheet{
-  position:relative;
-  width:100%;
-  max-height:94dvh;
-  background:var(--bg);
-  border-radius:30px 30px 0 0;
-  transform:translateY(100%);
-  transition:transform .34s cubic-bezier(.2,.8,.2,1);
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  box-shadow:0 -22px 70px rgba(23,35,51,.18);
-}
-
-.job-details-overlay.open .job-details-sheet{
-  transform:translateY(0);
-}
-
-.details-grip{
-  width:44px;
-  height:5px;
-  border-radius:999px;
-  background:#D4DCE3;
-  margin:10px auto 5px;
-  flex-shrink:0;
-}
-
-.details-header{
-  padding:8px 18px 14px;
-  display:grid;
-  grid-template-columns:44px 1fr 44px;
-  align-items:center;
-  border-bottom:1px solid var(--border);
-  background:rgba(246,248,247,.96);
-  flex-shrink:0;
-}
-
-.details-close,
-.details-save{
-  width:42px;
-  height:42px;
-  border:1px solid var(--border);
-  border-radius:50%;
-  background:#fff;
-  color:var(--text);
-  font-size:20px;
-  display:grid;
-  place-items:center;
-  padding:0;
-}
-
-.details-close svg,
-.details-save svg{
-  display:block;
-  width:20px;
-  height:20px;
-}
-
-.details-header-title{
-  text-align:center;
-  font-size:13px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.details-scroll{
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  overflow-x:hidden;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  touch-action:pan-y;
-  padding:18px 17px 120px;
-}
-
-.details-hero{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:24px;
-  padding:20px;
-  box-shadow:0 12px 32px rgba(23,35,51,.07);
-}
-
-.details-company-row{
-  display:flex;
-  gap:14px;
-  align-items:flex-start;
-}
-
-.details-logo{
-  width:64px;
-  height:64px;
-  border-radius:20px;
-  background:linear-gradient(145deg,#F5F8FA,#E5ECF2);
-  border:1px solid var(--border);
-  display:grid;
-  place-items:center;
-  font-size:22px;
-  font-weight:900;
-  color:var(--brand-dark);
-  flex-shrink:0;
-  overflow:hidden;
-}
-
-.details-logo img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-.details-title{
-  margin:0!important;
-  font-family:'DM Serif Display',Georgia,serif!important;
-  font-size:29px!important;
-  line-height:1.05!important;
-  color:var(--text)!important;
-  letter-spacing:-.35px;
-  overflow-wrap:anywhere;
-}
-
-.details-company{
-  margin-top:6px;
-  font-size:14px;
-  color:var(--text-muted);
-  font-weight:700;
-}
-
-.details-pills{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:17px;
-}
-
-.details-pill{
-  font-size:11px;
-  font-weight:800;
-  padding:8px 11px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:#F9FBFC;
-  color:var(--text-muted);
-}
-
-.details-pill.pay{
-  background:var(--brand-light);
-  color:var(--brand-dark);
-  border-color:rgba(93,127,163,.2);
-}
-
-.employer-match-placeholder{
-  margin-top:16px;
-  padding:13px 14px;
-  border:1px solid var(--border);
-  border-radius:16px;
-  background:#F9FBFC;
-  color:var(--text-muted);
-  font-size:10px;
-  line-height:1.45;
-}
-
-.employer-match-placeholder strong{
-  display:block;
-  color:var(--text);
-  font-size:11px;
-  margin-bottom:3px;
-}
-
-.details-section{
-  margin-top:14px;
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:21px;
-  padding:18px;
-}
-
-.details-section h2{
-  margin:0 0 10px;
-  font-size:16px;
-  font-weight:900;
-  color:var(--text);
-}
-
-.details-copy{
-  font-size:14px;
-  color:var(--text-muted);
-  line-height:1.7;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.details-list{
-  display:grid;
-  gap:10px;
-  list-style:none;
-  margin:0;
-  padding:0;
-}
-
-.details-list li{
-  position:relative;
-  padding-left:17px;
-  font-size:13px;
-  color:var(--text-muted);
-  line-height:1.55;
-}
-
-.details-list li::before{
-  content:'';
-  position:absolute;
-  left:0;
-  top:.58em;
-  width:6px;
-  height:6px;
-  border-radius:50%;
-  background:var(--brand);
-}
-
-.details-empty{
-  font-size:13px;
-  color:var(--text-muted);
-  font-style:italic;
-}
-
-.details-footer{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  padding:11px 16px calc(11px + env(safe-area-inset-bottom));
-  background:rgba(255,255,255,.97);
-  border-top:1px solid var(--border);
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
-}
-
-.details-apply{
-  width:100%;
-  min-height:56px;
-  border:none;
-  border-radius:17px;
-  background:var(--brand-dark);
-  color:#fff;
-  font-size:15px;
-  font-weight:900;
-  box-shadow:0 9px 22px rgba(52,95,145,.22);
-  pointer-events:none;
-}
-
-/* Old embedded back-side preview is no longer used. */
-#card-back{
-  display:none!important;
-}
-
-
-.details-company-links{
-  display:flex;
-  flex-wrap:wrap;
-  gap:9px;
-  margin-top:14px;
-}
-
-.details-company-link{
-  display:inline-flex;
-  align-items:center;
-  min-height:38px;
-  padding:0 13px;
-  border:1px solid var(--border);
-  border-radius:999px;
-  background:#F9FBFC;
-  color:var(--brand-dark);
-  font-size:12px;
-  font-weight:800;
-  text-decoration:none;
-  max-width:100%;
-}
-
-.details-company-link span{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-html[data-theme="dark"] .details-company-link{
-  background:#0B1D26;
-  border-color:#304452;
-  color:#9CC8EF;
-}
-
-html[data-theme="dark"] .job-details-overlay{
-  background:rgba(0,0,0,.62);
-}
-
-html[data-theme="dark"] .job-details-sheet{
-  background:#061821;
-  box-shadow:0 -22px 70px rgba(0,0,0,.45);
-}
-
-html[data-theme="dark"] .details-grip{
-  background:#415864;
-}
-
-html[data-theme="dark"] .details-header{
-  background:rgba(6,24,33,.97);
-  border-bottom-color:var(--border);
-}
-
-html[data-theme="dark"] .details-close,
-html[data-theme="dark"] .details-save{
-  background:#0B1D26;
-  color:#F3F7FA;
-  border-color:var(--border);
-}
-
-html[data-theme="dark"] .details-hero,
-html[data-theme="dark"] .details-section{
-  background:#10232D;
-  border-color:var(--border);
-}
-
-html[data-theme="dark"] .details-pill,
-html[data-theme="dark"] .employer-match-placeholder{
-  background:#0B1D26;
-  border-color:var(--border);
-  color:#AAB8C1;
-}
-
-html[data-theme="dark"] .details-pill.pay{
-  background:#173047;
-  color:#9DC3E7;
-}
-
-html[data-theme="dark"] .details-footer{
-  background:rgba(6,24,33,.98);
-  border-top-color:var(--border);
-}
-
-@media(min-width:700px){
-  .job-details-overlay{
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-  }
-
-  .job-details-sheet{
-    max-width:560px;
-    border-radius:30px;
-    max-height:90dvh;
-  }
-
-  .details-footer{
-    border-radius:0 0 30px 30px;
-  }
-}
-
-
-/* Employer preview cleanup: show only the candidate card, not candidate session controls. */
-.candidate-preview-swipe-area{
-  padding-top:18px!important;
-  padding-bottom:24px!important;
-}
-.flip-shell{
-  height:min(500px,calc(100dvh - 250px))!important;
-  min-height:410px!important;
-}
-@media(max-height:820px){
-  .flip-shell{
-    height:min(420px,calc(100dvh - 315px))!important;
-    min-height:365px!important;
-  }
-}
-
-
-/* ==========================================================
-   EMPLOYER PREVIEW — CLEAN EXIT + TIGHTER LAYOUT
-   ========================================================== */
-.employer-preview-header{
-  grid-template-columns:54px 1fr 54px!important;
-}
-
-.header-spacer{
-  width:46px;
-  height:46px;
-}
-
-.preview-exit-btn{
-  width:46px;
-  height:46px;
-  justify-self:end;
-  border:1px solid var(--border);
-  border-radius:50%;
-  background:#fff;
-  color:var(--text);
-  display:grid;
-  place-items:center;
-  padding:0;
-  box-shadow:0 5px 16px rgba(24,42,62,.06);
-}
-
-.preview-exit-btn span{
-  display:block;
-  font-size:29px;
-  font-weight:400;
-  line-height:1;
-  transform:translateY(-1px);
-}
-
-.preview-exit-btn:active{
-  transform:scale(.97);
-}
-
-/* Employer preview should sit level in the usable space, matching the
-   candidate card placement instead of being pinned against the header. */
-.candidate-preview-swipe-area{
-  justify-content:center!important;
-  padding-top:14px!important;
-  padding-bottom:18px!important;
-}
-
-.flip-shell{
-  height:min(455px,calc(100dvh - 330px))!important;
-  min-height:390px!important;
-  margin:0 auto!important;
-}
-
-.exit-draft-overlay{
-  position:fixed;
-  inset:0;
-  z-index:400;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  padding:18px 16px calc(18px + env(safe-area-inset-bottom));
-  background:rgba(11,24,37,.42);
-  backdrop-filter:blur(5px);
-  -webkit-backdrop-filter:blur(5px);
-}
-
-.exit-draft-overlay[hidden]{
-  display:none!important;
-}
-
-.exit-draft-card{
-  width:100%;
-  max-width:430px;
-  padding:22px;
-  border:1px solid var(--border);
-  border-radius:24px;
-  background:var(--card,#fff);
-  box-shadow:0 24px 60px rgba(15,31,48,.22);
-}
-
-.exit-draft-icon{
-  width:44px;
-  height:44px;
-  margin-bottom:14px;
-  border-radius:14px;
-  display:grid;
-  place-items:center;
-  background:rgba(93,127,163,.10);
-  color:var(--brand-dark,var(--brand));
-  font-size:22px;
-  font-weight:900;
-}
-
-.exit-draft-card h2{
-  margin:0;
-  color:var(--text);
-  font-size:22px;
-  line-height:1.15;
-  letter-spacing:-.35px;
-}
-
-.exit-draft-card p{
-  margin:9px 0 18px;
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.5;
-}
-
-.exit-draft-actions{
-  display:grid;
-  grid-template-columns:1fr 1.35fr;
-  gap:10px;
-}
-
-.exit-draft-actions button{
-  min-height:50px;
-  border-radius:15px;
-  font-size:13px;
-  font-weight:900;
-}
-
-.exit-draft-cancel{
-  border:1px solid var(--border);
-  background:transparent;
-  color:var(--text);
-}
-
-.exit-draft-save{
-  border:1px solid var(--brand);
-  background:var(--brand);
-  color:#fff;
-}
-
-.exit-draft-save:disabled{
-  opacity:.65;
-  cursor:default;
-}
-
-html[data-theme="dark"] .preview-exit-btn,
-html[data-theme="dark"] .exit-draft-card{
-  background:#0F1B28!important;
-  border-color:#2B3A4A!important;
-}
-
-@media(min-width:700px){
-  .exit-draft-overlay{
-    align-items:center;
-  }
-}
-
 </style>
 </head>
 
 <body>
 
-<div class="loading" id="loading" aria-label="Alygnn is loading">
-  <div class="alygnn-loader">
-    <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
-    <div class="loading-copy">Preparing your job preview.</div>
-    <div class="alygnn-loading-track" aria-hidden="true">
-      <div class="alygnn-loading-bar"></div>
-    </div>
+<div class="loading" id="loading">
+  <div>
+    <div class="spinner"></div>
+    <div class="loading-copy">Preparing candidate preview…</div>
   </div>
 </div>
 
-<header class="header employer-preview-header">
-  <div class="header-spacer" aria-hidden="true"></div>
+<header class="header">
+  <button class="back" id="header-back" type="button" aria-label="Back">
+  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+    <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
   <div class="logo">Alygnn<span>.</span></div>
-  <button class="preview-exit-btn" id="exit-draft-btn" type="button" aria-label="Exit job preview">
-    <span aria-hidden="true">×</span>
-  </button>
+  <div></div>
 </header>
 
-<div class="exit-draft-overlay" id="exit-draft-overlay" hidden aria-hidden="true">
-  <section class="exit-draft-card" role="dialog" aria-modal="true" aria-labelledby="exit-draft-title">
-    <div class="exit-draft-icon" aria-hidden="true">×</div>
-    <h2 id="exit-draft-title">Exit this job ad?</h2>
-    <p>Your progress will be saved to Drafts so you can finish and publish it later.</p>
-    <div class="exit-draft-actions">
-      <button class="exit-draft-cancel" id="exit-draft-cancel" type="button">Keep Editing</button>
-      <button class="exit-draft-save" id="exit-draft-save" type="button">Save to Drafts &amp; Exit</button>
-    </div>
-  </section>
-</div>
-
 <main class="page" id="page" hidden>
-
-  <!-- Employer preview: candidate counters intentionally omitted. -->
+  <div class="eyebrow">Candidate Preview</div>
+  <div class="page-title">See the swipe card candidates will see.</div>
+  <div class="page-copy">
+    The front summarizes the opportunity. Tap the card to flip it and open the full job.
+  </div>
 
   <div class="status-wrap" id="status-wrap"></div>
 
-  <section class="candidate-preview-swipe-area">
-    <div class="flip-shell">
+  <div class="flip-shell">
     <div class="flip-shadow"></div>
 
     <div class="flip-inner" id="flip-inner">
 
-      <!-- FRONT: ACTUAL CANDIDATE CARD PREVIEW -->
-      <article class="card-face card-front candidate-card-preview" id="card-front">
+      <!-- FRONT: SUMMARY FLASH CARD -->
+      <article class="card-face card-front" id="card-front">
+        <div class="company-top">
+          <div class="company-logo" id="company-logo"></div>
 
-        <!-- Match % is intentionally omitted here.
-             It is personalized for each candidate. -->
-        <div class="candidate-card-toolbar">
-          <div class="candidate-card-actions">
-            <button class="candidate-icon-btn" id="preview-share" type="button" aria-label="Share job preview">↗</button>
-            <button class="candidate-save-btn" id="preview-save" type="button" aria-label="Save job preview">♡</button>
+          <div>
+            <div class="company-name" id="company-name">Company</div>
+            <div class="company-meta" id="company-meta">Location · Work style</div>
+          </div>
+
+          <div class="salary-badge">
+            <small>Compensation</small>
+            <strong id="salary-badge">—</strong>
           </div>
         </div>
 
-        <div class="candidate-card-top">
-          <div class="company-logo candidate-company-logo" id="company-logo"></div>
+        <div class="job-title" id="job-title">Job title</div>
 
-          <div class="candidate-title-block">
-            <div class="job-title candidate-job-title" id="job-title">Job title</div>
+        <div class="verified-pill" id="verified-pill">
+          ✓ Verified employer
+        </div>
 
-            <div class="candidate-company-line">
-              <div class="company-name candidate-company-name" id="company-name">Company</div>
-              <div class="candidate-verified" id="verified-pill" title="Verified employer">✓</div>
-            </div>
-            <div class="preview-job-badges" id="preview-job-badges"></div>
+        <div class="divider"></div>
+
+        <div class="quick-grid">
+          <div class="quick-item">
+            <small>Job type</small>
+            <strong id="job-type">—</strong>
+          </div>
+
+          <div class="quick-item">
+            <small>Work style</small>
+            <strong id="work-style">—</strong>
+          </div>
+
+          <div class="quick-item">
+            <small>Location</small>
+            <strong id="location">—</strong>
+          </div>
+
+          <div class="quick-item">
+            <small>Salary</small>
+            <strong id="salary">—</strong>
           </div>
         </div>
 
-        <!-- Kept for existing render logic but hidden from the candidate card -->
-        <div id="company-meta" hidden></div>
-        <div id="salary-badge" hidden></div>
+        <div class="summary-title">Quick summary</div>
+        <div class="summary-copy" id="summary-copy"></div>
 
-        <div class="candidate-card-pills">
-          <span class="candidate-pill" id="location-pill">⌖ <span id="location">—</span></span>
-          <span class="candidate-pill" id="job-type-pill">▣ <span id="job-type">—</span></span>
-          <span class="candidate-pill" id="work-style-pill">⌂ <span id="work-style">—</span></span>
-          <span class="candidate-pill candidate-salary-pill" id="salary-pill"><span id="salary">—</span></span>
-        </div>
+        <div class="chips" id="chips"></div>
 
-        <div class="candidate-overview">
-          <div class="candidate-overview-label">Quick overview</div>
-          <div class="summary-copy candidate-card-desc" id="summary-copy"></div>
-        </div>
-
-        <div class="chips candidate-preview-chips" id="chips"></div>
-
-        <div class="candidate-card-bottom">
-          <button
-            class="candidate-view-full"
-            id="view-full-preview"
-            type="button"
-            aria-label="View full job ad"
-          >
-            <span>View full job ad</span>
-            <span class="candidate-view-full-arrow">→</span>
-          </button>
+        <div class="flip-hint">
+          <span>Tap card to view full job ↻</span>
         </div>
       </article>
 
@@ -2663,9 +897,6 @@ html[data-theme="dark"] .exit-draft-card{
     </div>
   </div>
 
-    <!-- Employer preview: Undo / Not for me / Apply now controls intentionally omitted. -->
-  </section>
-
   <div class="message" id="message"></div>
 </main>
 
@@ -2673,49 +904,6 @@ html[data-theme="dark"] .exit-draft-card{
   <h2>No job draft found</h2>
   <p>Return to the job builder and complete the job before opening Candidate Preview.</p>
   <button id="return-builder" type="button">Return to Job Builder</button>
-</div>
-
-
-<div class="job-details-overlay employer-preview-details" id="job-details-overlay" aria-hidden="true">
-  <section
-    class="job-details-sheet"
-    id="job-details-sheet"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="preview-details-job-title"
-  >
-    <div class="details-grip"></div>
-
-    <header class="details-header">
-      <button
-        class="details-close"
-        id="details-close"
-        type="button"
-        aria-label="Back to job preview"
-      ><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg></button>
-
-      <div class="details-header-title">Full job ad</div>
-
-      <button
-        class="details-save"
-        id="details-save"
-        type="button"
-        aria-label="Save job preview"
-      >♡</button>
-    </header>
-
-    <div class="details-scroll" id="details-scroll"></div>
-
-    <footer class="details-footer">
-      <button
-        class="details-apply"
-        id="details-apply"
-        type="button"
-      >Apply Now</button>
-    </footer>
-  </section>
 </div>
 
 <footer class="footer" id="footer" hidden>
@@ -2765,40 +953,6 @@ let draft=null;
 let liveCompany=null;
 let publishedJobId=null;
 
-function editingPublishedJob(){
-  return Boolean(
-    String(
-      draft?.edit_job_id ||
-      sessionStorage.getItem('alygnnEditJobId') ||
-      ''
-    ).trim()
-  );
-}
-
-function editingPublishedJobId(){
-  return String(
-    draft?.edit_job_id ||
-    sessionStorage.getItem('alygnnEditJobId') ||
-    ''
-  ).trim();
-}
-
-function returnToPublishedJob(){
-  const id=editingPublishedJobId();
-
-  sessionStorage.removeItem('alygnnJobDraft');
-  sessionStorage.removeItem('alygnnActiveJobDraftId');
-  sessionStorage.removeItem('alygnnJobReturnStep');
-  sessionStorage.removeItem('alygnnEditJobId');
-
-  location.replace(
-    id
-      ? 'app-employer-dashboard.html?view=jobs&open_job=' +
-        encodeURIComponent(id)
-      : 'app-employer-dashboard.html?view=jobs'
-  );
-}
-
 function initials(name){
   const parts=String(name||'Company')
     .trim()
@@ -2844,172 +998,6 @@ function showMessage(text){
 function clearMessage(){
   $('message').textContent='';
   $('message').className='message';
-}
-
-
-function isPostingCapacityError(error){
-  const text=String(error?.message||'').toLowerCase();
-  return(
-    text.includes('reusable job slot')||
-    text.includes('job slot')||
-    text.includes('slot limit')||
-    text.includes('no active weekly job slot')||
-    text.includes('add more capacity')||
-    text.includes('choose paid hiring capacity')
-  );
-}
-
-function goToPricingForAnotherSlot(reason='slot_limit'){
-  const params=new URLSearchParams({
-    reason,
-    return:'preview'
-  });
-  location.replace('app-employer-pricing.html?'+params.toString());
-}
-
-
-function slotEntitlementActive(entitlement){
-  const plan=String(entitlement?.plan||'free').toLowerCase();
-  if(!plan||plan==='free')return true;
-
-  const status=String(entitlement?.subscription_status||'').toLowerCase();
-  if(!['active','trialing'].includes(status))return false;
-
-  const end=entitlement?.current_period_end;
-  if(!end)return true;
-
-  const time=new Date(end).getTime();
-  return Number.isNaN(time)||time>Date.now();
-}
-
-function slotLimitForEntitlement(entitlement){
-  if(!entitlement||!slotEntitlementActive(entitlement))return 1;
-
-  const plan=String(entitlement.plan||'free').toLowerCase();
-  const defaults={
-    free:1,
-    weekly_slot:2,
-    launch:3,
-    growth:5,
-    scale:8,
-    enterprise:15
-  };
-
-  const stored=Number(entitlement.slot_limit);
-
-  // Weekly is the second-job option: one paid reusable slot is added
-  // to the employer's free reusable slot for the active 7-day term.
-  if(plan==='weekly_slot'){
-    return Math.max(
-      2,
-      Number.isFinite(stored)&&stored>0 ? stored : 2
-    );
-  }
-
-  return Math.max(
-    1,
-    Number.isFinite(stored)&&stored>0 ? stored : (defaults[plan]||1)
-  );
-}
-
-function jobConsumesSlot(job){
-  const status=String(job?.status||'active').toLowerCase();
-  return !['paused','closed','draft','inactive','archived','deleted'].includes(status);
-}
-
-function promiseTimeout(promise,ms,label){
-  let timer;
-  const timeout=new Promise((_,reject)=>{
-    timer=setTimeout(()=>{
-      reject(new Error(label||'The request timed out.'));
-    },ms);
-  });
-
-  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
-}
-
-async function loadJobsForFinalSlotCheck(userId){
-  /*
-   * Every job created by the employer app has employer_id. Querying only this
-   * known column avoids probing optional/legacy ownership columns before a
-   * publish. Closed/paused jobs are returned too, then filtered locally.
-   */
-  const result=await promiseTimeout(
-    sb.from('jobs').select('*').eq('employer_id',userId),
-    8000,
-    'Alygnn could not finish checking your current job slots.'
-  );
-
-  if(result.error){
-    throw result.error;
-  }
-
-  return Array.isArray(result.data)?result.data:[];
-}
-
-async function enforceFinalJobSlotAccess(){
-  const userId=session?.user?.id;
-  if(!userId){
-    throw new Error('Your employer session expired. Sign in again and retry.');
-  }
-
-  let entitlement=null;
-
-  try{
-    const entitlementResult=await promiseTimeout(
-      sb
-        .from('employer_entitlements')
-        .select('*')
-        .eq('employer_id',userId)
-        .maybeSingle(),
-      5000,
-      'Alygnn could not finish checking your hiring plan.'
-    );
-
-    if(entitlementResult.error){
-      console.warn(
-        'Final entitlement check unavailable; using free-slot fallback:',
-        entitlementResult.error
-      );
-    }else{
-      entitlement=entitlementResult.data||null;
-    }
-  }catch(error){
-    /*
-     * Existing/free employers may not have an entitlement row yet. Do not let
-     * that optional billing lookup freeze publishing; live slot usage is still
-     * checked below and the free limit remains 1.
-     */
-    console.warn(
-      'Final entitlement check timed out; using free-slot fallback:',
-      error
-    );
-  }
-
-  const jobs=await loadJobsForFinalSlotCheck(userId);
-  const used=jobs.filter(jobConsumesSlot).length;
-  const limit=slotLimitForEntitlement(entitlement);
-
-  if(used<limit)return true;
-
-  sessionStorage.setItem('alygnn_job_slot_gate',JSON.stringify({
-    used,
-    limit,
-    checked_at:new Date().toISOString(),
-    source:'app-job-preview'
-  }));
-
-  const params=new URLSearchParams({
-    reason:'slot_limit',
-    used:String(used),
-    limit:String(limit)
-  });
-
-  location.replace(
-    'app-employer-pricing.html?'+params.toString()
-  );
-
-  return false;
 }
 
 async function resolveCompanyLive(){
@@ -3093,8 +1081,6 @@ function renderStatus(){
     'active'
   ).toLowerCase();
 
-  const verifiedIcon=$('verified-pill');
-
   if(account==='deactivated'){
     wrap.innerHTML=
       '<span class="status-pill blocked">Company account deactivated</span>';
@@ -3102,20 +1088,18 @@ function renderStatus(){
     $('publish-btn').disabled=true;
     $('publish-btn').textContent='Publishing Disabled';
 
-    if(verifiedIcon) verifiedIcon.hidden=true;
+    $('verified-pill').textContent='Company account deactivated';
+    $('verified-pill').style.background='var(--red-soft)';
+    $('verified-pill').style.color='var(--red)';
     return;
   }
 
   if(verification==='approved'){
-    wrap.innerHTML='';
+    wrap.innerHTML=
+      '<span class="status-pill approved">✓ Verified employer</span>';
 
     $('publish-btn').disabled=false;
     $('publish-btn').textContent='Publish Job';
-
-    if(verifiedIcon){
-      verifiedIcon.hidden=false;
-      verifiedIcon.textContent='✓';
-    }
     return;
   }
 
@@ -3125,7 +1109,9 @@ function renderStatus(){
   $('publish-btn').disabled=true;
   $('publish-btn').textContent='Verification Required';
 
-  if(verifiedIcon) verifiedIcon.hidden=true;
+  $('verified-pill').textContent='Verification '+verification.replaceAll('_',' ');
+  $('verified-pill').style.background='var(--amber-soft)';
+  $('verified-pill').style.color='var(--amber)';
 }
 
 function render(){
@@ -3148,48 +1134,25 @@ function render(){
 
   const workStyle=
     draft.work_style||
-    '';
+    'Not listed';
 
   const salary=
     draft.salary||
     'Not listed';
 
   $('company-name').textContent=company;
-
-  const previewBadges=$('preview-job-badges');
-  if(previewBadges){
-    const freeSlot=String(draft.posting_access_type||'').toLowerCase()==='free';
-    const badges=[];
-
-    if(draft.alygnn_recommended===true){
-      badges.push('<span class="preview-job-badge recommended">Alygnn Recommended</span>');
-    }
-    if(!freeSlot&&draft.urgently_hiring===true){
-      badges.push('<span class="preview-job-badge urgent">Urgently Hiring</span>');
-    }
-    if(draft.featured_employer===true){
-      badges.push('<span class="preview-job-badge featured">Featured Employer</span>');
-    }
-
-    previewBadges.innerHTML=badges.join('');
-    previewBadges.hidden=!badges.length;
-  }
-
   $('company-meta').textContent=
-    [location,workStyle].filter(Boolean).join(' · ');
+    location+
+    ' · '+
+    workStyle;
 
   $('salary-badge').textContent=salary;
   $('job-title').textContent=title;
 
   $('job-type').textContent=jobType;
-  $('work-style').textContent=workStyle||'Not listed';
+  $('work-style').textContent=workStyle;
   $('location').textContent=location;
   $('salary').textContent=salary;
-
-  const workStylePill=$('work-style-pill');
-  if(workStylePill){
-    workStylePill.hidden=!workStyle;
-  }
 
   $('summary-copy').textContent=
     summaryText(
@@ -3226,7 +1189,7 @@ function render(){
 
   $('detail-location').textContent=location;
   $('detail-job-type').textContent=jobType;
-  $('detail-work-style').textContent=workStyle||'Not listed';
+  $('detail-work-style').textContent=workStyle;
   $('detail-salary').textContent=salary;
 
   $('description').textContent=
@@ -3256,357 +1219,12 @@ function render(){
   renderStatus();
 }
 
-
-function previewInitials(value){
-  const parts=String(value||'A')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  return (
-    (parts[0]?.[0]||'A')+
-    (parts[1]?.[0]||'')
-  ).toUpperCase();
+function flipOpen(){
+  $('flip-inner').classList.add('flipped');
 }
 
-function escapePreviewHtml(value){
-  return String(value??'')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-    .replaceAll('"','&quot;')
-    .replaceAll("'","&#039;");
-}
-
-function previewCompanyLinks(value){
-  let links=value;
-
-  if(typeof links==='string'){
-    try{
-      links=JSON.parse(links);
-    }catch(_error){
-      links=[links];
-    }
-  }
-
-  if(!Array.isArray(links)) links=[];
-
-  const seen=new Set();
-
-  return links.map(item=>{
-    const raw=typeof item==='string' ? item : item?.url;
-    if(!raw)return null;
-
-    let url=String(raw).trim();
-    if(!/^https?:\/\//i.test(url))url='https://'+url;
-
-    try{
-      const parsed=new URL(url);
-      const key=parsed.href.replace(/\/+$/,'').toLowerCase();
-      if(seen.has(key))return null;
-      seen.add(key);
-
-      const host=parsed.hostname.replace(/^www\./,'');
-      let label=host;
-
-      if(host.includes('instagram.com'))label='Instagram';
-      else if(host.includes('linkedin.com'))label='LinkedIn';
-      else if(host.includes('facebook.com'))label='Facebook';
-      else if(host.includes('tiktok.com'))label='TikTok';
-      else if(host==='x.com'||host.includes('twitter.com'))label='X';
-      else if(host.includes('youtube.com')||host.includes('youtu.be'))label='YouTube';
-      else label=host;
-
-      return {url:parsed.href,label};
-    }catch(_error){
-      return null;
-    }
-  }).filter(Boolean);
-}
-
-function previewCompanyLinksHtml(value){
-  const links=previewCompanyLinks(value);
-  if(!links.length)return '';
-
-  return `
-    <div class="details-company-links" aria-label="Company links">
-      ${links.map(link=>`
-        <a
-          class="details-company-link"
-          href="${escapePreviewHtml(link.url)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        ><span>${escapePreviewHtml(link.label)}</span></a>
-      `).join('')}
-    </div>
-  `;
-}
-
-function previewListHtml(value,fallback){
-  const items=listValues(value);
-
-  if(!items.length){
-    return `<div class="details-empty">${escapePreviewHtml(fallback)}</div>`;
-  }
-
-  return `
-    <ul class="details-list">
-      ${items.map(item=>`<li>${escapePreviewHtml(item)}</li>`).join('')}
-    </ul>
-  `;
-}
-
-function openCandidateDetailsPreview(){
-  const company=
-    draft.company||
-    liveCompany?.name||
-    'Your company';
-
-  const title=
-    draft.title||
-    'Untitled position';
-
-  const location=
-    draft.location||
-    'Location not listed';
-
-  const jobType=
-    draft.job_type||
-    'Job';
-
-  const workStyle=
-    draft.work_style||
-    '';
-
-  const salary=
-    draft.salary||
-    'Salary not listed';
-
-  const aboutCompany=
-    draft.company_headline||
-    `${company} is hiring for this opportunity through Alygnn.`;
-
-  const previewLogo=
-    draft.company_logo ||
-    liveCompany?.logoUrl ||
-    liveCompany?.logo_url ||
-    '';
-
-  const logoHtml=previewLogo
-    ? `<img src="${escapePreviewHtml(previewLogo)}" alt="${escapePreviewHtml(company)} logo">`
-    : escapePreviewHtml(previewInitials(company));
-
-  const companyLinks=
-    draft.company_links ||
-    liveCompany?.companyLinks ||
-    liveCompany?.company_links ||
-    [];
-
-  $('details-scroll').innerHTML=`
-    <article class="details-hero">
-      <div class="details-company-row">
-        <div class="details-logo">${logoHtml}</div>
-
-        <div>
-          <h1 class="details-title" id="preview-details-job-title">
-            ${escapePreviewHtml(title)}
-          </h1>
-
-          <div class="details-company">
-            ${escapePreviewHtml(company)}
-          </div>
-        </div>
-      </div>
-
-      <div class="details-pills">
-        <span class="details-pill">⌖ ${escapePreviewHtml(location)}</span>
-        <span class="details-pill">▣ ${escapePreviewHtml(jobType)}</span>
-        ${workStyle
-          ? `<span class="details-pill">⌂ ${escapePreviewHtml(workStyle)}</span>`
-          : ''
-        }
-        <span class="details-pill pay">${escapePreviewHtml(salary)}</span>
-      </div>
-
-      <div class="employer-match-placeholder">
-        <strong>Alygnn Match appears for candidates</strong>
-        Match percentage and score breakdown are personalized using each candidate's resume and preferences.
-      </div>
-    </article>
-
-    <section class="details-section">
-      <h2>About the role</h2>
-      <div class="details-copy">${escapePreviewHtml(
-        draft.description||
-        'The employer has not added a full description yet.'
-      )}</div>
-    </section>
-
-    <section class="details-section">
-      <h2>Requirements</h2>
-      ${previewListHtml(
-        draft.requirements,
-        'No additional requirements were listed.'
-      )}
-    </section>
-
-    <section class="details-section">
-      <h2>Benefits</h2>
-      ${previewListHtml(
-        draft.benefits,
-        'Benefits were not listed for this role.'
-      )}
-    </section>
-
-    <section class="details-section">
-      <h2>About ${escapePreviewHtml(company)}</h2>
-      <div class="details-copy">${escapePreviewHtml(aboutCompany)}</div>
-      ${previewCompanyLinksHtml(companyLinks)}
-    </section>
-  `;
-
-  $('details-scroll').scrollTop=0;
-  $('details-save').textContent='♡';
-  $('details-apply').textContent='Apply Now';
-
-  document.body.classList.add('preview-details-open');
-
-  const overlay=$('job-details-overlay');
-  overlay.classList.add('open');
-  overlay.setAttribute('aria-hidden','false');
-}
-
-function closeCandidateDetailsPreview(){
-  const overlay=$('job-details-overlay');
-
-  overlay.classList.remove('open');
-  overlay.setAttribute('aria-hidden','true');
-  document.body.classList.remove('preview-details-open');
-}
-
-
-
-function openExitDraftConfirm(){
-  const overlay=$('exit-draft-overlay');
-  overlay.hidden=false;
-  overlay.setAttribute('aria-hidden','false');
-  document.body.style.overflow='hidden';
-}
-
-function closeExitDraftConfirm(){
-  const overlay=$('exit-draft-overlay');
-  overlay.hidden=true;
-  overlay.setAttribute('aria-hidden','true');
-  document.body.style.overflow='';
-}
-
-async function persistPreviewDraftToCloud(){
-  if(!session?.user?.id || !draft){
-    throw new Error('Your job draft is not ready to save yet.');
-  }
-
-  const now=new Date().toISOString();
-  const draftData={
-    ...draft,
-    employer_id:session.user.id
-  };
-
-  const row={
-    employer_id:session.user.id,
-    title:String(draftData.title||'').trim()||'Untitled job draft',
-    location:String(draftData.location||'').trim()||null,
-    current_step:5,
-    draft_data:draftData,
-    updated_at:now
-  };
-
-  let activeId=String(
-    sessionStorage.getItem('alygnnActiveJobDraftId')||''
-  ).trim();
-
-  if(activeId){
-    const {data,error}=await sb
-      .from('employer_job_drafts')
-      .update(row)
-      .eq('id',activeId)
-      .eq('employer_id',session.user.id)
-      .select('id')
-      .maybeSingle();
-
-    if(!error && data?.id){
-      return String(data.id);
-    }
-
-    if(error){
-      console.warn('Existing draft update failed; creating a fresh draft:',error);
-    }
-  }
-
-  const {data,error}=await sb
-    .from('employer_job_drafts')
-    .insert(row)
-    .select('id')
-    .single();
-
-  if(error)throw error;
-
-  return String(data?.id||'');
-}
-
-async function savePreviewDraftAndExit(){
-  const button=$('exit-draft-save');
-  const cancel=$('exit-draft-cancel');
-
-  button.disabled=true;
-  cancel.disabled=true;
-  button.textContent='Saving…';
-
-  try{
-    await persistPreviewDraftToCloud();
-
-    /* The cloud copy is now the source of truth. Clearing these prevents
-       "Post a Job" from accidentally reopening the draft; Continue Draft
-       from My Jobs restores them when the employer actually chooses it. */
-    sessionStorage.removeItem('alygnnJobDraft');
-    sessionStorage.removeItem('alygnnActiveJobDraftId');
-    sessionStorage.removeItem('alygnnJobReturnStep');
-    sessionStorage.removeItem('alygnnEditJobId');
-
-    location.replace(
-      'app-employer-dashboard.html?view=jobs&jobs_tab=drafts'
-    );
-  }catch(error){
-    console.error('Could not save preview to Drafts:',error);
-    closeExitDraftConfirm();
-    showMessage(
-      'Could not save this job to Drafts yet. Your preview is still open, so nothing was lost.'
-    );
-    button.disabled=false;
-    cancel.disabled=false;
-    button.textContent='Save to Drafts & Exit';
-  }
-}
-
-async function deleteActiveCloudDraftBestEffort(){
-  const activeId=String(
-    sessionStorage.getItem('alygnnActiveJobDraftId')||''
-  ).trim();
-
-  if(!activeId || !session?.user?.id)return;
-
-  try{
-    const {error}=await sb
-      .from('employer_job_drafts')
-      .delete()
-      .eq('id',activeId)
-      .eq('employer_id',session.user.id);
-
-    if(error){
-      console.warn('Published job draft cleanup failed:',error);
-    }
-  }catch(error){
-    console.warn('Published job draft cleanup skipped:',error);
-  }
+function flipClosed(){
+  $('flip-inner').classList.remove('flipped');
 }
 
 function editJob(){
@@ -3617,30 +1235,15 @@ function editJob(){
     );
   }
 
+  // Tell the job builder to reopen Step 5 with the saved draft.
+  // This prevents "Back to Edit" from restarting the entire flow.
   sessionStorage.setItem(
     'alygnnJobReturnStep',
     '5'
   );
 
-  const editId=editingPublishedJobId();
-
-  if(editId){
-    sessionStorage.setItem(
-      'alygnnEditJobId',
-      editId
-    );
-
-    location.replace(
-      'app-post-job.html?edit=' +
-      encodeURIComponent(editId) +
-      '&return_step=5'
-    );
-    return;
-  }
-
-  location.replace(
-    'app-post-job.html?return_step=5'
-  );
+  sessionStorage.setItem('alygnnPostJobCapacityPass','1');
+  location.href='app-post-job.html?capacity=available';
 }
 
 function baseJobPayload(){
@@ -3648,15 +1251,6 @@ function baseJobPayload(){
     employer_id:session.user.id,
     title:draft.title,
     company:draft.company,
-
-    company_logo:String(
-      draft.company_logo ||
-      liveCompany?.company_logo_url ||
-      liveCompany?.logo_url ||
-      liveCompany?.company_logo ||
-      ''
-    ).trim(),
-
     location:draft.location,
     job_type:draft.job_type,
     work_style:draft.work_style,
@@ -3664,10 +1258,6 @@ function baseJobPayload(){
     description:draft.description,
     requirements:draft.requirements,
     benefits:draft.benefits,
-    posting_access_type:draft.posting_access_type||null,
-    featured_employer:draft.featured_employer===true,
-    urgently_hiring:String(draft.posting_access_type||'').toLowerCase()==='free'?false:draft.urgently_hiring===true,
-    alygnn_recommended:draft.alygnn_recommended===true,
     status:'active',
     created_at:new Date().toISOString()
   };
@@ -3734,111 +1324,28 @@ function missingColumn(error){
 }
 
 async function insertJob(){
-  /*
-   * Do not request the inserted row back here. In WebView builds an INSERT
-   * followed by .select().single() can leave the Publish button waiting for a
-   * representation even though the write itself is the only thing we need.
-   * Supabase's normal INSERT response is enough to confirm success.
-   */
-  let result=await promiseTimeout(
-    sb
-      .from('jobs')
-      .insert(extendedJobPayload()),
-    12000,
-    'Publishing is taking too long. Check My Jobs before trying again.'
-  );
+  let result=await sb
+    .from('jobs')
+    .insert(
+      extendedJobPayload()
+    )
+    .select('id')
+    .single();
 
   if(
     result.error&&
     missingColumn(result.error)
   ){
-    result=await promiseTimeout(
-      sb
-        .from('jobs')
-        .insert(baseJobPayload()),
-      12000,
-      'Publishing is taking too long. Check My Jobs before trying again.'
-    );
-  }
-
-  return result;
-}
-
-async function updatePublishedJob(){
-  const id=editingPublishedJobId();
-
-  if(!id){
-    return{
-      error:new Error('The job being edited could not be identified.')
-    };
-  }
-
-  // Do not change created_at or consume another slot when editing.
-  const payload=extendedJobPayload();
-  delete payload.created_at;
-
-  payload.updated_at=new Date().toISOString();
-  payload.status=
-    draft.original_status ||
-    'active';
-
-  let result=await promiseTimeout(
-    sb
+    result=await sb
       .from('jobs')
-      .update(payload)
-      .eq('id',id)
-      .eq('employer_id',session.user.id),
-    12000,
-    'Saving your changes is taking too long. Check My Jobs before trying again.'
-  );
-
-  if(
-    result.error &&
-    missingColumn(result.error)
-  ){
-    const fallback=baseJobPayload();
-    delete fallback.created_at;
-
-    fallback.updated_at=new Date().toISOString();
-    fallback.status=
-      draft.original_status ||
-      'active';
-
-    result=await promiseTimeout(
-      sb
-        .from('jobs')
-        .update(fallback)
-        .eq('id',id)
-        .eq('employer_id',session.user.id),
-      12000,
-      'Saving your changes is taking too long. Check My Jobs before trying again.'
-    );
+      .insert(
+        baseJobPayload()
+      )
+      .select('id')
+      .single();
   }
 
   return result;
-}
-
-async function resolvePublishedJobIdBestEffort(){
-  try{
-    const result=await promiseTimeout(
-      sb
-        .from('jobs')
-        .select('id')
-        .eq('employer_id',session.user.id)
-        .eq('title',draft.title)
-        .order('created_at',{ascending:false})
-        .limit(1)
-        .maybeSingle(),
-      3000,
-      'Job ID lookup timed out.'
-    );
-
-    if(!result.error&&result.data?.id){
-      publishedJobId=result.data.id;
-    }
-  }catch(error){
-    console.warn('Published job ID lookup skipped:',error);
-  }
 }
 
 async function publishJob(){
@@ -3877,48 +1384,25 @@ async function publishJob(){
   const button=$('publish-btn');
 
   button.disabled=true;
-  button.textContent='Checking access…';
+  button.textContent='Publishing…';
 
   try{
-    const isEdit=editingPublishedJob();
-
-    if(!isEdit){
-      // Only a NEW job needs a slot/capacity check.
-      const hasCapacity=await enforceFinalJobSlotAccess();
-
-      if(!hasCapacity){
-        return;
-      }
-    }
-
-    button.textContent=
-      isEdit
-        ? 'Saving Changes…'
-        : 'Publishing…';
-
     const{
+      data,
       error
-    }=
-      isEdit
-        ? await updatePublishedJob()
-        : await insertJob();
+    }=await insertJob();
 
     if(error){
       throw error;
     }
 
-    if(isEdit){
-      // The job already has an ID. Do not create a second listing.
-      publishedJobId=editingPublishedJobId();
-    }else{
-      /* The insert is complete. Resolve the ID separately without blocking UI. */
-      publishedJobId='';
-      resolvePublishedJobIdBestEffort();
-
-      /* Publishing finishes the draft lifecycle. Remove its cloud draft so the
-         same job does not remain under My Jobs > Drafts after going live. */
-      await deleteActiveCloudDraftBestEffort();
+    if(!data?.id){
+      throw new Error(
+        'Alygnn did not receive the published job ID.'
+      );
     }
+
+    publishedJobId=data.id;
 
     sessionStorage.removeItem(
       'alygnnJobDraft'
@@ -3929,14 +1413,12 @@ async function publishJob(){
     );
 
     sessionStorage.removeItem(
-      'alygnnActiveJobDraftId'
+      'alygnnPostJobCapacityPass'
     );
 
     sessionStorage.removeItem(
-      'alygnnJobReturnStep'
+      'alygnn_job_slot_gate'
     );
-
-    const wasEditing=Boolean(publishedJobId && editingPublishedJobId());
 
     $('success-job').textContent=
       (draft.title||'Job')+
@@ -3947,16 +1429,6 @@ async function publishJob(){
         'Company'
       );
 
-    const successTitle=document.querySelector('#success h2');
-    const successCopy=document.querySelector('#success p');
-
-    if(wasEditing){
-      if(successTitle)successTitle.textContent='Job updated';
-      if(successCopy)successCopy.textContent='Your changes were saved and the live job has been updated.';
-      $('dashboard-btn').textContent='Back to My Jobs';
-      $('view-job-btn').textContent='View Updated Job';
-    }
-
     $('footer').hidden=true;
     $('success').hidden=false;
 
@@ -3966,55 +1438,19 @@ async function publishJob(){
       error
     );
 
-    const errorText=String(error?.message||'');
-
-    if(!editingPublishedJob() && isPostingCapacityError(error)){
-      showMessage(
-        'Your included free job slot is already being used. Choose another job slot to post this role.'
-      );
-      button.disabled=false;
-      button.textContent='Choose a Plan';
-
-      setTimeout(()=>{
-        goToPricingForAnotherSlot('slot_limit');
-      },450);
-      return;
-    }
-
     showMessage(
-      errorText
-        ?'Could not finish publishing: '+errorText
+      error?.message
+        ?'Could not publish the job: '+error.message
         :'Could not publish the job. Please try again.'
     );
 
     button.disabled=false;
-    button.textContent=
-      editingPublishedJob()
-        ? 'Save Changes'
-        : 'Publish Job';
+    button.textContent='Publish Job';
   }
 }
 
 function wire(){
-  $('exit-draft-btn').onclick=()=>{
-    // A published job being edited is NOT an unpublished draft.
-    // X simply leaves the edit session and returns to that job.
-    if(editingPublishedJob()){
-      returnToPublishedJob();
-      return;
-    }
-
-    openExitDraftConfirm();
-  };
-
-  $('exit-draft-cancel').onclick=closeExitDraftConfirm;
-  $('exit-draft-save').onclick=savePreviewDraftAndExit;
-
-  $('exit-draft-overlay').addEventListener('click',event=>{
-    if(event.target===$('exit-draft-overlay')){
-      closeExitDraftConfirm();
-    }
-  });
+  $('header-back').onclick=editJob;
   $('edit-btn').onclick=editJob;
 
   $('return-builder').onclick=()=>{
@@ -4022,90 +1458,46 @@ function wire(){
   };
 
   /*
-   * Match the candidate portal:
-   * "View full job ad" opens a full detail view.
+   * Front of the card is the summarized swipe card.
+   * Candidate taps anywhere on it to open the full job.
    */
-  $('view-full-preview').addEventListener(
+  $('card-front').addEventListener(
+    'click',
+    flipOpen
+  );
+
+  /*
+   * Back uses an explicit Summary button so the user
+   * can scroll the full job without accidentally flipping.
+   */
+  $('summary-btn').addEventListener(
     'click',
     event=>{
-      event.preventDefault();
       event.stopPropagation();
-      openCandidateDetailsPreview();
-    }
-  );
-
-
-  $('details-close').addEventListener(
-    'click',
-    event=>{
-      event.preventDefault();
-      closeCandidateDetailsPreview();
-    }
-  );
-
-  $('details-save').addEventListener(
-    'click',
-    event=>{
-      event.preventDefault();
-    }
-  );
-
-  $('details-apply').addEventListener(
-    'click',
-    event=>{
-      event.preventDefault();
-    }
-  );
-
-  $('job-details-overlay').addEventListener(
-    'click',
-    event=>{
-      if(event.target===$('job-details-overlay')){
-        closeCandidateDetailsPreview();
-      }
+      flipClosed();
     }
   );
 
   $('publish-btn').onclick=publishJob;
 
-
-  document.addEventListener('keydown',event=>{
-    if(event.key!=='Escape')return;
-
-    if(!$('exit-draft-overlay').hidden){
-      event.preventDefault();
-      closeExitDraftConfirm();
-      return;
-    }
-
-    if($('job-details-overlay')?.classList.contains('open')){
-      event.preventDefault();
-      closeCandidateDetailsPreview();
-    }
-  });
-
-
   $('dashboard-btn').onclick=()=>{
     location.replace(
-      'app-employer-dashboard.html?view=jobs'
+      'app-employer-dashboard.html'
     );
   };
 
   $('view-job-btn').onclick=()=>{
     if(publishedJobId){
-      // Employer live-view is a terminal preview, not another step in the
-      // job-builder history. Replace the success screen and tell the details
-      // page to return directly to My Jobs.
-      location.replace(
+      location.href=
         'app-job-details.html?id='+
-        encodeURIComponent(publishedJobId)+
-        '&from=employer-live'
-      );
+        encodeURIComponent(
+          publishedJobId
+        );
       return;
     }
 
     location.replace(
-      'app-employer-dashboard.html?view=jobs'
+      'app-employer-dashboard.html'
     );
   };
 }
@@ -4156,10 +1548,7 @@ function wire(){
     }
 
     liveCompany=
-      await Promise.race([
-        resolveCompanyLive(),
-        new Promise(resolve=>setTimeout(()=>resolve(null),3500))
-      ]);
+      await resolveCompanyLive();
 
     if(liveCompany?.name){
       draft.company=
@@ -4171,20 +1560,7 @@ function wire(){
         liveCompany.id;
     }
 
-    if(!draft.company_logo){
-      draft.company_logo=String(
-        liveCompany?.company_logo_url ||
-        liveCompany?.logo_url ||
-        liveCompany?.company_logo ||
-        ''
-      ).trim();
-    }
-
     render();
-
-    if(editingPublishedJob()){
-      $('publish-btn').textContent='Save Changes';
-    }
 
     $('page').hidden=false;
     $('footer').hidden=false;
