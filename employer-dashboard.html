@@ -3812,6 +3812,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       sb
         .from('notifications')
         .select('id, type, title, body, link, read_at, created_at')
+        .eq('recipient_id', workspaceOwnerId || currentUser.id)
         .order('created_at', { ascending: false })
         .limit(20),
       fetchEmployerUnreadMessageNotifications()
@@ -4074,10 +4075,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     });
 
     // Live application notifications.
-    sb.channel('notifications-' + currentUser.id)
+    const notificationOwnerId = workspaceOwnerId || currentUser.id;
+    sb.channel('notifications-' + notificationOwnerId)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'notifications',
-        filter: `recipient_id=eq.${currentUser.id}`
+        filter: `recipient_id=eq.${notificationOwnerId}`
       }, () => refreshNotifications())
       .subscribe();
 
