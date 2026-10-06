@@ -628,7 +628,13 @@ select.form-input{
   </div>
 </nav>
 
-<div class="loading" id="loading">Loading your profile details...</div>
+<div id="loading" class="alygnn-page-loader" data-loader-messages="Finding jobs that fit you…||Getting your matches ready…||Preparing your profile…||Almost there…">
+  <div class="alygnn-loader-inner">
+    <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="alygnn-loader-message">Finding jobs that fit you…</div>
+  </div>
+</div>
 
 <div class="page" id="page">
 
@@ -1532,6 +1538,51 @@ initProfileDetailsPage();
 <div class="mini-footer">
   <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
 </div>
+
+
+<script id="alygnn-candidate-loader-script">
+(() => {
+  const loader = document.querySelector('.alygnn-page-loader[data-loader-messages]');
+  if (!loader) return;
+
+  const logoEl = loader.querySelector('.alygnn-loader-logo');
+  const messageEl = loader.querySelector('.alygnn-loader-message');
+
+  const showLogo = () => {
+    if (!logoEl) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => logoEl.classList.add('font-ready'));
+    });
+  };
+
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load("400 32px 'DM Serif Display'")
+      .then(() => document.fonts.ready)
+      .then(showLogo)
+      .catch(showLogo);
+  } else {
+    showLogo();
+  }
+
+  const items = String(loader.dataset.loaderMessages || '')
+    .split('||')
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  if (!messageEl || items.length < 2) return;
+
+  let index = 0;
+  window.setInterval(() => {
+    if (getComputedStyle(loader).display === 'none') return;
+    messageEl.style.opacity = '0';
+    window.setTimeout(() => {
+      index = (index + 1) % items.length;
+      messageEl.textContent = items[index];
+      messageEl.style.opacity = '1';
+    }, 180);
+  }, 1450);
+})();
+</script>
 
 </body>
 </html>
