@@ -3489,15 +3489,15 @@
     }
 
     .job-preview-pill.salary{
-      color:#17324D!important;
-      -webkit-text-fill-color:#17324D!important;
-      background:#EAF2FA!important;
-      border-color:#AFC8DF!important;
+      color:#FFFFFF!important;
+      -webkit-text-fill-color:#FFFFFF!important;
+      background:var(--brand-dark)!important;
+      border-color:var(--brand-dark)!important;
       font-size:12px;
       font-weight:900;
       min-height:38px;
       padding:0 14px;
-      box-shadow:0 4px 12px rgba(53,103,154,.08);
+      box-shadow:0 6px 16px rgba(52,95,145,.18);
       opacity:1!important;
     }
 
@@ -3542,11 +3542,25 @@
 
     .job-preview-copy p{
       margin:0;
-      line-height:1.68;
+      line-height:1.72;
     }
 
-    .job-preview-copy p + ul{
-      margin-top:12px;
+    .job-preview-copy p + p{
+      margin-top:10px;
+    }
+
+    .job-preview-subheading{
+      margin-top:14px;
+      margin-bottom:9px;
+      color:var(--text);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.15px;
+    }
+
+    .job-preview-copy p + ul,
+    .job-preview-subheading + ul{
+      margin-top:9px;
     }
 
     .job-preview-copy ul{
@@ -3627,10 +3641,10 @@
 
 
     html[data-theme="dark"] .job-preview-pill.salary{
-      color:#EAF3FB!important;
-      -webkit-text-fill-color:#EAF3FB!important;
-      background:#17324D!important;
-      border-color:#315A7E!important;
+      color:#FFFFFF!important;
+      -webkit-text-fill-color:#FFFFFF!important;
+      background:#345F91!important;
+      border-color:#5D7FA3!important;
     }
 
     html[data-theme="dark"] .job-preview-pill,
@@ -5718,11 +5732,10 @@
     <section class="company-preview-sheet" role="dialog" aria-modal="true" aria-labelledby="company-preview-title">
       <div class="company-preview-header">
         <div>
-          <div class="company-section-kicker">Candidate preview</div>
           <h2 id="company-preview-title">Company preview</h2>
         </div>
 
-        <button class="company-preview-close" id="close-company-preview" type="button" aria-label="Close candidate preview">×</button>
+        <button class="company-preview-close" id="close-company-preview" type="button" aria-label="Close company preview">×</button>
       </div>
 
       <div class="company-preview-body">
@@ -13364,43 +13377,77 @@
       const el=$(elementId);
       if(!el)return;
 
-      const text=jobPreviewCopy(value,fallback)
+      const raw=jobPreviewCopy(value,fallback)
         .replace(/\r\n?/g,'\n')
-        .replace(/\s*[•▪◦]\s*/g,' • ')
-        .replace(/\n\s*[-–—]\s+/g,' • ')
-        .replace(/\s*\n+\s*/g,' • ')
         .trim();
-
-      const parts=text
-        .split(/\s+•\s+/)
-        .map(part=>part.trim())
-        .filter(Boolean);
 
       el.innerHTML='';
 
-      if(parts.length<=1){
+      const appendParagraph=(text)=>{
+        const clean=String(text||'').trim();
+        if(!clean)return;
         const p=document.createElement('p');
-        p.textContent=parts[0] || fallback;
+        p.textContent=clean;
         el.appendChild(p);
-        return;
-      }
+      };
 
-      const first=parts.shift();
-      if(first){
-        const p=document.createElement('p');
-        p.textContent=first;
-        el.appendChild(p);
-      }
-
-      if(parts.length){
+      const appendList=(items)=>{
+        const clean=items.map(item=>String(item||'').trim()).filter(Boolean);
+        if(!clean.length)return;
         const ul=document.createElement('ul');
-        parts.forEach(item=>{
+        clean.forEach(item=>{
           const li=document.createElement('li');
           li.textContent=item;
           ul.appendChild(li);
         });
         el.appendChild(ul);
+      };
+
+      // Job descriptions often arrive as one large paragraph followed by
+      // "Key responsibilities:" and bullet characters. Render that as a
+      // clean summary + heading + list instead of one dense wall of text.
+      const responsibilityMatch=raw.match(/^(.*?)(?:\s*)(?:key\s+responsibilit(?:y|ies)\s*:)\s*(.*)$/i);
+      if(responsibilityMatch){
+        appendParagraph(responsibilityMatch[1]);
+
+        const heading=document.createElement('div');
+        heading.className='job-preview-subheading';
+        heading.textContent='Key responsibilities';
+        el.appendChild(heading);
+
+        const responsibilityItems=responsibilityMatch[2]
+          .replace(/\n\s*[-–—]\s+/g,' • ')
+          .replace(/\s*[▪◦]\s*/g,' • ')
+          .split(/\s*•\s*/)
+          .map(part=>part.trim())
+          .filter(Boolean);
+
+        if(responsibilityItems.length>1){
+          appendList(responsibilityItems);
+        }else{
+          appendParagraph(responsibilityItems[0] || responsibilityMatch[2]);
+        }
+        return;
       }
+
+      const normalized=raw
+        .replace(/\n\s*[-–—]\s+/g,' • ')
+        .replace(/\s*[▪◦]\s*/g,' • ')
+        .replace(/\s*\n+\s*/g,' • ')
+        .trim();
+
+      const parts=normalized
+        .split(/\s*•\s*/)
+        .map(part=>part.trim())
+        .filter(Boolean);
+
+      if(parts.length<=1){
+        appendParagraph(parts[0] || fallback);
+        return;
+      }
+
+      appendParagraph(parts.shift());
+      appendList(parts);
     }
 
     function openJobPreview(id){
