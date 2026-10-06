@@ -1991,7 +1991,10 @@ window.addEventListener('beforeunload',()=>{
   if(threadChannel)sb.removeChannel(threadChannel);
 });
 
-init();
+init().catch((error) => {
+  console.error('Candidate messages failed to initialize:', error);
+  document.body.classList.add('ready');
+});
 </script>
 
 <script>
