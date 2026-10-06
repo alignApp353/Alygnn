@@ -2681,18 +2681,17 @@
     }
 
     .company-links-public-icon{
-      width:40px;
-      height:40px;
-      border-radius:13px;
+      width:36px;
+      height:36px;
+      border-radius:12px;
       display:grid;
       place-items:center;
       flex:0 0 auto;
-      background:#F1F5F8;
-      border:1px solid var(--border-soft);
+      background:#EDF3F8;
       color:var(--brand-dark);
-      font-size:9px;
+      font-size:11px;
       font-weight:900;
-      letter-spacing:.45px;
+      letter-spacing:-.2px;
     }
 
     .company-links-public-copy{
@@ -10091,16 +10090,16 @@
       const type=companyLinkType(value);
 
       return {
-        facebook:'FB',
-        instagram:'IG',
-        linkedin:'IN',
-        x:'X',
-        tiktok:'TT',
-        youtube:'YT',
-        threads:'TH',
-        website:'WEB',
-        link:'LINK'
-      }[type]||'LINK';
+        facebook:'f',
+        instagram:'◎',
+        linkedin:'in',
+        x:'𝕏',
+        tiktok:'♪',
+        youtube:'▶',
+        threads:'@',
+        website:'↗',
+        link:'↗'
+      }[type]||'↗';
     }
 
     function normalizeCompanyLinks(value){
