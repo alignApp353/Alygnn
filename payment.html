@@ -806,13 +806,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return false;
     }
 
-    if(selectedBilling==='weekly'){
-      if(postingAccess.candidate_access_locked===true){
-        showMessage('Candidate access is paused because of a payment issue. Update billing before adding a Weekly Job Slot.','info');
-        document.getElementById('checkout-btn').disabled=true;
-        return false;
-      }
-    }
+    // Weekly Job Slot remains available regardless of the employer's current
+    // plan, current Weekly Slot count, or another subscription's billing state.
     return true;
   }
 
