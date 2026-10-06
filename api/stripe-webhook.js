@@ -442,16 +442,16 @@ async function fulfillCheckout(session) {
       p_employer_id: employerId,
       p_quantity: 1,
       p_payment_reference: session.id,
-      p_amount_cents: session.amount_total || 15000
+      p_amount_cents: Number.isFinite(Number(session.amount_total)) ? Number(session.amount_total) : 15000
     });
     return;
   }
 
   if (product === 'job_boost') {
-    const paymentReference =
-      typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : (session.payment_intent?.id || session.id);
+    // Hosted Checkout can emit both payment_intent.succeeded and
+    // checkout.session.completed. Use the Checkout Session ID consistently so
+    // return-sync + webhook fulfillment stay idempotent.
+    const paymentReference = session.id;
 
     await rpc('activate_paid_job_boost', {
       p_employer_id: employerId,
@@ -524,6 +524,10 @@ async function fulfillPaymentIntent(intent){
   const product=String(meta.product||'').toLowerCase();
   if(!employerId||!product)return;
 
+  // Hosted Checkout is fulfilled from checkout.session.completed. Native
+  // PaymentSheet does not carry this marker and still fulfills here.
+  if(String(meta.fulfillment_channel||'').toLowerCase()==='checkout_session')return;
+
   if(product==='plan_upgrade'){
     await fulfillPaidPlanUpgrade(intent);
     return;
@@ -533,7 +537,7 @@ async function fulfillPaymentIntent(intent){
     await rpc('grant_weekly_job_slot',{
       p_employer_id:employerId,
       p_payment_reference:intent.id,
-      p_amount_cents:Number(intent.amount_received||intent.amount||9900),
+      p_amount_cents:Number.isFinite(Number(intent.amount_received)) ? Number(intent.amount_received) : (Number.isFinite(Number(intent.amount)) ? Number(intent.amount) : 9900),
       p_days:7
     });
     return;
@@ -545,7 +549,7 @@ async function fulfillPaymentIntent(intent){
       p_job_id:meta.job_id,
       p_days:Math.max(1,Number.parseInt(meta.days||'1',10)||1),
       p_payment_reference:intent.id,
-      p_amount_cents:Number(intent.amount_received||intent.amount||0)||null
+      p_amount_cents:Number.isFinite(Number(intent.amount_received)) ? Number(intent.amount_received) : (Number.isFinite(Number(intent.amount)) ? Number(intent.amount) : null)
     });
   }
 }
