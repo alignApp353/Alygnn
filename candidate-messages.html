@@ -959,7 +959,20 @@ body.candidate-role #nav-swipe-link[hidden]{
     text-align:center !important;
     padding:24px !important;
   }
+  .alygnn-loader-inner{
+    width:320px;
+    max-width:calc(100vw - 48px);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    text-align:center;
+  }
   .alygnn-loader-logo{
+    width:100%;
+    text-align:center;
+    white-space:nowrap;
     font-family:'DM Serif Display',serif;
     font-size:32px;
     line-height:1;
@@ -985,7 +998,9 @@ body.candidate-role #nav-swipe-link[hidden]{
   .alygnn-loader-dots span:nth-child(2){animation-delay:.14s}
   .alygnn-loader-dots span:nth-child(3){animation-delay:.28s}
   .alygnn-loader-message{
+    width:100%;
     min-height:20px;
+    text-align:center;
     font-family:'DM Sans',sans-serif;
     font-size:13px;
     font-weight:400;
@@ -1009,9 +1024,11 @@ body.candidate-role #nav-swipe-link[hidden]{
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Finding jobs that fit you…||Getting your matches ready…||Preparing your profile…||Almost there…">
-  <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
-  <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-  <div class="alygnn-loader-message">Finding jobs that fit you…</div>
+  <div class="alygnn-loader-inner">
+    <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="alygnn-loader-message">Finding jobs that fit you…</div>
+  </div>
 </div>
 
 <nav>
