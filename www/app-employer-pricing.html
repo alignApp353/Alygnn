@@ -473,9 +473,9 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
   </section>
 
   <section class="free-card">
-    <div class="free-badge">Included</div>
-    <div class="free-title">1 free reusable job slot is always included</div>
-    <p class="free-copy">Every employer account includes 1 reusable active job slot with limited candidate access. Close or pause that job to reuse the free slot. If you want another active job at the same time, choose paid capacity below.</p>
+    <div class="free-badge" id="free-slot-badge">Included</div>
+    <div class="free-title" id="free-slot-title">1 free reusable job slot is always included</div>
+    <p class="free-copy" id="free-slot-copy">Every employer account includes 1 reusable active job slot with limited candidate access. Close or pause that job to reuse the free slot. If you want another active job at the same time, choose paid capacity below.</p>
     <button class="btn primary full" id="free-btn" type="button">Use included free slot</button>
   </section>
 
@@ -1163,22 +1163,57 @@ function renderCurrent(){
   const paidPlanActive=basePaidPlanActive();
   const hasAvailableSlot=used<limit;
 
-  if(SAME_ROLE_PAID_ACCESS_REASON){
-    $('free-btn').textContent=
-      'Post a different role instead';
+  // Track the INCLUDED free slot separately from total capacity. This matters
+  // when an employer posts the free job first and later upgrades to a plan.
+  // The original free job stays in the free slot; new jobs must consume paid
+  // plan/add-on capacity until those slots are full.
+  const activeJobs=jobs.filter(jobConsumesSlot);
+  const freeSlotInUse=activeJobs.some(job=>
+    String(job?.posting_access_type||'').toLowerCase()==='free'
+  );
+
+  const freeBadge=$('free-slot-badge');
+  const freeTitle=$('free-slot-title');
+  const freeCopy=$('free-slot-copy');
+
+  if(freeSlotInUse){
+    if(freeBadge)freeBadge.textContent='Free slot in use';
+    if(freeTitle)freeTitle.textContent='Your included free job slot is currently in use';
+
+    if(freeCopy){
+      freeCopy.textContent=hasAvailableSlot
+        ? `Your free slot is already occupied. You still have ${limit-used} other job slot${limit-used===1?'':'s'} available from your plan or add-ons. Your next job will use that available paid capacity — it will not use a second free slot.`
+        : 'Your included free slot is occupied, and all of your current paid plan/add-on capacity is also in use. Close or pause a job to free a slot, or add more capacity below.';
+    }
+  }else{
+    if(freeBadge)freeBadge.textContent='Included';
+    if(freeTitle)freeTitle.textContent='1 free reusable job slot is always included';
+
+    if(freeCopy){
+      freeCopy.textContent=paidPlanActive
+        ? 'Your included free slot is available. Alygnn uses available paid-plan slots first, then the included free slot after the plan slots are occupied.'
+        : 'Every employer account includes 1 reusable active job slot with limited candidate access. Close or pause that job to reuse the free slot. If you want another active job at the same time, choose paid capacity below.';
+    }
   }
 
   /*
-   * This button is the "use capacity" action, not literally only the free slot.
-   * If the employer has ANY available capacity — plan, Second Job Slot, or
-   * Weekly Job Slot — let them go straight to the job builder.
+   * This button uses ANY verified available capacity. Its wording must never
+   * imply that a second free slot exists when the included free slot is
+   * already occupied.
    */
   $('free-btn').disabled=!hasAvailableSlot;
-  $('free-btn').textContent=hasAvailableSlot
-    ? `Post a Job — ${limit-used} slot${limit-used===1?'':'s'} available`
-    : paidPlanActive
+
+  if(SAME_ROLE_PAID_ACCESS_REASON && hasAvailableSlot){
+    $('free-btn').textContent='Post a different role instead';
+  }else if(hasAvailableSlot){
+    $('free-btn').textContent=freeSlotInUse && paidPlanActive
+      ? `Post a Job — use available plan slot`
+      : `Post a Job — ${limit-used} slot${limit-used===1?'':'s'} available`;
+  }else{
+    $('free-btn').textContent=paidPlanActive
       ? `${used} / ${limit} total slots in use`
       : `All ${limit} slot${limit===1?' is':'s are'} in use`;
+  }
 
   const secondSection=$('additional-slot');
   const secondBtn=$('additional-slot-btn');
