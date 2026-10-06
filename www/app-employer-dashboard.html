@@ -2681,17 +2681,18 @@
     }
 
     .company-links-public-icon{
-      width:36px;
-      height:36px;
-      border-radius:12px;
+      width:40px;
+      height:40px;
+      border-radius:13px;
       display:grid;
       place-items:center;
       flex:0 0 auto;
-      background:#EDF3F8;
+      background:#F1F5F8;
+      border:1px solid var(--border-soft);
       color:var(--brand-dark);
-      font-size:11px;
+      font-size:9px;
       font-weight:900;
-      letter-spacing:-.2px;
+      letter-spacing:.45px;
     }
 
     .company-links-public-copy{
@@ -10090,16 +10091,16 @@
       const type=companyLinkType(value);
 
       return {
-        facebook:'f',
-        instagram:'◎',
-        linkedin:'in',
-        x:'𝕏',
-        tiktok:'♪',
-        youtube:'▶',
-        threads:'@',
-        website:'↗',
-        link:'↗'
-      }[type]||'↗';
+        facebook:'FB',
+        instagram:'IG',
+        linkedin:'IN',
+        x:'X',
+        tiktok:'TT',
+        youtube:'YT',
+        threads:'TH',
+        website:'WEB',
+        link:'LINK'
+      }[type]||'LINK';
     }
 
     function normalizeCompanyLinks(value){
@@ -15750,6 +15751,7 @@
           }
 
           sessionStorage.removeItem('alygnn_job_slot_gate');
+          sessionStorage.setItem('alygnnPostJobCapacityPass','1');
           sessionStorage.removeItem('alygnnEditJobId');
           sessionStorage.removeItem('alygnnJobReturnStep');
           sessionStorage.removeItem('alygnnJobDraft');
@@ -15781,6 +15783,7 @@
           return;
         }
 
+        sessionStorage.setItem('alygnnPostJobCapacityPass','1');
         sessionStorage.removeItem('alygnnEditJobId');
         sessionStorage.removeItem('alygnnJobDraft');
         sessionStorage.removeItem('alygnnActiveJobDraftId');
