@@ -139,11 +139,10 @@ h1{font-size:38px;margin:8px 0 12px}h2{font-size:24px;margin:0 0 8px}
 <script>
 const SUPABASE_URL='https://auth.alygnn.com';
 const SUPABASE_ANON_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-const TEST_MODE_EMAILS=[]; // Production: developer team-seat bypass disabled for every account.
 function alygnnAuthStorageKey(){let t=sessionStorage.getItem('alygnn_auth_tab_id');if(!t){t=crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;sessionStorage.setItem('alygnn_auth_tab_id',t)}return `alygnn-auth-${t}`}
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:sessionStorage,storageKey:alygnnAuthStorageKey(),persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
-let session=null,access=null,developerTestMode=false;
+let session=null,access=null;
 const $=id=>document.getElementById(id);
 function money(cents){return '$'+(Number(cents||0)/100).toFixed(2)}
 function planLabel(p){return ({launch:'Launch',growth:'Growth',scale:'Scale'})[String(p||'').toLowerCase()]||'Alygnn'}
@@ -180,23 +179,13 @@ function render(){
 
   $('summary-title').textContent=`${label} extra team member`;
 
-  if(developerTestMode){
-    $('due-price').textContent='$0';
-    $('normal-price').textContent=`Normally ${money(price)} / month`;
-    $('subtotal').textContent='$0.00';
-    $('tax').textContent='$0.00';
-    $('due-today').textContent='$0.00';
-    $('test-banner').hidden=false;
-    $('checkout-btn').textContent=`Activate ${label} team seat — $0`;
-  }else{
-    $('due-price').textContent='$'+Math.round(price/100);
-    $('normal-price').textContent='';
-    $('subtotal').textContent=money(price);
-    $('tax').textContent='Calculated at checkout';
-    $('due-today').textContent=`${money(price)} + tax`;
-    $('test-banner').hidden=true;
-    $('checkout-btn').textContent=`Continue to secure payment — $${Math.round(price/100)}/mo`;
-  }
+  $('due-price').textContent='$'+Math.round(price/100);
+  $('normal-price').textContent='';
+  $('subtotal').textContent=money(price);
+  $('tax').textContent='Calculated at checkout';
+  $('due-today').textContent=`${money(price)} + tax`;
+  $('test-banner').hidden=true;
+  $('checkout-btn').textContent=`Continue to secure payment — $${Math.round(price/100)}/mo`;
 
   $('checkout-btn').disabled=!$('terms').checked || access?.can_purchase_seat!==true;
   const loading=$('loading');
@@ -212,40 +201,12 @@ function render(){
   }
 }
 
-async function activateTestSeat(){
-  const btn=$('checkout-btn');
-  btn.disabled=true;
-  btn.textContent='Activating test team seat…';
-
-  const {data,error}=await sb.rpc('activate_employer_test_team_seat');
-
-  if(error){
-    console.error(error);
-    showMessage(
-      error.message||
-      'Team-seat test activation is not installed in Supabase yet. Run ALYGNN-WEBSITE-TEST-TEAM-SEAT.sql once, then try again.',
-      'info'
-    );
-    render();
-    return;
-  }
-
-  btn.textContent='Team seat activated ✓';
-  showMessage('Your test team seat is active. No payment was processed.','success');
-  setTimeout(()=>location.href='employer-team.html?team_seat=success',700);
-}
-
 async function startCheckout(){
   if(!session)return;
   if(!$('terms').checked){showMessage('Please accept the Terms of Service and Privacy Policy.');return}
   if(access?.can_purchase_seat!==true){showMessage('An additional team seat is not available on this plan.');return}
 
   clearMessage();
-
-  if(developerTestMode){
-    await activateTestSeat();
-    return;
-  }
 
   const btn=$('checkout-btn');
   btn.disabled=true;
@@ -288,7 +249,6 @@ $('terms').addEventListener('change',()=>render());
   const {data:{session:s},error}=await sb.auth.getSession();
   if(error||!s){location.replace('login.html?role=employer');return}
   session=s;
-  developerTestMode=TEST_MODE_EMAILS.includes(String(s.user.email||'').toLowerCase());
 
   const {data:a,error:accessError}=await sb.rpc('get_my_team_access');
   if(accessError){
