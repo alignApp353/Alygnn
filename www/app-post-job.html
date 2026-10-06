@@ -1577,14 +1577,12 @@ async function augmentPostingAccessWithActualSlotUsage(
   userId,
   companyId
 ){
-  if(
-    access &&
-    typeof access==='object' &&
-    access.next_slot_type
-  ){
-    return access;
-  }
-
+  /*
+   * Always reconcile the RPC with the jobs that are actually occupying slots.
+   * Do NOT trust a previously returned next_slot_type by itself: after an
+   * employer upgrades, an older/stale RPC value can still say "free" even
+   * though the original free-slot job is already active.
+   */
   try{
     const ownedJobs=await loadJobsForSlotCheck(
       userId,
