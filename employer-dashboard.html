@@ -3903,17 +3903,21 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
       if (isApplicant) {
         const c = notificationApplication(n);
-        if (c?.job) {
-          const name = c.profile?.full_name || 'A candidate';
-          return `
-            <a class="notif-item ${n.read_at ? '' : 'unread'}" href="#"
-               onclick="handleCandidateNotification(event, '${n.id}')">
-              <div class="notif-item-title">${escapeHtml(c.job.title)} — New applicant</div>
-              <div class="notif-item-body">${escapeHtml(name)} applied to this job.</div>
-              <div class="notif-item-time">${timeAgo(n.created_at)}</div>
-            </a>
-          `;
-        }
+        const displayTitle = c?.job?.title
+          ? `${c.job.title} — New applicant`
+          : (n.title || 'New applicant');
+        const displayBody = c?.job
+          ? `${c.profile?.full_name || 'A candidate'} applied to this job.`
+          : (n.body || '');
+
+        return `
+          <a class="notif-item ${n.read_at ? '' : 'unread'}" href="#"
+             onclick="handleCandidateNotification(event, '${n.id}')">
+            <div class="notif-item-title">${escapeHtml(displayTitle)}</div>
+            ${displayBody ? `<div class="notif-item-body">${escapeHtml(displayBody)}</div>` : ''}
+            <div class="notif-item-time">${timeAgo(n.created_at)}</div>
+          </a>
+        `;
       }
 
       if (n.source === 'message') {
@@ -3949,24 +3953,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const dropdown = document.getElementById('notif-dropdown');
     if (dropdown) dropdown.style.display = 'none';
 
-    if (!c?.job?.id) {
-      showToast('Could not match that notification to an application.');
-      return;
-    }
-
-    // Team members (Recruiter, Hiring Manager, Admin) already have the
-    // company's candidate data loaded in this dashboard. Open the exact
-    // applicant profile here instead of sending the teammate through the
-    // owner-only candidates page flow.
-    if (isTeamMember && teamCan('candidates_manage')) {
-      openCandidateModal(c.applicationId);
-      return;
-    }
-
     const params = new URLSearchParams({
-      job: c.job.id,
-      application: c.applicationId
+      notification: id
     });
+
+    if (c?.job?.id) params.set('job', c.job.id);
+    if (c?.applicationId) params.set('application', c.applicationId);
+
     window.location.href = 'candidates.html?' + params.toString();
   }
 
