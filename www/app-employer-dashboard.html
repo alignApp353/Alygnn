@@ -3498,6 +3498,31 @@
       padding:0 14px;
     }
 
+    .job-preview-compensation{
+      margin-top:16px;
+      padding:15px 16px;
+      border:1px solid #C9DAEC;
+      border-radius:17px;
+      background:linear-gradient(145deg,#F4F8FC,#EAF2FA);
+    }
+
+    .job-preview-compensation-label{
+      color:var(--muted);
+      font-size:9px;
+      font-weight:900;
+      letter-spacing:.7px;
+      text-transform:uppercase;
+    }
+
+    .job-preview-compensation-value{
+      display:block;
+      margin-top:5px;
+      color:var(--brand-dark);
+      font-size:17px;
+      line-height:1.3;
+      font-weight:900;
+    }
+
     .job-preview-section{
       margin-top:16px;
       padding:17px;
@@ -3524,9 +3549,9 @@
 
     .job-preview-copy{
       margin-top:10px;
-      color:var(--muted);
+      color:var(--text);
       font-size:12px;
-      line-height:1.62;
+      line-height:1.7;
       white-space:normal;
       overflow-wrap:anywhere;
     }
@@ -5935,22 +5960,26 @@
         <span class="job-preview-pill" id="job-preview-location">Location</span>
         <span class="job-preview-pill" id="job-preview-type">Job type</span>
         <span class="job-preview-pill" id="job-preview-style">Work style</span>
-        <span class="job-preview-pill salary" id="job-preview-salary">Compensation</span>
+      </div>
+
+      <div class="job-preview-compensation">
+        <div class="job-preview-compensation-label">Compensation</div>
+        <strong class="job-preview-compensation-value" id="job-preview-salary">Compensation not listed</strong>
       </div>
 
       <section class="job-preview-section">
         <h3>About this role</h3>
-        <p id="job-preview-description">No job description added yet.</p>
+        <div class="job-preview-copy" id="job-preview-description">No job description added yet.</div>
       </section>
 
       <section class="job-preview-section">
         <h3>What we're looking for</h3>
-        <p id="job-preview-requirements">No requirements added yet.</p>
+        <div class="job-preview-copy" id="job-preview-requirements">No requirements added yet.</div>
       </section>
 
       <section class="job-preview-section">
         <h3>Benefits &amp; details</h3>
-        <p id="job-preview-benefits">No additional benefits or details added yet.</p>
+        <div class="job-preview-copy" id="job-preview-benefits">No additional benefits or details added yet.</div>
       </section>
 
       <div class="job-preview-note">
@@ -13330,8 +13359,9 @@
       if(!el)return;
 
       const text=jobPreviewCopy(value,fallback)
-        .replace(/\s*•\s*/g,' • ')
+        .replace(/\s*[•▪◦]\s*/g,' • ')
         .replace(/\s*\n+\s*/g,' • ')
+        .replace(/\s+(?=(?:Key responsibilities|Responsibilities|Requirements|Qualifications|Benefits|Duties):)/gi,' • ')
         .trim();
 
       const parts=text
