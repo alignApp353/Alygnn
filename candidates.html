@@ -1595,6 +1595,27 @@ async function loadData(){
   focusedJobId=params.get('job');
   focusedApplicationId=params.get('application');
 
+  const notificationId=String(params.get('notification')||'').trim();
+  if(notificationId && (!focusedJobId || !focusedApplicationId)){
+    try{
+      const {data:notificationRow,error:notificationError}=await sb
+        .from('notifications')
+        .select('id,type,title,body,link,read_at,created_at')
+        .eq('id',notificationId)
+        .maybeSingle();
+
+      if(!notificationError && notificationRow){
+        const resolved=candidatePageNotificationApplication(notificationRow);
+        if(resolved?.job?.id && resolved?.applicationId){
+          focusedJobId=resolved.job.id;
+          focusedApplicationId=resolved.applicationId;
+        }
+      }
+    }catch(error){
+      console.warn('Could not resolve applicant notification on Candidates page:',error);
+    }
+  }
+
   const requestedView=String(params.get('view')||'').toLowerCase();
   candidateView=['accepted','passed'].includes(requestedView)?requestedView:'jobs';
 
