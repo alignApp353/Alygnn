@@ -611,7 +611,7 @@ body.employer-role .notif-item-time{
     position:fixed !important;
     inset:0 !important;
     z-index:99999 !important;
-    display:flex !important;
+    display:flex;
     flex-direction:column !important;
     align-items:center !important;
     justify-content:center !important;
@@ -621,6 +621,13 @@ body.employer-role .notif-item-time{
     text-align:center !important;
     padding:24px !important;
   }
+
+body.ready #loading.alygnn-page-loader{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
   .alygnn-loader-logo{
     font-family:'DM Serif Display',serif;
     font-size:32px;
@@ -1850,7 +1857,19 @@ window.addEventListener('beforeunload',()=>{
   if(threadChannel)sb.removeChannel(threadChannel);
 });
 
-init();
+
+let messagesRevealTimer = window.setTimeout(() => {
+  document.body.classList.add('ready');
+}, 12000);
+
+init()
+  .catch((error) => {
+    console.error('Messages page failed to initialize:', error);
+  })
+  .finally(() => {
+    window.clearTimeout(messagesRevealTimer);
+    document.body.classList.add('ready');
+  });
 </script>
 
 <script>
