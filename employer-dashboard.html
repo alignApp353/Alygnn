@@ -2781,11 +2781,21 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     });
 
     if (isTeamMember && teamRuntime?.entitlement) {
+      const teamLimit = Math.max(1, Number(teamRuntime.effective_slot_limit || 1));
+      const teamUsed = Math.max(0, Number(teamRuntime.active_job_count || 0));
+
       billingEntitlement = normalizeEntitlement({
         ...teamRuntime.entitlement,
-        slot_limit: Math.max(1, Number(teamRuntime.effective_slot_limit || 1)),
-        server_access_loaded: false
+        slot_limit: teamLimit,
+        server_access_loaded: true,
+        server_can_post: teamUsed < teamLimit,
+        server_reason: teamUsed < teamLimit ? 'slot-available' : 'slot-limit',
+        server_active_job_count: teamUsed,
+        server_available_slots: Math.max(0, teamLimit - teamUsed)
       });
+
+      billingReady = true;
+      return;
     }
 
     try {
