@@ -239,7 +239,7 @@
   }
 
   body.candidate-role .side-link{
-    display:flex;
+    display:flex !important;
     align-items:center !important;
     gap:11px !important;
     width:100% !important;
@@ -949,7 +949,7 @@ body.candidate-role #nav-swipe-link[hidden]{
     position:fixed !important;
     inset:0 !important;
     z-index:99999 !important;
-    display:flex !important;
+    display:flex;
     flex-direction:column !important;
     align-items:center !important;
     justify-content:center !important;
@@ -998,6 +998,12 @@ body.candidate-role #nav-swipe-link[hidden]{
     40%{transform:translateY(-4px);opacity:1}
   }
 
+
+  body.ready #loading.alygnn-page-loader{
+    display:none !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
 </style>
 
 </head>
@@ -1991,10 +1997,19 @@ window.addEventListener('beforeunload',()=>{
   if(threadChannel)sb.removeChannel(threadChannel);
 });
 
-init().catch((error) => {
-  console.error('Candidate messages failed to initialize:', error);
+
+let candidateMessagesRevealTimer = window.setTimeout(() => {
   document.body.classList.add('ready');
-});
+}, 12000);
+
+init()
+  .catch((error) => {
+    console.error('Candidate messages failed to initialize:', error);
+  })
+  .finally(() => {
+    window.clearTimeout(candidateMessagesRevealTimer);
+    document.body.classList.add('ready');
+  });
 </script>
 
 <script>
