@@ -2781,14 +2781,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     });
 
     if (isTeamMember && teamRuntime?.entitlement) {
-      const runtimeEntitlement = {
+      billingEntitlement = normalizeEntitlement({
         ...teamRuntime.entitlement,
         slot_limit: Math.max(1, Number(teamRuntime.effective_slot_limit || 1)),
         server_access_loaded: false
-      };
-      billingEntitlement = normalizeEntitlement(runtimeEntitlement);
-      billingReady = true;
-      return;
+      });
     }
 
     try {
