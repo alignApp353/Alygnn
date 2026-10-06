@@ -960,31 +960,39 @@ body.candidate-role #nav-swipe-link[hidden]{
     padding:24px !important;
   }
   .alygnn-loader-inner{
+    position:relative;
     width:320px;
+    height:110px;
     max-width:calc(100vw - 48px);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:14px;
     text-align:center;
   }
   .alygnn-loader-logo{
-    width:100%;
+    position:absolute;
+    top:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:220px;
     text-align:center;
     white-space:nowrap;
-    font-family:'DM Serif Display',serif;
+    font-family:'DM Serif Display',Georgia,serif;
     font-size:32px;
     line-height:1;
     letter-spacing:-.6px;
     color:#5D7FA3;
+    opacity:0;
   }
+  .alygnn-loader-logo.font-ready{opacity:1;}
   .alygnn-loader-logo span{color:#8CB69B}
   .alygnn-loader-dots{
+    position:absolute;
+    top:46px;
+    left:50%;
+    transform:translateX(-50%);
     display:flex;
     align-items:center;
     justify-content:center;
     gap:6px;
+    width:60px;
     height:12px;
   }
   .alygnn-loader-dots span{
@@ -998,7 +1006,12 @@ body.candidate-role #nav-swipe-link[hidden]{
   .alygnn-loader-dots span:nth-child(2){animation-delay:.14s}
   .alygnn-loader-dots span:nth-child(3){animation-delay:.28s}
   .alygnn-loader-message{
-    width:100%;
+    position:absolute;
+    top:72px;
+    left:50%;
+    transform:translateX(-50%);
+    width:320px;
+    max-width:calc(100vw - 48px);
     min-height:20px;
     text-align:center;
     font-family:'DM Sans',sans-serif;
@@ -2034,6 +2047,18 @@ init()
   const loader = document.querySelector('.alygnn-page-loader[data-loader-messages]');
   if (!loader) return;
   const messageEl = loader.querySelector('.alygnn-loader-message');
+  const logoEl = loader.querySelector('.alygnn-loader-logo');
+
+  const showLogo = () => logoEl && logoEl.classList.add('font-ready');
+  if (document.fonts && document.fonts.load) {
+    Promise.race([
+      document.fonts.load("32px 'DM Serif Display'"),
+      new Promise(resolve => setTimeout(resolve, 1200))
+    ]).then(showLogo).catch(showLogo);
+  } else {
+    showLogo();
+  }
+
   const items = String(loader.dataset.loaderMessages || '')
     .split('||')
     .map(item => item.trim())
