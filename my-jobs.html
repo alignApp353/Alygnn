@@ -247,11 +247,108 @@ body.auth-ready #auth-loading { display: none; }
 }
 </style>
 
+
+<style id="alygnn-candidate-page-loader">
+.alygnn-page-loader{
+  visibility:visible;
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#F6F8F7;
+  color:#4A5968;
+  padding:24px;
+}
+.alygnn-loader-inner{
+  position:relative;
+  width:320px;
+  height:110px;
+  max-width:calc(100vw - 48px);
+  text-align:center;
+}
+.alygnn-loader-logo{
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  margin:0 auto;
+  width:220px;
+  text-align:center;
+  white-space:nowrap;
+  font-family:'DM Serif Display',serif !important;
+  font-size:32px;
+  font-style:normal;
+  font-weight:400;
+  font-synthesis:none;
+  line-height:1;
+  letter-spacing:-.6px;
+  color:#5D7FA3;
+  opacity:0;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+.alygnn-loader-logo.font-ready{opacity:1}
+.alygnn-loader-logo span{
+  font-family:'DM Serif Display',serif !important;
+  color:#8CB69B;
+}
+.alygnn-loader-dots{
+  position:absolute;
+  top:46px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:60px;
+  height:12px;
+}
+.alygnn-loader-dots span{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#5D7FA3;
+  opacity:.24;
+  animation:alygnnLoaderPulse 1.05s ease-in-out infinite;
+}
+.alygnn-loader-dots span:nth-child(2){animation-delay:.14s}
+.alygnn-loader-dots span:nth-child(3){animation-delay:.28s}
+.alygnn-loader-message{
+  position:absolute;
+  top:72px;
+  left:50%;
+  transform:translateX(-50%);
+  width:320px;
+  max-width:calc(100vw - 48px);
+  min-height:20px;
+  text-align:center;
+  font-family:'DM Sans',sans-serif !important;
+  font-size:13px;
+  font-weight:400;
+  line-height:1.5;
+  color:#4A5968;
+  transition:opacity .18s ease;
+}
+@keyframes alygnnLoaderPulse{
+  0%,80%,100%{transform:translateY(0);opacity:.24}
+  40%{transform:translateY(-4px);opacity:1}
+}
+</style>
+
 </head>
 
 <body>
 
-<div id="auth-loading">Loading…</div>
+<div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Finding jobs that fit you…||Getting your matches ready…||Preparing your profile…||Almost there…">
+  <div class="alygnn-loader-inner">
+    <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="alygnn-loader-message">Finding jobs that fit you…</div>
+  </div>
+</div>
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
@@ -1086,6 +1183,51 @@ document.getElementById('search-input').addEventListener('input', render);
   document.body.classList.add('auth-ready');
 
   await loadCandidateNotifications(profile || null);
+})();
+</script>
+
+
+<script id="alygnn-candidate-loader-script">
+(() => {
+  const loader = document.querySelector('.alygnn-page-loader[data-loader-messages]');
+  if (!loader) return;
+
+  const logoEl = loader.querySelector('.alygnn-loader-logo');
+  const messageEl = loader.querySelector('.alygnn-loader-message');
+
+  const showLogo = () => {
+    if (!logoEl) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => logoEl.classList.add('font-ready'));
+    });
+  };
+
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load("400 32px 'DM Serif Display'")
+      .then(() => document.fonts.ready)
+      .then(showLogo)
+      .catch(showLogo);
+  } else {
+    showLogo();
+  }
+
+  const items = String(loader.dataset.loaderMessages || '')
+    .split('||')
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  if (!messageEl || items.length < 2) return;
+
+  let index = 0;
+  window.setInterval(() => {
+    if (getComputedStyle(loader).display === 'none') return;
+    messageEl.style.opacity = '0';
+    window.setTimeout(() => {
+      index = (index + 1) % items.length;
+      messageEl.textContent = items[index];
+      messageEl.style.opacity = '1';
+    }, 180);
+  }, 1450);
 })();
 </script>
 
