@@ -2645,9 +2645,9 @@
       white-space:pre-wrap;
     }
     .company-links-public-list{
-      display:flex;
-      flex-wrap:wrap;
-      gap:9px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
       margin-top:4px;
     }
 
@@ -2659,47 +2659,100 @@
     }
 
     .company-links-public-chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      min-height:38px;
-      padding:0 12px 0 9px;
+      width:100%;
+      min-width:0;
+      min-height:58px;
+      padding:10px 12px;
       border:1px solid var(--border);
-      border-radius:999px;
+      border-radius:16px;
       background:var(--card-bg);
       color:var(--text);
       text-decoration:none;
-      font-size:11px;
-      font-weight:800;
-      max-width:100%;
+      display:grid;
+      grid-template-columns:36px minmax(0,1fr) 22px;
+      gap:11px;
+      align-items:center;
+      box-shadow:0 7px 20px rgba(23,35,51,.035);
+      transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+    }
+
+    .company-links-public-chip:active{
+      transform:scale(.985);
     }
 
     .company-links-public-icon{
-      width:24px;
-      height:24px;
-      border-radius:50%;
+      width:36px;
+      height:36px;
+      border-radius:12px;
       display:grid;
       place-items:center;
       flex:0 0 auto;
       background:#EDF3F8;
-      color:var(--brand);
-      font-size:10px;
+      color:var(--brand-dark);
+      font-size:11px;
       font-weight:900;
+      letter-spacing:-.2px;
     }
 
     .company-links-public-copy{
       min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      overflow:hidden;
+    }
+
+    .company-links-public-name{
+      color:var(--text);
+      font-size:11px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .company-links-public-value{
+      min-width:0;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
-      max-width:210px;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:700;
+      line-height:1.3;
+    }
+
+    .company-links-public-arrow{
+      display:grid;
+      place-items:center;
+      width:22px;
+      height:22px;
+      border-radius:8px;
+      color:var(--brand-dark);
+      background:var(--brand-soft);
+      font-size:13px;
+      font-weight:900;
+      line-height:1;
     }
 
     .company-links-helper{
-      margin:14px 0 0;
+      margin:12px 0 0;
       color:var(--muted);
       font-size:10px;
       line-height:1.55;
+    }
+
+    html[data-theme="dark"] .company-links-public-chip{
+      background:var(--card);
+      box-shadow:none;
+    }
+
+    html[data-theme="dark"] .company-links-public-icon{
+      background:#17283A;
+      color:#9DC3E7;
+    }
+
+    html[data-theme="dark"] .company-links-public-arrow{
+      background:#17283A;
+      color:#9DC3E7;
     }
 
     .company-edit-field[data-company-edit-group][hidden]{
@@ -10949,8 +11002,17 @@
                 </span>
 
                 <span class="company-links-public-copy">
-                  ${escapeHtml(display)}
+                  <span class="company-links-public-name">
+                    ${escapeHtml(label)}
+                  </span>
+                  <span class="company-links-public-value">
+                    ${escapeHtml(display)}
+                  </span>
                 </span>
+
+                <span
+                  class="company-links-public-arrow"
+                  aria-hidden="true">↗</span>
               </a>
             `;
           }).join('');
@@ -15648,20 +15710,45 @@
 
         if(!accessResult.error && accessResult.data){
           const access=accessResult.data;
-          const used=Math.max(0,Number(access.active_job_count||0));
           const limit=Math.max(1,Number(access.slot_limit||1));
+
+          /*
+           * Reconcile the RPC count with the jobs that are actually occupying
+           * capacity. This fixes the upgrade path where the original free-slot
+           * job is already active, Launch is 4 total, the UI correctly shows
+           * 3 / 4, but an older/stale RPC active_job_count still reports 4.
+           */
+          let used=Math.max(0,Number(access.active_job_count||0));
+
+          try{
+            const freshJobs=await queryJobs(state.session.user.id);
+            const actualUsed=(Array.isArray(freshJobs)?freshJobs:[])
+              .filter(dashboardJobConsumesSlot)
+              .length;
+
+            if(Number.isFinite(actualUsed)){
+              used=actualUsed;
+              state.jobs=Array.isArray(freshJobs)?freshJobs:state.jobs;
+            }
+          }catch(reconcileError){
+            console.warn(
+              'Could not reconcile live job-slot usage; using RPC count:',
+              reconcileError
+            );
+          }
 
           const hasCapacity =
             used < limit ||
-            access.can_post === true;
+            (
+              access.can_post === true &&
+              used <= limit
+            );
 
           if(!hasCapacity){
             openSlotPricing(used,limit);
             return;
           }
 
-          // Numeric server capacity says there is room. Clear any stale paywall
-          // state from the previous 5/5 check before opening a fresh job.
           sessionStorage.removeItem('alygnn_job_slot_gate');
           sessionStorage.removeItem('alygnnEditJobId');
           sessionStorage.removeItem('alygnnJobReturnStep');
