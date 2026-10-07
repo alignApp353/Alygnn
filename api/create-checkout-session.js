@@ -945,10 +945,45 @@ async function resumeSecondSlotRenewal({sub}){
 
 async function releaseSchedule(sub,ent){
   const scheduleId=(typeof sub?.schedule==='string'?sub.schedule:sub?.schedule?.id)||ent?.stripe_plan_schedule_id;
-  if(!scheduleId)return;
-  try{await manageStripe('POST','subscription_schedules/'+encodeURIComponent(scheduleId)+'/release',{});}catch(error){
+  if(!scheduleId)return false;
+  try{
+    await manageStripe('POST','subscription_schedules/'+encodeURIComponent(scheduleId)+'/release',{});
+  }catch(error){
     if(!/released|completed|not found|no such subscription schedule/i.test(error.message||''))throw error;
   }
+  return true;
+}
+
+async function detachPlanScheduleForImmediateChange({employerId,ent,sub}){
+  let current=sub;
+  const scheduleId=(typeof current?.schedule==='string'?current.schedule:current?.schedule?.id)||ent?.stripe_plan_schedule_id||null;
+
+  if(scheduleId){
+    await releaseSchedule(current,ent);
+    await patchEntitlement(employerId,{
+      stripe_plan_schedule_id:null,
+      pending_plan:null,
+      pending_billing_period:null,
+      pending_plan_effective_at:null,
+      plan_change_updated_at:new Date().toISOString()
+    });
+    current=await manageStripe('GET','subscriptions/'+encodeURIComponent(current.id),{
+      'expand[]':'items.data.price'
+    });
+  }
+
+  // Stripe blocks cancel_at_period_end changes while a schedule owns the
+  // subscription. At this point the schedule is detached, so it is safe to
+  // restore renewal if an older scheduled change had marked it for cancellation.
+  if(current?.cancel_at_period_end===true){
+    current=await manageStripe(
+      'POST',
+      'subscriptions/'+encodeURIComponent(current.id),
+      {cancel_at_period_end:'false'}
+    );
+  }
+
+  return current;
 }
 async function scheduleDowngrade({employerId,ent,sub,currentPlan,targetPlan,billing,currentBilling=billing}){
   if(sub?.cancel_at_period_end===true){
@@ -1024,7 +1059,6 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
   const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
-    cancel_at_period_end:'false',
     'items[0][id]':item.id,
     'items[0][price]':targetPrice,
     'items[0][quantity]':1,
@@ -1661,14 +1695,26 @@ async function runManageAction(res,user,input){
     });
   }
 
-  // Choosing another plan/cadence means the employer wants billing to continue,
-  // so a previously scheduled cancellation is automatically reversed.
+  // Choosing another plan/cadence means the employer wants billing to continue.
+  // A Stripe subscription managed by a Subscription Schedule cannot have its
+  // cancellation behavior edited directly, so detach the schedule first only
+  // when we actually need to reverse cancel_at_period_end.
   if(sub?.cancel_at_period_end===true){
-    sub=await manageStripe(
-      'POST',
-      'subscriptions/'+encodeURIComponent(sub.id),
-      {cancel_at_period_end:'false'}
-    );
+    const scheduleId=(typeof sub?.schedule==='string'?sub.schedule:sub?.schedule?.id)||ent?.stripe_plan_schedule_id||null;
+    if(scheduleId){
+      sub=await detachPlanScheduleForImmediateChange({
+        employerId:user.id,
+        ent,
+        sub
+      });
+      ent=await getEntitlement(user.id);
+    }else{
+      sub=await manageStripe(
+        'POST',
+        'subscriptions/'+encodeURIComponent(sub.id),
+        {cancel_at_period_end:'false'}
+      );
+    }
   }
 
   if(String(ent?.pending_plan||'').toLowerCase()==='free'){
@@ -1684,9 +1730,17 @@ async function runManageAction(res,user,input){
   const targetRank=Number(targetCatalog?.[target]?.rank||0);
   const sameBilling=currentBilling===targetBilling;
 
-  // Same-cadence upgrades are immediate: collect only the fixed plan-price
-  // difference, then the verified Stripe webhook swaps the recurring Price.
+  // Same-cadence upgrades are immediate. If an older plan change left a Stripe
+  // Subscription Schedule attached, release it first; otherwise Stripe rejects
+  // the immediate price swap with "subscription is managed by a schedule".
   if(sameBilling&&targetRank>currentRank){
+    sub=await detachPlanScheduleForImmediateChange({
+      employerId:user.id,
+      ent,
+      sub
+    });
+    ent=await getEntitlement(user.id);
+
     const result=await upgradeNow({
       employerId:user.id,
       ent,
