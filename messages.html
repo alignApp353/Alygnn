@@ -1700,7 +1700,7 @@ function renderMessagesEmployerNotifications(items){
     return;
   }
 
-  list.innerHTML=messagesEmployerNotificationItems.slice(0,6).map(n=>`
+  list.innerHTML=messagesEmployerNotificationItems.slice(0,10).map(n=>`
     <a class="notif-item ${n.read_at?'':'unread'}"
        href="${n.link?escapeHtml(n.link):'#'}"
        onclick="handleMessagesEmployerNotification(event,'${n.id}')">
