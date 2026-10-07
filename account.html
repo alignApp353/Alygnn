@@ -2484,8 +2484,14 @@ async function submitNameChange() {
 }
 
 function showPage(){
-  loadingEl.classList.add('hide');
-  pageEl.classList.add('ready');
+  if(loadingEl){
+    loadingEl.classList.add('hide');
+    loadingEl.style.display = 'none';
+    loadingEl.style.visibility = 'hidden';
+    loadingEl.style.pointerEvents = 'none';
+    loadingEl.setAttribute('aria-hidden','true');
+  }
+  if(pageEl) pageEl.classList.add('ready');
 }
 
 const JOB_LIST_PREVIEW_LIMIT = 3;
@@ -3461,7 +3467,7 @@ async function initAccountPage(){
 
 let accountRevealTimer = window.setTimeout(() => {
   showPage();
-}, 12000);
+}, 5000);
 
 initAccountPage()
   .catch((error) => {
