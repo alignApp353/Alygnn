@@ -1992,7 +1992,7 @@ function renderCandidateNotifications(){
 
   label.textContent=`${unreadCount} unread message${unreadCount===1?'':'s'}`;
 
-  list.innerHTML=unreadThreads.map(({thread,details})=>{
+  list.innerHTML=unreadThreads.slice(0,10).map(({thread,details})=>{
     const last=details?.lastMessage||{};
     const name=details?.name||'Employer';
     const job=details?.job?.title||'your application';
