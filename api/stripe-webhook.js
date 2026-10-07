@@ -103,55 +103,6 @@ function supabaseBase() {
   return (process.env.SUPABASE_URL || 'https://auth.alygnn.com').replace(/\/$/, '');
 }
 
-
-async function clearPlanScheduleState(employerId) {
-  if (!employerId) return;
-  const response = await fetch(
-    `${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,
-    {
-      method: 'PATCH',
-      headers: serviceHeaders({ Prefer: 'return=minimal' }),
-      body: JSON.stringify({
-        stripe_plan_schedule_id: null,
-        pending_plan: null,
-        pending_billing_period: null,
-        pending_plan_effective_at: null,
-        updated_at: new Date().toISOString()
-      })
-    }
-  );
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error('Could not clear the old plan schedule state: ' + text);
-  }
-}
-
-async function detachSubscriptionSchedule(subscription) {
-  let current = subscription;
-  const scheduleId = typeof current?.schedule === 'string'
-    ? current.schedule
-    : current?.schedule?.id;
-
-  if (scheduleId) {
-    try {
-      await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}/release`, {});
-    } catch (error) {
-      if (!/released|completed|not found|no such subscription schedule/i.test(error?.message || '')) {
-        throw error;
-      }
-    }
-    current = await stripeGet(`subscriptions/${encodeURIComponent(current.id)}`);
-  }
-
-  if (current?.cancel_at_period_end === true) {
-    current = await stripePost(`subscriptions/${encodeURIComponent(current.id)}`, {
-      cancel_at_period_end: 'false'
-    });
-  }
-
-  return current;
-}
-
 async function rpc(name, body) {
   const response = await fetch(`${supabaseBase()}/rest/v1/rpc/${name}`, {
     method: 'POST',
@@ -232,19 +183,14 @@ async function fulfillPlanUpgrade(meta = {}) {
     throw new Error('Plan upgrade metadata is incomplete.');
   }
 
-  let existing = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
-
-  // A previous scheduled plan change can leave this subscription owned by a
-  // Stripe Subscription Schedule. Detach it before the immediate paid upgrade;
-  // direct cancellation/price changes are otherwise rejected by Stripe.
-  existing = await detachSubscriptionSchedule(existing);
-
+  const existing = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
   const currentItem = (existing.items?.data || []).find(item => item.id === subscriptionItemId) || existing.items?.data?.[0];
   const currentPriceId = typeof currentItem?.price === 'string' ? currentItem.price : currentItem?.price?.id;
 
   let updated = existing;
   if (currentPriceId !== targetPriceId || String(existing.metadata?.plan || '').toLowerCase() !== targetPlan) {
     updated = await stripePost(`subscriptions/${encodeURIComponent(subscriptionId)}`, {
+      cancel_at_period_end: 'false',
       'items[0][id]': subscriptionItemId,
       'items[0][price]': targetPriceId,
       'items[0][quantity]': 1,
@@ -263,7 +209,6 @@ async function fulfillPlanUpgrade(meta = {}) {
     status: updated.status === 'trialing' ? 'trialing' : 'active',
     periodEnd: updated.current_period_end
   });
-  await clearPlanScheduleState(employerId);
 }
 
 async function fulfillCheckout(session) {
@@ -334,6 +279,87 @@ async function fulfillCheckout(session) {
   }
 }
 
+
+function jobConsumesReusableSlot(job) {
+  const status = String(job?.status || 'active').toLowerCase();
+  return !['paused', 'closed', 'draft', 'inactive', 'archived', 'deleted'].includes(status);
+}
+
+function jobCreatedTime(job) {
+  const value = new Date(job?.created_at || job?.updated_at || 0).getTime();
+  return Number.isFinite(value) ? value : 0;
+}
+
+async function reconcileJobsAfterPaidPlanEnds(employerId) {
+  if (!employerId) return;
+
+  const url = new URL(`${supabaseBase()}/rest/v1/jobs`);
+  url.searchParams.set('employer_id', 'eq.' + employerId);
+  url.searchParams.set('select', 'id,status,posting_access_type,created_at,updated_at');
+
+  const response = await fetch(url, { headers: serviceHeaders() });
+  if (!response.ok) {
+    throw new Error('Could not load employer jobs after paid plan ended: ' + await response.text());
+  }
+
+  const rows = await response.json().catch(() => []);
+  const liveJobs = (Array.isArray(rows) ? rows : []).filter(jobConsumesReusableSlot);
+  if (!liveJobs.length) return;
+
+  // Preserve exactly one permanent free-slot job.
+  // Prefer a job already marked as the free posting; otherwise preserve the
+  // oldest live job and mark it as the free posting.
+  const explicitFreeJobs = liveJobs
+    .filter(job => String(job?.posting_access_type || '').toLowerCase() === 'free')
+    .sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b));
+
+  const keepJob = explicitFreeJobs[0]
+    || [...liveJobs].sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b))[0];
+
+  if (!keepJob) return;
+
+  if (String(keepJob.posting_access_type || '').toLowerCase() !== 'free') {
+    const keepUrl = new URL(`${supabaseBase()}/rest/v1/jobs`);
+    keepUrl.searchParams.set('id', 'eq.' + keepJob.id);
+
+    const keepResponse = await fetch(keepUrl, {
+      method: 'PATCH',
+      headers: serviceHeaders({ Prefer: 'return=minimal' }),
+      body: JSON.stringify({
+        posting_access_type: 'free',
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    if (!keepResponse.ok) {
+      throw new Error('Could not preserve the permanent free job: ' + await keepResponse.text());
+    }
+  }
+
+  const jobsToClose = liveJobs.filter(job => String(job.id) !== String(keepJob.id));
+
+  for (const job of jobsToClose) {
+    const patchUrl = new URL(`${supabaseBase()}/rest/v1/jobs`);
+    patchUrl.searchParams.set('id', 'eq.' + job.id);
+
+    const closedAt = new Date().toISOString();
+    const patchResponse = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: serviceHeaders({ Prefer: 'return=minimal' }),
+      body: JSON.stringify({
+        status: 'closed',
+        closed_reason: 'plan_expired',
+        closed_at: closedAt,
+        updated_at: closedAt
+      })
+    });
+
+    if (!patchResponse.ok) {
+      throw new Error(`Could not close job ${job.id} after paid plan ended: ` + await patchResponse.text());
+    }
+  }
+}
+
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
@@ -354,13 +380,23 @@ async function fulfillSubscription(subscription, forceStatus) {
   }
 
   if (product !== 'job_plan') return;
+
+  const planStatus = forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active');
+
   await upsertPlan({
     employerId: meta.employer_id,
     plan: meta.plan,
     billing: meta.billing || 'monthly',
-    status: forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active'),
+    status: planStatus,
     periodEnd: subscription.current_period_end
   });
+
+  // Stripe sends customer.subscription.updated when cancel_at_period_end is set.
+  // Keep every job active during that paid period. Only when Stripe sends the
+  // terminal/deleted event do we fall back to the permanent free slot.
+  if (['canceled', 'unpaid', 'incomplete_expired', 'inactive'].includes(String(planStatus).toLowerCase())) {
+    await reconcileJobsAfterPaidPlanEnds(meta.employer_id);
+  }
 }
 
 module.exports = async function handler(req, res) {
