@@ -1343,23 +1343,33 @@ async function customerSnapshot(customerId,sub){
       limit:8
     });
 
-    invoices=(result?.data||[]).map(invoice=>({
-      id:invoice.id,
-      number:invoice.number||null,
-      created:invoice.created
-        ? new Date(Number(invoice.created)*1000).toISOString()
-        : null,
-      status:String(invoice.status||'').toLowerCase(),
-      amount_paid_cents:Number(invoice.amount_paid||0),
-      amount_due_cents:Number(invoice.amount_due||0),
-      currency:String(invoice.currency||'usd').toLowerCase(),
-      hosted_invoice_url:invoice.hosted_invoice_url||null,
-      invoice_pdf:invoice.invoice_pdf||null,
-      description:
-        invoice.lines?.data?.[0]?.description ||
-        invoice.description ||
-        null
-    }));
+    invoices=(result?.data||[]).map(invoice=>{
+      const taxCents=(invoice.total_tax_amounts||[]).reduce(
+        (sum,row)=>sum+Number(row?.amount||0),
+        0
+      );
+      return {
+        id:invoice.id,
+        number:invoice.number||null,
+        created:invoice.created
+          ? new Date(Number(invoice.created)*1000).toISOString()
+          : null,
+        status:String(invoice.status||'').toLowerCase(),
+        amount_paid_cents:Number(invoice.amount_paid||0),
+        amount_due_cents:Number(invoice.amount_due||0),
+        subtotal_cents:Number(invoice.subtotal||0),
+        tax_cents:taxCents,
+        total_cents:Number(invoice.total||invoice.amount_due||invoice.amount_paid||0),
+        currency:String(invoice.currency||'usd').toLowerCase(),
+        hosted_invoice_url:invoice.hosted_invoice_url||null,
+        invoice_pdf:invoice.invoice_pdf||null,
+        description:
+          invoice.lines?.data?.[0]?.description ||
+          invoice.description ||
+          null,
+        payment_kind:'invoice'
+      };
+    });
   }catch(error){
     console.warn('Could not load Stripe invoice history:',error?.message||error);
   }
@@ -1370,6 +1380,170 @@ async function customerSnapshot(customerId,sub){
     payment_method:normalizePaymentMethod(pm),
     invoices
   };
+}
+
+
+function oneTimePaymentLabel(product,metadata={}){
+  const key=String(product||'').toLowerCase();
+  if(key==='job_boost')return 'Job Boost';
+  if(key==='weekly_slot')return 'Weekly Job Slot';
+  if(key==='additional_slot'||key==='single_job')return 'Second Job Slot';
+  if(key==='plan_upgrade'){
+    const target=String(metadata?.target_plan||metadata?.plan||'').trim();
+    return target
+      ? `Plan upgrade to ${target.charAt(0).toUpperCase()+target.slice(1)}`
+      : 'Plan upgrade';
+  }
+  if(key==='team_seat')return 'Extra Team Seat';
+  return 'Alygnn payment';
+}
+
+async function stripeCheckoutForPaymentIntent(paymentIntentId){
+  if(!paymentIntentId)return null;
+  try{
+    const result=await manageStripe('GET','checkout/sessions',{
+      payment_intent:paymentIntentId,
+      limit:1
+    });
+    return (result?.data||[])[0]||null;
+  }catch(error){
+    console.warn(
+      'Could not load Stripe Checkout session for payment:',
+      error?.message||error
+    );
+    return null;
+  }
+}
+
+async function employerJobSnapshot(jobIds){
+  const ids=[...new Set(
+    (jobIds||[]).map(value=>String(value||'').trim()).filter(Boolean)
+  )];
+
+  if(!ids.length)return new Map();
+
+  const url=new URL(manageBase()+'/rest/v1/jobs');
+  url.searchParams.set('id',`in.(${ids.join(',')})`);
+  url.searchParams.set(
+    'select',
+    'id,title,status,boosted_until,created_at,updated_at'
+  );
+
+  const response=await fetch(url,{headers:manageServiceHeaders()});
+  const rows=await response.json().catch(()=>[]);
+
+  if(!response.ok){
+    console.warn(
+      'Could not load job names for billing history:',
+      rows?.message||rows?.error||response.status
+    );
+    return new Map();
+  }
+
+  return new Map(
+    (Array.isArray(rows)?rows:[]).map(row=>[String(row.id),row])
+  );
+}
+
+async function employerOneTimePayments(employerId){
+  const safeEmployer=String(employerId||'').replace(/"/g,'').trim();
+  if(!safeEmployer)return [];
+
+  let result=null;
+  try{
+    result=await manageStripe(
+      'GET',
+      'payment_intents/search',
+      {
+        query:`metadata["employer_id"]:"${safeEmployer}"`,
+        limit:25
+      }
+    );
+  }catch(error){
+    console.warn(
+      'Could not load one-time Stripe payment history:',
+      error?.message||error
+    );
+    return [];
+  }
+
+  const raw=(result?.data||[]).filter(payment=>{
+    if(payment?.invoice)return false;
+    const product=String(payment?.metadata?.product||'').toLowerCase();
+    return !!product;
+  });
+
+  const jobIds=raw
+    .map(payment=>payment?.metadata?.job_id)
+    .filter(Boolean);
+
+  const jobs=await employerJobSnapshot(jobIds);
+  const payments=[];
+
+  for(const payment of raw){
+    const metadata=payment?.metadata||{};
+    const product=String(metadata.product||'').toLowerCase();
+    const checkout=await stripeCheckoutForPaymentIntent(payment.id);
+
+    const subtotal=Number(
+      checkout?.amount_subtotal ??
+      payment?.amount ??
+      0
+    );
+
+    const total=Number(
+      checkout?.amount_total ??
+      payment?.amount_received ??
+      payment?.amount ??
+      0
+    );
+
+    const tax=Number(
+      checkout?.total_details?.amount_tax ??
+      Math.max(0,total-subtotal)
+    );
+
+    const jobId=String(metadata.job_id||'').trim()||null;
+    const job=jobId?jobs.get(jobId):null;
+    const days=Math.max(
+      0,
+      Number.parseInt(metadata.days||'0',10)||0
+    );
+
+    payments.push({
+      id:payment.id,
+      created:payment.created
+        ? new Date(Number(payment.created)*1000).toISOString()
+        : null,
+      status:String(payment.status||'').toLowerCase(),
+      currency:String(payment.currency||'usd').toLowerCase(),
+      description:oneTimePaymentLabel(product,metadata),
+      product,
+      subtotal_cents:subtotal,
+      tax_cents:tax,
+      total_cents:total,
+      amount_paid_cents:Number(payment.amount_received||total||0),
+      receipt_url:
+        (typeof payment?.latest_charge==='object'
+          ? payment.latest_charge?.receipt_url
+          : null) || null,
+      checkout_session_id:checkout?.id||null,
+      payment_kind:'one_time',
+      job_id:jobId,
+      job_title:job?.title||null,
+      job_status:job?.status||null,
+      boosted_until:job?.boosted_until||null,
+      days
+    });
+  }
+
+  payments.sort((a,b)=>{
+    const at=a?.created?new Date(a.created).getTime():0;
+    const bt=b?.created?new Date(b.created).getTime():0;
+    return bt-at;
+  });
+
+  return payments;
 }
 
 function calculateNextPlanCharge(ent,sub){
@@ -1446,10 +1620,13 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
     return bt-at;
   });
 
+  const oneTimePayments=await employerOneTimePayments(user?.id);
+
   return {
     billing_email:stripeEmail||user?.email||null,
     payment_method:paymentMethod,
-    invoices:invoices.slice(0,8),
+    invoices:invoices.slice(0,12),
+    one_time_payments:oneTimePayments.slice(0,25),
     stripe_customer_count:uniqueIds.length,
     next_plan_charge_cents:calculateNextPlanCharge(ent,planSub)
   };
@@ -1562,6 +1739,7 @@ async function runManageAction(res,user,input){
       billing_email:user?.email||null,
       payment_method:null,
       invoices:[],
+      one_time_payments:[],
       stripe_customer_count:0,
       next_plan_charge_cents:calculateNextPlanCharge(ent,sub)
     };
