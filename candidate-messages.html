@@ -945,11 +945,11 @@ body.candidate-role #nav-swipe-link[hidden]{
 
   /* Alygnn unified page loader — visual only; existing page/auth logic still controls when it disappears. */
   .alygnn-page-loader{
-    visibility:visible !important;
+    visibility:hidden !important;
     position:fixed !important;
     inset:0 !important;
     z-index:99999 !important;
-    display:flex;
+    display:none;
     flex-direction:column !important;
     align-items:center !important;
     justify-content:center !important;
@@ -1032,6 +1032,11 @@ body.candidate-role #nav-swipe-link[hidden]{
     40%{transform:translateY(-4px);opacity:1}
   }
 
+
+  body:not(.ready) #loading.alygnn-page-loader.loader-visible{
+    display:flex !important;
+    visibility:visible !important;
+  }
 
   body.ready #loading.alygnn-page-loader{
     display:none !important;
@@ -2034,7 +2039,16 @@ window.addEventListener('beforeunload',()=>{
 });
 
 
-let candidateMessagesRevealTimer = window.setTimeout(() => {
+const candidateMessagesLoader = document.getElementById('loading');
+
+const candidateMessagesLoaderTimer = window.setTimeout(() => {
+  if (!document.body.classList.contains('ready')) {
+    candidateMessagesLoader?.classList.add('loader-visible');
+  }
+}, 180);
+
+const candidateMessagesRevealTimer = window.setTimeout(() => {
+  candidateMessagesLoader?.classList.remove('loader-visible');
   document.body.classList.add('ready');
 }, 12000);
 
@@ -2043,7 +2057,9 @@ init()
     console.error('Candidate messages failed to initialize:', error);
   })
   .finally(() => {
+    window.clearTimeout(candidateMessagesLoaderTimer);
     window.clearTimeout(candidateMessagesRevealTimer);
+    candidateMessagesLoader?.classList.remove('loader-visible');
     document.body.classList.add('ready');
   });
 </script>
