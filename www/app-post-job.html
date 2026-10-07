@@ -368,14 +368,14 @@ html[data-theme="dark"] .free-slot-notice{
       <div class="field">
         <label for="title">Job title</label>
         <div class="suggest-wrap">
-<input class="input" id="title" type="text" maxlength="90" placeholder="e.g. Sales Account Manager" autocomplete="off">
+<input class="input" id="title" type="text" maxlength="90" placeholder="Enter the role title" autocomplete="off">
 <div class="suggest-list" id="title-suggestions"></div>
 </div>
       </div>
 <div class="field">
         <label for="location">Location</label>
         <div class="suggest-wrap">
-<input class="input" id="location" type="text" maxlength="120" placeholder="e.g. Raleigh, NC" autocomplete="off">
+<input class="input" id="location" type="text" maxlength="120" placeholder="Search a U.S. city" autocomplete="off">
 <div class="suggest-list" id="location-suggestions"></div>
 </div>
 <div class="help">Start typing a U.S. city, then select it from the suggestions.</div>
@@ -595,50 +595,6 @@ async function searchLocationCatalog(query){
   }
 
   return data||[];
-}
-
-function parseTypedCityState(value){
-  const clean=String(value||'')
-    .replace(/\s+/g,' ')
-    .trim();
-
-  /*
-   * If the employer types a two-letter state, preserve it as an explicit
-   * constraint. This prevents duplicate city names such as Raleigh, NC and
-   * Raleigh, FL from being mixed up by fuzzy search ranking.
-   */
-  const match=clean.match(/^(.+?)(?:,\s*|\s+)([A-Za-z]{2})$/);
-  if(!match)return null;
-
-  return{
-    city:match[1].trim(),
-    state_code:match[2].toUpperCase()
-  };
-}
-
-function canonicalLocationFromRow(row){
-  const city=String(row?.city||'').trim();
-  const state=String(row?.state_code||'').trim().toUpperCase();
-
-  if(city&&state&&state!=='US'){
-    return `${city}, ${state}`;
-  }
-
-  return String(row?.display_name||city||'').trim();
-}
-
-function normalizeSelectedLocation(row){
-  if(!row)return null;
-
-  const display=canonicalLocationFromRow(row);
-  const parsed=parseTypedCityState(display);
-
-  return{
-    ...row,
-    display_name:display,
-    city:parsed?.city||row.city||null,
-    state_code:parsed?.state_code||row.state_code||null
-  };
 }
 const BASE_SKILLS=['Communication skills','Customer service','Time management','Problem solving','Teamwork','Attention to detail','Microsoft Office','Organization','Reliable transportation','High school diploma or equivalent'];
 
@@ -1089,27 +1045,9 @@ function setupSuggestions(){
 
     if(locationInput.value.trim()!==query)return;
 
-    const typed=parseTypedCityState(query);
-    let safeRows=rows;
-
-    if(typed?.state_code){
-      const exactStateRows=(rows||[]).filter(row=>
-        String(row?.state_code||'').trim().toUpperCase()===typed.state_code
-      );
-
-      /*
-       * When a state was explicitly typed, never silently offer a different
-       * state if the correct state exists in the catalog.
-       */
-      if(exactStateRows.length){
-        safeRows=exactStateRows;
-      }
-    }
-
-    renderCatalogResults(locationBox,safeRows,row=>{
-      const normalized=normalizeSelectedLocation(row);
-      selectedLocation=normalized;
-      locationInput.value=normalized?.display_name||row.display_name||'';
+    renderCatalogResults(locationBox,rows,row=>{
+      locationInput.value=row.display_name;
+      selectedLocation=row;
     });
   }
 
@@ -1128,8 +1066,6 @@ function setupSuggestions(){
   });
 
   locationInput.addEventListener('input',()=>{
-    /* Any manual edit invalidates the previous catalog selection. */
-    selectedLocation=null;
     clearTimeout(locationSearchTimer);
     locationSearchTimer=setTimeout(runLocationSearch,250);
   });
@@ -2090,13 +2026,6 @@ function buildSalary(){
 }
 
 function getJob(){
-  const canonicalLocation=
-    selectedLocation
-      ? canonicalLocationFromRow(selectedLocation)
-      : el('location').value.trim();
-
-  const typedLocation=parseTypedCityState(canonicalLocation);
-
   return {
     title: el('title').value.trim(),
     company:
@@ -2106,7 +2035,7 @@ function getJob(){
       profile?.company_name ||
       session?.user?.user_metadata?.company_name ||
       '',
-    location: canonicalLocation,
+    location: el('location').value.trim(),
     job_type: jobType,
     work_style: workStyle,
     salary: buildSalary(),
@@ -2114,8 +2043,8 @@ function getJob(){
     requirements: el('requirements').value.trim(),
     benefits: el('benefits').value.trim(),
     onet_soc_code: selectedOnetCode || null,
-    location_city: selectedLocation?.city || typedLocation?.city || null,
-    location_state: selectedLocation?.state_code || typedLocation?.state_code || null,
+    location_city: selectedLocation?.city || null,
+    location_state: selectedLocation?.state_code || null,
     location_postal_code: selectedLocation?.postal_code || null,
     location_latitude: selectedLocation?.latitude ?? null,
     location_longitude: selectedLocation?.longitude ?? null
@@ -2206,17 +2135,6 @@ function validateStep(step){
     }
     if(job.location.length < 3){
       return 'Enter a valid job location.';
-    }
-    if(!selectedLocation){
-      return 'Select the city and state from the location suggestions so Alygnn saves the correct location.';
-    }
-
-    const typed=parseTypedCityState(el('location').value);
-    if(
-      typed?.state_code &&
-      String(selectedLocation?.state_code||'').toUpperCase()!==typed.state_code
-    ){
-      return 'The selected city/state does not match what you typed. Choose the correct location from the suggestions.';
     }
   }
 
@@ -2806,14 +2724,13 @@ function restoreDraft(){
     }
 
     selectedOnetCode = draft.onet_soc_code || '';
-    selectedLocation = draft.location_city ? normalizeSelectedLocation({
-      display_name:draft.location || '',
+    selectedLocation = draft.location_city ? {
       city: draft.location_city,
       state_code: draft.location_state || null,
       postal_code: draft.location_postal_code || null,
       latitude: draft.location_latitude ?? null,
       longitude: draft.location_longitude ?? null
-    }) : null;
+    } : null;
 
     el('description-count').textContent = el('description').value.length;
     refreshRoleSuggestions();
