@@ -1173,33 +1173,32 @@ async function loadJobsForSlotCheck(userId,companyId){
     });
   };
 
-  for(const column of ['employer_id','created_by','user_id','owner_id']){
-    const result=await sb
-      .from('jobs')
-      .select('*')
-      .eq(column,userId);
+  const ownershipColumns=['employer_id','created_by','user_id','owner_id'];
+  const queries=ownershipColumns.map(column=>
+    sb.from('jobs').select('*').eq(column,userId)
+  );
+
+  if(companyId){
+    queries.push(
+      sb.from('jobs').select('*').eq('company_id',companyId)
+    );
+  }
+
+  const results=await Promise.all(queries);
+
+  results.forEach((result,index)=>{
+    const label=
+      index<ownershipColumns.length
+        ? ownershipColumns[index]
+        : 'company_id';
 
     if(!result.error){
       successfulQueries+=1;
       addRows(result.data);
     }else{
-      console.warn(`Slot check using ${column} failed:`,result.error);
+      console.warn(`Slot check using ${label} failed:`,result.error);
     }
-  }
-
-  if(companyId){
-    const companyResult=await sb
-      .from('jobs')
-      .select('*')
-      .eq('company_id',companyId);
-
-    if(!companyResult.error){
-      successfulQueries+=1;
-      addRows(companyResult.data);
-    }else{
-      console.warn('Slot check using company_id failed:',companyResult.error);
-    }
-  }
+  });
 
   if(!successfulQueries){
     throw new Error('Alygnn could not verify current job-slot usage.');
