@@ -975,7 +975,6 @@
           <button class="notif-mark-all" id="notif-mark-all-btn" type="button" onclick="markAllEmployerNotificationsRead(event)">Mark all read</button>
         </div>
         <div id="notif-list"><div class="notif-empty">No notifications yet.</div></div>
-        <a href="notifications.html" class="notif-view-all">View all</a>
       </div>
     </div>
     <span class="nav-name" id="nav-name"></span>
@@ -3090,7 +3089,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    list.innerHTML = items.slice(0, 6).map(n => {
+    list.innerHTML = items.slice(0, 10).map(n => {
       if (isApplicantNotification(n)) {
         return `
           <a class="notif-item ${n.read_at ? '' : 'unread'}" href="#"
