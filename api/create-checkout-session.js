@@ -1776,6 +1776,96 @@ async function runManageAction(res,user,input){
   });
 }
 
+
+async function syncCompletedBoostCheckout({ user, checkoutSessionId }) {
+  const sessionId = String(checkoutSessionId || '').trim();
+  if (!sessionId) {
+    const error = new Error('Checkout session ID is required.');
+    error.status = 400;
+    throw error;
+  }
+
+  const checkout = await manageStripe(
+    'GET',
+    'checkout/sessions/' + encodeURIComponent(sessionId),
+    {}
+  );
+
+  const metadata = checkout?.metadata || {};
+  const product = String(metadata.product || '').toLowerCase();
+  const employerId = String(metadata.employer_id || '').trim();
+  const jobId = String(metadata.job_id || '').trim();
+  const days = Math.max(
+    1,
+    Math.min(30, Number.parseInt(metadata.days || '1', 10) || 1)
+  );
+
+  if (product !== 'job_boost') {
+    return { synced: false, product: product || null };
+  }
+
+  if (!employerId || employerId !== String(user?.id || '')) {
+    const error = new Error('This Job Boost checkout does not belong to this employer.');
+    error.status = 403;
+    throw error;
+  }
+
+  if (!jobId) {
+    const error = new Error('This Job Boost checkout is missing its job ID.');
+    error.status = 400;
+    throw error;
+  }
+
+  const paymentStatus = String(checkout?.payment_status || '').toLowerCase();
+  const checkoutStatus = String(checkout?.status || '').toLowerCase();
+
+  // Stripe uses "paid" for normal payments and "no_payment_required" for a
+  // valid $0 checkout created by a 100%-off promotion.
+  const paymentComplete =
+    paymentStatus === 'paid' ||
+    paymentStatus === 'no_payment_required' ||
+    (checkoutStatus === 'complete' && Number(checkout?.amount_total || 0) === 0);
+
+  if (!paymentComplete) {
+    const error = new Error('This Job Boost checkout has not completed payment yet.');
+    error.status = 409;
+    throw error;
+  }
+
+  const response = await fetch(
+    manageBase() + '/rest/v1/rpc/activate_paid_job_boost',
+    {
+      method: 'POST',
+      headers: manageServiceHeaders(),
+      body: JSON.stringify({
+        p_employer_id: employerId,
+        p_job_id: jobId,
+        p_days: days,
+        p_payment_reference: checkout.id,
+        p_amount_cents: Number.isFinite(Number(checkout?.amount_total))
+          ? Number(checkout.amount_total)
+          : null
+      })
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(
+      (data && (data.message || data.error)) ||
+      'Could not activate the completed Job Boost.'
+    );
+  }
+
+  return {
+    synced: true,
+    product: 'job_boost',
+    job_id: jobId,
+    days,
+    boosted_until: data?.boosted_until || null
+  };
+}
+
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return send(res, 204, {});
@@ -1817,6 +1907,14 @@ module.exports = async function handler(req, res) {
       'billing_portal'
     ].includes(billingAction)) {
       return await runManageAction(res, user, input);
+    }
+
+    if (billingAction === 'sync_boost_checkout') {
+      const result = await syncCompletedBoostCheckout({
+        user,
+        checkoutSessionId: input.checkout_session_id
+      });
+      return send(res, 200, result);
     }
 
     if (input.terms_accepted !== true) return send(res, 400, { error: 'Terms must be accepted before checkout.' });
