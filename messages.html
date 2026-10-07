@@ -1704,7 +1704,7 @@ async function init(){
       messageTeamCan('billing_view')||
       messageTeamCan('billing_manage')||
       messageTeamCan('team_manage')
-    ))accountLink.style.display='none';
+    ))accountLink.style.setProperty('display','none','important');
   }else{
     currentRole='employer';
 
