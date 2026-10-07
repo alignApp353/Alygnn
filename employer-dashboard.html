@@ -4217,7 +4217,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
-    list.innerHTML = notificationItemsCache.slice(0, 6).map(n => {
+    list.innerHTML = notificationItemsCache.slice(0, 10).map(n => {
       const isApplicant =
         String(n.type || '').toLowerCase().includes('applicant') ||
         String(n.title || '').toLowerCase().includes('applicant') ||
