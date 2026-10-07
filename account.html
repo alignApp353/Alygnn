@@ -3458,7 +3458,19 @@ async function initAccountPage(){
   showPage();
 }
 
-initAccountPage();
+
+let accountRevealTimer = window.setTimeout(() => {
+  showPage();
+}, 12000);
+
+initAccountPage()
+  .catch((error) => {
+    console.error('Candidate account failed to initialize:', error);
+  })
+  .finally(() => {
+    window.clearTimeout(accountRevealTimer);
+    showPage();
+  });
 </script>
 
 
