@@ -623,6 +623,24 @@
       color:#A46908;
     }
 
+    .job-access-badge.urgent{
+      background:#FFF1E8;
+      border-color:#F2C8A6;
+      color:#B85B12;
+    }
+
+    .mini-btn.urgent{
+      border-color:#F2C8A6;
+      background:#FFF7F0;
+      color:#A85110;
+    }
+
+    .mini-btn.urgent.active{
+      border-color:#E7B183;
+      background:#FFEBDD;
+      color:#91460B;
+    }
+
     .job-access-note{
       margin-top:7px;
       color:var(--muted);
@@ -8249,6 +8267,46 @@
       );
     }
 
+    function dashboardPlanKey(){
+      const entitlement=state.entitlement||{};
+      return String(
+        entitlement.test_plan||
+        entitlement.package_key||
+        entitlement.plan||
+        'free'
+      ).toLowerCase().trim();
+    }
+
+    function urgentlyHiringPlanEnabled(){
+      if(!dashboardEntitlementActive(state.entitlement)) return false;
+
+      return [
+        'growth',
+        'scale',
+        'business',
+        'enterprise'
+      ].includes(dashboardPlanKey());
+    }
+
+    function jobCanUseUrgentlyHiring(job){
+      const status=String(job?.status||'').toLowerCase();
+      return (
+        urgentlyHiringPlanEnabled() &&
+        status==='active' &&
+        postingAccessType(job)!=='free'
+      );
+    }
+
+    function urgentHiringBadge(job){
+      if(job?.urgently_hiring!==true || String(job?.status||'').toLowerCase()!=='active') return '';
+
+      return `
+        <div class="job-access-badges">
+          <span class="job-access-badge urgent">Urgently hiring</span>
+        </div>
+      `;
+    }
+
 
     function jobCard(job,compact = false){
       const apps = jobApplications(job);
@@ -8269,6 +8327,7 @@
               <div class="job-title">${escapeHtml(job.title || 'Untitled position')}</div>
               <div class="job-meta">Posted ${timeAgo(job.created_at || job.updated_at)}</div>
               ${jobAccessBadge(job)}
+              ${urgentHiringBadge(job)}
             </div>
             <span class="status-badge ${statusClass(status)}">${escapeHtml(status)}</span>
           </div>
@@ -8285,6 +8344,10 @@
               <button class="mini-btn" data-job-action="view" data-job-id="${job.id}">View Job</button>
               <button class="mini-btn primary" data-job-action="applicants" data-job-id="${job.id}">View Applicants</button>
               <button class="mini-btn" data-job-action="edit" data-job-id="${job.id}">Edit</button>
+              ${jobCanUseUrgentlyHiring(job)
+                ? `<button class="mini-btn urgent ${job.urgently_hiring===true ? 'active' : ''}" data-job-action="${job.urgently_hiring===true ? 'urgent-off' : 'urgent-on'}" data-job-id="${job.id}">${job.urgently_hiring===true ? 'Remove Urgent' : 'Mark Urgent'}</button>`
+                : ''
+              }
               ${freeJobCanBoost(job)
                 ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${job.id}">Boost · $15/day</button>`
                 : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -8339,6 +8402,10 @@
             <button class="mini-btn" data-job-action="view" data-job-id="${escapeHtml(id)}">View Job</button>
             <button class="mini-btn primary" data-job-action="applicants" data-job-id="${escapeHtml(id)}">View Applicants</button>
             <button class="mini-btn" data-job-action="edit" data-job-id="${escapeHtml(id)}">Edit</button>
+            ${jobCanUseUrgentlyHiring(job)
+              ? `<button class="mini-btn urgent ${job.urgently_hiring===true ? 'active' : ''}" data-job-action="${job.urgently_hiring===true ? 'urgent-off' : 'urgent-on'}" data-job-id="${escapeHtml(id)}">${job.urgently_hiring===true ? 'Remove Urgent' : 'Mark Urgent'}</button>`
+              : ''
+            }
             ${freeJobCanBoost(job)
               ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${escapeHtml(id)}">Boost · $15/day</button>`
               : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
@@ -8372,6 +8439,7 @@
                 <div class="job-meta">${posted}</div>
                 <div class="job-meta" style="margin-top:7px">${location} · ${jobType}</div>
                 ${jobAccessBadge(job)}
+                ${urgentHiringBadge(job)}
               </div>
               <span class="status-badge ${statusBadgeClass}">${status}</span>
             </div>
@@ -13757,6 +13825,52 @@
         return;
       }
 
+      if(['urgent-on','urgent-off'].includes(action)){
+        if(!urgentlyHiringPlanEnabled()){
+          toast('Urgently Hiring is available on Growth and Scale plans.');
+          return;
+        }
+
+        if(postingAccessType(job)==='free'){
+          toast('The included free job slot cannot use Urgently Hiring.');
+          return;
+        }
+
+        if(String(job.status||'').toLowerCase()!=='active'){
+          toast('Activate the job before marking it Urgently Hiring.');
+          return;
+        }
+
+        const enabled=action==='urgent-on';
+        const previous=job.urgently_hiring===true;
+
+        job.urgently_hiring=enabled;
+        renderJobs();
+
+        const {error}=await sb
+          .from('jobs')
+          .update({
+            urgently_hiring:enabled,
+            updated_at:new Date().toISOString()
+          })
+          .eq('id',id);
+
+        if(error){
+          console.error(error);
+          job.urgently_hiring=previous;
+          renderJobs();
+          toast('Could not update Urgently Hiring.');
+          return;
+        }
+
+        toast(
+          enabled
+            ? 'Urgently Hiring is now on for this job.'
+            : 'Urgently Hiring removed from this job.'
+        );
+        return;
+      }
+
       if(action === 'boost'){
         if(!dashboardBasePaidPlanActive()){
           toast(
@@ -13821,11 +13935,13 @@
         )) return;
 
         const previousStatus=job.status;
+        const previousUrgentlyHiring=job.urgently_hiring===true;
         const closedAt=new Date().toISOString();
 
         // Close it in the employer UI immediately. The database update below
         // is the source of truth; if it fails, restore the old status.
         job.status='closed';
+        job.urgently_hiring=false;
         job.updated_at=closedAt;
         renderAll();
 
@@ -13833,6 +13949,7 @@
           .from('jobs')
           .update({
             status:'closed',
+            urgently_hiring:false,
             updated_at:closedAt
           })
           .eq('id',id);
@@ -13840,6 +13957,7 @@
         if(error){
           console.error(error);
           job.status=previousStatus;
+          job.urgently_hiring=previousUrgentlyHiring;
           renderAll();
           toast('Could not close job.');
           return;
@@ -13905,13 +14023,18 @@
       if(action === 'archive'){
         if(!confirm('Archive this job? It will be moved out of your active hiring workflow.')) return;
 
-        const { error } = await sb.from('jobs').update({status:'archived',updated_at:new Date().toISOString()}).eq('id',id);
+        const { error } = await sb.from('jobs').update({
+          status:'archived',
+          urgently_hiring:false,
+          updated_at:new Date().toISOString()
+        }).eq('id',id);
         if(error){
           console.error(error);
           toast('Could not archive job.');
           return;
         }
         job.status = 'archived';
+        job.urgently_hiring=false;
         renderAll();
         toast('Job archived.');
         return;
@@ -13983,6 +14106,11 @@
           updated_at:new Date().toISOString()
         };
 
+        // Urgently Hiring is only valid while a job is actively visible.
+        if(action==='pause'){
+          jobPatch.urgently_hiring=false;
+        }
+
         if(action==='activate'&&activatingIntoFreeSlot){
           jobPatch.posting_access_type='free';
         }
@@ -14004,6 +14132,9 @@
 
         job.status=status;
         job.pause_reason=pauseReason;
+        if(action==='pause'){
+          job.urgently_hiring=false;
+        }
         if(action==='activate'&&activatingIntoFreeSlot){
           job.posting_access_type='free';
         }
