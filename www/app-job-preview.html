@@ -2885,9 +2885,8 @@ function slotLimitForEntitlement(entitlement){
   if(!entitlement||!slotEntitlementActive(entitlement))return 1;
 
   const plan=String(entitlement.plan||'free').toLowerCase();
-  const defaults={
-    free:1,
-    weekly_slot:2,
+  const paidPlanSlots={
+    free:0,
     launch:3,
     growth:5,
     scale:8,
@@ -2896,19 +2895,18 @@ function slotLimitForEntitlement(entitlement){
 
   const stored=Number(entitlement.slot_limit);
 
-  // Weekly is the second-job option: one paid reusable slot is added
-  // to the employer's free reusable slot for the active 7-day term.
+  // Weekly is one paid reusable slot PLUS the always-included free slot.
   if(plan==='weekly_slot'){
-    return Math.max(
-      2,
-      Number.isFinite(stored)&&stored>0 ? stored : 2
-    );
+    return Math.max(2,Number.isFinite(stored)&&stored>0 ? stored+1 : 2);
   }
 
-  return Math.max(
-    1,
-    Number.isFinite(stored)&&stored>0 ? stored : (defaults[plan]||1)
-  );
+  const planSlots=
+    Number.isFinite(stored)&&stored>0
+      ? stored
+      : (paidPlanSlots[plan]||0);
+
+  // Monthly/quarterly plan capacity is plan slots + the included free slot.
+  return Math.max(1,planSlots+1);
 }
 
 function jobConsumesSlot(job){
@@ -2927,29 +2925,98 @@ function promiseTimeout(promise,ms,label){
   return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 
-async function loadJobsForFinalSlotCheck(userId){
-  /*
-   * Every job created by the employer app has employer_id. Querying only this
-   * known column avoids probing optional/legacy ownership columns before a
-   * publish. Closed/paused jobs are returned too, then filtered locally.
-   */
-  const result=await promiseTimeout(
-    sb.from('jobs').select('*').eq('employer_id',userId),
+async function loadJobsForFinalSlotCheck(userId,companyId=''){
+  /* Count both direct employer ownership and company ownership. This keeps the
+     final Publish check aligned with My Jobs after upgrades, team access, and
+     older records. */
+  const queries=[
+    sb.from('jobs').select('*').eq('employer_id',userId)
+  ];
+
+  if(companyId){
+    queries.push(
+      sb.from('jobs').select('*').eq('company_id',companyId)
+    );
+  }
+
+  const results=await promiseTimeout(
+    Promise.all(queries),
     8000,
     'Alygnn could not finish checking your current job slots.'
   );
 
-  if(result.error){
-    throw result.error;
+  const collected=[];
+  const seen=new Set();
+  let successful=0;
+
+  results.forEach(result=>{
+    if(result.error)return;
+    successful+=1;
+    (result.data||[]).forEach(job=>{
+      const key=String(job?.id||'');
+      if(!key||seen.has(key))return;
+      seen.add(key);
+      collected.push(job);
+    });
+  });
+
+  if(!successful){
+    throw results.find(result=>result.error)?.error ||
+      new Error('Alygnn could not verify current job-slot usage.');
   }
 
-  return Array.isArray(result.data)?result.data:[];
+  return collected;
 }
 
 async function enforceFinalJobSlotAccess(){
   const userId=session?.user?.id;
   if(!userId){
     throw new Error('Your employer session expired. Sign in again and retry.');
+  }
+
+  const companyId=String(
+    draft?.company_id||
+    liveCompany?.id||
+    ''
+  ).trim();
+
+  // Use the same unified capacity source as the dashboard first. This is the
+  // authoritative total capacity (paid plan + included free slot + add-ons).
+  try{
+    const accessResult=await promiseTimeout(
+      sb.rpc('get_employer_posting_access'),
+      5000,
+      'Alygnn could not finish checking your job-slot access.'
+    );
+
+    if(!accessResult.error && accessResult.data){
+      const jobs=await loadJobsForFinalSlotCheck(userId,companyId);
+      const used=jobs.filter(jobConsumesSlot).length;
+      const limit=Math.max(1,Number(accessResult.data.slot_limit||1));
+
+      if(used<limit){
+        sessionStorage.removeItem('alygnn_job_slot_gate');
+        return true;
+      }
+
+      sessionStorage.setItem('alygnn_job_slot_gate',JSON.stringify({
+        used,
+        limit,
+        checked_at:new Date().toISOString(),
+        source:'app-job-preview-rpc'
+      }));
+
+      const params=new URLSearchParams({
+        reason:'slot_limit',
+        used:String(used),
+        limit:String(limit)
+      });
+
+      location.replace('app-employer-pricing.html?'+params.toString());
+      return false;
+    }
+  }catch(error){
+    console.warn('Unified final slot check unavailable; using entitlement fallback:',error);
   }
 
   let entitlement=null;
@@ -2966,36 +3033,28 @@ async function enforceFinalJobSlotAccess(){
     );
 
     if(entitlementResult.error){
-      console.warn(
-        'Final entitlement check unavailable; using free-slot fallback:',
-        entitlementResult.error
-      );
+      console.warn('Final entitlement check unavailable; using free-slot fallback:',entitlementResult.error);
     }else{
       entitlement=entitlementResult.data||null;
     }
   }catch(error){
-    /*
-     * Existing/free employers may not have an entitlement row yet. Do not let
-     * that optional billing lookup freeze publishing; live slot usage is still
-     * checked below and the free limit remains 1.
-     */
-    console.warn(
-      'Final entitlement check timed out; using free-slot fallback:',
-      error
-    );
+    console.warn('Final entitlement check timed out; using free-slot fallback:',error);
   }
 
-  const jobs=await loadJobsForFinalSlotCheck(userId);
+  const jobs=await loadJobsForFinalSlotCheck(userId,companyId);
   const used=jobs.filter(jobConsumesSlot).length;
   const limit=slotLimitForEntitlement(entitlement);
 
-  if(used<limit)return true;
+  if(used<limit){
+    sessionStorage.removeItem('alygnn_job_slot_gate');
+    return true;
+  }
 
   sessionStorage.setItem('alygnn_job_slot_gate',JSON.stringify({
     used,
     limit,
     checked_at:new Date().toISOString(),
-    source:'app-job-preview'
+    source:'app-job-preview-fallback'
   }));
 
   const params=new URLSearchParams({
@@ -3004,10 +3063,7 @@ async function enforceFinalJobSlotAccess(){
     limit:String(limit)
   });
 
-  location.replace(
-    'app-employer-pricing.html?'+params.toString()
-  );
-
+  location.replace('app-employer-pricing.html?'+params.toString());
   return false;
 }
 
