@@ -3183,7 +3183,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const over = Math.max(0, access.used - access.limit);
       const neededToPost = Math.max(0, access.used - access.limit + 1);
       slotUsage.textContent = over > 0
-        ? `· ${access.used} of ${access.limit} slots used · close ${neededToPost} ${neededToPost === 1 ? 'job' : 'jobs'} to open a slot`
+        ? `· ${access.used} of ${access.limit} slots used · excess jobs close automatically when paid access ends`
         : `· ${access.used} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
     }
 
@@ -3202,8 +3202,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if (!access.allowed && Number.isFinite(access.used) && Number.isFinite(access.limit)) {
         const neededToPost = Math.max(1, access.used - access.limit + 1);
         topButton.title = access.used > access.limit
-          ? `This account is ${access.used - access.limit} job${access.used - access.limit === 1 ? '' : 's'} over its current capacity. Close ${neededToPost} job${neededToPost === 1 ? '' : 's'} before posting another, or add more capacity.`
-          : `All ${access.limit} job ${access.limit === 1 ? 'slot is' : 'slots are'} in use. Close a job to free a slot or add more capacity.`;
+          ? `This account is ${access.used - access.limit} job${access.used - access.limit === 1 ? '' : 's'} over its current capacity. Excess jobs close automatically when paid access ends. Add more capacity to keep more jobs active.`
+          : `All ${access.limit} job ${access.limit === 1 ? 'slot is' : 'slots are'} in use. Add more capacity to post another job.`;
       } else {
         const available = Math.max(0, access.limit - access.used);
         topButton.title = `You have ${available} job ${available === 1 ? 'slot' : 'slots'} available.`;
