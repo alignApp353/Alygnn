@@ -109,6 +109,16 @@ h1{
 .invoice-amount{font-size:12px;font-weight:600}
 .invoice-link{font-size:11.5px;color:var(--brand);text-decoration:none;font-weight:600;white-space:nowrap}
 .invoice-link:hover{text-decoration:underline}
+.invoice-detail{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.invoice-tax{font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.invoice-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.invoice-sync{
+  border:1px solid var(--brand);background:white;color:var(--brand);
+  border-radius:999px;padding:6px 10px;font:600 10.5px 'DM Sans',sans-serif;
+  cursor:pointer;white-space:nowrap
+}
+.invoice-sync:hover{background:var(--brand-tint)}
+.invoice-sync:disabled{opacity:.5;cursor:default}
 .empty{
   margin-top:14px;padding:18px;border:1px dashed var(--border);border-radius:12px;
   color:var(--muted);font-size:12px;text-align:center
@@ -187,8 +197,8 @@ h1{
 
     <section class="card full">
       <div class="card-kicker">Billing history</div>
-      <div class="card-title">Invoices</div>
-      <div class="card-copy">Recent Alygnn invoices associated with this employer account.</div>
+      <div class="card-title">Payment history</div>
+      <div class="card-copy">All recent Alygnn charges, including plans, job slots, Job Boosts, and applicable tax.</div>
       <div id="invoice-list"></div>
     </section>
   </div>
@@ -368,29 +378,75 @@ function renderBilling(){
   }
 
   const invoices=Array.isArray(account.invoices)?account.invoices:[];
+  const oneTime=Array.isArray(account.one_time_payments)?account.one_time_payments:[];
+  const payments=[...invoices,...oneTime].sort((a,b)=>{
+    const at=a?.created?new Date(a.created).getTime():0;
+    const bt=b?.created?new Date(b.created).getTime():0;
+    return bt-at;
+  });
   const list=document.getElementById('invoice-list');
 
   if(testMode){
-    list.innerHTML='<div class="empty">Developer test plans do not create real invoices.</div>';
-  }else if(!invoices.length){
-    list.innerHTML='<div class="empty">No invoices yet.</div>';
+    list.innerHTML='<div class="empty">Developer test plans do not create real Stripe payments.</div>';
+  }else if(!payments.length){
+    list.innerHTML='<div class="empty">No payments yet.</div>';
   }else{
     list.className='invoice-list';
-    list.innerHTML=invoices.map(inv=>{
-      const link=safeUrl(inv.hosted_invoice_url)||safeUrl(inv.invoice_pdf);
-      const label=inv.description||inv.number||'Alygnn invoice';
-      const amount=Number(inv.amount_paid_cents||inv.amount_due_cents||0);
+    list.innerHTML=payments.map(inv=>{
+      const link=
+        safeUrl(inv.receipt_url) ||
+        safeUrl(inv.hosted_invoice_url) ||
+        safeUrl(inv.invoice_pdf);
+
+      const label=inv.description||inv.number||'Alygnn payment';
+      const amount=Number(
+        inv.total_cents ??
+        inv.amount_paid_cents ??
+        inv.amount_due_cents ??
+        0
+      );
+      const tax=Number(inv.tax_cents||0);
+      const subtotal=Number(
+        inv.subtotal_cents ??
+        Math.max(0,amount-tax)
+      );
+
+      const jobCopy=inv.job_title
+        ? `Job: ${inv.job_title}${inv.days?` · ${inv.days} day${Number(inv.days)===1?'':'s'}`:''}`
+        : '';
+
+      const boostUntil=inv.product==='job_boost'&&inv.boosted_until
+        ? `Boosted until ${dateLabel(inv.boosted_until)}`
+        : '';
+
+      const canSyncBoost=
+        inv.product==='job_boost' &&
+        inv.checkout_session_id &&
+        String(inv.status||'').toLowerCase()==='succeeded';
+
       return `
         <div class="invoice-row">
           <div class="invoice-main">
             <div class="invoice-name">${escapeHtml(label)}</div>
             <div class="invoice-date">${dateLabel(inv.created)}</div>
+            ${jobCopy?`<div class="invoice-detail">${escapeHtml(jobCopy)}</div>`:''}
+            ${boostUntil?`<div class="invoice-detail">${escapeHtml(boostUntil)}</div>`:''}
           </div>
           <div class="invoice-status">${escapeHtml(inv.status||'')}</div>
-          <div class="invoice-amount">${money(amount,inv.currency)}</div>
-          ${link?`<a class="invoice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">View invoice</a>`:'<span></span>'}
+          <div>
+            <div class="invoice-amount">${money(amount,inv.currency)}</div>
+            <div class="invoice-tax">Subtotal ${money(subtotal,inv.currency)} · Tax ${money(tax,inv.currency)}</div>
+          </div>
+          <div class="invoice-actions">
+            ${link?`<a class="invoice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${inv.payment_kind==='invoice'?'View invoice':'View receipt'}</a>`:''}
+            ${canSyncBoost?`<button class="invoice-sync" type="button" data-boost-session="${escapeHtml(inv.checkout_session_id)}">Verify Boost</button>`:''}
+          </div>
         </div>`;
     }).join('');
+
+    list.querySelectorAll('[data-boost-session]').forEach(btn=>{
+      btn.addEventListener('click',()=>syncPaidBoost(btn));
+    });
   }
 
   document.getElementById('loading').style.display='none';
@@ -403,6 +459,45 @@ function escapeHtml(value){
     .replaceAll('>','&gt;')
     .replaceAll('"','&quot;')
     .replaceAll("'",'&#039;');
+}
+
+
+async function syncPaidBoost(button){
+  const checkoutSessionId=String(button?.dataset?.boostSession||'').trim();
+  if(!checkoutSessionId)return;
+
+  const original=button.textContent;
+  button.disabled=true;
+  button.textContent='Checking…';
+
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('Your session expired. Please sign in again.');
+
+    const response=await fetch('/api/create-checkout-session',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+session.access_token
+      },
+      body:JSON.stringify({
+        action:'sync_boost_checkout',
+        checkout_session_id:checkoutSessionId
+      })
+    });
+
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.synced!==true){
+      throw new Error(data.error||'Could not verify this Job Boost.');
+    }
+
+    button.textContent='Boost synced';
+    window.setTimeout(()=>loadBilling().catch(()=>{}),600);
+  }catch(error){
+    showError(error.message||'Could not verify this Job Boost.');
+    button.disabled=false;
+    button.textContent=original;
+  }
 }
 
 async function openBillingPortal(){
