@@ -1986,7 +1986,22 @@ async function suggestMarketPay(){
   const values=salaryValuesForPeriod(profile,period);
 
   if(!values||values.min===null||values.max===null){
-    showMessage('This occupation does not have a usable range for the selected pay period.');
+    el('market-pay-card').hidden=true;
+    showMessage('Reliable market pay data is not available for this role and location. Enter the pay range manually.');
+    return;
+  }
+
+  const marketMin=Number(values.min);
+  const marketMax=Number(values.max);
+  if(
+    !Number.isFinite(marketMin) ||
+    !Number.isFinite(marketMax) ||
+    marketMin <= 0 ||
+    marketMax <= 0 ||
+    marketMax < marketMin
+  ){
+    el('market-pay-card').hidden=true;
+    showMessage('Reliable market pay data is not available for this role and location. Enter the pay range manually.');
     return;
   }
 
