@@ -2041,11 +2041,24 @@ window.addEventListener('beforeunload',()=>{
 
 const candidateMessagesLoader = document.getElementById('loading');
 
+let candidateMessagesCameFromCandidatePage = false;
+try {
+  const ref = new URL(document.referrer || '', window.location.href);
+  candidateMessagesCameFromCandidatePage =
+    ref.origin === window.location.origin &&
+    /\/(account|my-jobs|swipe|profile-details|job-details)\.html$/i.test(ref.pathname);
+} catch (_) {}
+
 const candidateMessagesLoaderTimer = window.setTimeout(() => {
-  if (!document.body.classList.contains('ready')) {
+  if (!candidateMessagesCameFromCandidatePage && !document.body.classList.contains('ready')) {
     candidateMessagesLoader?.classList.add('loader-visible');
   }
 }, 180);
+
+if (candidateMessagesCameFromCandidatePage) {
+  candidateMessagesLoader?.classList.remove('loader-visible');
+  document.body.classList.add('ready');
+}
 
 const candidateMessagesRevealTimer = window.setTimeout(() => {
   candidateMessagesLoader?.classList.remove('loader-visible');
