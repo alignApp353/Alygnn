@@ -810,6 +810,14 @@ function messageTeamCan(permission){
   return teamAccess?.permissions?.[permission]===true;
 }
 
+function messageTeamRoleLabel(role){
+  return ({
+    recruiter:'Recruiter',
+    hiring_manager:'Hiring Manager',
+    admin:'Admin'
+  })[String(role||'').toLowerCase()] || 'Team member';
+}
+
 let threads=[];
 let messageFilter='all';
 let messageJobFilter='';
@@ -859,8 +867,12 @@ function setSidebar(){
     document.body.classList.remove('candidate-role');
     document.body.classList.add('employer-role');
     document.getElementById('employer-nav-right').style.display = 'flex';
+    const employerSidebarRoleLabel=isTeamMember
+      ? messageTeamRoleLabel(teamAccess?.role)
+      : 'Employer';
+
     sidebar.innerHTML=`
-      <div class="sidebar-label">Employer</div>
+      <div class="sidebar-label">${escapeHtml(employerSidebarRoleLabel)}</div>
 
       <a href="employer-dashboard.html" class="side-link">
         <span class="side-icon" aria-hidden="true">
