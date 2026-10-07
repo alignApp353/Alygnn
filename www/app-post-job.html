@@ -970,6 +970,17 @@ function occupationSkillNames(){
   return [...new Set([...profileSkills,...softwareSkills])].slice(0,24);
 }
 
+function isGenericOccupationDescription(value){
+  const clean=String(value||'').replace(/\s+/g,' ').trim();
+  if(!clean)return true;
+
+  return (
+    /^all .+ not listed separately\.?$/i.test(clean) ||
+    /^all other .+\.?$/i.test(clean) ||
+    /^other .+ not listed separately\.?$/i.test(clean)
+  );
+}
+
 function applyOccupationProfileToForm(){
   if(!currentOccupationProfile)return;
 
@@ -981,8 +992,11 @@ function applyOccupationProfileToForm(){
   const skillLines=occupationSkillNames().slice(0,3);
 
   if(!el('description').value.trim()){
-    const intro=currentOccupationProfile.description||
-      `We are hiring a ${el('title').value.trim()} to support our team.`;
+    const roleTitle=el('title').value.trim()||'this role';
+    const sourceDescription=String(currentOccupationProfile.description||'').trim();
+    const intro=isGenericOccupationDescription(sourceDescription)
+      ? `Join our team as a ${roleTitle}. This role focuses on the responsibilities and day-to-day work associated with this position.`
+      : sourceDescription;
 
     const responsibilities=taskLines.length
       ? '\n\nKey responsibilities:\n'+taskLines.map(task=>`• ${task}`).join('\n')
