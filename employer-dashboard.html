@@ -161,6 +161,7 @@
   .job-status-badge.active { color: #2d8a57; background: var(--mint-light); }
   .job-status-badge.pending { color: #7a5a1a; background: rgba(231,184,109,0.14); }
   .job-status-badge.paused { color: #a05858; background: rgba(215,154,154,0.12); }
+  .job-status-badge.draft { color:#66717D; background:#EEF1F4; }
   .job-info { flex: 1; }
   .job-title-text { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
   .job-meta { font-size: 12px; color: var(--text-muted); }
@@ -5114,28 +5115,63 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const location = String(draft?.location || '').trim();
     const step = Math.max(1, Math.min(TOTAL_WIZARD_STEPS, Number(draft?.current_step || 1)));
 
-    let updated = '';
+    let updatedDate = '—';
+    let updatedLabel = '';
     try {
-      updated = draft?.updated_at
-        ? new Date(draft.updated_at).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
-          })
-        : '';
+      if (draft?.updated_at) {
+        const date = new Date(draft.updated_at);
+        updatedDate = date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+        updatedLabel = date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+      }
     } catch (_) {}
 
+    const draftData = draft?.draft_data || {};
+    const jobType = String(draftData.job_type || '').trim();
+    const workStyle = String(draftData.work_style || '').trim();
+    const salary = String(draftData.salary || '').trim();
+
+    const meta = [
+      jobType,
+      formatWorkStyleLabel(workStyle),
+      salary,
+      location
+    ].filter(Boolean).join(' · ');
+
     return `
-      <div class="job-card">
+      <div class="job-row">
+        <div class="job-status draft"></div>
+
         <div class="job-info">
-          <div class="job-title-row">
-            <div class="job-title">${escapeHtml(title)} <span class="job-status draft">Draft</span></div>
+          <div class="job-title-text">
+            ${escapeHtml(title)}
+            <span class="job-status-badge draft">Draft</span>
           </div>
-          <div class="job-meta">${location ? escapeHtml(location) + ' · ' : ''}Step ${step} of ${TOTAL_WIZARD_STEPS}${updated ? ' · Updated ' + escapeHtml(updated) : ''}</div>
+          <div class="job-meta">
+            ${meta ? escapeHtml(meta) : 'Draft job listing'}
+            ${updatedLabel ? ` · Saved ${escapeHtml(updatedLabel)}` : ''}
+          </div>
         </div>
-        <div class="job-stats"></div>
+
+        <div class="job-stats">
+          <div>
+            <div class="js-val">${step}/${TOTAL_WIZARD_STEPS}</div>
+            <div class="js-label">Step</div>
+          </div>
+          <div>
+            <div class="js-val">${escapeHtml(updatedDate)}</div>
+            <div class="js-label">Saved</div>
+          </div>
+        </div>
+
         <div class="job-actions">
           <button class="btn-view" onclick="continueJobDraft('${draft.id}')">Continue draft</button>
           <button class="btn-danger" onclick="deleteJobDraft('${draft.id}')">Delete draft</button>
