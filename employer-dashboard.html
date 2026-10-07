@@ -1026,6 +1026,13 @@
           <div class="empty-title">Loading your jobs…</div>
         </div>
       </div>
+
+      <div id="closed-jobs-section" style="display:none; margin-top:32px;">
+        <div class="section-header" style="margin-bottom:14px;">
+          <div class="section-title">Closed jobs <span id="closed-jobs-count" style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;"></span></div>
+        </div>
+        <div id="closed-jobs-list"></div>
+      </div>
     </div>
 
     <!-- CANDIDATES — shows all applicants by default. When opened from a
@@ -4988,33 +4995,62 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   function renderJobs() {
     const jobsList = document.getElementById('jobs-list');
+    const closedSection = document.getElementById('closed-jobs-section');
+    const closedList = document.getElementById('closed-jobs-list');
+    const closedCount = document.getElementById('closed-jobs-count');
+
+    if (!jobsList) return;
 
     if (jobs.length === 0) {
       jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">Your job slot is available</div>Post a job using your available slot. If your business is still being verified, the job will stay pending until approval.</div>`;
+      if (closedSection) closedSection.style.display = 'none';
       return;
     }
 
     const searchInput = document.getElementById('jobs-search-input');
     const query = (searchInput?.value || '').trim().toLowerCase();
 
-    const filteredJobs = query
-      ? jobs.filter(job => {
-          const haystack = [
-            job.title,
-            job.location,
-            job.job_type,
-            formatWorkStyleLabel(job.work_style)
-          ].filter(Boolean).join(' ').toLowerCase();
-          return haystack.includes(query);
-        })
-      : jobs;
+    const matchesSearch = job => {
+      if (!query) return true;
+      const haystack = [
+        job.title,
+        job.location,
+        job.job_type,
+        formatWorkStyleLabel(job.work_style)
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    };
 
-    if (filteredJobs.length === 0) {
-      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`;
-      return;
+    const activeJobs = jobs.filter(job =>
+      String(job.status || '').toLowerCase() !== 'closed' &&
+      matchesSearch(job)
+    );
+
+    const closedJobs = jobs.filter(job =>
+      String(job.status || '').toLowerCase() === 'closed' &&
+      matchesSearch(job)
+    );
+
+    if (activeJobs.length === 0) {
+      jobsList.innerHTML = query
+        ? `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No active jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`
+        : `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active jobs</div>Post a new job or reopen one from Closed jobs below.</div>`;
+    } else {
+      jobsList.innerHTML = activeJobs.map(job => renderJobRow(job)).join('');
     }
 
-    jobsList.innerHTML = filteredJobs.map(job => renderJobRow(job)).join('');
+    if (closedSection && closedList) {
+      if (closedJobs.length === 0) {
+        closedSection.style.display = 'none';
+        closedList.innerHTML = '';
+      } else {
+        closedSection.style.display = 'block';
+        if (closedCount) {
+          closedCount.textContent = `· ${closedJobs.length} ${closedJobs.length === 1 ? 'job' : 'jobs'}`;
+        }
+        closedList.innerHTML = closedJobs.map(job => renderJobRow(job)).join('');
+      }
+    }
   }
 
   // Filters .candidate-card elements inside #candidates-grid by their
@@ -5098,7 +5134,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             ? `<button class="btn-view ${job.urgently_hiring === true ? 'urgent-on' : ''}" onclick="toggleUrgent('${job.id}')">${job.urgently_hiring === true ? 'Remove urgently hiring' : 'Urgently Hiring'}</button>`
             : ''}
           <button class="btn-view" onclick="editJob('${job.id}')">Edit</button>
-          <button class="btn-danger" onclick="deleteJob('${job.id}')">Delete</button>
+          ${isClosed
+            ? ''
+            : `<button class="btn-danger" onclick="closeJob('${job.id}')">Close</button>`}
         </div>
       </div>
     `;
@@ -5700,33 +5738,43 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     showToast(employerVerified ? 'Job reopened.' : 'Job moved back to pending approval.');
   }
 
-  async function deleteJob(jobId) {
+  async function closeJob(jobId) {
     if (isTeamMember && !teamCan('jobs_manage')) {
-      showToast('Your team role does not include job deletion access.');
+      showToast('Your team role does not include job closing access.');
       return;
     }
+
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
 
-    if (!confirm(`Delete "${job.title}"? This will free the job slot so you can post another job.`)) return;
+    if (!confirm(`Close "${job.title}"? Candidates will no longer be able to apply, and this will free the job slot. You can reopen the job later from Closed jobs.`)) return;
+
+    const closedAt = new Date().toISOString();
 
     const { error } = await sb
       .from('jobs')
-      .delete()
+      .update({
+        status: 'closed',
+        closed_reason: 'manual',
+        closed_at: closedAt,
+        updated_at: closedAt
+      })
       .eq('id', jobId)
       .eq('employer_id', workspaceOwnerId);
 
     if (error) {
-      console.error('Failed to delete job:', error);
-      showToast('Could not delete job.');
+      console.error('Failed to close job:', error);
+      showToast('Could not close job.');
       return;
     }
 
     if (editingJobId === jobId) cancelEdit();
+
     await loadJobs();
     await loadBillingEntitlement();
     updatePostingAccessUI();
-    showToast('Job deleted. Your job slot is available again.');
+
+    showToast('Job closed. Your job slot is available again.');
   }
 
   async function logout() {
