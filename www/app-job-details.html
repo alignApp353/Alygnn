@@ -2276,12 +2276,34 @@ async function syncApplicationState(){
   setApplicationActions();
 }
 
+async function assertCurrentJobStillOpen(){
+  const {data:liveJob,error}=await sb
+    .from('jobs')
+    .select('id,status')
+    .eq('id',job.id)
+    .maybeSingle();
+
+  if(error)throw error;
+
+  if(!liveJob || String(liveJob.status||'').toLowerCase()!=='active'){
+    const error=new Error('This job has closed and is no longer accepting applications.');
+    error.code='ALYGNN_JOB_CLOSED';
+    throw error;
+  }
+
+  return liveJob;
+}
+
 async function applyToJob(){
   const button=document.getElementById('apply-btn');
   button.disabled=true;
   button.textContent='Applying…';
 
   try{
+    // The listing can be closed after this page was opened, so confirm live
+    // status immediately before creating the application.
+    await assertCurrentJobStillOpen();
+
     const {data:existing,error:checkError}=await sb
       .from('applications')
       .select('id,status,applied_at')
@@ -2491,6 +2513,19 @@ document.getElementById('apply-btn').addEventListener('click',handlePrimaryActio
     if(!jobData)throw new Error('This job is no longer available.');
 
     job=jobData;
+
+    const from=
+      new URLSearchParams(window.location.search).get('from') || '';
+
+    // Candidates must never be able to keep viewing/applying to a listing once
+    // the employer closes or pauses it. Employer live-view remains available
+    // for the employer's own workflow.
+    if(
+      from!=='employer-live' &&
+      String(job.status||'').toLowerCase()!=='active'
+    ){
+      throw new Error('This job has closed and is no longer available.');
+    }
 
     try{
       const resolvedLogo=await resolveCandidateCompanyLogo(job);
