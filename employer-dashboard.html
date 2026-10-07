@@ -2140,6 +2140,30 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     return 0;
   }
 
+  function formatCustomJobTitle(value) {
+    const clean = String(value || '').trim().replace(/\s+/g, ' ');
+    if (!clean) return '';
+
+    const keepUpper = new Set([
+      'CEO','CFO','COO','CTO','CIO','CMO','CHRO','VP','SVP','EVP',
+      'RN','LPN','LVN','CNA','EMT','CPA','CFA','CDL','HVAC','IT','HR',
+      'QA','UX','UI','AI','ML','SEO','SEM','FP&A','BI','SOC'
+    ]);
+
+    return clean.split(' ').map((word, index) => {
+      const upper = word.toUpperCase();
+      if (keepUpper.has(upper)) return upper;
+      if (/^[A-Z0-9&/+-]{2,}$/.test(word) && word === upper) return word;
+
+      return word.split('-').map(part => {
+        if (!part) return part;
+        const partUpper = part.toUpperCase();
+        if (keepUpper.has(partUpper)) return partUpper;
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      }).join('-');
+    }).join(' ');
+  }
+
   function renderTitleSuggestions() {
     const input = document.getElementById('f-title');
     const box = document.getElementById('title-suggestions');
@@ -2164,21 +2188,47 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
       .map(item => item.title);
 
-    const matches = [...new Set([...aliasMatches, ...scored])].slice(0, 12);
+    const catalogMatches = [...new Set([...aliasMatches, ...scored])];
+
+    // Job titles are effectively unlimited. The catalog is only for fast
+    // suggestions; any legitimate title the employer types is also offered
+    // as a selectable option at the top.
+    const typedRaw = input.value.trim();
+    const typedTitle = formatCustomJobTitle(typedRaw);
+    const typedLooksValid =
+      typedTitle.length >= 3 &&
+      typedTitle.length <= 80 &&
+      /^[A-Za-z0-9&.,'’()\-/+ ]+$/.test(typedTitle);
+
+    const alreadyInCatalog = catalogMatches.some(
+      title => title.toLowerCase() === typedTitle.toLowerCase()
+    );
+
+    const matches = [
+      ...(typedLooksValid && typedRaw && !alreadyInCatalog ? [typedTitle] : []),
+      ...catalogMatches
+    ].slice(0, 12);
 
     if (matches.length === 0) {
-      // Don't make an employer think the title is invalid just because it
-      // isn't in the suggestion catalog. Valid free-text titles still work.
       box.innerHTML = `<div class="chip-result-row" style="cursor:default;color:var(--text-muted);">
-        No exact suggestion — you can keep “${escapeHtml(input.value.trim())}”
+        Keep typing a real job title.
       </div>`;
       box.classList.add('show');
       return;
     }
 
-    box.innerHTML = matches.map(title => {
+    box.innerHTML = matches.map((title, index) => {
       const escaped = title.replace(/'/g, "\\'");
-      return `<div class="chip-result-row" onmousedown="event.preventDefault(); selectTitleSuggestion('${escaped}')">${escapeHtml(title)}</div>`;
+      const isCustom =
+        typedLooksValid &&
+        typedRaw &&
+        !alreadyInCatalog &&
+        index === 0 &&
+        title === typedTitle;
+
+      const label = isCustom ? `Use “${title}”` : title;
+
+      return `<div class="chip-result-row" onmousedown="event.preventDefault(); selectTitleSuggestion('${escaped}')">${escapeHtml(label)}</div>`;
     }).join('');
     box.classList.add('show');
   }
