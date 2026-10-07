@@ -162,6 +162,27 @@
   .job-status-badge.pending { color: #7a5a1a; background: rgba(231,184,109,0.14); }
   .job-status-badge.paused { color: #a05858; background: rgba(215,154,154,0.12); }
   .job-status-badge.draft { color:#66717D; background:#EEF1F4; }
+  .weekly-job-pill{
+    display:inline-flex;
+    align-items:center;
+    margin-left:8px;
+    padding:2px 8px;
+    border-radius:100px;
+    font-size:10px;
+    font-weight:600;
+    vertical-align:middle;
+    color:#5D7FA3;
+    background:rgba(93,127,163,.10);
+    border:1px solid rgba(93,127,163,.20);
+    white-space:nowrap;
+  }
+  .weekly-job-until{
+    margin-left:5px;
+    font-size:10px;
+    font-weight:600;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
   .job-info { flex: 1; }
   .job-title-text { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
   .job-meta { font-size: 12px; color: var(--text-muted); }
@@ -1529,6 +1550,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   let jobDrafts = [];
   let activeJobDraftId = null;
+  let weeklySlotExpiryByPurchaseId = {};
 
   // ---- Search-to-add picker state ----
   const REQUIREMENT_PRESETS = [
@@ -4473,6 +4495,52 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+  function formatWeeklyJobUntil(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  async function loadWeeklyJobExpirations(jobRows) {
+    weeklySlotExpiryByPurchaseId = {};
+
+    const purchaseIds = [...new Set(
+      (Array.isArray(jobRows) ? jobRows : [])
+        .map(job => job?.weekly_slot_purchase_id)
+        .filter(Boolean)
+        .map(String)
+    )];
+
+    if (!purchaseIds.length) return;
+
+    const { data, error } = await sb
+      .from('employer_weekly_slot_purchases')
+      .select('id, activated_at, expires_at')
+      .in('id', purchaseIds);
+
+    if (error) {
+      console.warn('Could not load Weekly Job close dates:', error);
+      return;
+    }
+
+    weeklySlotExpiryByPurchaseId = Object.fromEntries(
+      (data || []).map(row => [
+        String(row.id),
+        row.activated_at && row.expires_at && String(row.expires_at).toLowerCase() !== 'infinity'
+          ? row.expires_at
+          : null
+      ])
+    );
+  }
+
   async function loadJobs() {
     if (!currentUser) return;
 
@@ -4500,7 +4568,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     jobs = data || [];
     await Promise.all([
       loadAppliedCounts(),
-      loadJobDrafts()
+      loadJobDrafts(),
+      loadWeeklyJobExpirations(jobs)
     ]);
     renderJobs();
     if (billingReady) updatePostingAccessUI();
@@ -5383,11 +5452,20 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         ? `<button class="btn-view" onclick="redirectToPricing('weekly-expired')">Get a job slot</button>`
         : `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`;
 
+    const weeklyPurchaseId = job.weekly_slot_purchase_id ? String(job.weekly_slot_purchase_id) : '';
+    const isWeeklyJob = Boolean(weeklyPurchaseId);
+    const weeklyExpiresAt = isWeeklyJob
+      ? weeklySlotExpiryByPurchaseId[weeklyPurchaseId] || null
+      : null;
+    const weeklyBadge = isWeeklyJob
+      ? `<span class="weekly-job-pill">Weekly Job</span>${weeklyExpiresAt ? `<span class="weekly-job-until">closes ${escapeHtml(formatWeeklyJobUntil(weeklyExpiresAt))}</span>` : ''}`
+      : '';
+
     return `
       <div class="job-row">
         <div class="job-status ${statusClass}"></div>
         <div class="job-info">
-          <div class="job-title-text">${escapeHtml(job.title)}<span class="job-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>${jobBoostIsActive(job) ? `<span class="boosted-pill">Boosted</span><span class="boost-until">until ${escapeHtml(formatBoostUntil(job.boosted_until))}</span>` : ''}${job.urgently_hiring === true ? `<span class="urgent-pill">Urgently Hiring</span>` : ''}</div>
+          <div class="job-title-text">${escapeHtml(job.title)}<span class="job-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>${weeklyBadge}${jobBoostIsActive(job) ? `<span class="boosted-pill">Boosted</span><span class="boost-until">until ${escapeHtml(formatBoostUntil(job.boosted_until))}</span>` : ''}${job.urgently_hiring === true ? `<span class="urgent-pill">Urgently Hiring</span>` : ''}</div>
           <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(formatWorkStyleLabel(job.work_style))}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
         </div>
         <div class="job-stats">
