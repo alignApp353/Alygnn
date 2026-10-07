@@ -234,6 +234,71 @@ button{
   margin-left:auto;
 }
 
+.filter-row-secondary{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:8px;
+  margin-top:8px;
+}
+.filter-row-secondary .job-filter,
+.filter-row-secondary .sort-filter{
+  width:100%;
+  max-width:none;
+  margin-left:0;
+}
+.sort-filter{
+  min-height:38px;
+  padding:0 30px 0 12px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--card);
+  color:var(--text);
+  font-size:11px;
+  font-weight:800;
+}
+.thread-badges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+.context-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:0 7px;
+  border-radius:999px;
+  background:var(--soft);
+  color:var(--brand-dark);
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.02em;
+  white-space:nowrap;
+}
+.context-badge.closed{
+  background:#F1F2F4;
+  color:#6B7280;
+}
+html[data-theme="dark"] .context-badge.closed{
+  background:#202833;
+  color:#B8C2CC;
+}
+.load-more-wrap{
+  display:flex;
+  justify-content:center;
+  padding:4px 0 18px;
+}
+.load-more-btn{
+  min-height:42px;
+  padding:0 18px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--card);
+  color:var(--brand-dark);
+  font-size:11px;
+  font-weight:900;
+}
+
 .list{
   display:grid;
   gap:12px;
@@ -1278,62 +1343,6 @@ html[data-effective-theme="light"] body.employer-mode .bottom-nav.employer{
 }
 </style>
 
-
-<style id="alygnn-candidate-messages-one-canvas-final">
-/*
- * Candidate Messages must use one continuous canvas.
- * An employer-only root background rule later in this file can expose #0B111A
- * underneath the candidate shell when the conversation list is short.
- */
-html[data-effective-theme="dark"]:has(body.candidate-mode),
-html[data-theme="dark"]:has(body.candidate-mode){
-  background:#061821!important;
-  background-color:#061821!important;
-  background-image:none!important;
-}
-
-html[data-effective-theme="light"]:has(body.candidate-mode),
-html[data-theme="light"]:has(body.candidate-mode){
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-  background-image:none!important;
-}
-
-body.candidate-mode{
-  min-height:100dvh!important;
-}
-
-body.candidate-mode .shell{
-  min-height:100dvh!important;
-  padding-bottom:calc(108px + env(safe-area-inset-bottom))!important;
-  background:var(--bg)!important;
-  background-color:var(--bg)!important;
-  background-image:none!important;
-}
-
-html[data-effective-theme="dark"] body.candidate-mode,
-html[data-theme="dark"] body.candidate-mode,
-html[data-effective-theme="dark"] body.candidate-mode .shell,
-html[data-theme="dark"] body.candidate-mode .shell,
-html[data-effective-theme="dark"] body.candidate-mode .bottom-nav.candidate,
-html[data-theme="dark"] body.candidate-mode .bottom-nav.candidate{
-  background:#061821!important;
-  background-color:#061821!important;
-  background-image:none!important;
-}
-
-html[data-effective-theme="light"] body.candidate-mode,
-html[data-theme="light"] body.candidate-mode,
-html[data-effective-theme="light"] body.candidate-mode .shell,
-html[data-theme="light"] body.candidate-mode .shell,
-html[data-effective-theme="light"] body.candidate-mode .bottom-nav.candidate,
-html[data-theme="light"] body.candidate-mode .bottom-nav.candidate{
-  background:#F6F8F7!important;
-  background-color:#F6F8F7!important;
-  background-image:none!important;
-}
-</style>
-
 </head>
 
 <body class="messages-booting">
@@ -1377,10 +1386,19 @@ html[data-theme="light"] body.candidate-mode .bottom-nav.candidate{
     <div class="filters">
       <button class="filter-btn active" type="button" data-filter="all">All</button>
       <button class="filter-btn" type="button" data-filter="unread">Unread</button>
+      <button class="filter-btn" type="button" data-filter="needs-reply">Needs reply</button>
       <button class="filter-btn" type="button" data-filter="archived">Archived</button>
+    </div>
 
-      <select class="job-filter" id="job-filter">
+    <div class="filter-row-secondary" id="employer-message-secondary-filters">
+      <select class="job-filter" id="job-filter" aria-label="Filter by job">
         <option value="">All jobs</option>
+      </select>
+
+      <select class="sort-filter" id="sort-filter" aria-label="Sort conversations">
+        <option value="newest">Newest message</option>
+        <option value="oldest">Oldest message</option>
+        <option value="score">Highest Alygnn Score</option>
       </select>
     </div>
   </div>
@@ -1525,10 +1543,13 @@ let channelB=null;
 let reloadTimer=null;
 let currentFilter='all';
 let currentJob='';
+let currentSort='newest';
 let searchTerm='';
 let inboxRows=[];
 let mutating=false;
 let openMenuId='';
+let visibleLimit=30;
+const MESSAGE_PAGE_SIZE=30;
 
 const icon={
   // Candidate icons intentionally match app-account.html exactly so the
@@ -1828,35 +1849,47 @@ function buildJobFilter(rows){
   const jobs=new Map();
 
   rows.forEach(row=>{
-    if(
-      row.jobId &&
-      row.jobTitle
-    ){
-      jobs.set(
-        String(row.jobId),
-        row.jobTitle
-      );
-    }
+    if(!row.jobId || !row.jobTitle)return;
+
+    const id=String(row.jobId);
+    const current=jobs.get(id)||{
+      id,
+      title:row.jobTitle,
+      status:row.jobStatus||'',
+      count:0
+    };
+
+    current.count+=1;
+    if(row.jobStatus)current.status=row.jobStatus;
+    jobs.set(id,current);
   });
 
-  select.innerHTML=
-    '<option value="">All jobs</option>'+
-    [...jobs.entries()]
-      .sort((a,b)=>
-        String(a[1])
-          .localeCompare(
-            String(b[1])
-          )
-      )
-      .map(([id,title])=>
-        `<option value="${esc(id)}">${esc(title)}</option>`
-      )
-      .join('');
+  const items=[...jobs.values()]
+    .sort((a,b)=>String(a.title).localeCompare(String(b.title)));
 
-  if(
-    existing &&
-    jobs.has(existing)
-  ){
+  const active=items.filter(item=>String(item.status).toLowerCase()!=='closed');
+  const closed=items.filter(item=>String(item.status).toLowerCase()==='closed');
+
+  const optionHtml=item=>
+    `<option value="${esc(item.id)}">${esc(item.title)} (${item.count})${String(item.status).toLowerCase()==='closed'?' · Closed':''}</option>`;
+
+  select.innerHTML='<option value="">All jobs ('+rows.length+')</option>';
+
+  if(active.length){
+    select.insertAdjacentHTML(
+      'beforeend',
+      `<optgroup label="Active jobs">${active.map(optionHtml).join('')}</optgroup>`
+    );
+  }
+
+  if(closed.length){
+    select.insertAdjacentHTML(
+      'beforeend',
+      `<optgroup label="Closed jobs">${closed.map(optionHtml).join('')}</optgroup>`
+    );
+  }
+
+  if(existing && jobs.has(existing)){
     select.value=existing;
   }else{
     currentJob='';
@@ -1865,32 +1898,31 @@ function buildJobFilter(rows){
 }
 
 function visibleRows(){
-  const needle=
-    searchTerm
-      .trim()
-      .toLowerCase();
+  const needle=searchTerm.trim().toLowerCase();
 
-  return inboxRows.filter(row=>{
-    if(
-      currentFilter==='archived'
-    ){
+  const filtered=inboxRows.filter(row=>{
+    if(currentFilter==='archived'){
       if(!row.archived)return false;
     }else{
       if(row.archived)return false;
 
-      if(
-        currentFilter==='unread' &&
-        row.unreadCount<1
-      ){
+      if(currentFilter==='unread' && row.unreadCount<1){
         return false;
+      }
+
+      if(currentFilter==='needs-reply'){
+        if(role!=='employer')return false;
+        if(!row.lastMessage)return false;
+
+        const employerSentLast=
+          String(row.lastMessage.sender_id)===
+          String(session.user.id);
+
+        if(employerSentLast)return false;
       }
     }
 
-    if(
-      currentJob &&
-      String(row.jobId)!==
-      String(currentJob)
-    ){
+    if(currentJob && String(row.jobId)!==String(currentJob)){
       return false;
     }
 
@@ -1901,17 +1933,28 @@ function visibleRows(){
         row.preview,
         row.company,
         row.candidate
-      ]
-        .join(' ')
-        .toLowerCase();
+      ].join(' ').toLowerCase();
 
-      if(!haystack.includes(needle)){
-        return false;
-      }
+      if(!haystack.includes(needle))return false;
     }
 
     return true;
   });
+
+  filtered.sort((a,b)=>{
+    if(currentSort==='oldest'){
+      return new Date(a.lastMessageAt).getTime()-new Date(b.lastMessageAt).getTime();
+    }
+
+    if(currentSort==='score'){
+      const scoreDiff=Number(b.alygnnScore||0)-Number(a.alygnnScore||0);
+      if(scoreDiff!==0)return scoreDiff;
+    }
+
+    return new Date(b.lastMessageAt).getTime()-new Date(a.lastMessageAt).getTime();
+  });
+
+  return filtered;
 }
 
 function replyStatus(row){
@@ -1995,6 +2038,25 @@ function threadHtml(row){
               }
             </div>
 
+            ${
+              role==='employer'
+                ?`
+                  <div class="thread-badges">
+                    ${
+                      Number(row.alygnnScore||0)>0
+                        ?`<span class="context-badge">${Math.round(Number(row.alygnnScore))}% Alygnn Score</span>`
+                        :''
+                    }
+                    ${
+                      String(row.jobStatus||'').toLowerCase()==='closed'
+                        ?'<span class="context-badge closed">Closed job</span>'
+                        :''
+                    }
+                  </div>
+                `
+                :''
+            }
+
             <div class="preview">
               ${esc(row.preview)}
             </div>
@@ -2077,6 +2139,9 @@ function renderList(){
       }else if(currentFilter==='unread'){
         title='You’re all caught up';
         copy='You do not have any unread conversations.';
+      }else if(currentFilter==='needs-reply'){
+        title='No replies waiting';
+        copy='You have replied to every candidate in this view.';
       }else{
         title='No messages yet';
         copy=
@@ -2096,10 +2161,31 @@ function renderList(){
     return;
   }
 
+  const shown=rows.slice(0,visibleLimit);
+
   list.innerHTML=
-    rows
+    shown
       .map(threadHtml)
-      .join('');
+      .join('')+
+    (
+      rows.length>shown.length
+        ?`
+          <div class="load-more-wrap">
+            <button class="load-more-btn" type="button" id="load-more-messages">
+              Load ${Math.min(MESSAGE_PAGE_SIZE,rows.length-shown.length)} more
+            </button>
+          </div>
+        `
+        :''
+    );
+
+  const loadMore=$('load-more-messages');
+  if(loadMore){
+    loadMore.onclick=()=>{
+      visibleLimit+=MESSAGE_PAGE_SIZE;
+      renderList();
+    };
+  }
 }
 
 async function load(){
@@ -2491,6 +2577,12 @@ async function load(){
           company,
           employerPerson,
           jobTitle,
+          jobStatus:String(job.status||'').toLowerCase(),
+          alygnnScore:Number(
+            application.match_score||
+            application.alygnn_score||
+            0
+          )||0,
           name,
           preview:
             cleanIdentity(
@@ -2720,6 +2812,7 @@ $('search').addEventListener(
         ''
       );
 
+    visibleLimit=MESSAGE_PAGE_SIZE;
     renderList();
   }
 );
@@ -2733,6 +2826,16 @@ $('job-filter').addEventListener(
         ''
       );
 
+    visibleLimit=MESSAGE_PAGE_SIZE;
+    renderList();
+  }
+);
+
+$('sort-filter').addEventListener(
+  'change',
+  event=>{
+    currentSort=String(event.target.value||'newest');
+    visibleLimit=MESSAGE_PAGE_SIZE;
     renderList();
   }
 );
@@ -2746,6 +2849,8 @@ document
       currentFilter=
         button.dataset.filter||
         'all';
+
+      visibleLimit=MESSAGE_PAGE_SIZE;
 
       document
         .querySelectorAll(
@@ -2876,7 +2981,12 @@ $('employer-header-notification').onclick=()=>{
     role=await resolveRole();
     document.body.classList.toggle('candidate-mode',role==='candidate');
     document.body.classList.toggle('employer-mode',role==='employer');
-    if(role==='employer') applyEmployerMessagesTheme();
+    if(role==='employer'){
+      applyEmployerMessagesTheme();
+    }else{
+      document.querySelector('[data-filter="needs-reply"]')?.remove();
+      document.querySelector('#sort-filter option[value="score"]')?.remove();
+    }
 
     $('eyebrow').textContent=
       role==='employer'
