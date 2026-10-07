@@ -994,13 +994,18 @@ function applyOccupationProfileToForm(){
   if(!el('description').value.trim()){
     const roleTitle=el('title').value.trim()||'this role';
     const sourceDescription=String(currentOccupationProfile.description||'').trim();
+    const titleLower=roleTitle.toLowerCase();
+    const fallbackIntro=titleLower.includes('therapist')
+      ? `Join our team as a ${roleTitle}. In this role, you will work directly with clients in a professional, respectful, and confidential setting, provide support related to the needs of the position, communicate clearly, maintain appropriate records, and follow applicable workplace and professional standards.`
+      : `Join our team as a ${roleTitle}. In this role, you will contribute to the day-to-day responsibilities of the position, communicate clearly, work effectively with others, follow company standards, and help deliver a reliable experience for the people this role serves.`;
+
     const intro=isGenericOccupationDescription(sourceDescription)
-      ? `Join our team as a ${roleTitle}. This role focuses on the responsibilities and day-to-day work associated with this position.`
+      ? fallbackIntro
       : sourceDescription;
 
     const responsibilities=taskLines.length
       ? '\n\nKey responsibilities:\n'+taskLines.map(task=>`• ${task}`).join('\n')
-      : '';
+      : '\n\nKey responsibilities:\n• Carry out the core duties associated with the role.\n• Communicate professionally and maintain appropriate documentation.\n• Follow company policies, applicable standards, and established procedures.';
 
     el('description').value=intro+responsibilities;
     el('description').dispatchEvent(new Event('input'));
