@@ -648,6 +648,12 @@ nav{
   0%,80%,100%{transform:translateY(0);opacity:.24}
   40%{transform:translateY(-4px);opacity:1}
 }
+
+#loading.alygnn-page-loader.hide{
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
 </style>
 
 </head>
@@ -831,13 +837,22 @@ function escapeHtml(value){
     .replaceAll("'", '&#039;');
 }
 
-function showError(){
+function hidePageLoader(){
+  if(!loadingEl) return;
   loadingEl.classList.add('hide');
+  loadingEl.style.display='none';
+  loadingEl.style.visibility='hidden';
+  loadingEl.style.pointerEvents='none';
+  loadingEl.setAttribute('aria-hidden','true');
+}
+
+function showError(){
+  hidePageLoader();
   errorEl.classList.remove('hide');
 }
 
 function showPage(){
-  loadingEl.classList.add('hide');
+  hidePageLoader();
   pageEl.classList.add('ready');
 }
 
@@ -1455,7 +1470,10 @@ async function initJobDetailsPage(){
   }
 }
 
-initJobDetailsPage();
+initJobDetailsPage().catch((error)=>{
+  console.error('Job details failed to initialize:', error);
+  showError();
+});
 </script>
 
 <div class="mini-footer">
