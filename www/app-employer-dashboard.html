@@ -4389,49 +4389,91 @@
 
 
 
-<style id="alygnn-employer-boot-loader-v1">
+<style id="alygnn-employer-boot-loader-v2">
   #dashboard-boot-loader{
     position:fixed;
     inset:0;
-    z-index:1000;
+    z-index:9999;
     display:flex;
     align-items:center;
     justify-content:center;
-    background:var(--bg);
-    color:var(--text);
-    opacity:1;
-    visibility:visible;
-    transition:opacity .16s ease, visibility .16s ease;
+    padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+    background:
+      radial-gradient(circle at 50% 38%,rgba(93,127,163,.10),transparent 34%),
+      var(--bg,#F6F8F7);
+    color:var(--text,#1A2530);
   }
   #dashboard-boot-loader .boot-loader-inner{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    transform:translateY(-18px);
+    width:min(360px,88vw);
+    text-align:center;
+    transform:translateY(-3vh);
   }
-  #dashboard-boot-loader .boot-loader-spinner{
-    width:38px;
-    height:38px;
-    border:4px solid var(--border);
-    border-top-color:var(--brand);
-    border-radius:50%;
-    animation:alygnnBootSpin .72s linear infinite;
+  #dashboard-boot-loader .boot-loader-logo{
+    display:inline-block;
+    font-family:'DM Serif Display',Georgia,serif!important;
+    font-size:clamp(52px,14vw,68px);
+    line-height:.95;
+    letter-spacing:-2px;
+    color:var(--brand,#5D7FA3);
+    -webkit-font-smoothing:antialiased;
   }
-  #dashboard-boot-loader .boot-loader-copy{
-    font-size:12px;
+  #dashboard-boot-loader .boot-loader-logo span{
+    color:var(--sage,#8CB69B);
+  }
+  #dashboard-boot-loader .boot-loader-title{
+    margin-top:20px;
+    font-size:15px;
     line-height:1.35;
     font-weight:800;
-    color:var(--muted);
-    text-align:center;
+    color:var(--text,#1A2530);
+  }
+  #dashboard-boot-loader .boot-loader-copy{
+    min-height:20px;
+    margin-top:7px;
+    font-size:12px;
+    line-height:1.45;
+    font-weight:600;
+    color:var(--text-muted,#4A5968);
+    opacity:.88;
+  }
+  #dashboard-boot-loader .boot-loader-track{
+    position:relative;
+    width:116px;
+    height:3px;
+    margin:24px auto 0;
+    overflow:hidden;
+    border-radius:999px;
+    background:var(--border,#DDE3E8);
+  }
+  #dashboard-boot-loader .boot-loader-bar{
+    position:absolute;
+    inset:0 auto 0 -48%;
+    width:48%;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--brand,#5D7FA3),var(--sage,#8CB69B));
+    animation:alygnn-employer-boot-line 1.15s cubic-bezier(.4,0,.2,1) infinite;
+  }
+  @keyframes alygnn-employer-boot-line{
+    0%{transform:translateX(0);opacity:.45}
+    45%{opacity:1}
+    100%{transform:translateX(310%);opacity:.55}
   }
   body[data-dashboard-booting="false"] #dashboard-boot-loader{
-    opacity:0;
-    visibility:hidden;
-    pointer-events:none;
+    display:none!important;
   }
-  @keyframes alygnnBootSpin{to{transform:rotate(360deg)}}
+  html[data-theme="dark"] #dashboard-boot-loader{
+    background:
+      radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),
+      var(--bg,#07121D);
+  }
+  @media (prefers-reduced-motion:reduce){
+    #dashboard-boot-loader .boot-loader-bar{
+      left:0;
+      width:100%;
+      animation:none;
+      opacity:.8;
+    }
+  }
 </style>
 
 <style id="alygnn-employer-clean-boot">
@@ -4914,19 +4956,35 @@
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div id="dashboard-boot-loader" role="status" aria-live="polite" aria-label="Loading employer workspace">
     <div class="boot-loader-inner">
-      <div class="boot-loader-spinner" aria-hidden="true"></div>
-      <div class="boot-loader-copy" id="dashboard-boot-loader-copy">Loading your workspace…</div>
+      <div class="boot-loader-logo">Alygnn<span>.</span></div>
+      <div class="boot-loader-title" id="dashboard-boot-loader-title">Preparing your employer workspace.</div>
+      <div class="boot-loader-copy" id="dashboard-boot-loader-copy">Bringing your hiring activity together.</div>
+      <div class="boot-loader-track" aria-hidden="true">
+        <div class="boot-loader-bar"></div>
+      </div>
     </div>
   </div>
   <script>
     (function(){
       try{
         var view=(new URLSearchParams(location.search).get('view')||'').toLowerCase();
+        var title=document.getElementById('dashboard-boot-loader-title');
         var copy=document.getElementById('dashboard-boot-loader-copy');
-        if(!copy)return;
-        if(view==='jobs')copy.textContent='Loading your jobs…';
-        else if(view==='company')copy.textContent='Loading your company…';
-        else if(view==='settings')copy.textContent='Loading settings…';
+        if(!title||!copy)return;
+
+        if(view==='jobs'){
+          title.textContent='Getting your jobs ready.';
+          copy.textContent='Organizing your openings and applicant activity.';
+        }else if(view==='company'){
+          title.textContent='Getting your company workspace ready.';
+          copy.textContent='Bringing your company profile and hiring details together.';
+        }else if(view==='settings'){
+          title.textContent='Getting your settings ready.';
+          copy.textContent='Loading your account preferences and controls.';
+        }else{
+          title.textContent='Preparing your employer workspace.';
+          copy.textContent='Bringing your hiring activity together.';
+        }
       }catch(_error){}
     })();
   </script>
