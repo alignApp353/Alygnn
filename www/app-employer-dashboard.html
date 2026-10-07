@@ -7868,24 +7868,41 @@
 
     function provisionalScore(application){
       const breakdown=scoreSignalBreakdown(application);
+
+      // IMPORTANT: the overall score is calculated from the exact same
+      // live signals displayed in the score breakdown below. Missing data
+      // is excluded instead of being treated as 0%, and a stale stored
+      // match_score can no longer override the current breakdown.
       const weightedSignals=[
-        {value:breakdown.education,weight:12},   // role
-        {value:breakdown.skills,weight:20},
-        {value:breakdown.experience,weight:15},
-        {value:breakdown.location,weight:13},
-        {value:breakdown.availability,weight:20}, // work style + job type combined
-        {value:breakdown.profile,weight:15}       // compensation
+        {key:'skills',value:breakdown.skills,weight:25},
+        {key:'experience',value:breakdown.experience,weight:20},
+        {key:'role',value:breakdown.education,weight:20},
+        {key:'location',value:breakdown.location,weight:10},
+        {key:'work_preferences',value:breakdown.availability,weight:15},
+        {key:'compensation',value:breakdown.profile,weight:10}
       ].filter(item=>Number.isFinite(Number(item.value)));
 
-      if(weightedSignals.length>=2){
+      if(weightedSignals.length){
         const totalWeight=weightedSignals.reduce((sum,item)=>sum+item.weight,0);
-        const weighted=weightedSignals.reduce((sum,item)=>sum+Number(item.value)*item.weight,0);
-        return {score:Math.max(0,Math.min(100,Math.round(weighted/totalWeight))),source:'recalculated'};
+        const weighted=weightedSignals.reduce(
+          (sum,item)=>sum+(Number(item.value)*item.weight),
+          0
+        );
+        return {
+          score:Math.max(0,Math.min(100,Math.round(weighted/totalWeight))),
+          source:'recalculated',
+          breakdown
+        };
       }
 
+      // Only use a previously stored score when there is genuinely no
+      // current signal data available to calculate a live score.
       const stored=Number(application.match_score||application.alygnn_score||0);
-      if(stored>0)return {score:Math.round(stored),source:'stored'};
-      return {score:null,source:'insufficient'};
+      if(Number.isFinite(stored)&&stored>0){
+        return {score:Math.max(0,Math.min(100,Math.round(stored))),source:'stored',breakdown};
+      }
+
+      return {score:null,source:'insufficient',breakdown};
     }
 
     const jobFor = application => state.jobs.find(job =>
@@ -13284,9 +13301,9 @@
           scoreTitle.textContent = score + '% Alygnn Score';
 
           scoreCopy.textContent =
-            'Alygnn compares skills, experience, location information, education, availability, and resume/profile content with ' +
+            'Alygnn compares skills, experience, role match, location, work preferences, and compensation with ' +
             (job?.title || application.job_title || 'this role') +
-            ' to estimate overall alignment.';
+            '. Missing information is excluded from the score instead of counting against the candidate.';
         }else{
           scoreRing.style.setProperty('--score','0');
           scoreNumber.textContent = '—';
