@@ -859,7 +859,7 @@ function renderCandidateNotifications(){
     return;
   }
 
-  list.innerHTML = candidateNotifications.map(item => {
+  list.innerHTML = candidateNotifications.slice(0, 10).map(item => {
     const isUnread = !reads.has(item.id);
 
     return `
