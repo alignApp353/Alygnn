@@ -5035,7 +5035,29 @@ function forgetCandidateSeenJob(jobId,userId=session?.user?.id||''){
   }catch(_){}
 }
 
+async function assertJobStillOpen(jobId){
+  const {data:liveJob,error}=await sb
+    .from('jobs')
+    .select('id,status')
+    .eq('id',jobId)
+    .maybeSingle();
+
+  if(error)throw error;
+
+  if(!liveJob || String(liveJob.status||'').toLowerCase()!=='active'){
+    const error=new Error('This job has closed and is no longer accepting applications.');
+    error.code='ALYGNN_JOB_CLOSED';
+    throw error;
+  }
+
+  return liveJob;
+}
+
 async function createApplication(job){
+  // Re-check the job at the exact moment of application. A card may have been
+  // loaded before the employer closed the listing.
+  await assertJobStillOpen(job.id);
+
   const {data:existing,error:checkError}=await sb
     .from('applications')
     .select('id')
