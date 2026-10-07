@@ -1141,7 +1141,7 @@
                   onblur="setTimeout(hideLocationSuggestions, 150)">
                 <div class="chip-results" id="location-suggestions"></div>
               </div>
-              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Search any U.S. city or state. If a city is not suggested, you can still type it in "City, ST" format.</small>
+              <small style="font-size:11px; color:var(--text-muted); margin-top:2px;">Search any U.S. city, town, or state. Small places are supported even if they are not in the preset list.</small>
             </div>
           </div>
 
@@ -2381,6 +2381,53 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label));
   }
 
+  function parseTypedCityState(rawValue) {
+    const raw = String(rawValue || '').trim().replace(/\s+/g, ' ');
+    if (!raw) return null;
+
+    let city = '';
+    let statePart = '';
+
+    const commaMatch = raw.match(/^(.+?),\s*([A-Za-z .'-]+)$/);
+    if (commaMatch) {
+      city = commaMatch[1].trim();
+      statePart = commaMatch[2].trim();
+    } else {
+      const abbrMatch = raw.match(/^(.+?)\s+([A-Za-z]{2})$/);
+      if (abbrMatch && STATE_ABBR_SET.has(abbrMatch[2].toUpperCase())) {
+        city = abbrMatch[1].trim();
+        statePart = abbrMatch[2].toUpperCase();
+      } else {
+        const lower = raw.toLowerCase();
+        const fullState = [...US_STATES]
+          .sort((a, b) => b[0].length - a[0].length)
+          .find(([name]) => lower.endsWith(' ' + name.toLowerCase()));
+
+        if (fullState) {
+          city = raw.slice(0, raw.length - fullState[0].length).trim();
+          statePart = fullState[0];
+        }
+      }
+    }
+
+    if (!city || !/^[A-Za-z .'-]{2,}$/.test(city)) return null;
+
+    let abbr = '';
+    if (/^[A-Za-z]{2}$/.test(statePart)) {
+      abbr = statePart.toUpperCase();
+      if (!STATE_ABBR_SET.has(abbr)) return null;
+    } else {
+      abbr = STATE_NAME_TO_ABBR[String(statePart || '').toLowerCase()] || '';
+      if (!abbr) return null;
+    }
+
+    const formattedCity = city
+      .toLowerCase()
+      .replace(/(^|[\s-])([a-z])/g, (_, lead, letter) => lead + letter.toUpperCase());
+
+    return `${formattedCity}, ${abbr}`;
+  }
+
   function renderLocationSuggestions() {
     const input = document.getElementById('f-location');
     const box = document.getElementById('location-suggestions');
@@ -2402,13 +2449,19 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       )
       .slice(0, 60);
 
-    // If the employer already typed a properly shaped city/state that is not
-    // in our suggestion catalog, explicitly offer it instead of blocking them.
-    const typedCityState = /^[A-Za-z .'-]{2,},\s*[A-Za-z]{2,}$/.test(rawQuery)
-      ? { value: rawQuery, label: `Use “${rawQuery}”`, score: 1200 }
+    // Support every U.S. city/town without requiring it to exist in the
+    // hard-coded suggestion catalog. This accepts City, ST, City ST, or
+    // City State Name and normalizes it to City, ST.
+    const typedCityStateValue = parseTypedCityState(rawQuery);
+    const typedCityState = typedCityStateValue
+      ? { value: typedCityStateValue, label: typedCityStateValue, score: 1200 }
       : null;
 
-    const results = typedCityState ? [typedCityState, ...combined] : combined;
+    const results = typedCityState
+      ? [typedCityState, ...combined.filter(item =>
+          item.value.toLowerCase() !== typedCityState.value.toLowerCase()
+        )]
+      : combined;
 
     if (results.length === 0) {
       box.innerHTML = `<div class="chip-result-row" style="cursor:default;color:var(--text-muted);">
