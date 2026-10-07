@@ -3973,23 +3973,77 @@ function roleScore(job){
   return textSimilarity(candidateRole,jobTitle);
 }
 
+function requiredJobSkills(job){
+  const explicit = normalizeList(
+    job.skills ||
+    job.required_skills ||
+    job.skill_requirements ||
+    []
+  )
+    .map(skill=>String(skill||'').trim())
+    .filter(Boolean);
+
+  if(explicit.length){
+    return [...new Set(explicit)];
+  }
+
+  // Some older jobs stored individual skill names inside requirements.
+  // Only use short requirement entries as skills; long sentences stay out
+  // of the denominator so candidates are not unfairly punished.
+  const requirementItems = normalizeList(job.requirements || job.qualifications || []);
+  return [...new Set(
+    requirementItems
+      .map(item=>String(item||'').trim())
+      .filter(item=>item && item.length <= 60 && item.split(/\s+/).length <= 7)
+  )];
+}
+
+function skillPhraseMatches(candidateSkill,requiredSkill){
+  const candidate=normalizeMatchText(candidateSkill);
+  const required=normalizeMatchText(requiredSkill);
+  if(!candidate||!required)return false;
+  if(candidate===required||candidate.includes(required)||required.includes(candidate))return true;
+
+  const candidateTokens=matchTokens(candidate);
+  const requiredTokens=matchTokens(required);
+  if(!candidateTokens.length||!requiredTokens.length)return false;
+
+  const overlap=requiredTokens.filter(token=>candidateTokens.includes(token)).length;
+  return overlap / requiredTokens.length >= 0.67;
+}
+
 function skillsScore(job){
-  const skills=candidateSkills();
-  if(!skills.length)return null;
+  const candidate=candidateSkills();
+  if(!candidate.length)return null;
+
+  const required=requiredJobSkills(job);
+  if(required.length){
+    const matched=required.filter(requiredSkill=>
+      candidate.some(candidateSkill=>skillPhraseMatches(candidateSkill,requiredSkill))
+    ).length;
+
+    // Score against what the JOB asks for, not against every skill on the
+    // candidate's resume. Example: if the role asks for Critical Thinking
+    // and the candidate has it, that signal is 100% even if they list 8
+    // additional unrelated skills.
+    return Math.round((matched/required.length)*100);
+  }
+
+  // Fallback for legacy jobs that have no structured skill list.
   const haystack=normalizeMatchText(jobSearchText(job));
   if(!haystack)return null;
-  let matched=0;
-  skills.forEach(skill=>{
+  const matched=candidate.filter(skill=>{
     const normalized=normalizeMatchText(skill);
-    if(!normalized)return;
-    if(haystack.includes(normalized)){
-      matched++;
-      return;
-    }
+    if(!normalized)return false;
+    if(haystack.includes(normalized))return true;
     const tokens=matchTokens(normalized);
-    if(tokens.length&&tokens.every(token=>haystack.includes(token)))matched++;
-  });
-  return Math.round((matched/skills.length)*100);
+    return tokens.length&&tokens.every(token=>haystack.includes(token));
+  }).length;
+
+  // With no explicit requirements, treat matching resume skills as evidence
+  // rather than making every unrelated resume skill count against the user.
+  if(!matched)return 0;
+  return Math.min(100,Math.round(55 + (matched-1)*15));
 }
 
 
@@ -5035,29 +5089,7 @@ function forgetCandidateSeenJob(jobId,userId=session?.user?.id||''){
   }catch(_){}
 }
 
-async function assertJobStillOpen(jobId){
-  const {data:liveJob,error}=await sb
-    .from('jobs')
-    .select('id,status')
-    .eq('id',jobId)
-    .maybeSingle();
-
-  if(error)throw error;
-
-  if(!liveJob || String(liveJob.status||'').toLowerCase()!=='active'){
-    const error=new Error('This job has closed and is no longer accepting applications.');
-    error.code='ALYGNN_JOB_CLOSED';
-    throw error;
-  }
-
-  return liveJob;
-}
-
 async function createApplication(job){
-  // Re-check the job at the exact moment of application. A card may have been
-  // loaded before the employer closed the listing.
-  await assertJobStillOpen(job.id);
-
   const {data:existing,error:checkError}=await sb
     .from('applications')
     .select('id')
