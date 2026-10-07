@@ -601,17 +601,23 @@ async function reconcileJobsAfterPaidPlanEnds(employerId){
     }
   }
 
-  const jobsToPause=live.filter(job=>String(job.id)!==String(keepJob.id));
-  for(const job of jobsToPause){
+  const jobsToClose=live.filter(job=>String(job.id)!==String(keepJob.id));
+  for(const job of jobsToClose){
     const patchUrl=new URL(`${supabaseBase()}/rest/v1/jobs`);
     patchUrl.searchParams.set('id','eq.'+job.id);
+    const closedAt=new Date().toISOString();
     const patchResponse=await fetch(patchUrl,{
       method:'PATCH',
       headers:serviceHeaders({Prefer:'return=minimal'}),
-      body:JSON.stringify({status:'paused',pause_reason:'plan_expired',updated_at:new Date().toISOString()})
+      body:JSON.stringify({
+        status:'closed',
+        closed_reason:'plan_expired',
+        closed_at:closedAt,
+        updated_at:closedAt
+      })
     });
     if(!patchResponse.ok){
-      throw new Error(`Could not pause job ${job.id} after paid plan ended: `+await patchResponse.text());
+      throw new Error(`Could not close job ${job.id} after paid plan ended: `+await patchResponse.text());
     }
   }
 }
