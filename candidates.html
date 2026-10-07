@@ -1004,7 +1004,7 @@ function renderCandidatePageNotifications(items){
     return;
   }
 
-  list.innerHTML=candidatePageNotificationItems.slice(0,6).map(n=>{
+  list.innerHTML=candidatePageNotificationItems.slice(0,10).map(n=>{
     const isApplicant=
       String(n.type||'').toLowerCase().includes('applicant') ||
       String(n.title||'').toLowerCase().includes('applicant') ||
