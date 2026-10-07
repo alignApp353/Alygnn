@@ -1953,13 +1953,14 @@ async function executeExistingPlanChange(){
     }
 
     if(
-      data.change==='downgrade_scheduled'
+      data.change==='downgrade_scheduled' ||
+      data.change==='plan_change_scheduled'
     ){
       btn.textContent=
-        'Downgrade scheduled ✓';
+        'Plan change scheduled ✓';
 
       showMessage(
-        `${planNameFromCode(change.current)} stays active until ${data.effective_at?new Date(data.effective_at).toLocaleDateString():'your renewal date'}. $0 is due today, and no refund or account credit is issued. ${planNameFromCode(change.target)} begins at renewal.`
+        `${planNameFromCode(change.current)} stays active until ${data.effective_at?new Date(data.effective_at).toLocaleDateString():'your renewal date'}. $0 is due today, and ${planNameFromCode(change.target)} begins at renewal.`
       );
 
       setTimeout(()=>{
