@@ -153,6 +153,7 @@
   .job-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .job-status.active { background: var(--mint); }
   .job-status.pending { background: #E7B86D; }
+  .job-status.draft { background:#EEF1F4; color:#66717D; }
   .job-status.paused { background: var(--rose); }
   .job-status.closed { background: #9BA8B3; }
   .job-status-badge.closed { color: #586673; background: rgba(155,168,179,0.14); }
@@ -963,12 +964,6 @@
       </span>
       My Jobs
     </button>
-    <button class="nav-item" onclick="showPanel('closed-jobs', this)">
-      <span class="nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 4h8v4H8z"/><path d="M8 13h8"/></svg>
-      </span>
-      Closed Jobs
-    </button>
     <a class="nav-item" id="sidebar-candidates-link" href="candidates.html">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg>
@@ -1025,7 +1020,15 @@
         <div class="section-title">Job listings <span id="job-slot-usage" style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;"></span></div>
         <button class="btn-primary" id="post-new-job-btn" onclick="openPostJob()">+ Post new job</button>
       </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button type="button" id="jobs-view-active" class="btn-view" onclick="switchJobsView('active')" style="background:var(--brand);color:white;border-color:var(--brand);">Active jobs</button>
+        <button type="button" id="jobs-view-drafts" class="btn-view" onclick="switchJobsView('drafts')">Drafts <span id="draft-jobs-count">(0)</span></button>
+        <button type="button" id="jobs-view-closed" class="btn-view" onclick="switchJobsView('closed')">Closed jobs <span id="closed-jobs-count">(0)</span></button>
+      </div>
+
       <input type="text" class="form-input" id="jobs-search-input" placeholder="Search your posted jobs by title, location, or type…" autocomplete="off" oninput="renderJobs()" style="margin-bottom: 16px;">
+
       <div id="jobs-list">
         <div class="empty-state" id="jobs-loading-state">
           <div class="empty-icon">💼</div>
@@ -1033,18 +1036,9 @@
         </div>
       </div>
 
-    </div>
+      <div id="draft-jobs-list" style="display:none;"></div>
+      <div id="closed-jobs-list" style="display:none;"></div>
 
-    <!-- CLOSED JOBS -->
-    <div class="panel" id="panel-closed-jobs">
-      <div class="page-header">
-        <div class="page-title">Closed Jobs</div>
-        <div class="page-sub">Reopen a saved job when you have an available slot.</div>
-      </div>
-      <div class="section-header">
-        <div class="section-title">Closed job listings <span id="closed-jobs-count" style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;"></span></div>
-      </div>
-      <div id="closed-jobs-list"></div>
     </div>
 
     <!-- CANDIDATES — shows all applicants by default. When opened from a
@@ -1324,6 +1318,7 @@
             <button type="button" class="btn-wizard-continue" id="wizard-continue-btn" onclick="wizardContinue()">Continue</button>
           </div>
 
+          <button type="button" class="wizard-cancel-edit" id="save-draft-btn" onclick="saveJobDraft()">Save draft</button>
           <button type="button" class="wizard-cancel-edit" id="cancel-edit-btn" onclick="cancelEdit()" style="display:none;">Cancel edit</button>
 
           <!-- Kept off-screen so postJob()/updateVerificationUI() (which look up
@@ -1530,6 +1525,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   let selectedGooglePlace = null;
   let locationAutocomplete = null;
+
+  let jobDrafts = [];
+  let activeJobDraftId = null;
 
   // ---- Search-to-add picker state ----
   const REQUIREMENT_PRESETS = [
@@ -3489,6 +3487,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     // Clicking the main "Post a Job" action always starts a NEW listing.
     if (editingJobId) cancelEdit();
+    activeJobDraftId = null;
+    clearJobForm();
+    document.getElementById('post-form-title').textContent = 'Post a Job';
+    document.getElementById('cancel-edit-btn').style.display = 'none';
     showPanel('post');
   }
 
@@ -3524,7 +3526,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   // The actual data-fetching side effects for a given panel.
   function loadPanelData(name) {
-    if (name === 'post') { updatePreview(); resetWizardToStep1(); }
+    if (name === 'post') {
+      updatePreview();
+      if (!activeJobDraftId) resetWizardToStep1();
+    }
   }
 
   // Every real panel switch changes the URL hash, which is a genuine
@@ -3536,7 +3541,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function showPanel(name) {
     // Editing an existing listing never consumes another posting slot.
     // Creating a new listing must pass the billing gate.
-    if (name === 'post' && !editingJobId && billingReady && !canCreateNewJob()) {
+    if (name === 'post' && !editingJobId && !activeJobDraftId && billingReady && !canCreateNewJob()) {
       redirectToPricing(getPostingAccess().reason);
       return;
     }
@@ -3554,7 +3559,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function handleHashRoute() {
     const name = getPanelFromHash();
 
-    if (name === 'post' && currentUser && billingReady && !editingJobId && !canCreateNewJob()) {
+    if (name === 'post' && currentUser && billingReady && !editingJobId && !activeJobDraftId && !canCreateNewJob()) {
       redirectToPricing(getPostingAccess().reason);
       return;
     }
@@ -3858,7 +3863,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const continueBtn = document.getElementById('wizard-continue-btn');
     if (currentWizardStep === TOTAL_WIZARD_STEPS) {
       continueBtn.textContent = editingJobId ? 'Save changes →' : 'Post job →';
-      const postingAllowed = editingJobId || (!billingReady ? false : canCreateNewJob());
+      const postingAllowed = editingJobId || activeJobDraftId || (!billingReady ? false : canCreateNewJob());
       const locked = !postingAllowed;
       continueBtn.classList.toggle('locked', locked);
       continueBtn.disabled = locked;
@@ -4492,7 +4497,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     jobs = data || [];
-    await loadAppliedCounts();
+    await Promise.all([
+      loadAppliedCounts(),
+      loadJobDrafts()
+    ]);
     renderJobs();
     if (billingReady) updatePostingAccessUI();
   }
@@ -5005,21 +5013,226 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+  async function loadJobDrafts() {
+    if (!currentUser?.id) {
+      jobDrafts = [];
+      return;
+    }
+
+    const { data, error } = await sb
+      .from('employer_job_drafts')
+      .select('id,employer_id,title,location,current_step,draft_data,created_at,updated_at')
+      .eq('employer_id', currentUser.id)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not load job drafts:', error);
+      return;
+    }
+
+    jobDrafts = Array.isArray(data) ? data : [];
+  }
+
+  function collectCurrentDraftData() {
+    return {
+      ...collectJobForm(),
+      saved_wizard_step: currentWizardStep
+    };
+  }
+
+  function draftHasMeaningfulContent(draft) {
+    if (!draft || typeof draft !== 'object') return false;
+    return Boolean(
+      String(draft.title || '').trim() ||
+      String(draft.location || '').trim() ||
+      String(draft.description || '').trim() ||
+      String(draft.requirements || '').trim() ||
+      String(draft.benefits || '').trim() ||
+      String(draft.salary || '').trim()
+    );
+  }
+
+  async function saveJobDraft() {
+    if (editingJobId) {
+      showToast('Save changes to the job instead of creating a draft.');
+      return;
+    }
+
+    if (!currentUser?.id) {
+      showToast('Your session expired. Please sign in again.');
+      return;
+    }
+
+    const draft = collectCurrentDraftData();
+
+    if (!draftHasMeaningfulContent(draft)) {
+      showToast('Add something to the job before saving a draft.');
+      return;
+    }
+
+    const row = {
+      employer_id: currentUser.id,
+      title: String(draft.title || '').trim() || 'Untitled job draft',
+      location: String(draft.location || '').trim() || null,
+      current_step: Math.max(1, Math.min(TOTAL_WIZARD_STEPS, Number(currentWizardStep || 1))),
+      draft_data: draft,
+      updated_at: new Date().toISOString()
+    };
+
+    let error = null;
+
+    if (activeJobDraftId) {
+      ({ error } = await sb
+        .from('employer_job_drafts')
+        .update(row)
+        .eq('id', activeJobDraftId)
+        .eq('employer_id', currentUser.id));
+    } else {
+      const result = await sb
+        .from('employer_job_drafts')
+        .insert(row)
+        .select('id')
+        .single();
+
+      error = result.error;
+      if (!error && result.data?.id) activeJobDraftId = result.data.id;
+    }
+
+    if (error) {
+      console.error('Could not save job draft:', error);
+      showToast('Could not save draft.');
+      return;
+    }
+
+    await loadJobDrafts();
+    renderJobs();
+    showToast('Draft saved.');
+  }
+
+  function renderDraftCard(draft) {
+    const title = String(draft?.title || '').trim() || 'Untitled job draft';
+    const location = String(draft?.location || '').trim();
+    const step = Math.max(1, Math.min(TOTAL_WIZARD_STEPS, Number(draft?.current_step || 1)));
+
+    let updated = '';
+    try {
+      updated = draft?.updated_at
+        ? new Date(draft.updated_at).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          })
+        : '';
+    } catch (_) {}
+
+    return `
+      <div class="job-card">
+        <div class="job-info">
+          <div class="job-title-row">
+            <div class="job-title">${escapeHtml(title)} <span class="job-status draft">Draft</span></div>
+          </div>
+          <div class="job-meta">${location ? escapeHtml(location) + ' · ' : ''}Step ${step} of ${TOTAL_WIZARD_STEPS}${updated ? ' · Updated ' + escapeHtml(updated) : ''}</div>
+        </div>
+        <div class="job-stats"></div>
+        <div class="job-actions">
+          <button class="btn-view" onclick="continueJobDraft('${draft.id}')">Continue draft</button>
+          <button class="btn-danger" onclick="deleteJobDraft('${draft.id}')">Delete draft</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function continueJobDraft(draftId) {
+    if (isTeamMember && !teamCan('jobs_manage')) {
+      showToast('Your team role does not include job posting access.');
+      return;
+    }
+
+    const draft = jobDrafts.find(item => String(item.id) === String(draftId));
+    if (!draft) {
+      showToast('This draft could not be found.');
+      return;
+    }
+
+    editingJobId = null;
+    activeJobDraftId = draft.id;
+    fillJobForm(draft.draft_data || {});
+
+    currentWizardStep = Math.max(
+      1,
+      Math.min(TOTAL_WIZARD_STEPS, Number(draft.current_step || draft.draft_data?.saved_wizard_step || 1))
+    );
+
+    document.getElementById('post-form-title').textContent = 'Continue Draft';
+    document.getElementById('post-job-btn').textContent = 'Post job →';
+    document.getElementById('cancel-edit-btn').style.display = 'block';
+
+    showPanel('post');
+    renderWizardStep();
+  }
+
+  async function deleteJobDraft(draftId) {
+    if (!currentUser?.id) return;
+    if (!confirm('Delete this job draft? This cannot be undone.')) return;
+
+    const { error } = await sb
+      .from('employer_job_drafts')
+      .delete()
+      .eq('id', draftId)
+      .eq('employer_id', currentUser.id);
+
+    if (error) {
+      console.error('Could not delete job draft:', error);
+      showToast('Could not delete draft.');
+      return;
+    }
+
+    if (String(activeJobDraftId || '') === String(draftId)) activeJobDraftId = null;
+
+    await loadJobDrafts();
+    renderJobs();
+    showToast('Draft deleted.');
+  }
+
+  let jobsViewMode = 'active';
+
+  function switchJobsView(mode) {
+    jobsViewMode = ['active', 'drafts', 'closed'].includes(mode) ? mode : 'active';
+
+    const activeBtn = document.getElementById('jobs-view-active');
+    const draftsBtn = document.getElementById('jobs-view-drafts');
+    const closedBtn = document.getElementById('jobs-view-closed');
+    const activeList = document.getElementById('jobs-list');
+    const draftsList = document.getElementById('draft-jobs-list');
+    const closedList = document.getElementById('closed-jobs-list');
+
+    [
+      [activeBtn, 'active'],
+      [draftsBtn, 'drafts'],
+      [closedBtn, 'closed']
+    ].forEach(([button, value]) => {
+      if (!button) return;
+      const selected = jobsViewMode === value;
+      button.style.background = selected ? 'var(--brand)' : '';
+      button.style.color = selected ? 'white' : '';
+      button.style.borderColor = selected ? 'var(--brand)' : '';
+    });
+
+    if (activeList) activeList.style.display = jobsViewMode === 'active' ? '' : 'none';
+    if (draftsList) draftsList.style.display = jobsViewMode === 'drafts' ? '' : 'none';
+    if (closedList) closedList.style.display = jobsViewMode === 'closed' ? '' : 'none';
+  }
+
   function renderJobs() {
     const jobsList = document.getElementById('jobs-list');
+    const draftsList = document.getElementById('draft-jobs-list');
     const closedList = document.getElementById('closed-jobs-list');
+    const draftCount = document.getElementById('draft-jobs-count');
     const closedCount = document.getElementById('closed-jobs-count');
 
     if (!jobsList) return;
-
-    if (jobs.length === 0) {
-      jobsList.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">Your job slot is available</div>Post a job using your available slot. If your business is still being verified, the job will stay pending until approval.</div>`;
-      if (closedList) {
-        closedList.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-title">No closed jobs</div>Jobs you close will stay saved here.</div>`;
-      }
-      if (closedCount) closedCount.textContent = '';
-      return;
-    }
 
     const searchInput = document.getElementById('jobs-search-input');
     const query = (searchInput?.value || '').trim().toLowerCase();
@@ -5036,7 +5249,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     };
 
     const activeJobs = jobs.filter(job =>
-      String(job.status || '').toLowerCase() !== 'closed' &&
+      !['closed', 'draft'].includes(String(job.status || '').toLowerCase()) &&
       matchesSearch(job)
     );
 
@@ -5045,25 +5258,41 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       matchesSearch(job)
     );
 
-    if (activeJobs.length === 0) {
-      jobsList.innerHTML = query
-        ? `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No active jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`
-        : `<div class="empty-state"><div class="empty-icon">💼</div><div class="empty-title">No active jobs</div>Post a new job or reopen one from Closed jobs below.</div>`;
-    } else {
-      jobsList.innerHTML = activeJobs.map(job => renderJobRow(job)).join('');
+    const visibleDrafts = jobDrafts.filter(draft => {
+      if (!query) return true;
+      const haystack = [
+        draft.title,
+        draft.location,
+        draft.draft_data?.job_type,
+        draft.draft_data?.work_style
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+
+    jobsList.innerHTML = activeJobs.length
+      ? activeJobs.map(job => renderJobRow(job)).join('')
+      : query
+        ? `<div class="empty-state"><div class="empty-title">No active jobs match "${escapeHtml(searchInput.value)}"</div>Try a different search term.</div>`
+        : `<div class="empty-state"><div class="empty-title">No active jobs</div>Post a new job, continue a draft, or reopen a closed job.</div>`;
+
+    if (draftsList) {
+      draftsList.innerHTML = visibleDrafts.length
+        ? visibleDrafts.map(draft => renderDraftCard(draft)).join('')
+        : `<div class="empty-state"><div class="empty-title">No drafts</div>Start a job and choose Save draft to keep it here.</div>`;
     }
 
     if (closedList) {
-      if (closedJobs.length === 0) {
-        closedList.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-title">No closed jobs</div>Jobs you close will stay saved here.</div>`;
-        if (closedCount) closedCount.textContent = '';
-      } else {
-        if (closedCount) {
-          closedCount.textContent = `· ${closedJobs.length} ${closedJobs.length === 1 ? 'job' : 'jobs'}`;
-        }
-        closedList.innerHTML = closedJobs.map(job => renderJobRow(job)).join('');
-      }
+      closedList.innerHTML = closedJobs.length
+        ? closedJobs.map(job => renderJobRow(job)).join('')
+        : `<div class="empty-state"><div class="empty-title">No closed jobs</div>Jobs you close will stay saved here.</div>`;
     }
+
+    if (draftCount) draftCount.textContent = `(${jobDrafts.length})`;
+    if (closedCount) {
+      closedCount.textContent = `(${jobs.filter(job => String(job.status || '').toLowerCase() === 'closed').length})`;
+    }
+
+    switchJobsView(jobsViewMode);
   }
 
   // Filters .candidate-card elements inside #candidates-grid by their
@@ -5660,6 +5889,22 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       showToast(employerVerified
         ? 'Job posted successfully!'
         : 'Job saved as pending. It will go live automatically after your business is approved.');
+
+      if (activeJobDraftId && currentUser?.id) {
+        const draftIdToRemove = activeJobDraftId;
+        activeJobDraftId = null;
+
+        const { error: draftDeleteError } = await sb
+          .from('employer_job_drafts')
+          .delete()
+          .eq('id', draftIdToRemove)
+          .eq('employer_id', currentUser.id);
+
+        if (draftDeleteError) {
+          console.warn('Published job, but could not remove its draft:', draftDeleteError);
+        }
+      }
+
       clearJobForm();
     }
 
@@ -5679,6 +5924,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (!job) return;
 
     editingJobId = jobId;
+    activeJobDraftId = null;
     fillJobForm(job);
 
     document.getElementById('post-form-title').textContent = 'Edit Job';
@@ -5690,6 +5936,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   function cancelEdit(clearForm = true) {
     editingJobId = null;
+    activeJobDraftId = null;
 
     document.getElementById('post-form-title').textContent = 'Post a Job';
     document.getElementById('post-job-btn').textContent = 'Post job →';
