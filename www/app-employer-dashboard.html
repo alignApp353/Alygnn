@@ -7726,24 +7726,171 @@
       return data.experience?45:null;
     }
 
+    const locationDistanceScoreCache=new Map();
+    const locationPointCache=new Map();
+
     function normalizeLocationParts(value){
-      const raw=scoreText(value).replace(/\bzip\s*\d{5}(?:-\d{4})?\b/g,'').trim();
-      if(!raw)return {raw:'',city:'',state:''};
+      const original=String(value||'').trim();
+      const normalized=scoreText(original);
+      const postalMatch=normalized.match(/\b(?:zip\s*)?(\d{5})(?:-\d{4})?\b/);
+      const postalCode=postalMatch?postalMatch[1]:'';
+      const raw=normalized.replace(/\bzip\s*\d{5}(?:-\d{4})?\b/g,'').trim();
+      if(!raw&&!postalCode)return {raw:'',city:'',state:'',postalCode};
       const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
-      if(parts.length>=2)return {raw,city:parts[0],state:parts[parts.length-1]};
-      const tokens=raw.split(' ').filter(Boolean);
+      if(parts.length>=2){
+        return {
+          raw,
+          city:parts[0],
+          state:parts[parts.length-1].replace(/\b\d{5}(?:-\d{4})?\b/g,'').trim(),
+          postalCode
+        };
+      }
+      const tokens=raw.replace(/\b\d{5}(?:-\d{4})?\b/g,'').split(' ').filter(Boolean);
       const state=tokens.length>1&&tokens[tokens.length-1].length===2?tokens.pop():'';
-      return {raw,city:tokens.join(' '),state};
+      return {raw,city:tokens.join(' '),state,postalCode};
+    }
+
+    function jobIsRemote(job){
+      const style=scoreText(job?.work_style||job?.workStyle||job?.workplace_type||job?.location_type||'');
+      const location=scoreText(job?.location||'');
+      return style.includes('remote')||location==='remote'||location.includes('remote -');
+    }
+
+    function haversineMiles(a,b){
+      if(!a||!b)return null;
+      const lat1=Number(a.latitude),lon1=Number(a.longitude);
+      const lat2=Number(b.latitude),lon2=Number(b.longitude);
+      if(![lat1,lon1,lat2,lon2].every(Number.isFinite))return null;
+      const toRad=deg=>deg*Math.PI/180;
+      const dLat=toRad(lat2-lat1);
+      const dLon=toRad(lon2-lon1);
+      const h=Math.sin(dLat/2)**2+
+        Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return 3958.7613*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+    }
+
+    function distanceToLocationScore(miles,job){
+      if(!Number.isFinite(miles))return null;
+      const style=scoreText(job?.work_style||job?.workStyle||job?.workplace_type||'');
+      const hybrid=style.includes('hybrid');
+      if(hybrid){
+        if(miles<=15)return 100;
+        if(miles<=35)return 95;
+        if(miles<=60)return 85;
+        if(miles<=90)return 70;
+        if(miles<=140)return 50;
+        if(miles<=220)return 30;
+        return 10;
+      }
+      if(miles<=10)return 100;
+      if(miles<=25)return 90;
+      if(miles<=40)return 75;
+      if(miles<=60)return 60;
+      if(miles<=90)return 40;
+      if(miles<=120)return 25;
+      return 10;
+    }
+
+    function locationDistanceKey(data,job){
+      const candidate=normalizeLocationParts(data?.location);
+      const offered=normalizeLocationParts(job?.location||[job?.city,job?.state].filter(Boolean).join(', '));
+      return [candidate.postalCode||candidate.raw,offered.postalCode||offered.raw,scoreText(job?.work_style||job?.workStyle||'')].join('|');
+    }
+
+    async function lookupLocationPoint(value){
+      const parts=normalizeLocationParts(value);
+      const cacheKey=parts.postalCode||[parts.city,parts.state].filter(Boolean).join('|');
+      if(!cacheKey)return null;
+      if(locationPointCache.has(cacheKey))return locationPointCache.get(cacheKey);
+
+      try{
+        let query=sb
+          .from('us_location_catalog')
+          .select('city,state_code,postal_code,latitude,longitude,location_type')
+          .not('latitude','is',null)
+          .not('longitude','is',null);
+
+        if(parts.postalCode){
+          query=query.eq('postal_code',parts.postalCode);
+        }else if(parts.city&&parts.state){
+          query=query.ilike('city',parts.city).eq('state_code',parts.state.toUpperCase());
+        }else if(parts.city){
+          query=query.ilike('city',parts.city);
+        }else{
+          return null;
+        }
+
+        const {data:rows,error}=await query.limit(1);
+        if(error)throw error;
+        const point=Array.isArray(rows)&&rows.length?rows[0]:null;
+        locationPointCache.set(cacheKey,point);
+        return point;
+      }catch(error){
+        console.warn('Location distance lookup failed:',error);
+        locationPointCache.set(cacheKey,null);
+        return null;
+      }
     }
 
     function locationSignalScore(data,job){
+      if(jobIsRemote(job))return 100;
       const candidate=normalizeLocationParts(data.location);
       const offered=normalizeLocationParts(job.location||[job.city,job.state].filter(Boolean).join(', '));
-      if(!candidate.raw||!offered.raw)return null;
-      if(candidate.raw===offered.raw)return 100;
-      if(candidate.city&&offered.city&&candidate.city===offered.city)return 100;
-      if(candidate.state&&offered.state&&candidate.state===offered.state)return 75;
-      return 20;
+      if((!candidate.raw&&!candidate.postalCode)||(!offered.raw&&!offered.postalCode))return null;
+
+      const cacheKey=locationDistanceKey(data,job);
+      if(locationDistanceScoreCache.has(cacheKey))return locationDistanceScoreCache.get(cacheKey);
+
+      if(candidate.postalCode&&offered.postalCode&&candidate.postalCode===offered.postalCode)return 100;
+      if(candidate.raw&&candidate.raw===offered.raw)return 100;
+      if(candidate.city&&offered.city&&candidate.city===offered.city&&candidate.state===offered.state)return 100;
+
+      // Temporary fallback while the exact catalog coordinates are loading.
+      // The applicant screen refreshes this value as soon as distance is resolved.
+      if(candidate.state&&offered.state&&candidate.state===offered.state)return 55;
+      return 15;
+    }
+
+    async function refreshLocationDistanceScore(application){
+      const data=candidateData(application);
+      const job=jobFor(application)||{};
+      if(jobIsRemote(job))return;
+
+      const candidateValue=data.location;
+      const offeredValue=job.location||[job.city,job.state].filter(Boolean).join(', ');
+      if(!candidateValue||!offeredValue)return;
+
+      const cacheKey=locationDistanceKey(data,job);
+      if(locationDistanceScoreCache.has(cacheKey))return;
+
+      const [candidatePoint,jobPoint]=await Promise.all([
+        lookupLocationPoint(candidateValue),
+        lookupLocationPoint(offeredValue)
+      ]);
+      const miles=haversineMiles(candidatePoint,jobPoint);
+      const score=distanceToLocationScore(miles,job);
+      if(!Number.isFinite(score))return;
+
+      locationDistanceScoreCache.set(cacheKey,score);
+
+      // Update both the visible breakdown and the overall Alygnn Score so they stay in sync.
+      if(state.activeCandidate&&String(state.activeCandidate.id)===String(application.id)){
+        renderScoreSignalBreakdown(application);
+        const scoreInfo=provisionalScore(application);
+        const overall=Number(scoreInfo.score||0);
+        const scoreRing=$('candidate-page-score-ring');
+        const scoreNumber=$('candidate-page-score-number');
+        const scoreFit=$('candidate-page-fit');
+        const scoreTitle=$('candidate-page-score-title');
+        const scoreBadge=$('candidate-page-score');
+        if(overall>0){
+          if(scoreRing)scoreRing.style.setProperty('--score',String(Math.max(0,Math.min(100,overall))));
+          if(scoreNumber)scoreNumber.textContent=overall+'%';
+          if(scoreFit)scoreFit.textContent=fitLabel(overall);
+          if(scoreTitle)scoreTitle.textContent=overall+'% Alygnn Score';
+          if(scoreBadge)scoreBadge.textContent=overall+'% Alygnn Score';
+        }
+      }
     }
 
     function roleSignalScore(data,job){
@@ -13364,6 +13511,7 @@
         }
 
         renderScoreSignalBreakdown(application);
+        refreshLocationDistanceScore(application);
 
         const applicationStatus =
           String(application.status || 'applied')
