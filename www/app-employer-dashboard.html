@@ -13751,22 +13751,35 @@
           'Close this job? It will stop appearing to candidates and free this reusable job slot for another opening.'
         )) return;
 
+        const previousStatus=job.status;
+        const closedAt=new Date().toISOString();
+
+        // Close it in the employer UI immediately. The database update below
+        // is the source of truth; if it fails, restore the old status.
+        job.status='closed';
+        job.updated_at=closedAt;
+        renderAll();
+
         const { error } = await sb
           .from('jobs')
           .update({
             status:'closed',
-            updated_at:new Date().toISOString()
+            updated_at:closedAt
           })
           .eq('id',id);
 
         if(error){
           console.error(error);
+          job.status=previousStatus;
+          renderAll();
           toast('Could not close job.');
           return;
         }
 
-        job.status='closed';
-        renderAll();
+        // Clear stale slot-gate state so the next Post a Job check starts fresh.
+        sessionStorage.removeItem('alygnn_job_slot_gate');
+        sessionStorage.removeItem('alygnnPostJobCapacityPass');
+
         toast('Job closed. The slot is now available.');
         return;
       }
@@ -14717,35 +14730,41 @@
         });
       };
 
-      for(const column of ['employer_id','created_by','user_id','owner_id']){
-        const result = await sb
+      const ownershipColumns=['employer_id','created_by','user_id','owner_id'];
+      const ownershipQueries=ownershipColumns.map(column=>
+        sb
           .from('jobs')
           .select('*')
           .eq(column,userId)
-          .order('created_at',{ascending:false});
+          .order('created_at',{ascending:false})
+      );
+
+      const companyId=currentCompanyIdForJobs();
+
+      if(companyId){
+        ownershipQueries.push(
+          sb
+            .from('jobs')
+            .select('*')
+            .eq('company_id',companyId)
+            .order('created_at',{ascending:false})
+        );
+      }
+
+      const results=await Promise.all(ownershipQueries);
+
+      results.forEach((result,index)=>{
+        const label=
+          index<ownershipColumns.length
+            ? ownershipColumns[index]
+            : 'company_id';
 
         if(!result.error){
           addRows(result.data);
         }else{
-          console.warn(`Jobs query using ${column} failed:`,result.error);
+          console.warn(`Jobs query using ${label} failed:`,result.error);
         }
-      }
-
-      const companyId = currentCompanyIdForJobs();
-
-      if(companyId){
-        const companyResult = await sb
-          .from('jobs')
-          .select('*')
-          .eq('company_id',companyId)
-          .order('created_at',{ascending:false});
-
-        if(!companyResult.error){
-          addRows(companyResult.data);
-        }else{
-          console.warn('Jobs query using company_id failed:',companyResult.error);
-        }
-      }
+      });
 
       collected.sort((a,b) => {
         const aTime = new Date(a?.created_at || a?.updated_at || 0).getTime() || 0;
@@ -15115,9 +15134,11 @@
 
         await reconcileEndedPlanJobsOnDashboard();
 
-        // Repair older listings that were published before the company-logo
-        // snapshot was consistently written to jobs.company_logo.
-        await syncEmployerLogoToExistingJobs();
+        // Repair older logo snapshots in the background. This must never block
+        // opening My Jobs when returning from Messages or another employer tab.
+        syncEmployerLogoToExistingJobs().catch(error=>{
+          console.warn('Background job-logo sync failed:',error);
+        });
 
         try{
           await refreshApplicationsForCurrentJobs();
