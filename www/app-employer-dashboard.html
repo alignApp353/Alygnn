@@ -7690,27 +7690,40 @@
 
     function experienceSignalScore(data,job){
       const experiences=Array.isArray(data.experienceList)?data.experienceList:[];
-      if(!experiences.length)return data.experience?35:null;
 
-      let bestTitle=0;
-      const experienceText=[];
-      experiences.forEach(item=>{
-        if(!item||typeof item!=='object')return;
-        const title=item.title||item.job_title||item.position||item.role||'';
-        const description=item.description||item.details||item.summary||item.responsibilities||'';
-        const similarity=scoreSimilarity(title,job.title||'');
-        if(Number.isFinite(similarity))bestTitle=Math.max(bestTitle,similarity);
-        experienceText.push(title,item.company||item.company_name||'',description);
-      });
+      // Experience measures how much usable work history the candidate has.
+      // Relevance to this specific opening is handled separately by Role match.
+      const profile=data.profile||{};
+      const numericYears=[
+        profile.years_experience,
+        profile.experience_years,
+        data.experience
+      ]
+        .map(value=>{
+          const match=String(value??'').match(/\d+(?:\.\d+)?/);
+          return match?Number(match[0]):NaN;
+        })
+        .find(value=>Number.isFinite(value)&&value>=0);
 
-      const candidateTokens=new Set(scoreTokens(experienceText.filter(Boolean).join(' ')));
-      const jobTokens=[...new Set(scoreTokens(jobScoringText(job)))];
-      let keywordScore=0;
-      if(candidateTokens.size&&jobTokens.length){
-        const overlap=jobTokens.filter(token=>candidateTokens.has(token)).length;
-        keywordScore=Math.min(100,Math.round((overlap/Math.min(jobTokens.length,18))*100));
+      let historyScore=null;
+      if(Number.isFinite(numericYears)){
+        if(numericYears>=8) historyScore=100;
+        else if(numericYears>=5) historyScore=90;
+        else if(numericYears>=3) historyScore=78;
+        else if(numericYears>=2) historyScore=68;
+        else if(numericYears>=1) historyScore=58;
+        else if(numericYears>0) historyScore=45;
       }
-      return Math.round(Math.min(100,bestTitle*.65+keywordScore*.35));
+
+      if(experiences.length){
+        const roleCountScore=Math.min(100,45+(experiences.length*12));
+        historyScore=Number.isFinite(historyScore)
+          ? Math.max(historyScore,roleCountScore)
+          : roleCountScore;
+      }
+
+      if(Number.isFinite(historyScore))return Math.round(historyScore);
+      return data.experience?45:null;
     }
 
     function normalizeLocationParts(value){
@@ -7734,15 +7747,68 @@
     }
 
     function roleSignalScore(data,job){
+      if(!job.title)return null;
+
       const titles=[];
       if(data.headline)titles.push(data.headline);
       (Array.isArray(data.experienceList)?data.experienceList:[]).forEach(item=>{
         const title=item?.title||item?.job_title||item?.position||item?.role;
         if(title)titles.push(title);
       });
-      if(!titles.length||!job.title)return null;
-      const scores=titles.map(title=>scoreSimilarity(title,job.title)).filter(Number.isFinite);
-      return scores.length?Math.max(...scores):null;
+
+      const candidateText=[
+        ...titles,
+        data.summary,
+        data.resumeText,
+        ...(Array.isArray(data.skills)?data.skills:[]),
+        ...(Array.isArray(data.experienceList)?data.experienceList.flatMap(item=>[
+          item?.description,item?.details,item?.summary,item?.responsibilities
+        ]):[])
+      ].filter(Boolean).join(' ');
+
+      if(!candidateText.trim())return null;
+
+      // 1) Direct title similarity remains the strongest role signal.
+      const titleScores=titles
+        .map(title=>scoreSimilarity(title,job.title))
+        .filter(Number.isFinite);
+      const bestTitle=titleScores.length?Math.max(...titleScores):0;
+
+      // 2) Compare transferable experience/skills to the actual job content.
+      const candidateTokens=new Set(scoreTokens(candidateText));
+      const targetTokens=[...new Set(scoreTokens(jobScoringText(job)))];
+      let contentOverlap=0;
+      if(candidateTokens.size&&targetTokens.length){
+        const overlap=targetTokens.filter(token=>candidateTokens.has(token)).length;
+        contentOverlap=Math.min(100,Math.round((overlap/Math.min(targetTokens.length,16))*100));
+      }
+
+      // 3) Recognize common adjacent job families so transferable experience is
+      // not incorrectly shown as a hard 0% just because titles use different words.
+      const families={
+        customer_service:['customer','service','support','client','guest','attendant','representative','associate','front','desk','call','center'],
+        sales:['sales','account','business','development','retail','representative','consultant','advisor'],
+        admin:['administrative','admin','office','reception','coordinator','assistant','clerical'],
+        food_service:['server','cook','kitchen','restaurant','food','barista','cashier','hospitality'],
+        warehouse:['warehouse','inventory','stock','shipping','receiving','fulfillment','picker','packer'],
+        management:['manager','supervisor','lead','director','team','leader']
+      };
+      const candidateNorm=scoreText(candidateText);
+      const jobNorm=scoreText(jobScoringText(job));
+      let familyScore=0;
+      Object.values(families).forEach(words=>{
+        const candidateHit=words.some(word=>candidateNorm.includes(word));
+        const jobHit=words.some(word=>jobNorm.includes(word));
+        if(candidateHit&&jobHit)familyScore=Math.max(familyScore,65);
+      });
+
+      const combined=Math.max(
+        bestTitle,
+        familyScore,
+        Math.round(bestTitle*.55+contentOverlap*.45),
+        contentOverlap>=20?Math.min(70,35+contentOverlap):0
+      );
+      return Math.max(0,Math.min(100,combined));
     }
 
     function canonicalWorkStyle(value){
@@ -7868,41 +7934,24 @@
 
     function provisionalScore(application){
       const breakdown=scoreSignalBreakdown(application);
-
-      // IMPORTANT: the overall score is calculated from the exact same
-      // live signals displayed in the score breakdown below. Missing data
-      // is excluded instead of being treated as 0%, and a stale stored
-      // match_score can no longer override the current breakdown.
       const weightedSignals=[
-        {key:'skills',value:breakdown.skills,weight:25},
-        {key:'experience',value:breakdown.experience,weight:20},
-        {key:'role',value:breakdown.education,weight:20},
-        {key:'location',value:breakdown.location,weight:10},
-        {key:'work_preferences',value:breakdown.availability,weight:15},
-        {key:'compensation',value:breakdown.profile,weight:10}
+        {value:breakdown.education,weight:12},   // role
+        {value:breakdown.skills,weight:20},
+        {value:breakdown.experience,weight:15},
+        {value:breakdown.location,weight:13},
+        {value:breakdown.availability,weight:20}, // work style + job type combined
+        {value:breakdown.profile,weight:15}       // compensation
       ].filter(item=>Number.isFinite(Number(item.value)));
 
-      if(weightedSignals.length){
+      if(weightedSignals.length>=2){
         const totalWeight=weightedSignals.reduce((sum,item)=>sum+item.weight,0);
-        const weighted=weightedSignals.reduce(
-          (sum,item)=>sum+(Number(item.value)*item.weight),
-          0
-        );
-        return {
-          score:Math.max(0,Math.min(100,Math.round(weighted/totalWeight))),
-          source:'recalculated',
-          breakdown
-        };
+        const weighted=weightedSignals.reduce((sum,item)=>sum+Number(item.value)*item.weight,0);
+        return {score:Math.max(0,Math.min(100,Math.round(weighted/totalWeight))),source:'recalculated'};
       }
 
-      // Only use a previously stored score when there is genuinely no
-      // current signal data available to calculate a live score.
       const stored=Number(application.match_score||application.alygnn_score||0);
-      if(Number.isFinite(stored)&&stored>0){
-        return {score:Math.max(0,Math.min(100,Math.round(stored))),source:'stored',breakdown};
-      }
-
-      return {score:null,source:'insufficient',breakdown};
+      if(stored>0)return {score:Math.round(stored),source:'stored'};
+      return {score:null,source:'insufficient'};
     }
 
     const jobFor = application => state.jobs.find(job =>
@@ -13301,9 +13350,9 @@
           scoreTitle.textContent = score + '% Alygnn Score';
 
           scoreCopy.textContent =
-            'Alygnn compares skills, experience, role match, location, work preferences, and compensation with ' +
+            'Alygnn compares skills, experience, location information, education, availability, and resume/profile content with ' +
             (job?.title || application.job_title || 'this role') +
-            '. Missing information is excluded from the score instead of counting against the candidate.';
+            ' to estimate overall alignment.';
         }else{
           scoreRing.style.setProperty('--score','0');
           scoreNumber.textContent = '—';
