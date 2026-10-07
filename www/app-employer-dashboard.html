@@ -6452,6 +6452,83 @@
 
     const $ = id => document.getElementById(id);
 
+    // Recover cleanly after a Stripe receipt is viewed in an Android Custom Tab.
+    // The billing page leaves a short-lived marker before opening the receipt.
+    // If Android resumes this dashboard instead of the billing page, rebuild the
+    // WebView once so no stale native/browser layer can swallow taps.
+    const EXTERNAL_BROWSER_RETURN_KEY='alygnnExternalBrowserReturn';
+    const EXTERNAL_BROWSER_RECOVERY_KEY='alygnnExternalBrowserRecovery';
+
+    function clearExternalBrowserUiState(){
+      try{
+        document.documentElement.removeAttribute('inert');
+        document.body?.removeAttribute('inert');
+        document.documentElement.style.pointerEvents='';
+        if(document.body){
+          document.body.style.pointerEvents='';
+          document.body.style.overflow='';
+        }
+      }catch(_error){}
+    }
+
+    function recoverAfterExternalBrowser(){
+      let raw='';
+      try{raw=sessionStorage.getItem(EXTERNAL_BROWSER_RETURN_KEY)||'';}catch(_error){}
+      if(!raw)return false;
+
+      let openedAt=0;
+      try{openedAt=Number(JSON.parse(raw)?.openedAt||0);}catch(_error){}
+
+      if(openedAt && Date.now()-openedAt>10*60*1000){
+        try{sessionStorage.removeItem(EXTERNAL_BROWSER_RETURN_KEY);}catch(_error){}
+        return false;
+      }
+
+      clearExternalBrowserUiState();
+
+      let alreadyRecovered=false;
+      try{alreadyRecovered=sessionStorage.getItem(EXTERNAL_BROWSER_RECOVERY_KEY)==='1';}catch(_error){}
+
+      if(alreadyRecovered){
+        try{
+          sessionStorage.removeItem(EXTERNAL_BROWSER_RETURN_KEY);
+          sessionStorage.removeItem(EXTERNAL_BROWSER_RECOVERY_KEY);
+        }catch(_error){}
+        return true;
+      }
+
+      try{sessionStorage.setItem(EXTERNAL_BROWSER_RECOVERY_KEY,'1');}catch(_error){}
+      setTimeout(()=>location.reload(),60);
+      return true;
+    }
+
+    function installExternalBrowserRecovery(){
+      const attempt=()=>{
+        if(document.visibilityState==='hidden')return;
+        recoverAfterExternalBrowser();
+      };
+
+      window.addEventListener('focus',attempt);
+      window.addEventListener('pageshow',attempt);
+      document.addEventListener('visibilitychange',attempt);
+
+      try{
+        window.Capacitor?.Plugins?.App?.addListener?.(
+          'appStateChange',
+          state=>{if(state?.isActive)attempt();}
+        );
+      }catch(_error){}
+
+      try{
+        window.Capacitor?.Plugins?.Browser?.addListener?.(
+          'browserFinished',
+          attempt
+        );
+      }catch(_error){}
+    }
+
+    installExternalBrowserRecovery();
+
     const els = {
       greeting:$('greeting'),
       dashboardMessage:$('dashboard-message'),
