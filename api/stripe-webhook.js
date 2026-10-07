@@ -103,6 +103,55 @@ function supabaseBase() {
   return (process.env.SUPABASE_URL || 'https://auth.alygnn.com').replace(/\/$/, '');
 }
 
+
+async function clearPlanScheduleState(employerId) {
+  if (!employerId) return;
+  const response = await fetch(
+    `${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,
+    {
+      method: 'PATCH',
+      headers: serviceHeaders({ Prefer: 'return=minimal' }),
+      body: JSON.stringify({
+        stripe_plan_schedule_id: null,
+        pending_plan: null,
+        pending_billing_period: null,
+        pending_plan_effective_at: null,
+        updated_at: new Date().toISOString()
+      })
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error('Could not clear the old plan schedule state: ' + text);
+  }
+}
+
+async function detachSubscriptionSchedule(subscription) {
+  let current = subscription;
+  const scheduleId = typeof current?.schedule === 'string'
+    ? current.schedule
+    : current?.schedule?.id;
+
+  if (scheduleId) {
+    try {
+      await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}/release`, {});
+    } catch (error) {
+      if (!/released|completed|not found|no such subscription schedule/i.test(error?.message || '')) {
+        throw error;
+      }
+    }
+    current = await stripeGet(`subscriptions/${encodeURIComponent(current.id)}`);
+  }
+
+  if (current?.cancel_at_period_end === true) {
+    current = await stripePost(`subscriptions/${encodeURIComponent(current.id)}`, {
+      cancel_at_period_end: 'false'
+    });
+  }
+
+  return current;
+}
+
 async function rpc(name, body) {
   const response = await fetch(`${supabaseBase()}/rest/v1/rpc/${name}`, {
     method: 'POST',
@@ -183,14 +232,19 @@ async function fulfillPlanUpgrade(meta = {}) {
     throw new Error('Plan upgrade metadata is incomplete.');
   }
 
-  const existing = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+  let existing = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+
+  // A previous scheduled plan change can leave this subscription owned by a
+  // Stripe Subscription Schedule. Detach it before the immediate paid upgrade;
+  // direct cancellation/price changes are otherwise rejected by Stripe.
+  existing = await detachSubscriptionSchedule(existing);
+
   const currentItem = (existing.items?.data || []).find(item => item.id === subscriptionItemId) || existing.items?.data?.[0];
   const currentPriceId = typeof currentItem?.price === 'string' ? currentItem.price : currentItem?.price?.id;
 
   let updated = existing;
   if (currentPriceId !== targetPriceId || String(existing.metadata?.plan || '').toLowerCase() !== targetPlan) {
     updated = await stripePost(`subscriptions/${encodeURIComponent(subscriptionId)}`, {
-      cancel_at_period_end: 'false',
       'items[0][id]': subscriptionItemId,
       'items[0][price]': targetPriceId,
       'items[0][quantity]': 1,
@@ -209,6 +263,7 @@ async function fulfillPlanUpgrade(meta = {}) {
     status: updated.status === 'trialing' ? 'trialing' : 'active',
     periodEnd: updated.current_period_end
   });
+  await clearPlanScheduleState(employerId);
 }
 
 async function fulfillCheckout(session) {
