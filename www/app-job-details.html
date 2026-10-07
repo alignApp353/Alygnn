@@ -2444,7 +2444,7 @@ document.getElementById('back-btn').addEventListener('click',()=>{
   // Never return to the preview/builder history because that can restore the
   // completed draft and make the published job look publishable again.
   if(from==='employer-live'){
-    window.location.replace('app-employer-dashboard.html');
+    window.location.replace('app-employer-dashboard.html?view=jobs');
     return;
   }
 
