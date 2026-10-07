@@ -4846,6 +4846,102 @@
   .about-version span{font-size:11px;color:var(--muted)}
 </style>
 
+
+<style id="alygnn-close-job-dialog-style">
+.close-job-dialog{
+  position:fixed;
+  inset:0;
+  z-index:10050;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding:18px;
+  background:rgba(15,23,42,.38);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.close-job-dialog[hidden]{display:none!important}
+.close-job-card{
+  width:min(100%,520px);
+  border:1px solid var(--border);
+  border-radius:26px;
+  background:var(--card);
+  color:var(--text);
+  box-shadow:0 24px 70px rgba(15,23,42,.24);
+  padding:22px;
+  margin-bottom:calc(8px + env(safe-area-inset-bottom));
+}
+.close-job-kicker{
+  color:var(--brand-dark);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:1.2px;
+  text-transform:uppercase;
+}
+.close-job-card h3{
+  margin:8px 0 0;
+  font-size:22px;
+  line-height:1.12;
+}
+.close-job-card p{
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+}
+.close-job-notify{
+  margin-top:18px;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--bg);
+  display:flex;
+  gap:11px;
+  align-items:flex-start;
+}
+.close-job-notify input{
+  width:18px;
+  height:18px;
+  margin-top:1px;
+  accent-color:var(--brand-dark);
+}
+.close-job-notify strong{
+  display:block;
+  font-size:12px;
+}
+.close-job-notify span{
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+.close-job-actions{
+  display:grid;
+  grid-template-columns:1fr 1.25fr;
+  gap:10px;
+  margin-top:18px;
+}
+.close-job-actions button{
+  min-height:48px;
+  border-radius:15px;
+  font-weight:900;
+  border:1px solid var(--border);
+}
+.close-job-cancel{
+  background:var(--card);
+  color:var(--text);
+}
+.close-job-confirm{
+  border-color:var(--brand-dark)!important;
+  background:var(--brand-dark);
+  color:#fff;
+}
+.close-job-confirm:disabled{
+  opacity:.55;
+}
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div class="shell">
@@ -5026,7 +5122,7 @@
 
               <div class="candidate-breakdown-item">
                 <div class="candidate-breakdown-label">
-                  <span>Role match</span>
+                  <span>Education</span>
                   <strong id="candidate-breakdown-education-value">0%</strong>
                 </div>
                 <div class="candidate-breakdown-track">
@@ -5036,7 +5132,7 @@
 
               <div class="candidate-breakdown-item">
                 <div class="candidate-breakdown-label">
-                  <span>Work preferences</span>
+                  <span>Availability</span>
                   <strong id="candidate-breakdown-availability-value">0%</strong>
                 </div>
                 <div class="candidate-breakdown-track">
@@ -5046,7 +5142,7 @@
 
               <div class="candidate-breakdown-item">
                 <div class="candidate-breakdown-label">
-                  <span>Compensation</span>
+                  <span>Resume & profile</span>
                   <strong id="candidate-breakdown-profile-value">0%</strong>
                 </div>
                 <div class="candidate-breakdown-track">
@@ -5056,7 +5152,7 @@
             </div>
 
             <p class="candidate-score-note">
-              Each percentage measures fit with this specific job. Missing information is excluded instead of being treated as a failed match, and the overall Alygnn Score is weighted rather than a simple average.
+              Skills carry the strongest job-specific weight. Each percentage shows the strength of that individual signal; the overall Alygnn Score is weighted and is not a simple average.
             </p>
           </div>
         </section>
@@ -7582,485 +7678,67 @@
       return 'Review';
     }
 
-    function scoreText(value){
-      return String(value || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9+#.\-\s]/g,' ')
-        .replace(/\s+/g,' ')
-        .trim();
-    }
-
-    function scoreTokens(value){
-      const stop = new Set([
-        'the','a','an','and','or','to','of','for','in','on','with','at','by','from',
-        'this','that','is','are','be','as','your','you','our','we','job','role','work'
-      ]);
-      return scoreText(value)
-        .split(' ')
-        .map(token=>token.trim())
-        .filter(token=>token.length>2&&!stop.has(token));
-    }
-
-    function scoreList(value){
-      if(Array.isArray(value)) return value.filter(Boolean).map(String);
-      if(!value) return [];
-      if(typeof value === 'object') return Object.values(value).filter(Boolean).map(String);
-      return String(value).split(/[,;|\n]/).map(item=>item.trim()).filter(Boolean);
-    }
-
-    function scoreObject(value){
-      if(!value) return {};
-      if(typeof value === 'object'&&!Array.isArray(value)) return value;
-      if(typeof value === 'string'){
-        try{
-          const parsed=JSON.parse(value);
-          return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};
-        }catch(_){ return {}; }
-      }
-      return {};
-    }
-
-    function scoreSimilarity(left,right){
-      const a=scoreTokens(left);
-      const b=scoreTokens(right);
-      if(!a.length||!b.length)return null;
-      const A=new Set(a), B=new Set(b);
-      const overlap=[...A].filter(token=>B.has(token)).length;
-      const union=new Set([...A,...B]).size || 1;
-      const containment=overlap/Math.min(A.size,B.size);
-      const jaccard=overlap/union;
-      return Math.max(0,Math.min(100,Math.round((containment*.72+jaccard*.28)*100)));
-    }
-
-    function jobScoringText(job){
-      return [
-        job.title,job.description,job.requirements,job.qualifications,
-        job.skills,job.responsibilities,job.tasks,job.duties
-      ]
-        .flatMap(value=>Array.isArray(value)?value:[value])
-        .filter(Boolean)
-        .join(' ');
-    }
-
-    function requiredSkillsForJob(job){
-      const explicit=scoreList(
-        job.skills || job.required_skills || job.skill_requirements || []
-      ).map(item=>String(item||'').trim()).filter(Boolean);
-      if(explicit.length)return [...new Set(explicit)];
-
-      return [...new Set(
-        scoreList(job.requirements || job.qualifications || [])
-          .map(item=>String(item||'').trim())
-          .filter(item=>item&&item.length<=60&&item.split(/\s+/).length<=7)
-      )];
-    }
-
-    function skillSignalScore(data,job){
-      const candidate=(data.skills||[]).map(item=>String(item||'').trim()).filter(Boolean);
-      if(!candidate.length)return null;
-      const required=requiredSkillsForJob(job);
-
-      const phraseMatch=(candidateSkill,requiredSkill)=>{
-        const c=scoreText(candidateSkill), r=scoreText(requiredSkill);
-        if(!c||!r)return false;
-        if(c===r||c.includes(r)||r.includes(c))return true;
-        const ct=scoreTokens(c), rt=scoreTokens(r);
-        if(!ct.length||!rt.length)return false;
-        const overlap=rt.filter(token=>ct.includes(token)).length;
-        return overlap/rt.length>=0.67;
-      };
-
-      if(required.length){
-        const matched=required.filter(req=>candidate.some(skill=>phraseMatch(skill,req))).length;
-        return Math.round((matched/required.length)*100);
-      }
-
-      const haystack=scoreText(jobScoringText(job));
-      if(!haystack)return null;
-      const matched=candidate.filter(skill=>{
-        const normalized=scoreText(skill);
-        if(!normalized)return false;
-        if(haystack.includes(normalized))return true;
-        const tokens=scoreTokens(normalized);
-        return tokens.length&&tokens.every(token=>haystack.includes(token));
-      }).length;
-      if(!matched)return 0;
-      return Math.min(100,Math.round(55+(matched-1)*15));
-    }
-
-    function experienceSignalScore(data,job){
-      const experiences=Array.isArray(data.experienceList)?data.experienceList:[];
-
-      // Experience measures how much usable work history the candidate has.
-      // Relevance to this specific opening is handled separately by Role match.
-      const profile=data.profile||{};
-      const numericYears=[
-        profile.years_experience,
-        profile.experience_years,
-        data.experience
-      ]
-        .map(value=>{
-          const match=String(value??'').match(/\d+(?:\.\d+)?/);
-          return match?Number(match[0]):NaN;
-        })
-        .find(value=>Number.isFinite(value)&&value>=0);
-
-      let historyScore=null;
-      if(Number.isFinite(numericYears)){
-        if(numericYears>=8) historyScore=100;
-        else if(numericYears>=5) historyScore=90;
-        else if(numericYears>=3) historyScore=78;
-        else if(numericYears>=2) historyScore=68;
-        else if(numericYears>=1) historyScore=58;
-        else if(numericYears>0) historyScore=45;
-      }
-
-      if(experiences.length){
-        const roleCountScore=Math.min(100,45+(experiences.length*12));
-        historyScore=Number.isFinite(historyScore)
-          ? Math.max(historyScore,roleCountScore)
-          : roleCountScore;
-      }
-
-      if(Number.isFinite(historyScore))return Math.round(historyScore);
-      return data.experience?45:null;
-    }
-
-    const locationDistanceScoreCache=new Map();
-    const locationPointCache=new Map();
-
-    function normalizeLocationParts(value){
-      const original=String(value||'').trim();
-      const normalized=scoreText(original);
-      const postalMatch=normalized.match(/\b(?:zip\s*)?(\d{5})(?:-\d{4})?\b/);
-      const postalCode=postalMatch?postalMatch[1]:'';
-      const raw=normalized.replace(/\bzip\s*\d{5}(?:-\d{4})?\b/g,'').trim();
-      if(!raw&&!postalCode)return {raw:'',city:'',state:'',postalCode};
-      const parts=raw.split(',').map(x=>x.trim()).filter(Boolean);
-      if(parts.length>=2){
-        return {
-          raw,
-          city:parts[0],
-          state:parts[parts.length-1].replace(/\b\d{5}(?:-\d{4})?\b/g,'').trim(),
-          postalCode
-        };
-      }
-      const tokens=raw.replace(/\b\d{5}(?:-\d{4})?\b/g,'').split(' ').filter(Boolean);
-      const state=tokens.length>1&&tokens[tokens.length-1].length===2?tokens.pop():'';
-      return {raw,city:tokens.join(' '),state,postalCode};
-    }
-
-    function jobIsRemote(job){
-      const style=scoreText(job?.work_style||job?.workStyle||job?.workplace_type||job?.location_type||'');
-      const location=scoreText(job?.location||'');
-      return style.includes('remote')||location==='remote'||location.includes('remote -');
-    }
-
-    function haversineMiles(a,b){
-      if(!a||!b)return null;
-      const lat1=Number(a.latitude),lon1=Number(a.longitude);
-      const lat2=Number(b.latitude),lon2=Number(b.longitude);
-      if(![lat1,lon1,lat2,lon2].every(Number.isFinite))return null;
-      const toRad=deg=>deg*Math.PI/180;
-      const dLat=toRad(lat2-lat1);
-      const dLon=toRad(lon2-lon1);
-      const h=Math.sin(dLat/2)**2+
-        Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      return 3958.7613*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
-    }
-
-    function distanceToLocationScore(miles,job){
-      if(!Number.isFinite(miles))return null;
-      const style=scoreText(job?.work_style||job?.workStyle||job?.workplace_type||'');
-      const hybrid=style.includes('hybrid');
-      if(hybrid){
-        if(miles<=15)return 100;
-        if(miles<=35)return 95;
-        if(miles<=60)return 85;
-        if(miles<=90)return 70;
-        if(miles<=140)return 50;
-        if(miles<=220)return 30;
-        return 10;
-      }
-      if(miles<=10)return 100;
-      if(miles<=25)return 90;
-      if(miles<=40)return 75;
-      if(miles<=60)return 60;
-      if(miles<=90)return 40;
-      if(miles<=120)return 25;
-      return 10;
-    }
-
-    function locationDistanceKey(data,job){
-      const candidate=normalizeLocationParts(data?.location);
-      const offered=normalizeLocationParts(job?.location||[job?.city,job?.state].filter(Boolean).join(', '));
-      return [candidate.postalCode||candidate.raw,offered.postalCode||offered.raw,scoreText(job?.work_style||job?.workStyle||'')].join('|');
-    }
-
-    async function lookupLocationPoint(value){
-      const parts=normalizeLocationParts(value);
-      const cacheKey=parts.postalCode||[parts.city,parts.state].filter(Boolean).join('|');
-      if(!cacheKey)return null;
-      if(locationPointCache.has(cacheKey))return locationPointCache.get(cacheKey);
-
-      try{
-        let query=sb
-          .from('us_location_catalog')
-          .select('city,state_code,postal_code,latitude,longitude,location_type')
-          .not('latitude','is',null)
-          .not('longitude','is',null);
-
-        if(parts.postalCode){
-          query=query.eq('postal_code',parts.postalCode);
-        }else if(parts.city&&parts.state){
-          query=query.ilike('city',parts.city).eq('state_code',parts.state.toUpperCase());
-        }else if(parts.city){
-          query=query.ilike('city',parts.city);
-        }else{
-          return null;
-        }
-
-        const {data:rows,error}=await query.limit(1);
-        if(error)throw error;
-        const point=Array.isArray(rows)&&rows.length?rows[0]:null;
-        locationPointCache.set(cacheKey,point);
-        return point;
-      }catch(error){
-        console.warn('Location distance lookup failed:',error);
-        locationPointCache.set(cacheKey,null);
-        return null;
-      }
-    }
-
-    function locationSignalScore(data,job){
-      if(jobIsRemote(job))return 100;
-      const candidate=normalizeLocationParts(data.location);
-      const offered=normalizeLocationParts(job.location||[job.city,job.state].filter(Boolean).join(', '));
-      if((!candidate.raw&&!candidate.postalCode)||(!offered.raw&&!offered.postalCode))return null;
-
-      const cacheKey=locationDistanceKey(data,job);
-      if(locationDistanceScoreCache.has(cacheKey))return locationDistanceScoreCache.get(cacheKey);
-
-      if(candidate.postalCode&&offered.postalCode&&candidate.postalCode===offered.postalCode)return 100;
-      if(candidate.raw&&candidate.raw===offered.raw)return 100;
-      if(candidate.city&&offered.city&&candidate.city===offered.city&&candidate.state===offered.state)return 100;
-
-      // Temporary fallback while the exact catalog coordinates are loading.
-      // The applicant screen refreshes this value as soon as distance is resolved.
-      if(candidate.state&&offered.state&&candidate.state===offered.state)return 55;
-      return 15;
-    }
-
-    async function refreshLocationDistanceScore(application){
-      const data=candidateData(application);
-      const job=jobFor(application)||{};
-      if(jobIsRemote(job))return;
-
-      const candidateValue=data.location;
-      const offeredValue=job.location||[job.city,job.state].filter(Boolean).join(', ');
-      if(!candidateValue||!offeredValue)return;
-
-      const cacheKey=locationDistanceKey(data,job);
-      if(locationDistanceScoreCache.has(cacheKey))return;
-
-      const [candidatePoint,jobPoint]=await Promise.all([
-        lookupLocationPoint(candidateValue),
-        lookupLocationPoint(offeredValue)
-      ]);
-      const miles=haversineMiles(candidatePoint,jobPoint);
-      const score=distanceToLocationScore(miles,job);
-      if(!Number.isFinite(score))return;
-
-      locationDistanceScoreCache.set(cacheKey,score);
-
-      // Update both the visible breakdown and the overall Alygnn Score so they stay in sync.
-      if(state.activeCandidate&&String(state.activeCandidate.id)===String(application.id)){
-        renderScoreSignalBreakdown(application);
-        const scoreInfo=provisionalScore(application);
-        const overall=Number(scoreInfo.score||0);
-        const scoreRing=$('candidate-page-score-ring');
-        const scoreNumber=$('candidate-page-score-number');
-        const scoreFit=$('candidate-page-fit');
-        const scoreTitle=$('candidate-page-score-title');
-        const scoreBadge=$('candidate-page-score');
-        if(overall>0){
-          if(scoreRing)scoreRing.style.setProperty('--score',String(Math.max(0,Math.min(100,overall))));
-          if(scoreNumber)scoreNumber.textContent=overall+'%';
-          if(scoreFit)scoreFit.textContent=fitLabel(overall);
-          if(scoreTitle)scoreTitle.textContent=overall+'% Alygnn Score';
-          if(scoreBadge)scoreBadge.textContent=overall+'% Alygnn Score';
-        }
-      }
-    }
-
-    function roleSignalScore(data,job){
-      if(!job.title)return null;
-
-      const titles=[];
-      if(data.headline)titles.push(data.headline);
-      (Array.isArray(data.experienceList)?data.experienceList:[]).forEach(item=>{
-        const title=item?.title||item?.job_title||item?.position||item?.role;
-        if(title)titles.push(title);
-      });
-
-      const candidateText=[
-        ...titles,
-        data.summary,
-        data.resumeText,
-        ...(Array.isArray(data.skills)?data.skills:[]),
-        ...(Array.isArray(data.experienceList)?data.experienceList.flatMap(item=>[
-          item?.description,item?.details,item?.summary,item?.responsibilities
-        ]):[])
-      ].filter(Boolean).join(' ');
-
-      if(!candidateText.trim())return null;
-
-      // 1) Direct title similarity remains the strongest role signal.
-      const titleScores=titles
-        .map(title=>scoreSimilarity(title,job.title))
-        .filter(Number.isFinite);
-      const bestTitle=titleScores.length?Math.max(...titleScores):0;
-
-      // 2) Compare transferable experience/skills to the actual job content.
-      const candidateTokens=new Set(scoreTokens(candidateText));
-      const targetTokens=[...new Set(scoreTokens(jobScoringText(job)))];
-      let contentOverlap=0;
-      if(candidateTokens.size&&targetTokens.length){
-        const overlap=targetTokens.filter(token=>candidateTokens.has(token)).length;
-        contentOverlap=Math.min(100,Math.round((overlap/Math.min(targetTokens.length,16))*100));
-      }
-
-      // 3) Recognize common adjacent job families so transferable experience is
-      // not incorrectly shown as a hard 0% just because titles use different words.
-      const families={
-        customer_service:['customer','service','support','client','guest','attendant','representative','associate','front','desk','call','center'],
-        sales:['sales','account','business','development','retail','representative','consultant','advisor'],
-        admin:['administrative','admin','office','reception','coordinator','assistant','clerical'],
-        food_service:['server','cook','kitchen','restaurant','food','barista','cashier','hospitality'],
-        warehouse:['warehouse','inventory','stock','shipping','receiving','fulfillment','picker','packer'],
-        management:['manager','supervisor','lead','director','team','leader']
-      };
-      const candidateNorm=scoreText(candidateText);
-      const jobNorm=scoreText(jobScoringText(job));
-      let familyScore=0;
-      Object.values(families).forEach(words=>{
-        const candidateHit=words.some(word=>candidateNorm.includes(word));
-        const jobHit=words.some(word=>jobNorm.includes(word));
-        if(candidateHit&&jobHit)familyScore=Math.max(familyScore,65);
-      });
-
-      const combined=Math.max(
-        bestTitle,
-        familyScore,
-        Math.round(bestTitle*.55+contentOverlap*.45),
-        contentOverlap>=20?Math.min(70,35+contentOverlap):0
-      );
-      return Math.max(0,Math.min(100,combined));
-    }
-
-    function canonicalWorkStyle(value){
-      const text=scoreText(value);
-      if(text.includes('remote'))return 'remote';
-      if(text.includes('hybrid'))return 'hybrid';
-      if(text.includes('on site')||text.includes('onsite')||text.includes('in person'))return 'on-site';
-      return text;
-    }
-
-    function canonicalJobType(value){
-      const text=scoreText(value);
-      if(text.includes('full'))return 'full-time';
-      if(text.includes('part'))return 'part-time';
-      if(text.includes('contract'))return 'contract';
-      if(text.includes('intern'))return 'internship';
-      if(text.includes('temporary')||text.includes('temp'))return 'temporary';
-      return text;
-    }
-
-    function workPreferenceSignalScore(data,job){
-      const prefs=scoreObject(data.profile?.preferences);
-      const scores=[];
-
-      const wantedStyles=scoreList(prefs.workStyles||prefs.work_styles||prefs.workStyle||prefs.work_style)
-        .map(canonicalWorkStyle).filter(Boolean);
-      const offeredStyle=canonicalWorkStyle(job.work_style||job.workStyle||job.location_type);
-      if(wantedStyles.length&&offeredStyle)scores.push(wantedStyles.includes(offeredStyle)?100:15);
-
-      const wantedTypes=scoreList(prefs.jobTypes||prefs.job_types||prefs.jobType||prefs.job_type)
-        .map(canonicalJobType).filter(Boolean);
-      const offeredType=canonicalJobType(job.job_type||job.employment_type);
-      if(wantedTypes.length&&offeredType)scores.push(wantedTypes.includes(offeredType)?100:10);
-
-      if(!scores.length)return null;
-      return Math.round(scores.reduce((sum,value)=>sum+value,0)/scores.length);
-    }
-
-    function extractMoney(text){
-      const values=[];
-      const regex=/\$?\s*(\d+(?:,\d{3})*(?:\.\d+)?)\s*([kK])?/g;
-      let match;
-      while((match=regex.exec(String(text||'')))){
-        let value=Number(match[1].replace(/,/g,''));
-        if(match[2])value*=1000;
-        if(Number.isFinite(value))values.push(value);
-      }
-      return values;
-    }
-
-    function annualPay(value,period){
-      if(!Number.isFinite(value))return null;
-      const text=scoreText(period);
-      if(text.includes('hour'))return value*2080;
-      if(text.includes('week'))return value*52;
-      if(text.includes('month'))return value*12;
-      if(text.includes('day'))return value*260;
-      return value;
-    }
-
-    function jobPay(job){
-      let min=Number(job.pay_min??job.salary_min??NaN);
-      let max=Number(job.pay_max??job.salary_max??NaN);
-      const period=job.pay_period||job.salary||'';
-      if(!Number.isFinite(min)&&!Number.isFinite(max)){
-        const values=extractMoney(job.salary||job.compensation||'');
-        if(values.length){ min=values[0]; max=values[1]??values[0]; }
-      }
-      if(!Number.isFinite(min)&&Number.isFinite(max))min=max;
-      if(!Number.isFinite(max)&&Number.isFinite(min))max=min;
-      if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-      min=annualPay(min,period); max=annualPay(max,period);
-      if(!Number.isFinite(min)||!Number.isFinite(max))return null;
-      if(min>max)[min,max]=[max,min];
-      return {min,max};
-    }
-
-    function compensationSignalScore(data,job){
-      const prefs=scoreObject(data.profile?.preferences);
-      const wantedMin=Number(prefs.salary_min??prefs.salaryMin??NaN);
-      const wantedMax=Number(prefs.salary_max??prefs.salaryMax??NaN);
-      const offered=jobPay(job);
-      if(!Number.isFinite(wantedMin)||!Number.isFinite(wantedMax)||!offered)return null;
-      if(offered.max>=wantedMin&&offered.min<=wantedMax)return 100;
-      if(offered.min>wantedMax)return 95;
-      const gap=wantedMin-offered.max;
-      return Math.max(0,Math.round(100-(gap/Math.max(wantedMin,1))*160));
-    }
-
     function scoreSignalBreakdown(application){
-      const data=candidateData(application);
-      const job=jobFor(application)||{};
+      const data = candidateData(application);
+      const job = jobFor(application) || {};
+
+      const jobText = [
+        job.title,
+        job.description,
+        job.requirements,
+        job.benefits
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const skills = data.skills
+        .map(skill => String(skill || '').trim().toLowerCase())
+        .filter(Boolean);
+
+      let skillContribution = 0;
+
+      if(skills.length){
+        const matches = skills.filter(
+          skill =>
+            skill.length > 2 &&
+            jobText.includes(skill)
+        ).length;
+
+        /*
+         * This mirrors provisionalScore():
+         * skills can contribute up to 25 points.
+         */
+        skillContribution = Math.min(
+          25,
+          matches * 6 + Math.min(7,skills.length)
+        );
+      }
+
+      const clamp = value =>
+        Math.max(
+          0,
+          Math.min(100,Math.round(Number(value || 0)))
+        );
+
       return {
-        skills:skillSignalScore(data,job),
-        experience:experienceSignalScore(data,job),
-        location:locationSignalScore(data,job),
-        education:roleSignalScore(data,job),
-        availability:workPreferenceSignalScore(data,job),
-        profile:compensationSignalScore(data,job)
+        /*
+         * Normalize each scoring contribution against its own
+         * maximum so the employer gets an understandable 0–100%.
+         */
+        skills:clamp((skillContribution / 25) * 100),
+        experience:data.experience ? 100 : 0,
+        location:data.location ? 100 : 0,
+        education:data.education ? 100 : 0,
+        availability:data.availability ? 100 : 0,
+        profile:(data.summary || data.resumeText) ? 100 : 0
       };
     }
 
     function renderScoreSignalBreakdown(application){
-      const breakdown=scoreSignalBreakdown(application);
-      const rows=[
+      const breakdown = scoreSignalBreakdown(application);
+
+      const rows = [
         ['skills',breakdown.skills],
         ['experience',breakdown.experience],
         ['location',breakdown.location],
@@ -8069,36 +7747,54 @@
         ['profile',breakdown.profile]
       ];
 
-      rows.forEach(([key,value])=>{
-        const valueEl=$(`candidate-breakdown-${key}-value`);
-        const barEl=$(`candidate-breakdown-${key}-bar`);
-        const known=Number.isFinite(Number(value));
-        const percent=known?Math.max(0,Math.min(100,Math.round(Number(value)))):0;
-        if(valueEl)valueEl.textContent=known?`${percent}%`:'—';
-        if(barEl)barEl.style.width=`${percent}%`;
+      rows.forEach(([key,value]) => {
+        const percent = Math.max(
+          0,
+          Math.min(100,Math.round(Number(value || 0)))
+        );
+
+        const valueEl = $(
+          `candidate-breakdown-${key}-value`
+        );
+
+        const barEl = $(
+          `candidate-breakdown-${key}-bar`
+        );
+
+        if(valueEl){
+          valueEl.textContent = `${percent}%`;
+        }
+
+        if(barEl){
+          barEl.style.width = `${percent}%`;
+        }
       });
     }
 
     function provisionalScore(application){
-      const breakdown=scoreSignalBreakdown(application);
-      const weightedSignals=[
-        {value:breakdown.education,weight:12},   // role
-        {value:breakdown.skills,weight:20},
-        {value:breakdown.experience,weight:15},
-        {value:breakdown.location,weight:13},
-        {value:breakdown.availability,weight:20}, // work style + job type combined
-        {value:breakdown.profile,weight:15}       // compensation
-      ].filter(item=>Number.isFinite(Number(item.value)));
+      const stored = Number(application.match_score || application.alygnn_score || 0);
+      if(stored > 0) return {score:Math.round(stored),source:'stored'};
 
-      if(weightedSignals.length>=2){
-        const totalWeight=weightedSignals.reduce((sum,item)=>sum+item.weight,0);
-        const weighted=weightedSignals.reduce((sum,item)=>sum+Number(item.value)*item.weight,0);
-        return {score:Math.max(0,Math.min(100,Math.round(weighted/totalWeight))),source:'recalculated'};
+      const data = candidateData(application);
+      const job = jobFor(application) || {};
+      const jobText = [job.title,job.description,job.requirements,job.benefits].filter(Boolean).join(' ').toLowerCase();
+      const skills = data.skills.map(skill => skill.toLowerCase());
+      let signals = 0;
+      let points = 45;
+
+      if(skills.length){
+        signals++;
+        const matches = skills.filter(skill => skill.length > 2 && jobText.includes(skill)).length;
+        points += Math.min(25,matches * 6 + Math.min(7,skills.length));
       }
+      if(data.experience){ signals++; points += 10; }
+      if(data.location){ signals++; points += 6; }
+      if(data.education){ signals++; points += 5; }
+      if(data.availability){ signals++; points += 5; }
+      if(data.summary || data.resumeText){ signals++; points += 4; }
 
-      const stored=Number(application.match_score||application.alygnn_score||0);
-      if(stored>0)return {score:Math.round(stored),source:'stored'};
-      return {score:null,source:'insufficient'};
+      if(signals < 2) return {score:null,source:'insufficient'};
+      return {score:Math.max(55,Math.min(96,Math.round(points))),source:'profile'};
     }
 
     const jobFor = application => state.jobs.find(job =>
@@ -13511,7 +13207,6 @@
         }
 
         renderScoreSignalBreakdown(application);
-        refreshLocationDistanceScore(application);
 
         const applicationStatus =
           String(application.status || 'applied')
@@ -14126,6 +13821,184 @@
       return true;
     }
 
+
+    function ensureCloseJobDialog(){
+      let dialog=$('alygnn-close-job-dialog');
+      if(dialog)return dialog;
+
+      dialog=document.createElement('div');
+      dialog.id='alygnn-close-job-dialog';
+      dialog.className='close-job-dialog';
+      dialog.hidden=true;
+      dialog.innerHTML=`
+        <section class="close-job-card" role="dialog" aria-modal="true" aria-labelledby="close-job-title">
+          <div class="close-job-kicker">Close job</div>
+          <h3 id="close-job-title">Close this job?</h3>
+          <p>
+            Candidates will no longer be able to view or apply to this position.
+            The reusable job slot becomes available immediately.
+          </p>
+
+          <label class="close-job-notify">
+            <input type="checkbox" id="close-job-notify-applicants" checked>
+            <span>
+              <strong>Notify applicants that this position has closed</strong>
+              <span>Applicants will receive: “This position has been closed by the employer and is no longer accepting applications.”</span>
+            </span>
+          </label>
+
+          <div class="close-job-actions">
+            <button class="close-job-cancel" id="close-job-cancel" type="button">Cancel</button>
+            <button class="close-job-confirm" id="close-job-confirm" type="button">Close Job</button>
+          </div>
+        </section>
+      `;
+      document.body.appendChild(dialog);
+      return dialog;
+    }
+
+    function askCloseJobOptions(job){
+      return new Promise(resolve=>{
+        const dialog=ensureCloseJobDialog();
+        const confirmButton=$('close-job-confirm');
+        const cancelButton=$('close-job-cancel');
+        const notify=$('close-job-notify-applicants');
+
+        $('close-job-title').textContent=
+          `Close ${job?.title||'this job'}?`;
+
+        notify.checked=true;
+        confirmButton.disabled=false;
+        dialog.hidden=false;
+
+        const finish=value=>{
+          dialog.hidden=true;
+          confirmButton.onclick=null;
+          cancelButton.onclick=null;
+          dialog.onclick=null;
+          resolve(value);
+        };
+
+        confirmButton.onclick=()=>finish({
+          confirmed:true,
+          notifyApplicants:notify.checked
+        });
+
+        cancelButton.onclick=()=>finish({
+          confirmed:false,
+          notifyApplicants:false
+        });
+
+        dialog.onclick=event=>{
+          if(event.target===dialog){
+            finish({
+              confirmed:false,
+              notifyApplicants:false
+            });
+          }
+        };
+      });
+    }
+
+    function applicationCandidateNameForNotice(application={}){
+      return String(
+        application.candidate_name||
+        application.applicant_name||
+        application.full_name||
+        [
+          application.first_name,
+          application.last_name
+        ].filter(Boolean).join(' ')||
+        String(
+          application.candidate_email||
+          application.email||
+          ''
+        ).split('@')[0]||
+        'Candidate'
+      ).trim()||'Candidate';
+    }
+
+    async function notifyApplicantsJobClosed(job){
+      const jobId=String(job?.id||'');
+      if(!jobId || !state.session?.user?.id){
+        return {sent:0,failed:0};
+      }
+
+      const body=
+        'This position has been closed by the employer and is no longer accepting applications.';
+
+      const applicationResult=await sb
+        .from('applications')
+        .select('*')
+        .eq('job_id',jobId);
+
+      if(applicationResult.error){
+        throw applicationResult.error;
+      }
+
+      const applications=applicationResult.data||[];
+      if(!applications.length){
+        return {sent:0,failed:0};
+      }
+
+      let sent=0;
+      let failed=0;
+
+      for(const application of applications){
+        try{
+          const existing=await sb
+            .from('application_conversations')
+            .select('id')
+            .eq('application_id',application.id)
+            .maybeSingle();
+
+          if(existing.error){
+            throw existing.error;
+          }
+
+          if(existing.data?.id){
+            const messageResult=await sb
+              .from('application_messages')
+              .insert({
+                conversation_id:existing.data.id,
+                sender_id:state.session.user.id,
+                body
+              });
+
+            if(messageResult.error){
+              throw messageResult.error;
+            }
+          }else{
+            const started=await sb.rpc(
+              'start_application_conversation_v3',
+              {
+                p_application_id:application.id,
+                p_body:body,
+                p_candidate_name:
+                  applicationCandidateNameForNotice(application),
+                p_job_title:String(job.title||'Job')
+              }
+            );
+
+            if(started.error){
+              throw started.error;
+            }
+          }
+
+          sent+=1;
+        }catch(error){
+          failed+=1;
+          console.warn(
+            'Could not send closed-job notice for application',
+            application?.id,
+            error
+          );
+        }
+      }
+
+      return {sent,failed};
+    }
+
     async function handleJobAction(action,id){
       const job = state.jobs.find(item => String(item.id) === String(id));
       if(!job) return;
@@ -14217,15 +14090,15 @@
 
 
       if(action === 'close'){
-        if(!confirm(
-          'Close this job? It will stop appearing to candidates and free this reusable job slot for another opening.'
-        )) return;
+        const closeOptions=await askCloseJobOptions(job);
+        if(!closeOptions.confirmed)return;
 
         const previousStatus=job.status;
         const closedAt=new Date().toISOString();
 
-        // Close it in the employer UI immediately. The database update below
-        // is the source of truth; if it fails, restore the old status.
+        // Close in the UI immediately, then commit the source-of-truth database status.
+        // Candidate-facing queries already exclude closed jobs, so the position stops
+        // accepting applications as soon as this update succeeds.
         job.status='closed';
         job.updated_at=closedAt;
         renderAll();
@@ -14246,11 +14119,35 @@
           return;
         }
 
-        // Clear stale slot-gate state so the next Post a Job check starts fresh.
         sessionStorage.removeItem('alygnn_job_slot_gate');
         sessionStorage.removeItem('alygnnPostJobCapacityPass');
 
-        toast('Job closed. The slot is now available.');
+        if(closeOptions.notifyApplicants){
+          try{
+            const result=await notifyApplicantsJobClosed(job);
+
+            if(result.failed>0){
+              toast(
+                `Job closed. ${result.sent} applicant${result.sent===1?'':'s'} notified; ${result.failed} notification${result.failed===1?'':'s'} could not be sent.`
+              );
+            }else if(result.sent>0){
+              toast(
+                `Job closed. ${result.sent} applicant${result.sent===1?'':'s'} notified.`
+              );
+            }else{
+              toast('Job closed. The slot is now available.');
+            }
+          }catch(notificationError){
+            console.warn(
+              'Job closed, but applicant notifications could not be sent:',
+              notificationError
+            );
+            toast('Job closed. Applicant notifications could not be sent.');
+          }
+        }else{
+          toast('Job closed. The slot is now available.');
+        }
+
         return;
       }
 
