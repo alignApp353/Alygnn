@@ -1548,6 +1548,56 @@ async function syncCompletedSecondSlotCheckout(user,sessionId){
   };
 }
 
+async function syncCompletedWeeklySlotCheckout(user, sessionId) {
+  const id = String(sessionId || '').trim();
+  if (!/^cs_/.test(id)) { const e = new Error('A valid Stripe Checkout Session ID is required.'); e.status = 400; throw e; }
+  const session = await manageStripe('GET', 'checkout/sessions/' + encodeURIComponent(id));
+  const meta = session?.metadata || {};
+  if (String(meta.employer_id || '') !== String(user.id)) {
+    const e = new Error('This checkout does not belong to the signed-in employer.'); e.status = 403; throw e;
+  }
+  if (String(meta.product || '').toLowerCase() !== 'weekly_slot' ||
+      String(meta.stripe_price_id || '') !== String(PRICE_IDS.weekly_job_slot)) {
+    const e = new Error('This checkout is not an Alygnn Weekly Job Slot purchase.'); e.status = 400; throw e;
+  }
+  if (String(session.status || '').toLowerCase() !== 'complete' ||
+      !['paid', 'no_payment_required'].includes(String(session.payment_status || '').toLowerCase())) {
+    const e = new Error('The Weekly Job Slot checkout has not completed successfully.'); e.status = 409; throw e;
+  }
+  const base = manageBase() + '/rest/v1/employer_weekly_slot_purchases';
+  const lookup = new URL(base);
+  lookup.searchParams.set('payment_reference', 'eq.' + id);
+  lookup.searchParams.set('select', 'id,employer_id');
+  const found = await fetch(lookup, { headers: manageServiceHeaders() });
+  if (!found.ok) throw new Error('Could not verify existing weekly purchase: ' + await found.text());
+  const existing = await found.json();
+  if (Array.isArray(existing) && existing.length) {
+    if (String(existing[0].employer_id) !== String(user.id)) throw new Error('Weekly purchase ownership mismatch.');
+    return { synced: true, weekly_slot: true, already_recorded: true };
+  }
+  const created = await fetch(base, {
+    method: 'POST',
+    headers: manageServiceHeaders({ Prefer: 'return=minimal' }),
+    body: JSON.stringify({
+      employer_id: user.id,
+      payment_reference: id,
+      amount_cents: Number(session.amount_total ?? 0),
+      test_mode: false,
+      expires_at: new Date((Number(session.created || Math.floor(Date.now() / 1000)) + 7 * 86400) * 1000).toISOString(),
+      activated_at: null
+    })
+  });
+  if (!created.ok) {
+    // Another verified fulfillment attempt may have inserted this reference concurrently.
+    const retry = await fetch(lookup, { headers: manageServiceHeaders() });
+    const rows = retry.ok ? await retry.json() : [];
+    if (!Array.isArray(rows) || !rows.some(row => String(row.employer_id) === String(user.id))) {
+      throw new Error('Could not record Weekly Job Slot: ' + await created.text());
+    }
+  }
+  return { synced: true, weekly_slot: true };
+}
+
 async function syncCompletedPlanCheckout(user,sessionId){
   const id=String(sessionId||'').trim();
   if(!/^cs_/.test(id)){
@@ -1915,6 +1965,11 @@ async function runManageAction(res,user,input){
     return send(res,200,{ok:true,url:portal.url});
   }
 
+  if(action==='sync_weekly_slot_checkout'){
+    const result=await syncCompletedWeeklySlotCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
   if(action==='sync_checkout_session'){
     const result=await syncCompletedPlanCheckout(user,input.checkout_session_id);
     return send(res,200,{ok:true,...result});
@@ -2159,6 +2214,7 @@ module.exports = async function handler(req, res) {
       'resume_second_slot',
       'billing_portal',
       'sync_checkout_session',
+      'sync_weekly_slot_checkout',
       'sync_second_slot_checkout',
       'reconcile_second_slot_checkout',
       'sync_boost_checkout',
@@ -2341,7 +2397,7 @@ module.exports = async function handler(req, res) {
       mode,
       success_url: product === 'additional_slot'
         ? 'https://alygnn.com/employer-dashboard.html?payment=success&product=additional_slot&session_id={CHECKOUT_SESSION_ID}#jobs'
-        : (product === 'job_plan' || product === 'job_boost' || product === 'team_seat')
+        : (product === 'job_plan' || product === 'job_boost' || product === 'team_seat' || product === 'weekly_slot')
           ? checkoutSuccessWithSessionId(successUrl)
           : successUrl,
       cancel_url: cancelUrl,
