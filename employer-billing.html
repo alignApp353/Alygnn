@@ -109,6 +109,17 @@ h1{
 .invoice-amount{font-size:12px;font-weight:600}
 .invoice-link{font-size:11.5px;color:var(--brand);text-decoration:none;font-weight:600;white-space:nowrap}
 .invoice-link:hover{text-decoration:underline}
+.invoice-receipt-btn{border:0;background:none;padding:0;font:600 11.5px 'DM Sans',sans-serif;color:var(--brand);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.receipt-overlay{display:none;position:fixed;inset:0;z-index:1400;background:rgba(26,37,48,.44);padding:20px;align-items:center;justify-content:center}
+.receipt-overlay.open{display:flex}
+.receipt-sheet{background:white;border:1px solid var(--border);border-radius:16px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:28px}
+.receipt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.receipt-title{font:normal 27px 'DM Serif Display',serif}
+.receipt-line{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;overflow-wrap:anywhere}
+.receipt-line span:first-child{color:var(--muted);flex-shrink:0}
+.receipt-note{font-size:11px;color:var(--muted);line-height:1.6;margin:20px 0}
+.receipt-footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media print{body>*:not(#receipt-overlay){display:none!important}#receipt-overlay{display:block!important;position:static!important;padding:0!important;background:white!important}#receipt-overlay .receipt-sheet{border:none!important;max-height:none!important;overflow:visible!important;width:100%!important;max-width:none!important}#receipt-overlay .receipt-footer{display:none!important}}
 .invoice-detail{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
 .invoice-tax{font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
 .invoice-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
@@ -123,9 +134,62 @@ h1{
   margin-top:14px;padding:18px;border:1px dashed var(--border);border-radius:12px;
   color:var(--muted);font-size:12px;text-align:center
 }
+  .alygnn-page-loader{
+    visibility:visible !important;
+    position:fixed !important;
+    inset:0 !important;
+    z-index:99999 !important;
+    display:flex;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:14px !important;
+    background:#F6F8F7 !important;
+    color:#4A5968 !important;
+    text-align:center !important;
+    padding:24px !important;
+  }
+  .alygnn-loader-logo{
+    font-family:'DM Serif Display',serif;
+    font-size:32px;
+    line-height:1;
+    letter-spacing:-.6px;
+    color:#5D7FA3;
+  }
+  .alygnn-loader-logo span{color:#8CB69B}
+  .alygnn-loader-dots{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    height:12px;
+  }
+  .alygnn-loader-dots span{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#5D7FA3;
+    opacity:.24;
+    animation:alygnnLoaderPulse 1.05s ease-in-out infinite;
+  }
+  .alygnn-loader-dots span:nth-child(2){animation-delay:.14s}
+  .alygnn-loader-dots span:nth-child(3){animation-delay:.28s}
+  .alygnn-loader-message{
+    min-height:20px;
+    font-family:'DM Sans',sans-serif;
+    font-size:13px;
+    font-weight:400;
+    line-height:1.5;
+    color:#4A5968;
+    transition:opacity .18s ease;
+  }
+  @keyframes alygnnLoaderPulse{
+    0%,80%,100%{transform:translateY(0);opacity:.24}
+    40%{transform:translateY(-4px);opacity:1}
+  }
 .loading{
-  position:fixed;inset:64px 0 0;display:flex;align-items:center;justify-content:center;
-  background:var(--bg);z-index:900;color:var(--muted);font-size:13px
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);z-index:99999;color:var(--muted);font-size:13px
 }
 .error{
   display:none;margin-bottom:16px;padding:12px 14px;border-radius:11px;
@@ -155,7 +219,11 @@ h1{
   </div>
 </nav>
 
-<div class="loading" id="loading">Loading billing…</div>
+<div class="loading alygnn-page-loader" id="loading" data-loader-messages="Loading your billing…||Getting your payments ready…||Preparing your receipts…||Almost there…">
+  <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
+  <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="alygnn-loader-message">Loading your billing…</div>
+</div>
 
 <main class="page">
   <div class="eyebrow">Employer billing</div>
@@ -206,6 +274,14 @@ h1{
 
   <div class="footer"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
 </main>
+<div class="receipt-overlay" id="receipt-overlay" role="dialog" aria-modal="true" aria-label="Payment confirmation" onclick="if(event.target===this)closeReceipt()">
+  <div class="receipt-sheet">
+    <div class="receipt-head"><div><div class="eyebrow">Alygnn billing</div><div class="receipt-title">Payment confirmation</div></div><button type="button" class="btn btn-secondary" onclick="closeReceipt()">Close</button></div>
+    <div id="receipt-content"></div>
+    <p class="receipt-note">This is a transaction summary from Alygnn billing history. It is not a Stripe-issued receipt or tax invoice. Fully discounted $0 orders may not have a Stripe receipt.</p>
+    <div class="receipt-footer"><button class="btn btn-primary" type="button" onclick="window.print()">Print / Save PDF</button></div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL='https://auth.alygnn.com';
@@ -239,6 +315,7 @@ let historyCursors={checkout:'',invoice:'',intent:''};
 let historyRemaining={checkout:true,invoice:true,intent:true};
 let historyBusy=false;
 let historyLoaded=false;
+let visibleReceiptPayments=[];
 
 function money(cents,currency='usd'){
   try{
@@ -402,6 +479,7 @@ function renderBilling(){
     const bt=b?.created?new Date(b.created).getTime():0;
     return bt-at;
   });
+  visibleReceiptPayments=payments;
   const list=document.getElementById('invoice-list');
 
   if(testMode){
@@ -410,7 +488,7 @@ function renderBilling(){
     list.innerHTML='<div class="empty">No payments yet.</div>';
   }else{
     list.className='invoice-list';
-    list.innerHTML=payments.map(inv=>{
+    list.innerHTML=payments.map((inv,receiptIndex)=>{
       const link=
         safeUrl(inv.receipt_url) ||
         safeUrl(inv.hosted_invoice_url) ||
@@ -459,12 +537,15 @@ function renderBilling(){
              ${discount>0?`<div class="invoice-detail">Discount −${money(discount,inv.currency)}</div>`:''}
           </div>
           <div class="invoice-actions">
-            ${link?`<a class="invoice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${inv.payment_kind==='invoice'?'View invoice':'View receipt'}</a>`:''}
+            ${link?`<a class="invoice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${inv.payment_kind==='invoice'?'View invoice':'View receipt'}</a>`:`<button class="invoice-receipt-btn" type="button" data-receipt-index="${receiptIndex}">View receipt</button>`}
             ${canSyncBoost?`<button class="invoice-sync" type="button" data-boost-session="${escapeHtml(inv.checkout_session_id)}">Verify Boost</button>`:''}
           </div>
         </div>`;
     }).join('');
 
+    list.querySelectorAll('[data-receipt-index]').forEach(btn=>{
+      btn.addEventListener('click',()=>openReceipt(Number(btn.dataset.receiptIndex)));
+    });
     list.querySelectorAll('[data-boost-session]').forEach(btn=>{
       btn.addEventListener('click',()=>syncPaidBoost(btn));
     });
@@ -482,6 +563,33 @@ function escapeHtml(value){
     .replaceAll("'",'&#039;');
 }
 
+
+function openReceipt(index){
+  const inv=visibleReceiptPayments[index];
+  if(!inv)return;
+  const total=Number(inv.total_cents??inv.amount_paid_cents??inv.amount_due_cents??0);
+  const tax=Number(inv.tax_cents||0);
+  const discount=Number(inv.discount_cents||0);
+  const subtotal=Number(inv.subtotal_cents??Math.max(0,total-tax));
+  const currency=inv.currency||'usd';
+  const details=[
+    ['Product',inv.description||inv.number||'Alygnn payment'],
+    ['Date',dateLabel(inv.created)],
+    ['Status',inv.status||'unknown'],
+    ['Subtotal',money(subtotal,currency)],
+    ['Discount',discount?'-'+money(discount,currency):money(0,currency)],
+    ['Tax',money(tax,currency)],
+    ['Total',money(total,currency)],
+    ['Transaction reference',inv.checkout_session_id||inv.payment_intent_id||inv.invoice_id||inv.id||'Unavailable']
+  ];
+  if(inv.job_title)details.splice(1,0,['Job',inv.job_title]);
+  document.getElementById('receipt-content').innerHTML=details.map(([k,v])=>
+    `<div class="receipt-line"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></div>`
+  ).join('');
+  document.getElementById('receipt-overlay').classList.add('open');
+}
+function closeReceipt(){document.getElementById('receipt-overlay').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeReceipt();});
 
 async function loadMoreHistory(){
   if(historyBusy)return;
@@ -584,6 +692,24 @@ async function openBillingPortal(){
     btn.textContent=original;
   }
 }
+
+(() => {
+  const loader=document.getElementById('loading');
+  const messageEl=loader?.querySelector('.alygnn-loader-message');
+  const messages=String(loader?.dataset.loaderMessages||'').split('||').filter(Boolean);
+  if(!messageEl||messages.length<2)return;
+  let index=0;
+  const ticker=window.setInterval(()=>{
+    if(getComputedStyle(loader).display==='none'){window.clearInterval(ticker);return;}
+    messageEl.style.opacity='0';
+    window.setTimeout(()=>{
+      if(getComputedStyle(loader).display==='none')return;
+      index=(index+1)%messages.length;
+      messageEl.textContent=messages[index];
+      messageEl.style.opacity='1';
+    },180);
+  },1450);
+})();
 
 loadBilling().catch(error=>{
   console.error(error);
