@@ -429,6 +429,8 @@ function renderBilling(){
         Math.max(0,amount-tax)
       );
 
+       const discount=Number(inv.discount_cents||0);
+
       const jobCopy=inv.job_title
         ? `Job: ${inv.job_title}${inv.days?` · ${inv.days} day${Number(inv.days)===1?'':'s'}`:''}`
         : '';
@@ -454,6 +456,7 @@ function renderBilling(){
           <div>
             <div class="invoice-amount">${money(amount,inv.currency)}</div>
             <div class="invoice-tax">Subtotal ${money(subtotal,inv.currency)} · Tax ${money(tax,inv.currency)}</div>
+             ${discount>0?`<div class="invoice-detail">Discount −${money(discount,inv.currency)}</div>`:''}
           </div>
           <div class="invoice-actions">
             ${link?`<a class="invoice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener">${inv.payment_kind==='invoice'?'View invoice':'View receipt'}</a>`:''}
@@ -507,6 +510,7 @@ async function loadMoreHistory(){
     btn.textContent='Load more payment history';
   }catch(error){
     showError(error.message||'Could not load complete payment history.');
+     btn.style.display='inline-flex';
     btn.textContent='Retry payment history';
   }finally{historyBusy=false;btn.disabled=false;}
 }
