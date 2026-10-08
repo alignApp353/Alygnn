@@ -2775,6 +2775,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') !== 'success') return false;
     if (String(params.get('product') || '').toLowerCase() === 'additional_slot') return false;
+    const isWeeklySlot = String(params.get('plan') || '').toLowerCase() === 'weekly_slot' || String(params.get('product') || '').toLowerCase() === 'weekly_slot';
 
     const checkoutSessionId = String(params.get('session_id') || '').trim();
     if (!checkoutSessionId) return false;
@@ -2790,7 +2791,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           'Authorization': 'Bearer ' + session.access_token
         },
         body: JSON.stringify({
-          action: 'sync_checkout_session',
+          action: isWeeklySlot ? 'sync_weekly_slot_checkout' : 'sync_checkout_session',
           checkout_session_id: checkoutSessionId
         })
       });
