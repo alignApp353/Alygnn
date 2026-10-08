@@ -200,6 +200,7 @@ h1{
       <div class="card-title">Payment history</div>
       <div class="card-copy">All recent Alygnn charges, including plans, job slots, Job Boosts, and applicable tax.</div>
       <div id="invoice-list"></div>
+       <button class="btn btn-secondary" type="button" id="load-history-btn" style="display:none;margin-top:14px" onclick="loadMoreHistory()">Load more payment history</button>
     </section>
   </div>
 
@@ -233,6 +234,11 @@ const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
 });
 
 let billingSummary=null;
+let historyPayments=[];
+let historyCursors={checkout:'',invoice:'',intent:''};
+let historyRemaining={checkout:true,invoice:true,intent:true};
+let historyBusy=false;
+let historyLoaded=false;
 
 function money(cents,currency='usd'){
   try{
@@ -314,6 +320,7 @@ async function loadBilling(){
 
   billingSummary=data.summary;
   renderBilling();
+  if(!historyLoaded){historyLoaded=true;await loadMoreHistory();}
 }
 
 function renderBilling(){
@@ -379,7 +386,18 @@ function renderBilling(){
 
   const invoices=Array.isArray(account.invoices)?account.invoices:[];
   const oneTime=Array.isArray(account.one_time_payments)?account.one_time_payments:[];
-  const payments=[...invoices,...oneTime].sort((a,b)=>{
+  const combined=[...invoices,...oneTime,...historyPayments];
+  // Prefer invoice details for subscription payments; checkout can refer to the same invoice.
+  const coveredInvoices=new Set(combined.filter(p=>p.payment_kind==='invoice').map(p=>p.invoice_id||p.id));
+  const coveredIntents=new Set(combined.filter(p=>p.payment_kind==='checkout'&&p.payment_intent_id).map(p=>p.payment_intent_id));
+  const seen=new Set();
+  const payments=combined.filter(p=>{
+    if(p.payment_kind==='checkout'&&p.invoice_id&&coveredInvoices.has(p.invoice_id))return false;
+    if(p.payment_kind==='intent'&&coveredIntents.has(p.payment_intent_id||p.id))return false;
+    const key=p.id||p.checkout_session_id||p.invoice_id;
+    if(key&&seen.has(key))return false;
+    if(key)seen.add(key);return true;
+  }).sort((a,b)=>{
     const at=a?.created?new Date(a.created).getTime():0;
     const bt=b?.created?new Date(b.created).getTime():0;
     return bt-at;
@@ -461,6 +479,37 @@ function escapeHtml(value){
     .replaceAll("'",'&#039;');
 }
 
+
+async function loadMoreHistory(){
+  if(historyBusy)return;
+  historyBusy=true;
+  const btn=document.getElementById('load-history-btn');
+  btn.disabled=true;btn.style.display='inline-flex';btn.textContent='Loading payments…';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('Sign in again to see payment history.');
+    // Each source has its own cursor, including guest Checkout sessions without a Stripe customer.
+    for(const source of ['checkout','invoice','intent']){
+      if(!historyRemaining[source])continue;
+      const response=await fetch('/api/create-checkout-session',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'payment_history',history_source:source,history_cursor:historyCursors[source]||''})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'Could not load payment history.');
+      historyPayments.push(...(data.payments||[]));
+      historyCursors[source]=data.next_cursor||'';
+      historyRemaining[source]=!!data.next_cursor;
+    }
+    renderBilling();
+    const remaining=Object.values(historyRemaining).some(Boolean);
+    btn.style.display=remaining?'inline-flex':'none';
+    btn.textContent='Load more payment history';
+  }catch(error){
+    showError(error.message||'Could not load complete payment history.');
+    btn.textContent='Retry payment history';
+  }finally{historyBusy=false;btn.disabled=false;}
+}
 
 async function syncPaidBoost(button){
   const checkoutSessionId=String(button?.dataset?.boostSession||'').trim();
