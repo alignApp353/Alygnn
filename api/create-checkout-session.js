@@ -1317,6 +1317,99 @@ function calculateNextPlanCharge(ent,sub){
     Number(ent?.plan_amount_cents||0);
 }
 
+// Read-only Stripe history: page by source so employers can browse beyond the
+// old eight-invoice limit, including guest $0 Checkout Sessions.
+async function employerPaymentHistory(user,ent,input={}){
+  const source=String(input.history_source||'checkout');
+  if(!['checkout','invoice','intent'].includes(source))throw Object.assign(new Error('Invalid history source.'),{status:400});
+  const cursor=String(input.history_cursor||'').trim();
+  if(cursor.length>250)throw Object.assign(new Error('Invalid history cursor.'),{status:400});
+  const employerId=String(user.id);
+  const productNames={weekly_slot:'Weekly Job Slot',additional_slot:'Second Job Slot',single_job:'Second Job Slot',job_boost:'Job Boost',team_seat:'Additional Team Seat',plan_upgrade:'Plan Upgrade',job_plan:'Employer Plan'};
+  const labelFor=meta=>{
+    const product=String(meta?.product||'').toLowerCase();
+    if(product==='job_plan')return [String(meta?.plan||'').toUpperCase(),'Plan',meta?.billing].filter(Boolean).join(' ');
+    if(product==='plan_upgrade')return `${String(meta?.current_plan||'').toUpperCase()} to ${String(meta?.target_plan||'').toUpperCase()} Plan Upgrade`;
+    return productNames[product]||String(meta?.description||'Alygnn purchase');
+  };
+  if(source==='checkout'){
+    // Checkout cannot filter sessions by metadata in Stripe's list API.
+    // Scan a bounded number of global pages per request and expose the cursor
+    // so every historical page remains reachable without long serverless runs.
+    const rows=[];let next=cursor,more=true,pages=0;
+    while(more&&pages<5){
+      const args={limit:100};if(next)args.starting_after=next;
+      const result=await manageStripe('GET','checkout/sessions',args);
+      const items=result.data||[];
+      for(const session of items){
+        if(String(session.metadata?.employer_id||'')!==employerId)continue;
+        if(session.status!=='complete')continue;
+        const meta=session.metadata||{};
+        rows.push({id:session.id,checkout_session_id:session.id,payment_kind:'checkout',
+          product:meta.product||'checkout',description:labelFor(meta),
+          created:new Date(Number(session.created||0)*1000).toISOString(),
+          status:session.payment_status==='paid'||session.payment_status==='no_payment_required'?'paid':session.payment_status||'complete',
+          subtotal_cents:Number(session.amount_subtotal||0),
+          discount_cents:Number(session.total_details?.amount_discount||0),
+          tax_cents:Number(session.total_details?.amount_tax||0),
+          total_cents:Number(session.amount_total||0),currency:session.currency||'usd',
+          invoice_id:typeof session.invoice==='string'?session.invoice:session.invoice?.id||null,
+          payment_intent_id:typeof session.payment_intent==='string'?session.payment_intent:session.payment_intent?.id||null,
+          job_title:meta.job_title||null,days:meta.days||null});
+      }
+      pages++;more=!!result.has_more&&items.length>0;
+      next=items.length?items[items.length-1].id:null;
+    }
+    return {payments:rows,next_cursor:more?next:null,source};
+  }
+  if(source==='intent'){
+    const query=`metadata["employer_id"]:"${employerId}"`;
+    const args={query,limit:100};if(cursor)args.page=cursor;
+    const result=await manageStripe('GET','payment_intents/search',args);
+    const rows=(result.data||[]).filter(pi=>String(pi.metadata?.employer_id||'')===employerId)
+      .map(pi=>({id:pi.id,payment_intent_id:pi.id,payment_kind:'intent',
+        product:pi.metadata?.product||'payment',description:labelFor({...pi.metadata,description:pi.description}),
+        created:new Date(Number(pi.created||0)*1000).toISOString(),
+        status:pi.status==='succeeded'?'paid':pi.status,
+        total_cents:Number(pi.amount_received||pi.amount||0),
+        tax_cents:0,subtotal_cents:Number(pi.amount_received||pi.amount||0),
+        currency:pi.currency||'usd',invoice_id:typeof pi.invoice==='string'?pi.invoice:pi.invoice?.id||null}));
+    return {payments:rows,next_cursor:result.has_more?result.next_page||null:null,source};
+  }
+  const customerIds=[ent?.stripe_plan_customer_id].filter(Boolean);
+  try{
+    const matches=await manageStripe('GET','customers/search',{
+      query:`metadata["employer_id"]:"${employerId}"`,limit:100
+    });
+    for(const c of matches.data||[])if(c.id&&!customerIds.includes(c.id))customerIds.push(c.id);
+  }catch(error){console.warn('Billing customer lookup:',error.message);}
+  // Cursor stores a customer index and Stripe starting_after, never a user ID.
+  let state={i:0,after:''};
+  if(cursor){try{state=JSON.parse(Buffer.from(cursor,'base64url').toString('utf8'));}catch(_){throw Object.assign(new Error('Invalid history cursor.'),{status:400});}}
+  if(!Number.isInteger(state.i)||state.i<0||state.i>customerIds.length||typeof state.after!=='string')throw Object.assign(new Error('Invalid history cursor.'),{status:400});
+  const rows=[];let i=state.i,after=state.after,rounds=0;
+  while(i<customerIds.length&&rounds<3){
+    const args={customer:customerIds[i],limit:100};if(after)args.starting_after=after;
+    const result=await manageStripe('GET','invoices',args);
+    for(const inv of result.data||[]){
+      rows.push({id:inv.id,invoice_id:inv.id,payment_kind:'invoice',
+        description:inv.lines?.data?.[0]?.description||inv.description||'Alygnn invoice',
+        created:new Date(Number(inv.created||0)*1000).toISOString(),
+        status:inv.status||'unknown',subtotal_cents:Number(inv.subtotal||0),
+        discount_cents:Number(inv.total_discount_amounts?.reduce((n,x)=>n+Number(x.amount||0),0)||0),
+        tax_cents:Number(inv.total_tax_amounts?.reduce((n,x)=>n+Number(x.amount||0),0)||0),
+        total_cents:Number(inv.total||0),currency:inv.currency||'usd',
+        hosted_invoice_url:inv.hosted_invoice_url||null,invoice_pdf:inv.invoice_pdf||null,
+        number:inv.number||null});
+    }
+    const items=result.data||[];
+    if(result.has_more&&items.length){after=items[items.length-1].id;rounds++;}
+    else {i++;after='';rounds++;}
+  }
+  const next_cursor=i<customerIds.length?Buffer.from(JSON.stringify({i,after})).toString('base64url'):null;
+  return {payments:rows,next_cursor,source};
+}
+
 async function billingAccountSummary(user,ent,planSub,secondSub){
   const ids=[
     stripeCustomerId(planSub,ent),
@@ -1922,7 +2015,7 @@ async function runManageAction(res,user,input){
   let ent=await getEntitlement(user.id);
   let sub=null;
 
-  if(shouldResolveSubscription(ent)){
+  if(shouldResolveSubscription(ent)&&action!=='payment_history'){
     try{
       sub=await resolveSubscription(user.id,ent);
     }catch(error){
@@ -1992,6 +2085,11 @@ async function runManageAction(res,user,input){
 
   if(action==='sync_team_seat_checkout'){
     const result=await syncCompletedTeamSeatCheckout(user,input.checkout_session_id);
+    return send(res,200,{ok:true,...result});
+  }
+
+  if(action==='payment_history'){
+    const result=await employerPaymentHistory(user,ent,input);
     return send(res,200,{ok:true,...result});
   }
 
