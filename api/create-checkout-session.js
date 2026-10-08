@@ -2316,7 +2316,8 @@ module.exports = async function handler(req, res) {
       'sync_second_slot_checkout',
       'reconcile_second_slot_checkout',
       'sync_boost_checkout',
-      'sync_team_seat_checkout'
+      'sync_team_seat_checkout',
+      'payment_history'
     ].includes(billingAction)) {
       return await runManageAction(res, user, input);
     }
