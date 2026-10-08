@@ -217,6 +217,37 @@ async function fulfillCheckout(session) {
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
 
+  if (product === 'weekly_slot') {
+    // A 100%-discounted Stripe Checkout has payment_status=no_payment_required.
+    // Record a reusable 7-day weekly slot without overwriting the main plan.
+    const reference = String(session.id || '');
+    if (!reference) throw new Error('Weekly Job Slot checkout is missing its Stripe session ID.');
+    const query = new URL(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`);
+    query.searchParams.set('payment_reference', 'eq.' + reference);
+    query.searchParams.set('select', 'id');
+    query.searchParams.set('limit', '1');
+    const existingResponse = await fetch(query, { headers: serviceHeaders() });
+    if (!existingResponse.ok) throw new Error('Could not check existing Weekly Job Slot purchase: ' + await existingResponse.text());
+    const existing = await existingResponse.json();
+    if (Array.isArray(existing) && existing.length) return;
+
+    const purchase = {
+      employer_id: employerId,
+      payment_reference: reference,
+      amount_cents: Number(session.amount_total ?? 0),
+      test_mode: false,
+      expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      activated_at: new Date().toISOString()
+    };
+    const response = await fetch(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`, {
+      method: 'POST',
+      headers: serviceHeaders({ Prefer: 'return=minimal' }),
+      body: JSON.stringify(purchase)
+    });
+    if (!response.ok) throw new Error('Could not activate Weekly Job Slot: ' + await response.text());
+    return;
+  }
+
   if (product === 'additional_slot' || product === 'single_job') {
     // Standalone $150/month Second Job Slot. The included free slot remains,
     // so this subscription gives the employer 2 total reusable active slots.
@@ -416,7 +447,7 @@ module.exports = async function handler(req, res) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        if (event.data.object.payment_status === 'paid' || event.data.object.mode === 'subscription') {
+        if (event.data.object.payment_status === 'paid' || event.data.object.payment_status === 'no_payment_required' || event.data.object.mode === 'subscription') {
           await fulfillCheckout(event.data.object);
         }
         break;
