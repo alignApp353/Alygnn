@@ -237,7 +237,7 @@ async function fulfillCheckout(session) {
       amount_cents: Number(session.amount_total ?? 0),
       test_mode: false,
       expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-      activated_at: new Date().toISOString()
+      activated_at: null
     };
     const response = await fetch(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`, {
       method: 'POST',
