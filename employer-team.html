@@ -328,6 +328,20 @@ nav{
 .account-delete-btn{border:1px solid rgba(215,154,154,.7);background:#FAEEEE;color:#9a4e4e;border-radius:10px;padding:10px 13px;font-weight:700;cursor:pointer}
 .account-delete-btn:disabled{opacity:.5;cursor:not-allowed}
 
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:900px){nav{gap:10px;padding-left:16px;padding-right:16px}.nav-links{min-width:0;gap:12px}.company-name{max-width:110px}.page{padding-left:16px;padding-right:16px}}@media(max-width:460px){.company-name{display:none}.add-slot-btn{padding:0 11px;font-size:12px}}
 </style>
 </head>
 <body>
