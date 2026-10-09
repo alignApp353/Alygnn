@@ -1779,24 +1779,14 @@ async function enforceJobSlotAccess(userId,companyId){
         return true;
       }
 
-      sessionStorage.setItem(
-        'alygnn_job_slot_gate',
-        JSON.stringify({
-          used,
-          limit,
-          checked_at:new Date().toISOString(),
-          source:'app-post-job-rpc'
-        })
-      );
-
-      const params=new URLSearchParams({
-        reason:'slot_limit',
-        used:String(used),
-        limit:String(limit)
-      });
+      try{
+        sessionStorage.removeItem('alygnn_job_slot_gate');
+        sessionStorage.removeItem('alygnnPostJobCapacityPass');
+        sessionStorage.setItem('alygnnEmployerStartView','jobs');
+      }catch(_error){}
 
       location.replace(
-        `app-employer-pricing.html?${params.toString()}`
+        `app-employer-dashboard.html?view=jobs&capacity_full=1&used=${encodeURIComponent(String(used))}&limit=${encodeURIComponent(String(limit))}`
       );
       return false;
     }
@@ -1855,24 +1845,14 @@ async function enforceJobSlotAccess(userId,companyId){
     return true;
   }
 
-  sessionStorage.setItem(
-    'alygnn_job_slot_gate',
-    JSON.stringify({
-      used,
-      limit,
-      checked_at:new Date().toISOString(),
-      source:'app-post-job-fallback'
-    })
-  );
-
-  const params=new URLSearchParams({
-    reason:'slot_limit',
-    used:String(used),
-    limit:String(limit)
-  });
+  try{
+    sessionStorage.removeItem('alygnn_job_slot_gate');
+    sessionStorage.removeItem('alygnnPostJobCapacityPass');
+    sessionStorage.setItem('alygnnEmployerStartView','jobs');
+  }catch(_error){}
 
   location.replace(
-    `app-employer-pricing.html?${params.toString()}`
+    `app-employer-dashboard.html?view=jobs&capacity_full=1&used=${encodeURIComponent(String(used))}&limit=${encodeURIComponent(String(limit))}`
   );
   return false;
 }
