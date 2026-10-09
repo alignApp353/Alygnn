@@ -2566,7 +2566,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       // The API summary is the canonical base-plan total. Do not let an old
       // posting-access value (for example Scale=14 from a prior test package)
       // override the current Scale=9 plan capacity in Billing & plan.
-      const slots=Number(summary.slot_limit||accountPostingAccess?.limit||1);
+      const slots=secondActive && plan==='Free'
+        ? Math.max(2, Number(accountPostingAccess?.limit || 0))
+        : Number(summary.slot_limit||accountPostingAccess?.limit||1);
       const renewal=summary.current_period_end?billingDate(summary.current_period_end):'';
       const amount=Number(summary.amount_cents||0);
       const recurringMeta=paidPlan
