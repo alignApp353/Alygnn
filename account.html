@@ -1288,6 +1288,20 @@ select.form-input{
 .mini-footer{ text-align:center; padding:24px 6% 40px; font-size:12px; color:var(--text-muted); }
 .mini-footer a{ color:var(--text-muted); text-decoration:none; }
 .mini-footer a:hover{ color:var(--brand); }
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:640px){nav{padding:0 16px;gap:8px}.nav-links{min-width:0;gap:10px}.nav-links a{font-size:12px}.nav-signout{padding:7px 10px}.page{max-width:100%}}
 </style>
 
 <style id="candidate-nav-position-lock">
