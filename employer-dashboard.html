@@ -3013,6 +3013,29 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     // are reflected immediately when the employer comes back to Alygnn.
     await syncCompletedPlanCheckoutOnReturn();
     await loadBillingEntitlement();
+    // Recover missed Stripe expiration webhooks before displaying active job status.
+    // Server verifies the employer and remaining independently paid job slots.
+    if(!isTeamMember){
+      try{
+        const {data:{session}}=await sb.auth.getSession();
+        if(session?.access_token){
+          const response=await fetch('/api/create-checkout-session',{
+            method:'POST',
+            headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+            body:JSON.stringify({action:'reconcile_expired_plan_jobs'})
+          });
+          if(response.ok){
+            const result=await response.json();
+            if(Number(result.closed||0)>0){
+              await loadJobs();
+              await loadBillingEntitlement();
+            }
+          }else{
+            console.warn('Could not verify expired paid-plan jobs:',response.status);
+          }
+        }
+      }catch(error){console.warn('Plan-expiration job check unavailable:',error?.message||error);}
+    }
     renderJobs();
     updatePostingAccessUI();
     initNotifications();
