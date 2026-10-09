@@ -412,6 +412,39 @@ async function loadBilling(){
   }
 
   billingSummary=data.summary;
+  // The billing API's current_plan/slot_limit describe the BASE plan only.
+  // Read the employer's confirmed Second Job Slot entitlement separately so a
+  // discounted $0 subscription is not incorrectly presented as Free / 1 slot.
+  try {
+    const [entResult, accessResult] = await Promise.all([
+      sb.from('employer_entitlements')
+        .select('addon_slot_count,addon_slots_expires_at')
+        .eq('employer_id', session.user.id).maybeSingle(),
+      sb.rpc('get_employer_posting_access')
+    ]);
+    const ent = !entResult.error ? entResult.data : null;
+    const expires = ent?.addon_slots_expires_at
+      ? new Date(ent.addon_slots_expires_at).getTime() : NaN;
+    const directActive = Number(ent?.addon_slot_count || 0) > 0 &&
+      Number.isFinite(expires) && expires > Date.now();
+    const server = !accessResult.error ? accessResult.data : null;
+    const serverActive = Number(server?.addon_slot_count || 0) > 0 &&
+      Number.isFinite(new Date(server?.addon_slots_expires_at || 0).getTime()) &&
+      new Date(server.addon_slots_expires_at).getTime() > Date.now();
+    const second = billingSummary.second_job_slot || {};
+    const stripeActive = ['active','trialing','past_due'].includes(
+      String(second.subscription_status || '').toLowerCase());
+    // Billing may report an active Stripe subscription before posting access
+    // is provisioned. Never advertise usable slots on Stripe status alone.
+    billingSummary._second_slot_active = (directActive || serverActive) && stripeActive;
+    if (billingSummary._second_slot_active &&
+        String(billingSummary.current_plan || '').toLowerCase() === 'free') {
+      billingSummary._display_slot_limit = Math.max(
+        2, Number(server?.slot_limit || 0), Number(billingSummary.slot_limit || 1));
+    }
+  } catch (err) {
+    console.warn('Could not verify the Second Job Slot for billing display:', err);
+  }
   renderBilling();
   if(!historyLoaded){historyLoaded=true;await loadMoreHistory();}
 }
@@ -422,18 +455,26 @@ function renderBilling(){
   const testMode=s.test_mode===true;
   const billing=String(s.billing_period||'').toLowerCase();
 
-  document.getElementById('plan-name').textContent=planName(s.current_plan);
+  const hasSecondSlot=s._second_slot_active === true &&
+    String(s.current_plan || '').toLowerCase() === 'free';
+  document.getElementById('plan-name').textContent=hasSecondSlot
+    ? 'Free + Second Job Slot' : planName(s.current_plan);
 
   const meta=[];
-  if(s.slot_limit)meta.push(`${Number(s.slot_limit)} total reusable job slots`);
+  const displaySlots=hasSecondSlot ? s._display_slot_limit : s.slot_limit;
+  if(displaySlots)meta.push(`${Number(displaySlots)} total reusable job slots`);
+  if(hasSecondSlot)meta.push('Second Job Slot $150/month');
   if(billing)meta.push(billing.charAt(0).toUpperCase()+billing.slice(1));
   if(s.amount_cents)meta.push(money(s.amount_cents));
   if(s.current_period_end)meta.push('Next billing '+dateLabel(s.current_period_end));
   document.getElementById('plan-meta').textContent=meta.join(' · ')||'No paid plan';
 
   const status=document.getElementById('plan-status');
+  status.classList.remove('neutral');
   if(testMode){
     status.textContent='Test plan active';
+  }else if(hasSecondSlot){
+    status.textContent='Second slot active';
   }else if(['active','trialing'].includes(String(s.subscription_status||'').toLowerCase())){
     status.textContent='Active plan';
   }else{
