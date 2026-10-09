@@ -2252,6 +2252,62 @@ async function syncCompletedBoostCheckout({ user, checkoutSessionId }) {
   };
 }
 
+// Secure recovery for one-time Weekly Job Slot checkouts, including 100%-off promos.
+// This uses the exact Stripe session as the purchase reference, just like the webhook.
+async function syncCompletedWeeklySlotCheckout({user,checkoutSessionId}) {
+  const employerId=String(user?.id||'');
+  if(!employerId)throw Object.assign(new Error('Employer login required.'),{status:401});
+  const sessionId=String(checkoutSessionId||'').trim();
+  if(!/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(sessionId)){
+    throw Object.assign(new Error('Invalid Stripe Checkout session ID.'),{status:400});
+  }
+  const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(sessionId));
+  if(String(checkout.metadata?.employer_id||'')!==employerId ||
+     String(checkout.metadata?.product||'').toLowerCase()!=='weekly_slot'){
+    throw Object.assign(new Error('This Weekly Job Slot checkout does not belong to your employer account.'),{status:403});
+  }
+  if(checkout.mode!=='payment' || checkout.status!=='complete' ||
+     !['paid','no_payment_required'].includes(String(checkout.payment_status||''))){
+    throw Object.assign(new Error('Weekly Job Slot checkout has not completed successfully.'),{status:409});
+  }
+  const purchasesUrl=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
+  purchasesUrl.searchParams.set('payment_reference','eq.'+sessionId);
+  purchasesUrl.searchParams.set('select','id,employer_id');
+  purchasesUrl.searchParams.set('limit','1');
+  async function findExisting(){
+    const response=await fetch(purchasesUrl,{headers:manageServiceHeaders()});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||'Unable to check the Weekly Job Slot purchase.');
+    return Array.isArray(data)?data[0]||null:null;
+  }
+  let existing=await findExisting();
+  if(existing){
+    if(String(existing.employer_id)!==employerId)throw Object.assign(new Error('Purchase is linked to another employer.'),{status:403});
+    return {ok:true,synced:true,product:'weekly_slot',already_synced:true};
+  }
+  const purchase={
+    employer_id:employerId,
+    payment_reference:sessionId,
+    amount_cents:Number(checkout.amount_total??0),
+    test_mode:false,
+    expires_at:new Date(Date.now()+7*86400000).toISOString(),
+    activated_at:null
+  };
+  const response=await fetch(manageBase()+'/rest/v1/employer_weekly_slot_purchases',{
+    method:'POST',
+    headers:manageServiceHeaders({Prefer:'return=minimal'}),
+    body:JSON.stringify(purchase)
+  });
+  if(!response.ok){
+    // The signed Stripe webhook may have fulfilled this session concurrently.
+    existing=await findExisting();
+    if(!existing || String(existing.employer_id)!==employerId){
+      throw new Error('Weekly Job Slot payment confirmed, but slot activation failed: '+await response.text());
+    }
+  }
+  return {ok:true,synced:true,product:'weekly_slot'};
+}
+
 // Secure, idempotent Second Job Slot recovery for completed Stripe Checkout.
 // The dashboard uses this when Stripe's webhook has not yet synced the entitlement.
 async function syncCompletedSecondSlotCheckout({user,checkoutSessionId,reconcile=false}) {
@@ -2400,6 +2456,11 @@ module.exports = async function handler(req, res) {
         checkoutSessionId: billingAction === 'sync_second_slot_checkout' ? input.checkout_session_id : '',
         reconcile: billingAction === 'reconcile_second_slot_checkout'
       });
+      return send(res,200,result);
+    }
+
+    if (billingAction === 'sync_weekly_slot_checkout') {
+      const result = await syncCompletedWeeklySlotCheckout({user,checkoutSessionId:input.checkout_session_id});
       return send(res,200,result);
     }
 
