@@ -139,6 +139,22 @@
     .left-panel { display: none; }
     .right-panel { padding: 48px 28px; }
   }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:768px){body{grid-template-columns:minmax(0,1fr)}.right-panel{min-width:0;max-width:100vw;padding:38px clamp(16px,5vw,32px)}.form-container,.login-card,.auth-card{max-width:100%;min-width:0}}@media(max-width:380px){.right-panel{padding-left:16px;padding-right:16px}}
 </style>
 </head>
 <body>
