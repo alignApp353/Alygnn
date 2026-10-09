@@ -2241,17 +2241,55 @@ async function syncCompletedSecondSlotCheckout({user,checkoutSessionId,reconcile
     }
     // Do not re-grant an expired or ended slot. Cancellation at renewal keeps access
     // until Stripe actually ends the subscription.
-    const end=Number(subscription.current_period_end||0);
-    if(end && end*1000<=Date.now()){
+    // Newer Stripe API versions put the billing-period end on subscription items.
+    // A null expiry is not a valid paid-slot entitlement.
+    const end=Number(subscription.current_period_end ||
+      subscription.items?.data?.[0]?.current_period_end || 0);
+    if(!end){
+      throw Object.assign(new Error('Stripe did not provide the Second Job Slot billing end date. Please retry.'),{status:409});
+    }
+    if(end*1000<=Date.now()){
       throw Object.assign(new Error('The Second Job Slot paid period has ended.'),{status:409});
     }
+    const periodEnd=new Date(end*1000).toISOString();
     await manageRpc('sync_second_job_slot_subscription',{
       p_employer_id:employerId,
       p_status:status,
-      p_expires_at:end?new Date(end*1000).toISOString():null,
+      p_expires_at:periodEnd,
       p_payment_reference:reference||null,
       p_amount_cents:Number(amountCents??15000)
     });
+
+    // Verify the persistent entitlement. The sync RPC can return HTTP 200 even
+    // when a slot is not reflected in the employer's entitlement row.
+    async function readAddon(){
+      const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+      url.searchParams.set('employer_id','eq.'+employerId);
+      url.searchParams.set('select','employer_id,addon_slot_count,addon_slots_expires_at');
+      url.searchParams.set('limit','1');
+      const response=await fetch(url,{headers:manageServiceHeaders()});
+      const data=await response.json().catch(()=>null);
+      if(!response.ok)throw new Error(data?.message||'Unable to verify the purchased slot.');
+      return Array.isArray(data)?data[0]||null:null;
+    }
+    const isActiveAddon=row=>Number(row?.addon_slot_count||0)>=1 &&
+      (!row.addon_slots_expires_at || Date.parse(row.addon_slots_expires_at)>Date.now());
+    let row=await readAddon();
+    if(!isActiveAddon(row)){
+      // Recover only the proven, current Stripe subscription entitlement; do not
+      // modify the employer's plan, jobs, or other billing fields.
+      const url=new URL(manageBase()+'/rest/v1/employer_entitlements');
+      url.searchParams.set('on_conflict','employer_id');
+      const response=await fetch(url,{
+        method:'POST',
+        headers:manageServiceHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
+        body:JSON.stringify({employer_id:employerId,addon_slot_count:1,
+          addon_slots_expires_at:periodEnd,updated_at:new Date().toISOString()})
+      });
+      if(!response.ok)throw new Error('Stripe checkout completed but the second slot could not be activated: '+await response.text());
+      row=await readAddon();
+      if(!isActiveAddon(row))throw new Error('Stripe checkout completed but the second slot is still unavailable. Contact support with the checkout session ID.');
+    }
     return {ok:true,synced:true,product:'additional_slot',subscription_id:subscription.id,status};
   }
 
