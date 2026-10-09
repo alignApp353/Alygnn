@@ -2474,21 +2474,9 @@ module.exports = async function handler(req, res) {
           payment_issue: true
         });
       }
-      if (access?.active_paid_plan !== true) {
-        return send(res, 400, {
-          error: 'The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.'
-        });
-      }
-      if (access?.weekly_purchase_allowed !== true) {
-        const recommended = String(access?.recommended_upgrade_plan || '').toLowerCase();
-        return send(res, 409, {
-          error: recommended
-            ? `You already have one active Weekly Job Slot. Upgrade to ${recommended.charAt(0).toUpperCase()+recommended.slice(1)} for better ongoing value.`
-            : 'Another Weekly Job Slot is not available for this plan right now.',
-          recommended_upgrade_plan: recommended || null,
-          manage_plan: !!recommended
-        });
-      }
+      // A weekly slot is an independent 7-day one-time purchase. Existing
+      // weekly slots and the employer's plan do not limit repeat purchases.
+      // Keep the payment-issue protection above unchanged.
 
       const item = CHECKOUT_CATALOG.weekly.weekly_slot;
       name = item.name;
