@@ -82,6 +82,20 @@
   @media (max-width: 640px) {
     footer { flex-direction: column; gap: 10px; text-align: center; }
   }
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:640px){.page{padding:36px 18px 72px}nav{padding:0 16px;gap:12px}.nav-links{gap:10px;min-width:0;flex-wrap:wrap;justify-content:flex-end}.nav-links a{font-size:12px}.doc-title{font-size:clamp(26px,8vw,35px)}}
 </style>
 </head>
 <body>
