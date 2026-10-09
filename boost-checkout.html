@@ -50,6 +50,20 @@ h1{font-family:'DM Serif Display',serif;font-size:42px;line-height:1.08;margin-b
 body.test-mode .test-banner{display:block}
 body.test-mode .paid-only{display:none}
 @media(max-width:760px){.grid{grid-template-columns:1fr}.summary{position:static}h1{font-size:34px}.boost-date-grid{grid-template-columns:1fr}}
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.grid>*{min-width:0}}@media(max-width:540px){nav{padding:0 16px;gap:10px}.nav-right{gap:8px}.nav-link,.dashboard-btn{padding:8px 10px;font-size:12px}main{padding:28px 16px 64px}h1{font-size:clamp(28px,8vw,38px)}.panel{padding:18px}}
 </style>
 </head>
 <body>
