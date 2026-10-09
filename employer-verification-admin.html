@@ -139,6 +139,20 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
 @media(max-width:700px){.account-search-row{flex-direction:column;align-items:stretch}.account-row{align-items:flex-start;flex-direction:column}.delete-account-btn{width:100%}.summary{grid-template-columns:1fr 1fr!important}}
 
 
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:850px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding-left:18px;padding-right:18px}}@media(max-width:480px){.summary{grid-template-columns:minmax(0,1fr)}.stat{padding:14px}nav{padding:0 16px;gap:8px}.admin-pill{font-size:10px;padding:6px 9px}}
 </style>
 </head>
 
