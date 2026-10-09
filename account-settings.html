@@ -134,6 +134,20 @@
   /* Keep the account header pinned while the settings page scrolls. */
   html { scroll-padding-top: 64px; }
   nav { transform: translateZ(0); }
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:640px){.page{padding:30px 16px 72px}.section{padding:18px}.row{flex-wrap:wrap;align-items:flex-start}.row > *{min-width:0;max-width:100%}nav{padding:0 16px;gap:12px}.back-link{font-size:12px;text-align:right}}
 </style>
 </head>
 <body>
