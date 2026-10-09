@@ -443,7 +443,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 </div>
 </div>
 <header class="app-header">
-  <button class="icon-btn" id="back-btn" type="button" aria-label="Back to Jobs"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+  <a class="icon-btn" id="back-btn" href="app-employer-dashboard.html?view=jobs&from=pricing-back" aria-label="Back to Jobs" style="display:grid;place-items:center;text-decoration:none" onclick="try{sessionStorage.removeItem('alygnn_job_slot_gate');sessionStorage.removeItem('alygnnPostJobCapacityPass');sessionStorage.setItem('alygnnEmployerStartView','jobs')}catch(e){}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
   <div class="brand">Alygnn<span>.</span></div>
   <div class="header-spacer"></div>
 </header>
@@ -1972,20 +1972,12 @@ async function loadAccount(){
   }
 }
 
-$('back-btn').addEventListener('click',(event)=>{
-  event.preventDefault();
-  event.stopPropagation();
-
+$('back-btn')?.addEventListener('click',()=>{
   try{
     sessionStorage.removeItem('alygnn_job_slot_gate');
     sessionStorage.removeItem('alygnnPostJobCapacityPass');
     sessionStorage.setItem('alygnnEmployerStartView','jobs');
   }catch(_error){}
-
-  // Replace the pricing page in the WebView history instead of adding
-  // another entry. This prevents the employer from getting trapped in a
-  // pricing -> jobs -> pricing back-navigation loop on Android.
-  window.location.replace('app-employer-dashboard.html?view=jobs&from=pricing-back');
 });
 
 document.querySelectorAll('[data-billing]').forEach(btn=>{
