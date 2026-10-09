@@ -443,7 +443,25 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
 </div>
 </div>
 <header class="app-header">
-  <a class="icon-btn" id="back-btn" href="app-employer-dashboard.html?view=jobs&pricing_exit=1" aria-label="Back to Jobs" style="display:grid;place-items:center;text-decoration:none" onclick="try{sessionStorage.removeItem('alygnn_job_slot_gate');sessionStorage.removeItem('alygnnPostJobCapacityPass');sessionStorage.removeItem('alygnnJobReturnStep');sessionStorage.setItem('alygnnEmployerStartView','jobs')}catch(e){}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></a>
+  <button
+    class="icon-btn"
+    id="back-btn"
+    type="button"
+    aria-label="Back to Jobs"
+    style="display:grid;place-items:center"
+    onclick="
+      try{
+        sessionStorage.removeItem('alygnn_job_slot_gate');
+        sessionStorage.removeItem('alygnnPostJobCapacityPass');
+        sessionStorage.removeItem('alygnnJobReturnStep');
+        sessionStorage.setItem('alygnnEmployerStartView','jobs');
+        sessionStorage.setItem('alygnnPricingExitRequested','1');
+      }catch(e){}
+      window.location.replace('app-employer-dashboard.html?view=jobs&pricing_exit=1');
+      return false;
+    ">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
   <div class="brand">Alygnn<span>.</span></div>
   <div class="header-spacer"></div>
 </header>
@@ -487,13 +505,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
   </section>
 
   <div class="section-title">Plans</div>
-  <p class="section-copy">Choose a plan or add extra hiring capacity. Purchasing more capacity is optional — you can also pause or close an existing job and reuse that slot.</p>
-  <a
-    href="app-employer-dashboard.html?view=jobs&pricing_exit=1"
-    style="display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin:12px 0 14px;padding:0 16px;border:1px solid var(--border);border-radius:13px;background:var(--card);color:var(--text);font-weight:800;text-decoration:none;text-align:center"
-    onclick="try{sessionStorage.removeItem('alygnn_job_slot_gate');sessionStorage.removeItem('alygnnPostJobCapacityPass');sessionStorage.removeItem('alygnnJobReturnStep');sessionStorage.setItem('alygnnEmployerStartView','jobs')}catch(e){}">
-    Back to My Jobs
-  </a>
+  <p class="section-copy">Choose a plan or add extra hiring capacity.</p>
 
   <div class="tabs" role="tablist" aria-label="Billing period">
     <button class="tab active" type="button" data-billing="quarterly">Quarterly</button>
@@ -1984,14 +1996,6 @@ async function loadAccount(){
     hideCapacityLoading();
   }
 }
-
-$('back-btn')?.addEventListener('click',()=>{
-  try{
-    sessionStorage.removeItem('alygnn_job_slot_gate');
-    sessionStorage.removeItem('alygnnPostJobCapacityPass');
-    sessionStorage.setItem('alygnnEmployerStartView','jobs');
-  }catch(_error){}
-});
 
 document.querySelectorAll('[data-billing]').forEach(btn=>{
   btn.addEventListener('click',()=>switchBilling(btn.dataset.billing));
