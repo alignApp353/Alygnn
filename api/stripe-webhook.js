@@ -211,6 +211,30 @@ async function fulfillPlanUpgrade(meta = {}) {
   });
 }
 
+function stripePeriodEnd(subscription){
+  const end=Number(subscription?.current_period_end ||
+    subscription?.items?.data?.[0]?.current_period_end ||
+    subscription?.items?.data?.find(item=>item.current_period_end)?.current_period_end || 0);
+  return end > Math.floor(Date.now()/1000) ? new Date(end*1000).toISOString() : null;
+}
+
+async function activeSecondSlotForEmployer(employerId){
+  for(const product of ['additional_slot','single_job']){
+    const q=new URL('https://api.stripe.com/v1/subscriptions/search');
+    q.searchParams.set('query',`metadata["employer_id"]:"${employerId}" AND metadata["product"]:"${product}"`);
+    q.searchParams.set('limit','100');
+    const result=await fetch(q,{headers:{Authorization:'Bearer '+process.env.STRIPE_SECRET_KEY}});
+    if(!result.ok)throw new Error('Could not verify existing Second Job Slot subscriptions.');
+    const body=await result.json();
+    const valid=(body.data||[]).filter(s=>
+      s.metadata?.employer_id===employerId &&
+      ['active','trialing','past_due'].includes(String(s.status||'')) && stripePeriodEnd(s));
+    valid.sort((a,b)=>(b.created||0)-(a.created||0));
+    if(valid[0])return valid[0];
+  }
+  return null;
+}
+
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
@@ -253,12 +277,14 @@ async function fulfillCheckout(session) {
     // so this subscription gives the employer 2 total reusable active slots.
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
+      const expires=stripePeriodEnd(subscription);
+      if(!expires)throw new Error('Second Job Slot active subscription lacks a future billing-period end.');
       await rpc('sync_second_job_slot_subscription', {
         p_employer_id: employerId,
         p_status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        p_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
+        p_expires_at: expires,
         p_payment_reference: session.id,
-        p_amount_cents: session.amount_total || 15000
+        p_amount_cents: Number(session.amount_total ?? 0)
       });
       return;
     }
@@ -423,13 +449,17 @@ async function fulfillSubscription(subscription, forceStatus) {
   if (!meta.employer_id) return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    const status = forceStatus || (subscription.status === 'trialing' ? 'trialing' : subscription.status);
+    // A late canceled/older subscription event must not revoke another valid
+    // subscription for this employer. Verify current Stripe state first.
+    const current=await activeSecondSlotForEmployer(meta.employer_id);
+    const source=current||subscription;
+    const status=current
+      ? String(current.status||'active').toLowerCase()
+      : (forceStatus || String(subscription.status||'inactive').toLowerCase());
     await rpc('sync_second_job_slot_subscription', {
       p_employer_id: meta.employer_id,
       p_status: status,
-      p_expires_at: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null,
+      p_expires_at: current ? stripePeriodEnd(current) : stripePeriodEnd(source),
       p_payment_reference: null,
       p_amount_cents: 15000
     });
