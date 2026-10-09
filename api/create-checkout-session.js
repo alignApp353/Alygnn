@@ -2224,65 +2224,63 @@ async function syncCompletedBoostCheckout({ user, checkoutSessionId }) {
   };
 }
 
-// Recover job closure if Stripe's terminal subscription webhook was delayed or missed.
-// This never changes renewal/payment state and never closes jobs during a paid term.
-async function reconcileExpiredPlanJobsForEmployer(employerId){
-  const ent=await getEntitlement(employerId);
-  const storedId=String(ent?.stripe_plan_subscription_id||'').trim();
-  let sub=null;
-  if(storedId){
-    try{sub=await manageStripe('GET','subscriptions/'+encodeURIComponent(storedId));}
-    catch(error){throw new Error('Could not verify Stripe subscription status; jobs were not changed.');}
+// Secure, idempotent Second Job Slot recovery for completed Stripe Checkout.
+// The dashboard uses this when Stripe's webhook has not yet synced the entitlement.
+async function syncCompletedSecondSlotCheckout({user,checkoutSessionId,reconcile=false}) {
+  const employerId=String(user?.id||'');
+  if(!employerId)throw Object.assign(new Error('Employer login required.'),{status:401});
+
+  async function applySubscription(subscription,reference,amountCents){
+    if(!subscription?.id || String(subscription.metadata?.employer_id||'')!==employerId ||
+      !['additional_slot','single_job'].includes(String(subscription.metadata?.product||'').toLowerCase())){
+      throw Object.assign(new Error('This Second Job Slot does not belong to your employer account.'),{status:403});
+    }
+    const status=String(subscription.status||'').toLowerCase();
+    if(!['active','trialing','past_due'].includes(status)){
+      throw Object.assign(new Error('The Second Job Slot subscription is not active.'),{status:409});
+    }
+    // Do not re-grant an expired or ended slot. Cancellation at renewal keeps access
+    // until Stripe actually ends the subscription.
+    const end=Number(subscription.current_period_end||0);
+    if(end && end*1000<=Date.now()){
+      throw Object.assign(new Error('The Second Job Slot paid period has ended.'),{status:409});
+    }
+    await manageRpc('sync_second_job_slot_subscription',{
+      p_employer_id:employerId,
+      p_status:status,
+      p_expires_at:end?new Date(end*1000).toISOString():null,
+      p_payment_reference:reference||null,
+      p_amount_cents:Number(amountCents??15000)
+    });
+    return {ok:true,synced:true,product:'additional_slot',subscription_id:subscription.id,status};
   }
-  const now=Date.now();
-  const terminal=['canceled','unpaid','incomplete_expired','inactive'];
-  const status=String(sub?.status||ent?.subscription_status||'').toLowerCase();
-  const end=ent?.current_period_end?new Date(ent.current_period_end).getTime():0;
-  const scheduledTestExpiry=ent?.test_mode===true && String(ent.pending_plan||'').toLowerCase()==='free'
-    && ent.pending_plan_effective_at && new Date(ent.pending_plan_effective_at).getTime()<=now;
-  // Do not touch Free accounts without evidence of an expired paid entitlement.
-  const ended=terminal.includes(status) || scheduledTestExpiry || (!sub && end>0 && end<=now && !['active','trialing','past_due'].includes(status));
-  if(!ended || (sub && !terminal.includes(String(sub.status||'').toLowerCase())))return {checked:true,closed:0,reason:'paid_access_not_ended'};
-  // Never close while another paid plan is still valid.
-  if(sub && ['active','trialing','past_due'].includes(String(sub.status||'').toLowerCase()))return {checked:true,closed:0};
-  let addon=0;
-  try{
-    const second=await resolveSecondSlotSubscription(employerId);
-    if(second&&subscriptionIsActive(second))addon=1;
-  }catch(error){throw new Error('Could not verify additional job-slot access; jobs were not changed.');}
-  const purchasesUrl=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
-  purchasesUrl.searchParams.set('employer_id','eq.'+employerId);
-  purchasesUrl.searchParams.set('select','id,activated_at,expires_at');
-  const purchaseResponse=await fetch(purchasesUrl,{headers:manageServiceHeaders()});
-  if(!purchaseResponse.ok)throw new Error('Could not verify weekly job slots; jobs were not changed.');
-  const purchases=await purchaseResponse.json();
-  const weeklyActive=new Set((Array.isArray(purchases)?purchases:[])
-    .filter(row=>row.activated_at && row.expires_at && new Date(row.expires_at).getTime()>now)
-    .map(row=>String(row.id)));
-  const jobsUrl=new URL(manageBase()+'/rest/v1/jobs');
-  jobsUrl.searchParams.set('employer_id','eq.'+employerId);
-  jobsUrl.searchParams.set('select','id,status,posting_access_type,weekly_slot_purchase_id,created_at');
-  const jobsResponse=await fetch(jobsUrl,{headers:manageServiceHeaders()});
-  if(!jobsResponse.ok)throw new Error('Could not load employer jobs for plan-expiration recovery.');
-  const jobs=await jobsResponse.json();
-  const active=(Array.isArray(jobs)?jobs:[]).filter(job=>String(job.status||'').toLowerCase()==='active');
-  const weeklyJobs=active.filter(job=>job.weekly_slot_purchase_id && weeklyActive.has(String(job.weekly_slot_purchase_id)));
-  const regular=active.filter(job=>!weeklyJobs.includes(job));
-  const sorted=[...regular].sort((a,b)=>(String(a.posting_access_type||'').toLowerCase()==='free'?-1:0)-(String(b.posting_access_type||'').toLowerCase()==='free'?-1:0)||new Date(a.created_at||0)-new Date(b.created_at||0));
-  const permitted=1+addon;
-  const keep=sorted.slice(0,permitted);
-  let closed=0;
-  for(const job of sorted.slice(permitted)){
-    const url=new URL(manageBase()+'/rest/v1/jobs');
-    url.searchParams.set('id','eq.'+job.id);
-    url.searchParams.set('employer_id','eq.'+employerId);
-    url.searchParams.set('status','eq.active');
-    const timestamp=new Date().toISOString();
-    const response=await fetch(url,{method:'PATCH',headers:manageServiceHeaders({Prefer:'return=minimal'}),body:JSON.stringify({status:'closed',closed_reason:'plan_expired',closed_at:timestamp,updated_at:timestamp})});
-    if(!response.ok)throw new Error('Could not close an expired paid-plan job: '+await response.text());
-    closed++;
+
+  const sessionId=String(checkoutSessionId||'').trim();
+  if(sessionId){
+    if(!/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(sessionId)){
+      throw Object.assign(new Error('Invalid Stripe Checkout session ID.'),{status:400});
+    }
+    const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(sessionId));
+    if(String(checkout.metadata?.employer_id||'')!==employerId ||
+       !['additional_slot','single_job'].includes(String(checkout.metadata?.product||'').toLowerCase())){
+      throw Object.assign(new Error('Checkout does not belong to this employer.'),{status:403});
+    }
+    if(checkout.mode!=='subscription'||checkout.status!=='complete'||
+       !['paid','no_payment_required'].includes(String(checkout.payment_status||''))){
+      throw Object.assign(new Error('Second Job Slot checkout is not complete.'),{status:409});
+    }
+    const subId=typeof checkout.subscription==='string'?checkout.subscription:checkout.subscription?.id;
+    if(!subId)throw Object.assign(new Error('Stripe has not attached the subscription yet. Please retry.'),{status:409});
+    const sub=await manageStripe('GET','subscriptions/'+encodeURIComponent(subId));
+    return applySubscription(sub,checkout.id,checkout.amount_total);
   }
-  return {checked:true,closed,kept_regular:keep.length,kept_weekly:weeklyJobs.length};
+
+  if(!reconcile)throw Object.assign(new Error('Checkout session ID required.'),{status:400});
+  // For old return URLs without {CHECKOUT_SESSION_ID}, recover only an active
+  // subscription whose Stripe metadata explicitly identifies this employer.
+  const sub=await resolveSecondSlotSubscription(employerId);
+  if(!sub)throw Object.assign(new Error('No active Second Job Slot subscription found yet. Please retry.'),{status:404});
+  return applySubscription(sub,null,15000);
 }
 
 module.exports = async function handler(req, res) {
@@ -2329,9 +2327,13 @@ module.exports = async function handler(req, res) {
       return await runManageAction(res, user, input);
     }
 
-    if (billingAction === 'reconcile_expired_plan_jobs') {
-      const result=await reconcileExpiredPlanJobsForEmployer(user.id);
-      return send(res,200,{ok:true,...result});
+    if (billingAction === 'sync_second_slot_checkout' || billingAction === 'reconcile_second_slot_checkout') {
+      const result = await syncCompletedSecondSlotCheckout({
+        user,
+        checkoutSessionId: billingAction === 'sync_second_slot_checkout' ? input.checkout_session_id : '',
+        reconcile: billingAction === 'reconcile_second_slot_checkout'
+      });
+      return send(res,200,result);
     }
 
     if (billingAction === 'sync_boost_checkout') {
