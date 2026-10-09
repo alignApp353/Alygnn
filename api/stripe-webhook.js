@@ -326,7 +326,7 @@ async function reconcileJobsAfterPaidPlanEnds(employerId) {
 
   const url = new URL(`${supabaseBase()}/rest/v1/jobs`);
   url.searchParams.set('employer_id', 'eq.' + employerId);
-  url.searchParams.set('select', 'id,status,posting_access_type,created_at,updated_at');
+  url.searchParams.set('select', 'id,status,posting_access_type,weekly_slot_purchase_id,created_at,updated_at');
 
   const response = await fetch(url, { headers: serviceHeaders() });
   if (!response.ok) {
@@ -334,7 +334,18 @@ async function reconcileJobsAfterPaidPlanEnds(employerId) {
   }
 
   const rows = await response.json().catch(() => []);
-  const liveJobs = (Array.isArray(rows) ? rows : []).filter(jobConsumesReusableSlot);
+  // Independently purchased weekly slots survive cancellation of a monthly plan.
+  const weeklyUrl = new URL(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`);
+  weeklyUrl.searchParams.set('employer_id', 'eq.' + employerId);
+  weeklyUrl.searchParams.set('select', 'id,activated_at,expires_at');
+  const weeklyResponse = await fetch(weeklyUrl, { headers: serviceHeaders() });
+  if (!weeklyResponse.ok) throw new Error('Could not verify separate weekly slots; no jobs were closed.');
+  const weeklyRows = await weeklyResponse.json();
+  const activeWeeklyIds = new Set((Array.isArray(weeklyRows) ? weeklyRows : [])
+    .filter(p => p.activated_at && p.expires_at && new Date(p.expires_at).getTime() > Date.now())
+    .map(p => String(p.id)));
+  const liveJobs = (Array.isArray(rows) ? rows : []).filter(jobConsumesReusableSlot)
+    .filter(job => !(job.weekly_slot_purchase_id && activeWeeklyIds.has(String(job.weekly_slot_purchase_id))));
   if (!liveJobs.length) return;
 
   // Preserve exactly one permanent free-slot job.
@@ -367,7 +378,22 @@ async function reconcileJobsAfterPaidPlanEnds(employerId) {
     }
   }
 
-  const jobsToClose = liveJobs.filter(job => String(job.id) !== String(keepJob.id));
+  // Preserve a separately paid Second Job Slot even after the main plan ends.
+  const extraSubscriptions = [];
+  for (const product of ['additional_slot', 'single_job']) {
+    const query = new URL('https://api.stripe.com/v1/subscriptions/search');
+    query.searchParams.set('query', `metadata["employer_id"]:"${employerId}" AND metadata["product"]:"${product}"`);
+    query.searchParams.set('limit', '20');
+    const response = await fetch(query, { headers: { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY } });
+    if (!response.ok) throw new Error('Could not verify standalone job-slot access; no excess jobs were closed.');
+    const data = await response.json();
+    extraSubscriptions.push(...(data.data || []));
+  }
+  const hasExtraSlot = extraSubscriptions.some(sub => ['active', 'trialing', 'past_due'].includes(String(sub.status || '').toLowerCase())
+    && (!sub.current_period_end || Number(sub.current_period_end) * 1000 > Date.now()));
+  const otherPermittedJobs = liveJobs.filter(job => String(job.id) !== String(keepJob.id))
+    .sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b));
+  const jobsToClose = otherPermittedJobs.slice(hasExtraSlot ? 1 : 0);
 
   for (const job of jobsToClose) {
     const patchUrl = new URL(`${supabaseBase()}/rest/v1/jobs`);
