@@ -208,6 +208,22 @@ h1{
   .invoice-amount{grid-column:2;grid-row:1}
   .invoice-link{grid-column:2;grid-row:2/4}
 }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:700px){.grid{grid-template-columns:minmax(0,1fr)}.card{min-width:0}.invoice-row{grid-template-columns:minmax(0,1fr) auto;column-gap:8px}.invoice-main{min-width:0}.invoice-name{white-space:normal;overflow-wrap:anywhere}.invoice-actions{max-width:100%;align-items:flex-start}.invoice-tax{white-space:normal}}@media(max-width:420px){.page{padding-left:16px;padding-right:16px}.card{padding:16px}.invoice-row{grid-template-columns:minmax(0,1fr);gap:7px}.invoice-row>*{grid-column:1!important;grid-row:auto!important}.invoice-actions{align-items:flex-start}}
 </style>
 </head>
 <body>
