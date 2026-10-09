@@ -1045,18 +1045,21 @@ function billingAddressPayload(){
 
 function applyServerTotal(data){
   const total=Number(data?.amount_total_cents);
-  const tax=Number(data?.tax_cents);
-  if(Number.isFinite(tax)&&tax>=0){
-    const taxStrong=document.querySelector('#tax-row strong');
-    if(taxStrong)taxStrong.textContent=money(tax/100);
-  }
+  const taxStrong=document.querySelector('#tax-row strong');
+
+  // Keep tax wording clear until Stripe checkout calculates the final tax.
+  if(taxStrong)taxStrong.textContent='Calculated at checkout';
+
   if(Number.isFinite(total)&&total>=0){
     $('due').textContent=money(total/100);
   }
 }
 
 function nativeSuccessDestination(context){
-  if(context?.upgrade)return'app-employer-billing.html';
+  if(context?.upgrade){
+    const target=encodeURIComponent(String(context?.target_plan||''));
+    return 'app-employer-dashboard.html?upgrade=success'+(target?'&plan='+target:'');
+  }
   if(context?.product==='job_boost')return'app-employer-dashboard.html?view=jobs';
   if(context?.returnMode==='preview')return'app-job-preview.html';
   return'app-employer-dashboard.html?view=jobs';
@@ -1069,11 +1072,58 @@ async function handleNativePaymentCompleted(){
   const btn=$('checkout-btn');
   btn.disabled=true;
   btn.textContent='Payment received ✓';
-  showMessage('Payment received. Alygnn is confirming it with Stripe and updating your access.');
 
-  // The verified Stripe webhook is the source of truth. Give it a moment before
-  // returning to the employer experience; no entitlement is granted client-side.
-  await new Promise(resolve=>setTimeout(resolve,1400));
+  if(context?.upgrade&&context?.payment_intent_id){
+    const targetName=planNameFromCode(context.target_plan);
+    showMessage(`Payment received. Activating ${targetName} now…`);
+
+    let lastError=null;
+
+    for(let attempt=0;attempt<6;attempt++){
+      try{
+        const response=await fetch(
+          CHECKOUT_ENDPOINT,
+          {
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              'Authorization':'Bearer '+session.access_token
+            },
+            body:JSON.stringify({
+              action:'sync_plan_upgrade_payment',
+              payment_intent_id:context.payment_intent_id
+            })
+          }
+        );
+
+        let data={};
+        try{data=await response.json();}catch(_error){}
+
+        if(response.ok&&data.change==='upgrade_applied'){
+          btn.textContent=`${targetName} activated ✓`;
+          showMessage(`${targetName} is active now. Your added job slots and plan features are available immediately.`);
+          await new Promise(resolve=>setTimeout(resolve,650));
+          location.replace(nativeSuccessDestination(context));
+          return;
+        }
+
+        lastError=new Error(data.error||'Stripe is still confirming the payment.');
+      }catch(error){
+        lastError=error;
+      }
+
+      await new Promise(resolve=>setTimeout(resolve,650));
+    }
+
+    console.warn('Immediate upgrade sync is still pending:',lastError);
+    showMessage('Payment was received. Alygnn is finishing the upgrade now. Your plan will update automatically.');
+    await new Promise(resolve=>setTimeout(resolve,1600));
+    location.replace(nativeSuccessDestination(context));
+    return;
+  }
+
+  showMessage('Payment received. Alygnn is confirming it with Stripe and updating your access.');
+  await new Promise(resolve=>setTimeout(resolve,900));
   location.replace(nativeSuccessDestination(context));
 }
 
@@ -1112,7 +1162,10 @@ async function presentNativePaymentSheet(data,context,address){
   if(!stripe)throw new Error('Native Stripe PaymentSheet is unavailable on this device.');
   if(!data?.publishable_key)throw new Error('Stripe publishable key was not returned by Alygnn.');
 
-  nativePendingContext=context||{};
+  nativePendingContext={
+    ...(context||{}),
+    payment_intent_id:data?.payment_intent_id||context?.payment_intent_id||null
+  };
   nativePaymentHandled=false;
   await installStripePaymentListeners();
   await stripe.initialize({publishableKey:data.publishable_key});
