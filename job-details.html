@@ -558,6 +558,22 @@ nav{
     padding:10px 0;
   }
   .swipe-return-btn:hover{opacity:.78}
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:600px){.page{padding-left:16px;padding-right:16px}.job-header,.job-card,.field-grid{min-width:0}.job-header{overflow-wrap:anywhere}.match-score-row{flex-wrap:wrap}nav{padding-left:16px;padding-right:16px}}
 </style>
 
 <style id="alygnn-candidate-page-loader">
