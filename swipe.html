@@ -486,6 +486,22 @@
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:640px){nav{padding-left:14px;padding-right:14px;gap:8px}.nav-stats{gap:8px}.stat-val{font-size:15px}.stat-label{font-size:9px;letter-spacing:0}.nav-back{font-size:12px}.job-card{max-width:100%;min-width:0}.action-buttons{max-width:100%;gap:8px}.action-buttons>*{min-width:0!important;flex:1 1 0;padding-left:7px;padding-right:7px}}@media(max-width:360px){.nav-stats{gap:5px}.stat-val{font-size:13px}}
 </style>
 </head>
 <body>
