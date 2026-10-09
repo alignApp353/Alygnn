@@ -1972,13 +1972,20 @@ async function loadAccount(){
   }
 }
 
-$('back-btn').addEventListener('click',()=>{
+$('back-btn').addEventListener('click',(event)=>{
+  event.preventDefault();
+  event.stopPropagation();
+
   try{
     sessionStorage.removeItem('alygnn_job_slot_gate');
+    sessionStorage.removeItem('alygnnPostJobCapacityPass');
     sessionStorage.setItem('alygnnEmployerStartView','jobs');
   }catch(_error){}
 
-  location.href='app-employer-dashboard.html?view=jobs&from=pricing';
+  // Replace the pricing page in the WebView history instead of adding
+  // another entry. This prevents the employer from getting trapped in a
+  // pricing -> jobs -> pricing back-navigation loop on Android.
+  window.location.replace('app-employer-dashboard.html?view=jobs&from=pricing-back');
 });
 
 document.querySelectorAll('[data-billing]').forEach(btn=>{
