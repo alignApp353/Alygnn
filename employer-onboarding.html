@@ -306,6 +306,20 @@
     40%{transform:translateY(-4px);opacity:1}
   }
 
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:760px){.shell,.page,.card,.form-card{max-width:100%}nav{padding-left:16px;padding-right:16px;gap:8px}}@media(max-width:480px){.logo-tag{display:none}.secure{font-size:11px;padding:6px 10px}}
 </style>
 </head>
 <body>
