@@ -940,6 +940,20 @@
     40%{transform:translateY(-4px);opacity:1}
   }
 
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:700px){nav{padding-left:16px;padding-right:16px;gap:10px}.nav-links{min-width:0;gap:10px}.nav-links a{font-size:12px}.nav-right{min-width:0;gap:8px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
   window.addEventListener('hashchange',()=>{
