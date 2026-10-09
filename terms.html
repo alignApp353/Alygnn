@@ -80,6 +80,22 @@
   @media (max-width: 640px) {
     footer { flex-direction: column; gap: 10px; text-align: center; }
   }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:640px){nav{padding-left:16px;padding-right:16px;gap:10px}.nav-links{gap:10px;flex-wrap:wrap;justify-content:flex-end}.nav-links a{font-size:12px}.page{padding-left:16px;padding-right:16px}.toc{padding:18px}.doc-title{font-size:clamp(25px,8vw,35px)}}
 </style>
 </head>
 <body>
