@@ -77,6 +77,20 @@
   @media (max-width: 700px) {
     .demo-grid { grid-template-columns: 1fr; }
   }
+
+/* Alygnn responsive layout safeguards — CSS only, 2026-10-08. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+  .grid > *, .form-grid > *, .layout > *, .checkout-grid > *, .stats-row > *, .page > * { min-width: 0; }
+}
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+  .page, main, .main { max-width: 100%; }
+  .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
+}
+
+@media(max-width:760px){.demo-grid{grid-template-columns:minmax(0,1fr)}.demo-card{padding:24px}.page{padding:46px 18px 72px}.sub{margin-bottom:30px}}@media(max-width:380px){.demo-card{padding:18px}nav{padding:0 16px}}
 </style>
 </head>
 <body>
