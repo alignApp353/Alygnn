@@ -193,6 +193,22 @@
     body.candidate-role .candidate-nav-links a{font-size:12px}
     body.candidate-role .candidate-nav-signout{font-size:12px;padding:6px 11px}
   }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}main{min-width:0}}@media(max-width:680px){.chat-shell{grid-template-columns:minmax(0,1fr);min-width:0}.conversations,.chat-panel,.chat-main{min-width:0;max-width:100%}.nav-right{gap:6px}.nav-name{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}nav{padding-left:12px;padding-right:12px}}
 </style>
 
 <style id="employer-messages-myjobs-shell">
