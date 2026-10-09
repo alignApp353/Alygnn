@@ -789,9 +789,20 @@ async function searchSubscriptionByProduct(employerId,product){
 }
 
 async function resolveSecondSlotSubscription(employerId){
-  let sub=await searchSubscriptionByProduct(employerId,'additional_slot');
-  if(!sub)sub=await searchSubscriptionByProduct(employerId,'single_job');
-  return sub;
+  const products=['additional_slot','single_job'];
+  const candidates=[];
+  for(const product of products){
+    const q=`metadata["employer_id"]:"${employerId}" AND metadata["product"]:"${product}"`;
+    const found=await manageStripe('GET','subscriptions/search',{query:q,limit:100});
+    candidates.push(...(found?.data||[]));
+  }
+  const eligible=candidates.filter(sub=>
+    String(sub.metadata?.employer_id||'')===employerId &&
+    products.includes(String(sub.metadata?.product||'').toLowerCase()) &&
+    ['active','trialing','past_due'].includes(String(sub.status||'').toLowerCase())
+  );
+  eligible.sort((a,b)=>(b.created||0)-(a.created||0));
+  return eligible[0]||null;
 }
 
 function secondSlotSummary(sub){
@@ -2244,7 +2255,8 @@ async function syncCompletedSecondSlotCheckout({user,checkoutSessionId,reconcile
     // Newer Stripe API versions put the billing-period end on subscription items.
     // A null expiry is not a valid paid-slot entitlement.
     const end=Number(subscription.current_period_end ||
-      subscription.items?.data?.[0]?.current_period_end || 0);
+      subscription.items?.data?.[0]?.current_period_end ||
+      subscription.items?.data?.find(item=>item.current_period_end)?.current_period_end || 0);
     if(!end){
       throw Object.assign(new Error('Stripe did not provide the Second Job Slot billing end date. Please retry.'),{status:409});
     }
@@ -2415,6 +2427,12 @@ module.exports = async function handler(req, res) {
     if (product === 'additional_slot') {
       const access = await getEmployerPostingAccess(token);
 
+      // Stripe is authoritative for active subscriptions. Never create duplicate
+      // $150 renewals just because Supabase has a stale expired entitlement.
+      const existingSecondSlot = await resolveSecondSlotSubscription(user.id);
+      if (existingSecondSlot) {
+        return send(res,409,{error:'A Second Job Slot subscription is already active. Return to your dashboard to restore access; do not purchase another.',existing_subscription:true});
+      }
       if (!additionalSlotEligible(access)) {
         const message = access?.active_paid_plan === true
           ? 'The $150/month Second Job Slot is only for Free employers. Use a $99 Weekly Job Slot or upgrade your plan.'
@@ -2474,9 +2492,21 @@ module.exports = async function handler(req, res) {
           payment_issue: true
         });
       }
-      // A weekly slot is an independent 7-day one-time purchase. Existing
-      // weekly slots and the employer's plan do not limit repeat purchases.
-      // Keep the payment-issue protection above unchanged.
+      if (access?.active_paid_plan !== true) {
+        return send(res, 400, {
+          error: 'The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.'
+        });
+      }
+      if (access?.weekly_purchase_allowed !== true) {
+        const recommended = String(access?.recommended_upgrade_plan || '').toLowerCase();
+        return send(res, 409, {
+          error: recommended
+            ? `You already have one active Weekly Job Slot. Upgrade to ${recommended.charAt(0).toUpperCase()+recommended.slice(1)} for better ongoing value.`
+            : 'Another Weekly Job Slot is not available for this plan right now.',
+          recommended_upgrade_plan: recommended || null,
+          manage_plan: !!recommended
+        });
+      }
 
       const item = CHECKOUT_CATALOG.weekly.weekly_slot;
       name = item.name;
