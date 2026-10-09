@@ -200,6 +200,22 @@ body.auth-ready { visibility: visible; }
   font-size: 14px; color: var(--text-muted);
 }
 body.auth-ready #auth-loading { display: none; }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:640px){nav{padding-left:12px;padding-right:12px;gap:8px}.nav-links{gap:8px;min-width:0}.nav-links a{font-size:11px}.nav-actions{gap:5px}.nav-signout{padding-left:9px;padding-right:9px}.notification-btn{width:34px;height:34px}}@media(max-width:380px){.nav-links{gap:5px}.nav-links a{font-size:10px}}
 </style>
 
 <style id="candidate-nav-position-lock">
