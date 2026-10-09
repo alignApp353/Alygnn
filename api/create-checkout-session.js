@@ -563,6 +563,23 @@ function manageServiceHeaders(extra={}){
   if(!key)throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured.');
   return {apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json',...extra};
 }
+// Supabase service-role RPC used by verified Stripe entitlement recovery.
+async function manageRpc(name, payload){
+  const allowed = new Set(['sync_second_job_slot_subscription']);
+  if (!allowed.has(name)) throw new Error('Unsupported entitlement sync action.');
+  const response = await fetch(manageBase() + '/rest/v1/rpc/' + name, {
+    method: 'POST',
+    headers: manageServiceHeaders(),
+    body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = result?.message || result?.error || `Supabase RPC ${name} failed (${response.status}).`;
+    throw new Error(message);
+  }
+  return result;
+}
+
 async function manageCurrentUser(token){
   const anon=process.env.SUPABASE_ANON_KEY;
   if(!anon)throw new Error('SUPABASE_ANON_KEY is not configured.');
