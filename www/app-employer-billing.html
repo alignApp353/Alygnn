@@ -1072,105 +1072,16 @@ function clearMessage(){
   box.textContent='';
 }
 
-const EXTERNAL_BROWSER_RETURN_KEY='alygnnExternalBrowserReturn';
-const EXTERNAL_BROWSER_RECOVERY_KEY='alygnnExternalBrowserRecovery';
-
-function markExternalBrowserOpen(kind='external'){
-  try{
-    sessionStorage.setItem(
-      EXTERNAL_BROWSER_RETURN_KEY,
-      JSON.stringify({kind,openedAt:Date.now()})
-    );
-    sessionStorage.removeItem(EXTERNAL_BROWSER_RECOVERY_KEY);
-  }catch(_error){}
-}
-
-function clearExternalBrowserUiState(){
-  try{
-    document.documentElement.removeAttribute('inert');
-    document.body?.removeAttribute('inert');
-    document.documentElement.style.pointerEvents='';
-    if(document.body){
-      document.body.style.pointerEvents='';
-      document.body.style.overflow='';
-    }
-  }catch(_error){}
-}
-
-function recoverAfterExternalBrowser(){
-  let raw='';
-  try{raw=sessionStorage.getItem(EXTERNAL_BROWSER_RETURN_KEY)||'';}catch(_error){}
-  if(!raw)return false;
-
-  let openedAt=0;
-  try{openedAt=Number(JSON.parse(raw)?.openedAt||0);}catch(_error){}
-
-  // Ignore stale markers so an old receipt view can never cause a later reload.
-  if(openedAt && Date.now()-openedAt>10*60*1000){
-    try{sessionStorage.removeItem(EXTERNAL_BROWSER_RETURN_KEY);}catch(_error){}
-    return false;
-  }
-
-  clearExternalBrowserUiState();
-
-  let alreadyRecovered=false;
-  try{alreadyRecovered=sessionStorage.getItem(EXTERNAL_BROWSER_RECOVERY_KEY)==='1';}catch(_error){}
-
-  if(alreadyRecovered){
-    try{
-      sessionStorage.removeItem(EXTERNAL_BROWSER_RETURN_KEY);
-      sessionStorage.removeItem(EXTERNAL_BROWSER_RECOVERY_KEY);
-    }catch(_error){}
-    return true;
-  }
-
-  try{sessionStorage.setItem(EXTERNAL_BROWSER_RECOVERY_KEY,'1');}catch(_error){}
-
-  // Android Custom Tabs can occasionally return control with a stale touch layer.
-  // A one-time reload rebuilds the WebView hit-testing state without changing data.
-  setTimeout(()=>location.reload(),60);
-  return true;
-}
-
-function installExternalBrowserRecovery(){
-  const attempt=()=>{
-    if(document.visibilityState==='hidden')return;
-    recoverAfterExternalBrowser();
-  };
-
-  window.addEventListener('focus',attempt);
-  window.addEventListener('pageshow',attempt);
-  document.addEventListener('visibilitychange',attempt);
-
-  try{
-    window.Capacitor?.Plugins?.App?.addListener?.(
-      'appStateChange',
-      state=>{if(state?.isActive)attempt();}
-    );
-  }catch(_error){}
-
-  try{
-    window.Capacitor?.Plugins?.Browser?.addListener?.(
-      'browserFinished',
-      attempt
-    );
-  }catch(_error){}
-}
-
-installExternalBrowserRecovery();
-
 async function openUrl(url){
   if(!url)return;
 
   const browser=window.Capacitor?.Plugins?.Browser;
 
   if(browser?.open){
-    markExternalBrowserOpen('billing-receipt');
     await browser.open({url});
     return;
   }
 
-  // Normal browser fallback. This path leaves Alygnn, so no Capacitor recovery marker.
   location.href=url;
 }
 
@@ -1585,6 +1496,7 @@ function renderPending(){
 
   if(!currentItem){
     $('pending-card').hidden=true;
+    $('cancel-pending').hidden=false;
     $('cancel-pending').dataset.pendingAction='';
     return;
   }
@@ -1609,6 +1521,7 @@ function renderPending(){
     $('pending-date').textContent=
       'Plan ends '+fmtDate(cancelDate);
 
+    $('cancel-pending').hidden=false;
     $('cancel-pending').textContent=
       `Keep ${planName(plan)} plan`;
 
@@ -1631,17 +1544,39 @@ function renderPending(){
     !summary?.pending_plan_effective_at
   ){
     $('pending-card').hidden=true;
+    $('cancel-pending').hidden=false;
     $('cancel-pending').dataset.pendingAction='';
     return;
   }
 
-  $('pending-card').hidden=false;
+  const {plan:currentPlan}=currentContext();
+  const currentRank=Number(PLAN_CATALOG[pendingBilling]?.[currentPlan]?.rank||0);
+  const targetRank=Number(PLAN_CATALOG[pendingBilling]?.[target]?.rank||0);
+  const isHigherPlan=targetRank>currentRank;
 
-  $('pending-title').textContent=
-    `Downgrade to ${planName(target)} scheduled`;
+  $('pending-card').hidden=false;
 
   const targetItem=
     PLAN_CATALOG[pendingBilling]?.[target];
+
+  if(isHigherPlan){
+    $('pending-title').textContent=
+      `Finishing upgrade to ${planName(target)}`;
+
+    $('pending-copy').textContent=
+      `Your payment was received. Alygnn is finalizing ${planName(target)} access now. Paid upgrades are not scheduled for renewal — the higher plan activates as soon as Stripe confirms the payment.`;
+
+    $('pending-date').textContent=
+      'Upgrade confirmation in progress';
+
+    $('cancel-pending').hidden=true;
+    $('cancel-pending').dataset.pendingAction='';
+    return;
+  }
+
+  $('cancel-pending').hidden=false;
+  $('pending-title').textContent=
+    `Downgrade to ${planName(target)} scheduled`;
 
   $('pending-copy').textContent=
     `You keep your current plan and capacity through this billing period. No refund or account credit is issued for the downgrade. ${planName(target)} begins automatically at the next renewal.`;
