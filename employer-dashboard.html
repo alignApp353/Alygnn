@@ -2992,6 +2992,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     // that exact completed subscription before loading capacity. The webhook
     // remains primary, and the database RPC is idempotent, so both paths are safe.
     await syncCompletedSecondSlotCheckoutOnReturn();
+    // Recover a proven existing Stripe subscription when an earlier webhook
+    // failed. No new checkout, charge, job changes, or slot duplication.
+    try {
+      const {data:{session:slotSession}}=await sb.auth.getSession();
+      if(!isTeamMember && slotSession?.access_token){
+        const response=await fetch('/api/create-checkout-session',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+slotSession.access_token},
+          body:JSON.stringify({action:'reconcile_second_slot_checkout'})
+        });
+        if(!response.ok){
+          const detail=await response.json().catch(()=>({}));
+          if(response.status!==404)console.warn('Second Job Slot restore:',detail?.error||response.status);
+        }
+      }
+    }catch(error){console.warn('Second Job Slot restore failed:',error);}
+
 
     // If Stripe just returned from a Job Boost checkout, fulfill/verify that
     // exact completed session before loading jobs. The webhook remains primary,
