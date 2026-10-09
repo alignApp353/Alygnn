@@ -386,6 +386,23 @@
 
 
   html:not(.pricing-locked) #pricing-loading{display:none !important;}
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media(max-width:900px){.footer-main{grid-template-columns:repeat(2,minmax(0,1fr));gap:26px}}
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:620px){.plans-grid,.plans-grid.weekly-grid{grid-template-columns:minmax(0,1fr)}.plan-card{min-width:0}.nav-right{gap:8px}.nav-cta{padding:9px 13px}.payg-grid{grid-template-columns:minmax(0,1fr)}.boost-card{min-width:0}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
