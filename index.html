@@ -1225,6 +1225,22 @@
     .footer-brand { grid-column: 1 / -1; }
     .footer-bottom { flex-direction: column; text-align: center; }
   }
+
+
+/* Responsive-only safeguards: narrow viewports; no behavior or desktop changes. */
+@media (max-width: 900px) {
+  img, video, canvas, iframe { max-width: 100%; }
+  main, section, article, .page, .layout, .grid, .card, .panel { min-width: 0; }
+  input, select, textarea { max-width: 100%; }
+  .nav-right, .nav-links, .nav-actions, .nav-center { min-width: 0; }
+}
+@media (max-width: 600px) {
+  h1, h2, h3, p, a, button, label { overflow-wrap: break-word; }
+  nav .logo { flex-shrink: 0; }
+  .card, .panel, .section { max-width: 100%; }
+}
+
+@media(max-width:600px){.hero{padding:38px 5% 44px;min-width:0}.hero-visual{width:100%;min-width:0;max-width:100%;height:min(390px,105vw)}.nav-right{gap:8px}.nav-links{gap:10px} .float-salary,.float-remote{max-width:70%}}
 </style>
 </head>
 <body>
