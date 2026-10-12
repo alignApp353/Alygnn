@@ -2151,6 +2151,7 @@ You keep ${planName(current)} through ${fmtDate(summary?.current_period_end)}. O
 
     await loadData();
     renderAll();
+    ensureUpgradeRefresh();
 
   }catch(error){
     console.error(error);
@@ -2389,6 +2390,7 @@ async function refresh(){
   session=data.session;
   await loadData();
   renderAll();
+  ensureUpgradeRefresh();
 }
 
 document.addEventListener(
@@ -2405,6 +2407,91 @@ window.addEventListener(
   'pageshow',
   refresh
 );
+
+/*
+ * A paid upgrade can finish a moment after the app returns from Stripe.
+ * While the UI says "Finishing upgrade", refresh automatically instead of
+ * leaving the employer staring at a stale Growth card forever.
+ */
+let upgradeRefreshTimer=null;
+let upgradeRefreshStartedAt=0;
+let upgradeRefreshBusy=false;
+
+function pendingUpgradeNeedsRefresh(){
+  const target=String(summary?.pending_plan||'').toLowerCase();
+  if(!target)return false;
+
+  const pendingBilling=String(
+    summary?.pending_billing_period ||
+    summary?.billing_period ||
+    'monthly'
+  ).toLowerCase();
+
+  const current=String(
+    summary?.current_plan ||
+    'free'
+  ).toLowerCase();
+
+  const currentRank=Number(
+    PLAN_CATALOG[pendingBilling]?.[current]?.rank || 0
+  );
+  const targetRank=Number(
+    PLAN_CATALOG[pendingBilling]?.[target]?.rank || 0
+  );
+
+  return targetRank>currentRank;
+}
+
+function stopUpgradeRefresh(){
+  if(upgradeRefreshTimer){
+    clearInterval(upgradeRefreshTimer);
+    upgradeRefreshTimer=null;
+  }
+  upgradeRefreshStartedAt=0;
+}
+
+function ensureUpgradeRefresh(){
+  if(!pendingUpgradeNeedsRefresh()){
+    stopUpgradeRefresh();
+    return;
+  }
+
+  if(upgradeRefreshTimer)return;
+
+  upgradeRefreshStartedAt=Date.now();
+
+  upgradeRefreshTimer=setInterval(async()=>{
+    if(
+      document.visibilityState!=='visible' ||
+      upgradeRefreshBusy
+    ){
+      return;
+    }
+
+    // Stop after 2 minutes. At that point a real backend/webhook error needs
+    // attention rather than polling forever.
+    if(Date.now()-upgradeRefreshStartedAt>120000){
+      stopUpgradeRefresh();
+      return;
+    }
+
+    upgradeRefreshBusy=true;
+    try{
+      await refresh();
+
+      if(!pendingUpgradeNeedsRefresh()){
+        stopUpgradeRefresh();
+      }
+    }catch(error){
+      console.warn(
+        'Upgrade confirmation refresh failed:',
+        error
+      );
+    }finally{
+      upgradeRefreshBusy=false;
+    }
+  },3000);
+}
 
 (async()=>{
   try{
