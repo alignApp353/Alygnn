@@ -16135,21 +16135,33 @@
 
     function openSlotPricing(used,limit){
       /*
-       * Full capacity should never force the employer into Pricing.
-       * Keep them in My Jobs so they can pause/close a role and reuse a slot.
+       * When every reusable slot is occupied, go straight to Billing & Plan.
+       * This gives the employer plan controls and extra-capacity options
+       * instead of leaving them on My Jobs with only a toast message.
        */
       try{
         sessionStorage.removeItem('alygnn_job_slot_gate');
         sessionStorage.removeItem('alygnnPostJobCapacityPass');
         sessionStorage.setItem('alygnnEmployerStartView','jobs');
+        sessionStorage.setItem(
+          'alygnnCapacityContext',
+          JSON.stringify({
+            used,
+            limit,
+            source:'app-employer-dashboard',
+            created_at:Date.now()
+          })
+        );
       }catch(_error){}
 
-      state.currentView='jobs';
-      safeRenderAll();
+      const params=new URLSearchParams({
+        from:'jobs',
+        reason:'slot_limit',
+        used:String(used),
+        limit:String(limit)
+      });
 
-      toast(
-        `All ${limit} job slots are currently in use. Pause or close a job to reuse a slot, or open Pricing if you want more capacity.`
-      );
+      location.href='app-employer-billing.html?'+params.toString();
     }
 
     async function openPostJob(){
