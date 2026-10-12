@@ -3522,7 +3522,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
 
     if (topButton) {
-      topButton.textContent = access.label;
+      topButton.textContent = '+ Post new job';
       if (!access.allowed && Number.isFinite(access.used) && Number.isFinite(access.limit)) {
         const neededToPost = Math.max(1, access.used - access.limit + 1);
         topButton.title = access.used > access.limit
@@ -3537,9 +3537,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (sidebarButton) sidebarButton.title = topButton?.title || '';
 
     if (sidebarLabel) {
-      sidebarLabel.textContent = access.allowed
-        ? 'Post a Job'
-        : 'All slots in use';
+      sidebarLabel.textContent = 'Post a Job';
     }
 
     if (typeof renderWizardStep === 'function') renderWizardStep();
