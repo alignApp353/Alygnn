@@ -2450,6 +2450,69 @@ module.exports = async function handler(req, res) {
       return await runManageAction(res, user, input);
     }
 
+    // Billing history: completed Weekly Job Slot checkouts, including $0 promotions.
+    // This is read-only and never grants or changes any entitlements.
+    if (billingAction === 'payment_history') {
+      const source = String(input.history_source || 'checkout').toLowerCase();
+      if (source !== 'checkout') return send(res, 200, {ok:true, payments:[], next_cursor:null});
+
+      const offsetRaw = Number.parseInt(String(input.history_cursor || '0'), 10);
+      const offset = Number.isSafeInteger(offsetRaw) && offsetRaw >= 0 ? offsetRaw : 0;
+      const pageSize = 25;
+      const purchasesUrl = new URL(manageBase() + '/rest/v1/employer_weekly_slot_purchases');
+      purchasesUrl.searchParams.set('employer_id', 'eq.' + user.id);
+      purchasesUrl.searchParams.set('select', 'payment_reference,amount_cents');
+      purchasesUrl.searchParams.set('limit', String(pageSize + 1));
+      purchasesUrl.searchParams.set('offset', String(offset));
+      const purchasesResponse = await fetch(purchasesUrl, {headers:manageServiceHeaders()});
+      if (!purchasesResponse.ok) throw new Error('Could not retrieve your weekly-slot purchase history.');
+      const purchases = await purchasesResponse.json();
+      const rows = Array.isArray(purchases) ? purchases : [];
+      const page = rows.slice(0, pageSize);
+      const payments = [];
+      for (const purchase of page) {
+        const reference = String(purchase.payment_reference || '');
+        if (!reference.startsWith('cs_')) continue;
+        let checkout;
+        try {
+          checkout = await manageStripe('GET', 'checkout/sessions/' + encodeURIComponent(reference));
+        } catch (error) {
+          console.warn('Could not retrieve weekly-slot checkout for billing history:', reference, error?.message || error);
+          continue;
+        }
+        if (String(checkout.metadata?.employer_id || '') !== user.id ||
+            String(checkout.metadata?.product || '').toLowerCase() !== 'weekly_slot' ||
+            checkout.status !== 'complete' ||
+            !['paid', 'no_payment_required'].includes(String(checkout.payment_status || ''))) continue;
+        const total = Number(checkout.amount_total ?? purchase.amount_cents ?? 0);
+        const subtotal = Number(checkout.amount_subtotal ?? total);
+        const tax = Number(checkout.total_details?.amount_tax ?? 0);
+        const discount = Number(checkout.total_details?.amount_discount ?? Math.max(0, subtotal + tax - total));
+        payments.push({
+          id:checkout.id,
+          checkout_session_id:checkout.id,
+          payment_intent_id:typeof checkout.payment_intent === 'string' ? checkout.payment_intent : checkout.payment_intent?.id || null,
+          created:checkout.created ? new Date(checkout.created * 1000).toISOString() : null,
+          status:'succeeded',
+          product:'weekly_slot',
+          description:'Weekly Job Slot',
+          currency:String(checkout.currency || 'usd').toLowerCase(),
+          subtotal_cents:subtotal,
+          tax_cents:tax,
+          discount_cents:discount,
+          total_cents:total,
+          amount_paid_cents:total,
+          payment_kind:'checkout',
+          receipt_url:null
+        });
+      }
+      return send(res, 200, {
+        ok:true,
+        payments,
+        next_cursor:rows.length > pageSize ? String(offset + pageSize) : null
+      });
+    }
+
     if (billingAction === 'sync_second_slot_checkout' || billingAction === 'reconcile_second_slot_checkout') {
       const result = await syncCompletedSecondSlotCheckout({
         user,
