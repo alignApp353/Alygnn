@@ -68,23 +68,29 @@ async function stripeGet(path) {
 }
 
 async function stripePost(path, params = {}) {
-  const form = new URLSearchParams();
+  const body = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    form.append(key, String(value));
+    if (value !== undefined && value !== null && value !== '') {
+      body.append(key, String(value));
+    }
   });
 
-  const response = await fetch('https://api.stripe.com/v1/' + path.replace(/^\//, ''), {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY,
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: form
-  });
+  const response = await fetch(
+    'https://api.stripe.com/v1/' + path.replace(/^\//, ''),
+    {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    }
+  );
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.error?.message || 'Stripe update failed.');
+  if (!response.ok) {
+    throw new Error(data?.error?.message || 'Stripe update failed.');
+  }
   return data;
 }
 
@@ -124,7 +130,7 @@ function planInfo(plan) {
   }[key] || null;
 }
 
-async function upsertPlan({ employerId, plan, billing, status, periodEnd }) {
+async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscription = null }) {
   const info = planInfo(plan);
   if (!employerId || !info) return;
 
@@ -140,8 +146,24 @@ async function upsertPlan({ employerId, plan, billing, status, periodEnd }) {
     test_mode: false,
     test_plan: plan,
     urgently_hiring: info.urgent,
+    alygnn_recommended: String(plan || '').toLowerCase() === 'scale',
+    pending_plan: null,
+    pending_billing_period: null,
+    pending_plan_effective_at: null,
+    stripe_plan_schedule_id: null,
+    stripe_plan_subscription_id:
+      subscription?.id || undefined,
+    stripe_plan_customer_id:
+      typeof subscription?.customer === 'string'
+        ? subscription.customer
+        : subscription?.customer?.id || undefined,
     updated_at: new Date().toISOString()
   };
+
+  // Do not send undefined values to Supabase.
+  Object.keys(row).forEach(key => {
+    if (row[key] === undefined) delete row[key];
+  });
 
   const response = await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?on_conflict=employer_id`, {
     method: 'POST',
@@ -171,120 +193,23 @@ function plusMonthsUnix(months) {
   return Math.floor(date.getTime() / 1000);
 }
 
-async function fulfillPlanUpgrade(meta = {}) {
-  const employerId = meta.employer_id;
-  const subscriptionId = meta.subscription_id;
-  const subscriptionItemId = meta.subscription_item_id;
-  const targetPriceId = meta.target_price_id;
-  const targetPlan = String(meta.target_plan || '').toLowerCase();
-  const billing = String(meta.billing || '').toLowerCase();
-
-  if (!employerId || !subscriptionId || !subscriptionItemId || !targetPriceId || !targetPlan) {
-    throw new Error('Plan upgrade metadata is incomplete.');
-  }
-
-  const existing = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
-  const currentItem = (existing.items?.data || []).find(item => item.id === subscriptionItemId) || existing.items?.data?.[0];
-  const currentPriceId = typeof currentItem?.price === 'string' ? currentItem.price : currentItem?.price?.id;
-
-  let updated = existing;
-  if (currentPriceId !== targetPriceId || String(existing.metadata?.plan || '').toLowerCase() !== targetPlan) {
-    updated = await stripePost(`subscriptions/${encodeURIComponent(subscriptionId)}`, {
-      cancel_at_period_end: 'false',
-      'items[0][id]': subscriptionItemId,
-      'items[0][price]': targetPriceId,
-      'items[0][quantity]': 1,
-      proration_behavior: 'none',
-      'metadata[employer_id]': employerId,
-      'metadata[product]': 'job_plan',
-      'metadata[plan]': targetPlan,
-      'metadata[billing]': billing
-    });
-  }
-
-  await upsertPlan({
-    employerId,
-    plan: targetPlan,
-    billing,
-    status: updated.status === 'trialing' ? 'trialing' : 'active',
-    periodEnd: updated.current_period_end
-  });
-}
-
-function stripePeriodEnd(subscription){
-  const end=Number(subscription?.current_period_end ||
-    subscription?.items?.data?.[0]?.current_period_end ||
-    subscription?.items?.data?.find(item=>item.current_period_end)?.current_period_end || 0);
-  return end > Math.floor(Date.now()/1000) ? new Date(end*1000).toISOString() : null;
-}
-
-async function activeSecondSlotForEmployer(employerId){
-  for(const product of ['additional_slot','single_job']){
-    const q=new URL('https://api.stripe.com/v1/subscriptions/search');
-    q.searchParams.set('query',`metadata["employer_id"]:"${employerId}" AND metadata["product"]:"${product}"`);
-    q.searchParams.set('limit','100');
-    const result=await fetch(q,{headers:{Authorization:'Bearer '+process.env.STRIPE_SECRET_KEY}});
-    if(!result.ok)throw new Error('Could not verify existing Second Job Slot subscriptions.');
-    const body=await result.json();
-    const valid=(body.data||[]).filter(s=>
-      s.metadata?.employer_id===employerId &&
-      ['active','trialing','past_due'].includes(String(s.status||'')) && stripePeriodEnd(s));
-    valid.sort((a,b)=>(b.created||0)-(a.created||0));
-    if(valid[0])return valid[0];
-  }
-  return null;
-}
-
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
 
-  if (product === 'weekly_slot') {
-    // A 100%-discounted Stripe Checkout has payment_status=no_payment_required.
-    // Record a reusable 7-day weekly slot without overwriting the main plan.
-    const reference = String(session.id || '');
-    if (!reference) throw new Error('Weekly Job Slot checkout is missing its Stripe session ID.');
-    const query = new URL(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`);
-    query.searchParams.set('payment_reference', 'eq.' + reference);
-    query.searchParams.set('select', 'id');
-    query.searchParams.set('limit', '1');
-    const existingResponse = await fetch(query, { headers: serviceHeaders() });
-    if (!existingResponse.ok) throw new Error('Could not check existing Weekly Job Slot purchase: ' + await existingResponse.text());
-    const existing = await existingResponse.json();
-    if (Array.isArray(existing) && existing.length) return;
-
-    const purchase = {
-      employer_id: employerId,
-      payment_reference: reference,
-      amount_cents: Number(session.amount_total ?? 0),
-      test_mode: false,
-      expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-      activated_at: null
-    };
-    const response = await fetch(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`, {
-      method: 'POST',
-      headers: serviceHeaders({ Prefer: 'return=minimal' }),
-      body: JSON.stringify(purchase)
-    });
-    if (!response.ok) throw new Error('Could not activate Weekly Job Slot: ' + await response.text());
-    return;
-  }
-
   if (product === 'additional_slot' || product === 'single_job') {
     // Standalone $150/month Second Job Slot. The included free slot remains,
     // so this subscription gives the employer 2 total reusable active slots.
     if (session.mode === 'subscription' && session.subscription) {
       const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
-      const expires=stripePeriodEnd(subscription);
-      if(!expires)throw new Error('Second Job Slot active subscription lacks a future billing-period end.');
       await rpc('sync_second_job_slot_subscription', {
         p_employer_id: employerId,
         p_status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        p_expires_at: expires,
+        p_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
         p_payment_reference: session.id,
-        p_amount_cents: Number(session.amount_total ?? 0)
+        p_amount_cents: session.amount_total || 15000
       });
       return;
     }
@@ -311,7 +236,61 @@ async function fulfillCheckout(session) {
   }
 
   if (product === 'plan_upgrade') {
-    await fulfillPlanUpgrade(meta);
+    /*
+     * Growth -> Scale / Launch -> Growth / Launch -> Scale are paid as a
+     * one-time fixed difference. Once that Checkout payment succeeds, swap
+     * the existing recurring Stripe subscription to the destination Price
+     * immediately, preserve the renewal date, and activate the higher Alygnn
+     * entitlement right away.
+     */
+    const targetPlan = String(meta.target_plan || '').toLowerCase();
+    const billing = String(meta.billing || 'monthly').toLowerCase();
+    const subscriptionId = String(meta.subscription_id || '');
+    const subscriptionItemId = String(meta.subscription_item_id || '');
+    const targetPriceId = String(meta.target_price_id || '');
+
+    if (!targetPlan || !subscriptionId || !targetPriceId) {
+      throw new Error('Plan upgrade checkout is missing required Stripe metadata.');
+    }
+
+    const currentSubscription = await stripeGet(
+      `subscriptions/${encodeURIComponent(subscriptionId)}`
+    );
+
+    const itemId =
+      subscriptionItemId ||
+      currentSubscription?.items?.data?.[0]?.id;
+
+    if (!itemId) {
+      throw new Error('Plan upgrade subscription item could not be identified.');
+    }
+
+    const updatedSubscription = await stripePost(
+      `subscriptions/${encodeURIComponent(subscriptionId)}`,
+      {
+        'items[0][id]': itemId,
+        'items[0][price]': targetPriceId,
+        'items[0][quantity]': 1,
+        proration_behavior: 'none',
+        'metadata[employer_id]': employerId,
+        'metadata[product]': 'job_plan',
+        'metadata[plan]': targetPlan,
+        'metadata[billing]': billing
+      }
+    );
+
+    await upsertPlan({
+      employerId,
+      plan: targetPlan,
+      billing,
+      status:
+        updatedSubscription.status === 'trialing'
+          ? 'trialing'
+          : 'active',
+      periodEnd: updatedSubscription.current_period_end,
+      subscription: updatedSubscription
+    });
+
     return;
   }
 
@@ -326,7 +305,8 @@ async function fulfillCheckout(session) {
         plan,
         billing,
         status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        periodEnd: subscription.current_period_end
+        periodEnd: subscription.current_period_end,
+        subscription
       });
       return;
     }
@@ -336,130 +316,19 @@ async function fulfillCheckout(session) {
   }
 }
 
-
-function jobConsumesReusableSlot(job) {
-  const status = String(job?.status || 'active').toLowerCase();
-  return !['paused', 'closed', 'draft', 'inactive', 'archived', 'deleted'].includes(status);
-}
-
-function jobCreatedTime(job) {
-  const value = new Date(job?.created_at || job?.updated_at || 0).getTime();
-  return Number.isFinite(value) ? value : 0;
-}
-
-async function reconcileJobsAfterPaidPlanEnds(employerId) {
-  if (!employerId) return;
-
-  const url = new URL(`${supabaseBase()}/rest/v1/jobs`);
-  url.searchParams.set('employer_id', 'eq.' + employerId);
-  url.searchParams.set('select', 'id,status,posting_access_type,weekly_slot_purchase_id,created_at,updated_at');
-
-  const response = await fetch(url, { headers: serviceHeaders() });
-  if (!response.ok) {
-    throw new Error('Could not load employer jobs after paid plan ended: ' + await response.text());
-  }
-
-  const rows = await response.json().catch(() => []);
-  // Independently purchased weekly slots survive cancellation of a monthly plan.
-  const weeklyUrl = new URL(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`);
-  weeklyUrl.searchParams.set('employer_id', 'eq.' + employerId);
-  weeklyUrl.searchParams.set('select', 'id,activated_at,expires_at');
-  const weeklyResponse = await fetch(weeklyUrl, { headers: serviceHeaders() });
-  if (!weeklyResponse.ok) throw new Error('Could not verify separate weekly slots; no jobs were closed.');
-  const weeklyRows = await weeklyResponse.json();
-  const activeWeeklyIds = new Set((Array.isArray(weeklyRows) ? weeklyRows : [])
-    .filter(p => p.activated_at && p.expires_at && new Date(p.expires_at).getTime() > Date.now())
-    .map(p => String(p.id)));
-  const liveJobs = (Array.isArray(rows) ? rows : []).filter(jobConsumesReusableSlot)
-    .filter(job => !(job.weekly_slot_purchase_id && activeWeeklyIds.has(String(job.weekly_slot_purchase_id))));
-  if (!liveJobs.length) return;
-
-  // Preserve exactly one permanent free-slot job.
-  // Prefer a job already marked as the free posting; otherwise preserve the
-  // oldest live job and mark it as the free posting.
-  const explicitFreeJobs = liveJobs
-    .filter(job => String(job?.posting_access_type || '').toLowerCase() === 'free')
-    .sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b));
-
-  const keepJob = explicitFreeJobs[0]
-    || [...liveJobs].sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b))[0];
-
-  if (!keepJob) return;
-
-  if (String(keepJob.posting_access_type || '').toLowerCase() !== 'free') {
-    const keepUrl = new URL(`${supabaseBase()}/rest/v1/jobs`);
-    keepUrl.searchParams.set('id', 'eq.' + keepJob.id);
-
-    const keepResponse = await fetch(keepUrl, {
-      method: 'PATCH',
-      headers: serviceHeaders({ Prefer: 'return=minimal' }),
-      body: JSON.stringify({
-        posting_access_type: 'free',
-        updated_at: new Date().toISOString()
-      })
-    });
-
-    if (!keepResponse.ok) {
-      throw new Error('Could not preserve the permanent free job: ' + await keepResponse.text());
-    }
-  }
-
-  // Preserve a separately paid Second Job Slot even after the main plan ends.
-  const extraSubscriptions = [];
-  for (const product of ['additional_slot', 'single_job']) {
-    const query = new URL('https://api.stripe.com/v1/subscriptions/search');
-    query.searchParams.set('query', `metadata["employer_id"]:"${employerId}" AND metadata["product"]:"${product}"`);
-    query.searchParams.set('limit', '20');
-    const response = await fetch(query, { headers: { Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY } });
-    if (!response.ok) throw new Error('Could not verify standalone job-slot access; no excess jobs were closed.');
-    const data = await response.json();
-    extraSubscriptions.push(...(data.data || []));
-  }
-  const hasExtraSlot = extraSubscriptions.some(sub => ['active', 'trialing', 'past_due'].includes(String(sub.status || '').toLowerCase())
-    && (!sub.current_period_end || Number(sub.current_period_end) * 1000 > Date.now()));
-  const otherPermittedJobs = liveJobs.filter(job => String(job.id) !== String(keepJob.id))
-    .sort((a, b) => jobCreatedTime(a) - jobCreatedTime(b));
-  const jobsToClose = otherPermittedJobs.slice(hasExtraSlot ? 1 : 0);
-
-  for (const job of jobsToClose) {
-    const patchUrl = new URL(`${supabaseBase()}/rest/v1/jobs`);
-    patchUrl.searchParams.set('id', 'eq.' + job.id);
-
-    const closedAt = new Date().toISOString();
-    const patchResponse = await fetch(patchUrl, {
-      method: 'PATCH',
-      headers: serviceHeaders({ Prefer: 'return=minimal' }),
-      body: JSON.stringify({
-        status: 'closed',
-        closed_reason: 'plan_expired',
-        closed_at: closedAt,
-        updated_at: closedAt
-      })
-    });
-
-    if (!patchResponse.ok) {
-      throw new Error(`Could not close job ${job.id} after paid plan ended: ` + await patchResponse.text());
-    }
-  }
-}
-
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
   if (!meta.employer_id) return;
 
   if (product === 'additional_slot' || product === 'single_job') {
-    // A late canceled/older subscription event must not revoke another valid
-    // subscription for this employer. Verify current Stripe state first.
-    const current=await activeSecondSlotForEmployer(meta.employer_id);
-    const source=current||subscription;
-    const status=current
-      ? String(current.status||'active').toLowerCase()
-      : (forceStatus || String(subscription.status||'inactive').toLowerCase());
+    const status = forceStatus || (subscription.status === 'trialing' ? 'trialing' : subscription.status);
     await rpc('sync_second_job_slot_subscription', {
       p_employer_id: meta.employer_id,
       p_status: status,
-      p_expires_at: current ? stripePeriodEnd(current) : stripePeriodEnd(source),
+      p_expires_at: subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null,
       p_payment_reference: null,
       p_amount_cents: 15000
     });
@@ -467,23 +336,14 @@ async function fulfillSubscription(subscription, forceStatus) {
   }
 
   if (product !== 'job_plan') return;
-
-  const planStatus = forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active');
-
   await upsertPlan({
     employerId: meta.employer_id,
     plan: meta.plan,
     billing: meta.billing || 'monthly',
-    status: planStatus,
-    periodEnd: subscription.current_period_end
+    status: forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active'),
+    periodEnd: subscription.current_period_end,
+    subscription
   });
-
-  // Stripe sends customer.subscription.updated when cancel_at_period_end is set.
-  // Keep every job active during that paid period. Only when Stripe sends the
-  // terminal/deleted event do we fall back to the permanent free slot.
-  if (['canceled', 'unpaid', 'incomplete_expired', 'inactive'].includes(String(planStatus).toLowerCase())) {
-    await reconcileJobsAfterPaidPlanEnds(meta.employer_id);
-  }
 }
 
 module.exports = async function handler(req, res) {
@@ -503,7 +363,7 @@ module.exports = async function handler(req, res) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        if (event.data.object.payment_status === 'paid' || event.data.object.payment_status === 'no_payment_required' || event.data.object.mode === 'subscription') {
+        if (event.data.object.payment_status === 'paid' || event.data.object.mode === 'subscription') {
           await fulfillCheckout(event.data.object);
         }
         break;
@@ -521,14 +381,6 @@ module.exports = async function handler(req, res) {
         if (subscriptionId) {
           const subscription = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
           await fulfillSubscription(subscription);
-        }
-        break;
-      }
-
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object;
-        if (String(paymentIntent?.metadata?.product || '').toLowerCase() === 'plan_upgrade') {
-          await fulfillPlanUpgrade(paymentIntent.metadata || {});
         }
         break;
       }
