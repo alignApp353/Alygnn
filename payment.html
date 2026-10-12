@@ -459,6 +459,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const weeklyCount=Math.max(0,Number(postingAccess?.weekly_slot_count||0));
     const currentBillingLabel=currentBilling==='quarterly'?'Quarterly':'Monthly';
     const targetBillingLabel=targetBilling==='quarterly'?'Quarterly':'Monthly';
+    const immediate=planChangeTiming==='immediate';
 
     document.body.classList.add('plan-change-mode');
     selectedPlan=target;
@@ -477,7 +478,6 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(firstTitle) firstTitle.textContent='1. Review your change';
 
     const options=document.getElementById('plan-options');
-    const immediate=planChangeTiming==='immediate';
     const canChangeImmediately=currentBilling===targetBilling;
     options.innerHTML=`
       <div class="change-review">
@@ -765,7 +765,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if(developerTestMode){
       document.getElementById('tax-row').style.display='none';
-      document.getElementById('due-total').textContent=immediate?'Calculated by Stripe':'$0.00';
+      document.getElementById('due-total').textContent='$0.00';
       document.getElementById('trust-copy').textContent='Developer test mode · No charge';
       document.getElementById('authorization-copy').textContent=isAddon() ? 'By continuing, you confirm this is a developer test activation of the Free-account-only $150/month Second Job Slot. No payment will be processed.' : `By continuing, you confirm this is a test activation of the ${p.name} ${p.billing.toLowerCase()} package. No payment will be processed.`;
     }else{
