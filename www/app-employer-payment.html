@@ -403,7 +403,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
 
     <button class="btn" id="checkout-btn" type="button" disabled>Accept terms to continue</button>
     <div class="message" id="message" hidden></div>
-    <div class="fineprint" id="payment-fineprint">Payments are processed securely by Stripe. Alygnn never stores full card details.</div>
+    <div class="fineprint" id="payment-fineprint">Payments are processed securely by Stripe. Stripe securely saves the payment method for recurring charges; Alygnn never stores the full card number or CVV.</div>
   </section>
 </main>
 
@@ -1057,6 +1057,9 @@ function applyServerTotal(data){
 
 function nativeSuccessDestination(context){
   if(context?.upgrade){
+    if(context?.returnMode==='billing'){
+      return 'app-employer-billing.html?upgrade=success';
+    }
     const target=encodeURIComponent(String(context?.target_plan||''));
     return 'app-employer-dashboard.html?upgrade=success'+(target?'&plan='+target:'');
   }
@@ -1915,6 +1918,8 @@ async function executeExistingPlanChange(){
         body:JSON.stringify({
           action:'change_plan',
           target_plan:change.target,
+          billing:change.period,
+          effective:'immediate',
           source:'capacitor_app',
           payment_ui:nativeStripeAvailable()?'payment_sheet':'checkout',
           native_payment_sheet:nativeStripeAvailable(),
