@@ -485,12 +485,18 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const canChangeImmediately=currentBilling===targetBilling;
     options.innerHTML=`
       <div class="change-review">
-        <div class="change-plan-box" style="margin-bottom:16px">
+        ${!tierUpgrade && !billingChanged ? `<div class="change-plan-box" style="margin-bottom:16px">
+          <div class="change-label">Scheduled downgrade</div>
+          <div style="font-size:13px;line-height:1.6">Your new plan will start on your next billing date. No payment is due today, and your current plan and job slots stay active until then.</div>
+        </div>` : !tierUpgrade ? `<div class="change-plan-box" style="margin-bottom:16px">
+          <div class="change-label">Scheduled plan change</div>
+          <div style="font-size:13px;line-height:1.6">Your new plan will start on your next billing date. No payment is due today.</div>
+        </div>` : `<div class="change-plan-box" style="margin-bottom:16px">
           <div class="change-label">When should this change take effect?</div>
           <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the plan price difference now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
           ${canChangeImmediately?'':'<div class="change-price">Changes between monthly and quarterly billing must start at the next renewal to preserve the renewal date.</div>'}
-        </div>
+        </div>`}
         <div class="change-path">
           <div class="change-plan-box">
             <div class="change-label">Current plan</div>
@@ -582,7 +588,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function setPlanChangeTiming(value){
-    planChangeTiming=value==='immediate'?'immediate':'next_billing';
+    planChangeTiming=planChangeIsUpgrade() && !planChangeBillingChanged() && value==='immediate'?'immediate':'next_billing';
     planChangePreview=null;
     planChangeTax=null;
     planChangeSubtotal=null;
@@ -593,6 +599,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function startPlanChange(){
     if(planChangeBusy||!session) return;
+    if(!planChangeIsUpgrade()) planChangeTiming='next_billing';
     if(planChangeTiming==='immediate'&&planChangePreview===null)return;
     const accepted=document.getElementById('terms-accept').checked;
     if(!accepted){
@@ -891,7 +898,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const immediateUpgrade=planChangeIsImmediateUpgrade();
       const {difference}=planChangePrices();
       button.disabled=!accepted || planChangeBusy || (planChangeTiming==='immediate'&&planChangePreview===null);
-      button.textContent=accepted
+      button.textContent=accepted && !planChangeIsUpgrade() ? 'Schedule downgrade' : accepted
         ? `${planChangeTiming==='immediate'?'Pay now · Change to':'Schedule'} ${titleCasePlan(planChangeTarget)} ${planChangeBilling==='quarterly'?'Quarterly':'Monthly'}${planChangeTiming==='immediate'?'':' at renewal'}`
         : 'Accept terms to continue';
       return;
@@ -1065,6 +1072,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         location.replace('pricing.html?mode='+encodeURIComponent(planChangeBilling));
         return;
       }
+      if(!planChangeIsUpgrade()) planChangeTiming='next_billing';
       renderPlanChangeReview();
       if(planChangeTiming==='immediate')refreshPlanChangePreview();
       updateUrl();
