@@ -103,6 +103,8 @@ input::placeholder{color:#98A2AD}
 .message{display:none;margin-top:16px;padding:12px 14px;border-radius:14px;font-size:12px;line-height:1.45;font-weight:700}
 .message.error{display:block;color:var(--danger);background:var(--danger-bg)}
 .message.success{display:block;color:var(--success);background:var(--success-bg)}
+.candidate-route{display:block;width:100%;min-height:48px;margin-top:11px;border:1px solid var(--accent);border-radius:15px;background:var(--accent-bg);color:var(--accent-dark);font-size:13px;font-weight:900}
+.candidate-route[hidden]{display:none!important}
 .primary{width:100%;min-height:56px;margin-top:22px;border:none;border-radius:17px;background:var(--accent);color:#fff;font-size:15px;font-weight:900;box-shadow:0 9px 24px rgba(39,179,106,.22)}
 .primary:disabled,.social:disabled{opacity:.65}
 .divider{margin:25px 0 15px;display:flex;align-items:center;gap:13px;color:#8995A1;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.7px}
@@ -194,6 +196,7 @@ html[data-theme="dark"] .message.success{
   color:#83D6A6;
   background:#123326;
 }
+html[data-theme="dark"] .candidate-route{background:#103327;color:#7ADCAA;border-color:#366A52}
 
 html[data-theme="dark"] .signup a,
 html[data-theme="dark"] .forgot{
@@ -235,6 +238,7 @@ html[data-theme="dark"] .switch-btn{
 <button class="show-btn" id="show-btn" type="button">Show</button>
 </div></div>
 <div id="message" class="message" aria-live="polite"></div>
+<button id="candidate-route-btn" class="candidate-route" type="button" hidden>Continue to Job Seeker Sign In →</button>
 <button class="primary" id="sign-in-btn" type="button">Sign in</button>
 <div class="divider">or continue with</div>
 <button class="social" id="google-btn" type="button"><span class="google-mark" aria-hidden="true">
@@ -256,7 +260,27 @@ const TARGET_PAGE='app-employer-dashboard.html';
 const ONBOARDING_PAGE='app-employer-onboarding.html';
 const STATUS_PAGE='app-employer-verification-status.html';
 const DOCUMENT_UPLOAD_PAGE='app-employer-document-upload.html';
-function showMessage(text,type){const m=document.getElementById('message');m.textContent=text;m.className='message '+type}
+function showMessage(text,type){
+  const m=document.getElementById('message');
+  m.textContent=text;
+  m.className='message '+type;
+  // Never keep a candidate-specific link visible for unrelated errors.
+  const candidateButton=document.getElementById('candidate-route-btn');
+  if(candidateButton)candidateButton.hidden=true;
+}
+function showRejectedAccount(access,isGoogle=false){
+  if(access?.reason==='candidate'){
+    showMessage('This is a Job Seeker account, not an employer account. Sign in on the Job Seeker side to access your profile and jobs.','error');
+    document.getElementById('candidate-route-btn').hidden=false;
+    return;
+  }
+  showMessage(
+    isGoogle
+      ?'We could not find an employer workspace for this Google account. If your company already exists, contact Alygnn support instead of creating a duplicate.'
+      :'We could not find an employer workspace for this account. If this company already exists, contact Alygnn support instead of creating a duplicate company.',
+    'error'
+  );
+}
 function setLoading(b,l,lt,nt){b.disabled=l;b.textContent=l?lt:nt}
 function friendlyError(error){const raw=String(error?.message||'').toLowerCase();if(raw.includes('invalid login credentials')||raw.includes('invalid credentials'))return'Incorrect email or password. Please try again.';if(raw.includes('email not confirmed')||raw.includes('confirm your email'))return'Please verify your email before signing in.';if(raw.includes('fetch')||raw.includes('network')||raw.includes('failed to fetch'))return'Unable to connect. Please check your internet connection.';if(raw.includes('too many requests')||raw.includes('rate limit'))return'Too many attempts. Please wait a few minutes and try again.';if(raw.includes('main activity')||raw.includes('scopes without modifying'))return'Google sign-in could not start. Please update Alygnn and try again.';return error?.message||'Unable to sign in. Please try again.'}
 function employerSetupKey(userId){
@@ -505,8 +529,61 @@ function authAccountType(user){
   return String(
     user?.user_metadata?.account_type ||
     user?.app_metadata?.account_type ||
+    user?.user_metadata?.role ||
+    user?.app_metadata?.role ||
     ''
   ).toLowerCase().trim();
+}
+
+const JOB_SEEKER_ACCOUNT_TYPES=new Set([
+  'candidate','job_seeker','job-seeker','jobseeker','seeker','employee','applicant'
+]);
+
+async function accountHasJobSeekerWorkspace(user){
+  if(!user?.id)return false;
+
+  // Candidate login itself uses this workspace RPC. It supports accounts
+  // whose account_type was never saved into the Supabase auth metadata.
+  try{
+    const {data,error}=await sb.rpc('get_my_workspace_context');
+    if(!error && data?.has_candidate===true)return true;
+    if(error)console.warn('Job seeker workspace lookup:',error.message||error);
+  }catch(error){
+    console.warn('Job seeker workspace lookup failed:',error);
+  }
+
+  // Older Alygnn candidate accounts use profiles.role rather than auth metadata.
+  try{
+    let {data:profile,error}=await sb.from('profiles')
+      .select('role,account_type')
+      .eq('id',user.id)
+      .maybeSingle();
+
+    // Older profiles schemas may not contain account_type.
+    if(error){
+      const fallback=await sb.from('profiles')
+        .select('role')
+        .eq('id',user.id)
+        .maybeSingle();
+      profile=fallback.data;
+      error=fallback.error;
+    }
+
+    if(!error && profile){
+      if(JOB_SEEKER_ACCOUNT_TYPES.has(String(profile.role||'').toLowerCase().trim()))return true;
+      if(JOB_SEEKER_ACCOUNT_TYPES.has(String(profile.account_type||'').toLowerCase().trim()))return true;
+    }
+  }catch(error){
+    console.warn('Job seeker profile lookup failed:',error);
+  }
+
+  // This is a fallback for older accounts with only an auth role.
+  return [
+    user?.user_metadata?.account_type,
+    user?.user_metadata?.role,
+    user?.app_metadata?.account_type,
+    user?.app_metadata?.role
+  ].some(value=>JOB_SEEKER_ACCOUNT_TYPES.has(String(value||'').toLowerCase().trim()));
 }
 
 function hasAccountScopedEmployerCompany(userId,user){
@@ -560,8 +637,9 @@ async function resolveEmployerLoginAccess(user){
     };
   }
 
-  // An explicitly candidate-only account should still be kept out.
-  if(role==='candidate'){
+  // A verified job seeker with no employer workspace belongs on the
+  // candidate side; never advise them to create a duplicate employer account.
+  if(JOB_SEEKER_ACCOUNT_TYPES.has(role) || await accountHasJobSeekerWorkspace(user)){
     return {
       allowed:false,
       reason:'candidate'
@@ -617,11 +695,7 @@ async function signIn(){
   if(!access.allowed){
     await sb.auth.signOut();
 
-    const message=access.reason==='candidate'
-      ?'This account is registered as a candidate. Please use Candidate Sign In.'
-      :'We could not find an employer workspace for this account. If this company already exists, contact Alygnn support instead of creating a duplicate company.';
-
-    showMessage(message,'error');
+    showRejectedAccount(access);
     setLoading(button,false,'Signing in…','Sign in');
     return;
   }
@@ -742,7 +816,19 @@ async function nativeGoogleLogin(){
   const session=data?.session || (await sb.auth.getSession()).data?.session;
   const validation=await validateGoogleIntent(session);
   if(!validation?.allowed){
+    // A real candidate account must NEVER be redirected to create an employer
+    // company simply because employer Google-login validation rejects it.
+    const currentUser=data.user || session?.user;
+    const access=await resolveEmployerLoginAccess(currentUser);
     await signOutRejectedGoogle(plugin);
+    if(access.reason==='candidate'){
+      showRejectedAccount(access,true);
+      return false;
+    }
+    if(access.allowed){
+      showMessage('Could not verify this Google login for the employer workspace. Please try again or contact Alygnn support.','error');
+      return false;
+    }
     showMessage(
       'No Alygnn employer account was found. Taking you to create one with Google…',
       'success'
@@ -757,10 +843,7 @@ async function nativeGoogleLogin(){
   const access=await resolveEmployerLoginAccess(data.user || session?.user);
   if(!access.allowed){
     await signOutRejectedGoogle(plugin);
-    const message=access.reason==='candidate'
-      ?'This account is registered as a candidate. Please use Candidate Sign In.'
-      :'We could not find an employer workspace for this Google account. Create an employer account first or contact Alygnn support.';
-    showMessage(message,'error');
+    showRejectedAccount(access,true);
     return false;
   }
 
@@ -811,6 +894,7 @@ document.getElementById('sign-in-btn').addEventListener('click',signIn);
 document.getElementById('google-btn').addEventListener('click',googleLogin);
 document.getElementById('apple-btn')?.addEventListener('click',()=>showMessage('Apple sign-in is not connected yet.','error'));
 document.getElementById('switch-btn').addEventListener('click',()=>location.href=ACCOUNT_TYPE==='employer'?'app-login.html':'app-employer-login.html');
+document.getElementById('candidate-route-btn').addEventListener('click',()=>location.href='app-login.html');
 document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 
 
