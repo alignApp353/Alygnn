@@ -1067,17 +1067,10 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
-  const currentBilling=subscriptionBilling(ent,sub);
-  const oldRenewal=stripePeriodEndUnix(sub);
-  const cadenceChange=currentBilling!==billing;
-  if(cadenceChange&&(!oldRenewal||oldRenewal<=Math.floor(Date.now()/1000)+60)){
-    throw new Error('The current renewal date cannot be preserved; contact billing support.');
-  }
   const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
     'items[0][id]':item.id,
     'items[0][price]':targetPrice,
     'items[0][quantity]':1,
-    ...(cadenceChange?{trial_end:oldRenewal}:{}),
     proration_behavior:'none',
     'metadata[employer_id]':employerId,
     'metadata[product]':'job_plan',
@@ -1203,13 +1196,11 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const difference=Math.max(0,Number(targetCatalog.cents)-Number(currentCatalog.cents));
   if(difference<=0)throw new Error('This plan change is not an upgrade.');
 
-  const currentBilling=subscriptionBilling(ent,sub);
-  const sameBilling=currentBilling===billing;
-  const upgrade=sameBilling?fixedUpgradePrice(currentPlan,targetPlan,billing):null;
-  if(sameBilling&&!upgrade?.priceId){
+  const upgrade=fixedUpgradePrice(currentPlan,targetPlan,billing);
+  if(!upgrade?.priceId){
     throw new Error('The Stripe Price ID for this Alygnn upgrade difference is not configured.');
   }
-  if(sameBilling&&Number(upgrade.cents)!==difference){
+  if(Number(upgrade.cents)!==difference){
     throw new Error("The configured Stripe upgrade Price does not match Alygnn's fixed plan difference.");
   }
 
@@ -1248,7 +1239,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     subscription_id:sub.id,
     subscription_item_id:item.id,
     target_price_id:targetPrice,
-    upgrade_price_id:upgrade?.priceId||'',
+    upgrade_price_id:upgrade.priceId,
     fixed_difference_cents:difference,
     charged_difference_cents:amountDue,
     promotion_code:requestedPromotionCode||'',
@@ -1258,7 +1249,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
 
   // No browser for a fully discounted immediate upgrade. Stripe first
   // records the coupon redemption on a paid $0 invoice, then we switch plans.
-  if(sameBilling&&resolvedPromotion?.promotion?.id && amountDue===0){
+  if(resolvedPromotion?.promotion?.id && amountDue===0){
     const paid=await confirmZeroUpgradeInvoice({
       employerId,
       userEmail:input.employer_email||null,
@@ -1286,7 +1277,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   // Other upgrades use the native Stripe PaymentSheet when possible.
   // For partial promotional payments, Stripe's hosted Checkout still verifies
   // coupon usage; do not bypass that verification for a positive amount.
-  if(sameBilling&&nativePaymentSheetRequested(input)&&!resolvedPromotion){
+  if(nativePaymentSheetRequested(input)&&!resolvedPromotion){
     const native=await createNativePaymentSheetCheckout({
       user:{email:input.employer_email||null},
       employerId,
@@ -1311,7 +1302,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
       current_plan:currentPlan,
       target_plan:targetPlan,
       next_renewal_amount_cents:targetCatalog.cents,
-      stripe_upgrade_price_id:upgrade?.priceId||null,
+      stripe_upgrade_price_id:upgrade.priceId,
       stripe_target_plan_price_id:targetPrice,
       ...native
     };
@@ -1332,18 +1323,11 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     success_url:successUrl,
     cancel_url:cancelUrl,
     client_reference_id:employerId,
+    'line_items[0][price]':upgrade.priceId,
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto'
   };
-  if(sameBilling){
-    params['line_items[0][price]']=upgrade.priceId;
-  }else{
-    params['line_items[0][price_data][currency]']='usd';
-    params['line_items[0][price_data][unit_amount]']=difference;
-    params['line_items[0][price_data][product_data][name]']=`Alygnn ${currentPlan} ${currentBilling} to ${targetPlan} ${billing} upgrade`;
-    params['line_items[0][price_data][product_data][tax_code]']=ALYGNN_TAX_CODE;
-  }
   if(amountDue>0){
     params['payment_intent_data[setup_future_usage]']='off_session';
   }
@@ -1377,7 +1361,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     current_plan:currentPlan,
     target_plan:targetPlan,
     next_renewal_amount_cents:targetCatalog.cents,
-    stripe_upgrade_price_id:upgrade?.priceId||null,
+    stripe_upgrade_price_id:upgrade.priceId,
     stripe_target_plan_price_id:targetPrice
   };
 }
@@ -2071,31 +2055,6 @@ async function runManageAction(res,user,input){
     });
   }
 
-  // Read-only quote: use the same catalog amounts as the actual upgrade charge.
-  // Stripe Checkout calculates location-dependent tax once the billing address is known.
-  if(action==='preview_plan_change'){
-    const target=String(input.target_plan||'').toLowerCase();
-    const current=subscriptionPlan(ent,sub);
-    const currentBilling=subscriptionBilling(ent,sub);
-    const targetBilling=String(input.billing||input.target_billing||currentBilling).toLowerCase();
-    const from=MANAGE_CATALOG[currentBilling]?.[current];
-    const to=MANAGE_CATALOG[targetBilling]?.[target];
-    if(!from||!to||Number(to.rank)<=Number(from.rank)){
-      return send(res,400,{error:'An immediate price quote is only available for a higher-tier plan.'});
-    }
-    if(!subscriptionIsActive(sub)||String(sub.status||'').toLowerCase()==='past_due'){
-      return send(res,409,{error:'An active, current Stripe subscription is required to quote this upgrade.'});
-    }
-    const subtotal=Math.max(0,to.cents-from.cents);
-    if(subtotal<=0)return send(res,400,{error:'The requested plan has no positive upgrade balance.'});
-    return send(res,200,{
-      ok:true,subtotal_cents:subtotal,amount_due_now_cents:subtotal,
-      tax_cents:null,tax_pending:true,
-      tax_message:'Applicable tax is calculated by Stripe Checkout using your billing address.',
-      current_plan:current,current_billing:currentBilling,target_plan:target,target_billing:targetBilling
-    });
-  }
-
   if(action==='cancel_scheduled_change'){
     if(sub)await releaseSchedule(sub,ent);
     await patchEntitlement(user.id,{
@@ -2280,7 +2239,7 @@ async function runManageAction(res,user,input){
     });
   }
 
-  const immediateUpgradeRequest=
+  const immediateUpgradeRequest=currentBilling===targetBilling &&
     Number(targetCatalog?.[target]?.rank||0)>Number(currentCatalog?.[current]?.rank||0) &&
     !['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming);
 
@@ -2323,6 +2282,7 @@ async function runManageAction(res,user,input){
   // 1) immediate = pay the exact difference now and unlock immediately
   // 2) renewal   = pay $0 today and switch on the next billing date
   if(
+    sameBilling &&
     targetRank>currentRank &&
     ['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming)
   ){
@@ -2351,7 +2311,7 @@ async function runManageAction(res,user,input){
 
   // Same-cadence upgrades create payment FIRST. A schedule, if present, is
   // only released by the confirmed-payment fulfillment path.
-  if(targetRank>currentRank && immediateUpgradeRequest){
+  if(sameBilling&&targetRank>currentRank){
     const result=await upgradeNow({
       employerId:user.id,
       ent,
@@ -2385,6 +2345,98 @@ async function runManageAction(res,user,input){
     target_plan:target,
     amount_due_now_cents:0
   });
+}
+
+
+
+async function recordVerifiedWeeklySlotPurchase({employerId,reference,amount}){
+  if(!employerId||!reference)throw new Error('Missing confirmed Weekly Job Slot payment details.');
+  const url=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
+  url.searchParams.set('payment_reference','eq.'+reference);
+  url.searchParams.set('select','id,employer_id');
+  url.searchParams.set('limit','1');
+  async function existing(){
+    const r=await fetch(url,{headers:manageServiceHeaders()});
+    const rows=await r.json().catch(()=>[]);
+    if(!r.ok)throw new Error('Could not validate the Weekly Job Slot purchase.');
+    return Array.isArray(rows)?rows[0]:null;
+  }
+  const prior=await existing();
+  if(prior){
+    if(String(prior.employer_id)!==String(employerId))throw new Error('Purchase belongs to another employer.');
+    return {already_synced:true};
+  }
+  const r=await fetch(manageBase()+'/rest/v1/employer_weekly_slot_purchases',{
+    method:'POST',headers:manageServiceHeaders({Prefer:'return=minimal'}),
+    body:JSON.stringify({
+      employer_id:employerId,payment_reference:reference,
+      amount_cents:amount,test_mode:false,
+      expires_at:new Date(Date.now()+7*86400000).toISOString(),activated_at:null
+    })
+  });
+  if(!r.ok){
+    // Stripe may have delivered its webhook at the same moment.
+    const saved=await existing();
+    if(!saved||String(saved.employer_id)!==String(employerId)){
+      throw new Error('Could not activate Weekly Job Slot: '+await r.text());
+    }
+    return {already_synced:true};
+  }
+  return {already_synced:false};
+}
+
+async function syncCompletedWeeklySlotCheckout({user,checkoutSessionId}) {
+  const employerId=String(user?.id||'');
+  if(!employerId)throw Object.assign(new Error('Employer login required.'),{status:401});
+  const sessionId=String(checkoutSessionId||'').trim();
+  if(!/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(sessionId)){
+    throw Object.assign(new Error('Invalid Stripe Checkout session ID.'),{status:400});
+  }
+  const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(sessionId));
+  if(String(checkout.metadata?.employer_id||'')!==employerId ||
+     String(checkout.metadata?.product||'').toLowerCase()!=='weekly_slot'){
+    throw Object.assign(new Error('This Weekly Job Slot checkout does not belong to your employer account.'),{status:403});
+  }
+  if(checkout.mode!=='payment' || checkout.status!=='complete' ||
+     !['paid','no_payment_required'].includes(String(checkout.payment_status||''))){
+    throw Object.assign(new Error('Weekly Job Slot checkout has not completed successfully.'),{status:409});
+  }
+  const purchasesUrl=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
+  purchasesUrl.searchParams.set('payment_reference','eq.'+sessionId);
+  purchasesUrl.searchParams.set('select','id,employer_id');
+  purchasesUrl.searchParams.set('limit','1');
+  async function findExisting(){
+    const response=await fetch(purchasesUrl,{headers:manageServiceHeaders()});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||'Unable to check the Weekly Job Slot purchase.');
+    return Array.isArray(data)?data[0]||null:null;
+  }
+  let existing=await findExisting();
+  if(existing){
+    if(String(existing.employer_id)!==employerId)throw Object.assign(new Error('Purchase is linked to another employer.'),{status:403});
+    return {ok:true,synced:true,product:'weekly_slot',already_synced:true};
+  }
+  const purchase={
+    employer_id:employerId,
+    payment_reference:sessionId,
+    amount_cents:Number(checkout.amount_total??0),
+    test_mode:false,
+    expires_at:new Date(Date.now()+7*86400000).toISOString(),
+    activated_at:null
+  };
+  const response=await fetch(manageBase()+'/rest/v1/employer_weekly_slot_purchases',{
+    method:'POST',
+    headers:manageServiceHeaders({Prefer:'return=minimal'}),
+    body:JSON.stringify(purchase)
+  });
+  if(!response.ok){
+    // The signed Stripe webhook may have fulfilled this session concurrently.
+    existing=await findExisting();
+    if(!existing || String(existing.employer_id)!==employerId){
+      throw new Error('Weekly Job Slot payment confirmed, but slot activation failed: '+await response.text());
+    }
+  }
+  return {ok:true,synced:true,product:'weekly_slot'};
 }
 
 
@@ -2493,6 +2545,23 @@ module.exports = async function handler(req, res) {
     // Hobby deployment stays below the Serverless Function limit.
     const billingAction = String(input.action || '').toLowerCase();
 
+    if (billingAction==='sync_weekly_slot_checkout') {
+      const result=await syncCompletedWeeklySlotCheckout({user,checkoutSessionId:input.checkout_session_id});
+      return send(res,200,result);
+    }
+    if(billingAction==='sync_weekly_slot_payment'){
+      const intentId=String(input.payment_intent_id||'').trim();
+      if(!/^pi_(?:[A-Za-z0-9_]+)$/.test(intentId))return send(res,400,{error:'Invalid payment reference.'});
+      const intent=await manageStripe('GET','payment_intents/'+encodeURIComponent(intentId));
+      if(String(intent.metadata?.employer_id||'')!==String(user.id)||
+         String(intent.metadata?.product||'')!=='weekly_slot')return send(res,403,{error:'Not your Weekly Job Slot payment.'});
+      if(intent.status!=='succeeded')return send(res,409,{error:'Stripe has not confirmed the payment.'});
+      const result=await recordVerifiedWeeklySlotPurchase({
+        employerId:user.id,reference:intent.id,amount:Number(intent.amount_received||intent.amount||0)
+      });
+      return send(res,200,{ok:true,synced:true,...result});
+    }
+
     if(billingAction==='validate_promo'){
       const resolved=await resolvePromotionCode(input.promotion_code);
 
@@ -2509,7 +2578,6 @@ module.exports = async function handler(req, res) {
     }
     if ([
       'summary',
-      'preview_plan_change',
       'change_plan',
       'cancel_scheduled_change',
       'cancel_plan',
@@ -2636,28 +2704,19 @@ module.exports = async function handler(req, res) {
           payment_issue: true
         });
       }
-      if (access?.active_paid_plan !== true) {
-        return send(res, 400, {
-          error: 'The $99 Weekly Job Slot is available only with an active Launch, Growth, or Scale monthly/quarterly plan.'
-        });
-      }
-      if (access?.weekly_purchase_allowed !== true) {
-        const recommended = String(access?.recommended_upgrade_plan || '').toLowerCase();
-        return send(res, 409, {
-          error: recommended
-            ? `You already have one active Weekly Job Slot. Upgrade to ${recommended.charAt(0).toUpperCase()+recommended.slice(1)} for better ongoing value.`
-            : 'Another Weekly Job Slot is not available for this plan right now.',
-          recommended_upgrade_plan: recommended || null,
-          manage_plan: !!recommended
-        });
-      }
-
+      // Server-enforced tier: Free accounts pay $150 per 7 days; accounts
+      // with an active paid Launch/Growth/Scale plan pay $99 per 7 days.
+      // Ignore any price supplied by the client; weekly slots can stack.
+      const hasActivePlan = access?.active_paid_plan === true || access?.base_paid_plan === true;
       const item = CHECKOUT_CATALOG.weekly.weekly_slot;
       name = item.name;
-      cents = item.cents;
+      cents = hasActivePlan ? 9900 : 15000;
       slots = item.slots;
       mode = item.mode;
-      priceId = item.priceId;
+      // $150 Free tier uses an inline one-time Stripe Price so an extra
+      // Dashboard Price does not need to be created manually.
+      priceId = hasActivePlan ? item.priceId : '';
+
 
     } else {
       product = 'job_plan';
@@ -2690,7 +2749,9 @@ module.exports = async function handler(req, res) {
       priceId = item.priceId;
     }
 
-    if (!priceId) return send(res, 500, { error: 'Stripe Price ID is not configured for this Alygnn product.' });
+    if (!priceId && !(product==='weekly_slot' && cents===15000)) {
+      return send(res, 500, { error: 'Stripe Price ID is not configured for this Alygnn product.' });
+    }
 
     const requestedPromotionCode=
       String(input.promotion_code||'').trim().toUpperCase();
@@ -2729,6 +2790,10 @@ module.exports = async function handler(req, res) {
       nativePaymentSheetRequested(input) &&
       !(promotionCodeId && mode==='payment');
 
+    // Avoid double-granting weekly slots: hosted Checkout emits both the
+    // PaymentIntent and Checkout events; only one of those should fulfill.
+    metadata.payment_flow = useNativePaymentSheet ? 'native' : 'checkout';
+
     if (useNativePaymentSheet) {
       let preferredCustomerId=null;
 
@@ -2765,11 +2830,17 @@ module.exports = async function handler(req, res) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: user.email || undefined,
-      'line_items[0][price]': priceId,
       'line_items[0][quantity]': quantity,
       'automatic_tax[enabled]': 'true',
       billing_address_collection: 'auto'
     };
+    if(product==='weekly_slot' && cents===15000){
+      params['line_items[0][price_data][currency]']='usd';
+      params['line_items[0][price_data][unit_amount]']='15000';
+      params['line_items[0][price_data][product_data][name]']=name;
+    }else{
+      params['line_items[0][price]']=priceId;
+    }
 
     if(promotionCodeId){
       params['discounts[0][promotion_code]']=promotionCodeId;
