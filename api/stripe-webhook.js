@@ -19,19 +19,12 @@
 const crypto = require('crypto');
 
 function rawBody(req) {
-  // Vercel's Node runtime may populate req.body before calling this function.
-  // Prefer untouched bytes wherever the runtime exposes them.
-  if (Buffer.isBuffer(req.rawBody)) return Promise.resolve(req.rawBody);
-  if (typeof req.rawBody === 'string') return Promise.resolve(Buffer.from(req.rawBody, 'utf8'));
   if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
-  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body, 'utf8'));
-
+  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body));
+  // Signature verification needs the exact raw bytes. If a framework parsed the
+  // body first, disable its body parser for this route.
   if (req.body && typeof req.body === 'object') {
-    // Stripe signs the exact JSON bytes. Vercel sometimes pre-parses compact
-    // Stripe JSON. Reconstruct a candidate; the HMAC check below still MUST
-    // match Stripe's signature or the event is rejected. This never bypasses
-    // signature validation and does not assume the reconstruction is valid.
-    return Promise.resolve(Buffer.from(JSON.stringify(req.body), 'utf8'));
+    throw new Error('Webhook body was parsed before signature verification. Disable body parsing for this route.');
   }
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -208,12 +201,55 @@ function plusMonthsUnix(months) {
   return Math.floor(date.getTime() / 1000);
 }
 
+
+async function fulfillWeeklySlotPayment({employerId,reference,amount}){
+  if(!employerId||!reference)throw new Error('Missing Weekly Job Slot payment details.');
+  const query=new URL(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`);
+  query.searchParams.set('payment_reference','eq.'+reference);
+  query.searchParams.set('select','id,employer_id');
+  query.searchParams.set('limit','1');
+  async function existing(){
+    const r=await fetch(query,{headers:serviceHeaders()});
+    const rows=await r.json().catch(()=>[]);
+    if(!r.ok)throw new Error('Could not verify Weekly Job Slot purchase.');
+    return Array.isArray(rows)?rows[0]:null;
+  }
+  const prior=await existing();
+  if(prior){
+    if(String(prior.employer_id)!==String(employerId))throw new Error('Weekly payment reference belongs to another employer.');
+    return;
+  }
+  const r=await fetch(`${supabaseBase()}/rest/v1/employer_weekly_slot_purchases`,{
+    method:'POST',headers:serviceHeaders({Prefer:'return=minimal'}),
+    body:JSON.stringify({
+      employer_id:employerId,payment_reference:reference,
+      amount_cents:Number(amount||0),test_mode:false,
+      expires_at:new Date(Date.now()+7*86400000).toISOString(),activated_at:null
+    })
+  });
+  if(!r.ok){
+    const recorded=await existing();
+    if(!recorded || String(recorded.employer_id)!==String(employerId)){
+      throw new Error('Weekly Job Slot activation failed: '+await r.text());
+    }
+  }
+}
+
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
   if (session?.status && session.status !== 'complete') return;
+
+  if (product === 'weekly_slot') {
+    if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
+       (session.status && session.status!=='complete'))return;
+    await fulfillWeeklySlotPayment({
+      employerId,reference:session.id,amount:Number(session.amount_total||0)
+    });
+    return;
+  }
 
   if (product === 'additional_slot' || product === 'single_job') {
     // Standalone $150/month Second Job Slot. The included free slot remains,
@@ -395,6 +431,15 @@ async function fulfillSubscription(subscription, forceStatus) {
   const product = String(meta.product || '').toLowerCase();
   if (!meta.employer_id) return;
 
+  if (product === 'weekly_slot') {
+    if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
+       (session.status && session.status!=='complete'))return;
+    await fulfillWeeklySlotPayment({
+      employerId,reference:session.id,amount:Number(session.amount_total||0)
+    });
+    return;
+  }
+
   if (product === 'additional_slot' || product === 'single_job') {
     const status = forceStatus || (subscription.status === 'trialing' ? 'trialing' : subscription.status);
     await rpc('sync_second_job_slot_subscription', {
@@ -438,6 +483,13 @@ module.exports = async function handler(req, res) {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const intent=event.data.object;
+        if(String(intent?.metadata?.product||'')==='weekly_slot' && intent.status==='succeeded' && String(intent?.metadata?.payment_flow||'')==='native'){
+          await fulfillWeeklySlotPayment({
+            employerId:String(intent.metadata.employer_id||''),
+            reference:intent.id,
+            amount:Number(intent.amount_received||intent.amount||0)
+          });
+        }
         if(String(intent?.metadata?.product||'')==='plan_upgrade'){
           await fulfillCheckout({
             id:intent.id,status:'complete',payment_status:'paid',
