@@ -708,7 +708,91 @@ button,a{-webkit-tap-highlight-color:transparent}
 @keyframes alygnn-billing-loading{0%{transform:translateX(0);opacity:.45}45%{opacity:1}100%{transform:translateX(310%);opacity:.55}}
 @media(prefers-reduced-motion:reduce){.billing-loading-bar{left:0;width:100%;animation:none;opacity:.8}}
 
+.plan-choice-overlay{
+  position:fixed;
+  inset:0;
+  z-index:120;
+  display:grid;
+  align-items:end;
+  background:rgba(20,31,43,.42);
+  padding:18px;
+}
+.plan-choice-overlay[hidden]{display:none!important}
+.plan-choice-sheet{
+  width:min(520px,100%);
+  margin:0 auto;
+  border:1px solid var(--border);
+  border-radius:24px;
+  background:var(--card);
+  box-shadow:0 24px 70px rgba(20,31,43,.22);
+  padding:20px;
+}
+.plan-choice-kicker{
+  color:var(--brand);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.plan-choice-title{
+  margin-top:6px;
+  font-size:24px;
+  line-height:1.1;
+  font-weight:900;
+}
+.plan-choice-copy{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.55;
+}
+.plan-choice-options{
+  display:grid;
+  gap:10px;
+  margin-top:16px;
+}
+.plan-choice-option{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:var(--card);
+  color:var(--text);
+  padding:14px;
+  text-align:left;
+  cursor:pointer;
+}
+.plan-choice-option.primary{
+  border-color:color-mix(in srgb,var(--brand) 58%,var(--border));
+  background:color-mix(in srgb,var(--brand) 7%,var(--card));
+}
+.plan-choice-option strong{
+  display:block;
+  font-size:13px;
+}
+.plan-choice-option span{
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.45;
+}
+.plan-choice-cancel{
+  width:100%;
+  margin-top:10px;
+  min-height:44px;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  font-weight:800;
+  cursor:pointer;
+}
+
 </style>
+
+<style>
+#pending-card{display:none!important}
+</style>
+
 </head>
 
 <body>
@@ -782,15 +866,7 @@ button,a{-webkit-tap-highlight-color:transparent}
   </section>
 
   <!-- SCHEDULED CHANGE -->
-  <section class="card pending" id="pending-card" hidden>
-    <div class="kicker">Upcoming account change</div>
-    <div class="pending-title" id="pending-title"></div>
-    <div class="pending-copy" id="pending-copy"></div>
-    <div class="pending-date" id="pending-date"></div>
-    <button class="action neutral full mt12" id="cancel-pending" type="button">
-      Keep my current plan
-    </button>
-  </section>
+  
 
   <!-- BILLING OVERVIEW -->
   <div class="section-head">
@@ -1443,7 +1519,7 @@ function renderBillingOverview(context){
     $('payment-method').textContent='No card on file';
 
     $('payment-method-copy').textContent=
-      'A payment method appears here after secure checkout.';
+      'Saved securely with Stripe for recurring charges. Alygnn never stores the full card number.';
   }
 
   $('billing-email').textContent=
@@ -1621,7 +1697,7 @@ function renderPlans(){
       `Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. New recurring subscriptions can be managed automatically from this page.`;
   }else if(currentItem){
     $('change-copy').textContent=
-      'Upgrade now or schedule a lower plan for your next renewal.';
+      'For upgrades, choose immediate access or switch at your next billing date. Downgrades take effect at renewal.';
   }else{
     $('change-copy').textContent=
       'Choose the hiring capacity that fits your team. Your always-free reusable slot remains included.';
@@ -1661,7 +1737,7 @@ function renderPlans(){
           hint='Your existing prepaid term must finish first.';
         }else if(higher){
           button=
-            `<button class="action primary" data-change-plan="${key}">Upgrade to ${p.name}</button>`;
+            `<button class="action primary" data-change-plan="${key}">Upgrade options</button>`;
           const upgradeDifference=
             Math.max(
               0,
@@ -1670,7 +1746,7 @@ function renderPlans(){
             );
 
           hint=
-            `${money(upgradeDifference)} due now. ${p.name} unlocks immediately after payment and your renewal date stays the same.`;
+            `Choose ${money(upgradeDifference)} due now for immediate access, or $0 today and switch at your next billing date.`;
         }else if(lower){
           button=
             `<button class="action secondary" data-change-plan="${key}">Downgrade to ${p.name}</button>`;
@@ -2057,7 +2133,59 @@ function escapeHtml(value){
     .replace(/'/g,'&#039;');
 }
 
-async function changePlan(target,button){
+
+let planChoiceContext=null;
+
+function closePlanChoice(){
+  $('plan-choice-overlay').hidden=true;
+  planChoiceContext=null;
+}
+
+function chooseUpgradeTiming(target,button){
+  const {plan:current,billing,item}=currentContext();
+  const targetItem=PLAN_CATALOG[billing]?.[target];
+
+  if(!item||!targetItem)return;
+
+  const difference=Math.max(
+    0,
+    Number(targetItem.cents||0)-Number(item.cents||0)
+  );
+
+  const renewalDate=fmtDate(summary?.current_period_end);
+
+  planChoiceContext={
+    target,
+    button,
+    current,
+    billing,
+    item,
+    targetItem,
+    difference
+  };
+
+  $('plan-choice-title').textContent=
+    `Upgrade to ${planName(target)}`;
+
+  $('plan-choice-copy').textContent=
+    `Choose when you want ${planName(target)} to begin.`;
+
+  $('plan-choice-now-title').textContent=
+    `Pay ${money(difference)} now & upgrade`;
+
+  $('plan-choice-now-copy').textContent=
+    `${planName(target)} unlocks immediately after payment. Your renewal date stays ${renewalDate}, and the next renewal is ${money(targetItem.cents)} ${suffix(billing)} plus applicable tax.`;
+
+  $('plan-choice-renewal-title').textContent=
+    'Change at next billing';
+
+  $('plan-choice-renewal-copy').textContent=
+    `$0 due today. Keep ${planName(current)} until ${renewalDate}; then ${planName(target)} begins and renews at ${money(targetItem.cents)} ${suffix(billing)} plus applicable tax.`;
+
+  $('plan-choice-overlay').hidden=false;
+}
+
+async function changePlan(target,button,timing=null){
   if(busy)return;
 
   const {
@@ -2076,82 +2204,91 @@ async function changePlan(target,button){
   const upgrade=
     targetItem.rank>item.rank;
 
-  const cycle=
-    billingLabel(billing).toLowerCase();
+  if(upgrade&&!timing){
+    chooseUpgradeTiming(target,button);
+    return;
+  }
 
-  const wording=
+  const selectedTiming=
     upgrade
-      ?`Upgrade from ${planName(current)} to ${planName(target)} now?
+      ?(timing==='renewal'?'renewal':'immediate')
+      :'renewal';
 
-${money(Math.max(0,targetItem.cents-item.cents))} is due today — only the exact plan-price difference.
-
-${planName(target)} activates immediately after payment, and your current renewal date stays the same. Your next renewal will be ${money(targetItem.cents)} ${suffix(billing)}.`
-      :`Schedule a downgrade from ${planName(current)} to ${planName(target)}?
+  if(!upgrade){
+    const wording=
+      `Schedule a downgrade from ${planName(current)} to ${planName(target)}?
 
 $0 is due today and there is no refund or account credit for the difference.
 
 You keep ${planName(current)} through ${fmtDate(summary?.current_period_end)}. On that renewal date, ${planName(target)} begins and your next bill becomes ${money(targetItem.cents)} ${suffix(billing)}.`;
 
-  if(!confirm(wording))return;
+    if(!confirm(wording))return;
+  }
+
+  // Immediate upgrades use the dedicated payment page so the employer sees
+  // the exact amount, tax calculation, billing address, promo code, and
+  // Stripe PaymentSheet. This applies to Launch -> Growth, Launch -> Scale,
+  // and Growth -> Scale.
+  if(upgrade&&selectedTiming==='immediate'){
+    closePlanChoice();
+
+    const u=new URL(
+      'app-employer-payment.html',
+      location.href
+    );
+
+    u.searchParams.set('return','billing');
+    u.searchParams.set('product','job_plan');
+    u.searchParams.set('plan',target);
+    u.searchParams.set('billing',billing);
+    u.searchParams.set('change','upgrade');
+    u.searchParams.set('effective','immediate');
+
+    location.href=u.toString();
+    return;
+  }
 
   busy=true;
   clearMessage();
 
-  const original=button.textContent;
-  button.disabled=true;
-  button.textContent=
-    upgrade
-      ?'Calculating upgrade…'
-      :'Scheduling downgrade…';
+  const original=button?.textContent||'Change plan';
+
+  if(button){
+    button.disabled=true;
+    button.textContent=
+      upgrade
+        ?'Scheduling upgrade…'
+        :'Scheduling downgrade…';
+  }
 
   try{
     const data=await api({
       action:'change_plan',
-      target_plan:target
+      target_plan:target,
+      billing,
+      effective:'renewal'
     });
 
-    if(
-      data.hosted_invoice_url &&
-      data.pending_update
-    ){
+    const nextAmount=
+      data.next_renewal_amount_cents!=null
+        ?money(data.next_renewal_amount_cents)
+        :money(targetItem.cents);
+
+    if(upgrade){
       showMessage(
-        `Stripe needs payment confirmation for the ${money(data.amount_due_now_cents??data.amount_due_cents??Math.max(0,targetItem.cents-item.cents))} upgrade difference. The higher plan activates as soon as that payment succeeds.`,
-        'info'
-      );
-
-      await openUrl(data.hosted_invoice_url);
-
-    }else if(upgrade){
-      const paidDifference=
-        data.amount_due_now_cents ??
-        data.amount_due_cents ??
-        Math.max(
-          0,
-          targetItem.cents-item.cents
-        );
-
-      showMessage(
-        `Upgrade complete. ${money(paidDifference)} was the exact plan-price difference due today. ${planName(target)} is available immediately, your renewal date stays the same, and your next renewal will be ${money(data.next_renewal_amount_cents??targetItem.cents)} ${suffix(billing)}.`,
+        `${planName(current)} stays active until ${fmtDate(data.effective_at||summary?.current_period_end)}. $0 is due today. ${planName(target)} will begin automatically at your next billing date for ${nextAmount} ${suffix(billing)} plus applicable tax.`,
         'success'
       );
-
     }else{
-      const nextAmount=
-        data.next_renewal_amount_cents!=null
-          ?money(
-              data.next_renewal_amount_cents
-            )
-          :money(targetItem.cents);
-
       showMessage(
         `Downgrade scheduled for ${fmtDate(data.effective_at)}. $0 is due today, and no refund or account credit is issued. Your current ${planName(current)} plan stays active until then. Your next renewal will be ${nextAmount} ${suffix(billing)} for ${planName(target)}.`,
         'success'
       );
     }
 
+    closePlanChoice();
     await loadData();
     renderAll();
-    ensureUpgradeRefresh();
 
   }catch(error){
     console.error(error);
@@ -2167,10 +2304,33 @@ You keep ${planName(current)} through ${fmtDate(summary?.current_period_end)}. O
 
   }finally{
     busy=false;
-    button.disabled=false;
-    button.textContent=original;
+
+    if(button){
+      button.disabled=false;
+      button.textContent=original;
+    }
   }
 }
+
+$('plan-choice-now').onclick=()=>{
+  const ctx=planChoiceContext;
+  if(!ctx)return;
+  changePlan(ctx.target,ctx.button,'immediate');
+};
+
+$('plan-choice-renewal').onclick=()=>{
+  const ctx=planChoiceContext;
+  if(!ctx)return;
+  changePlan(ctx.target,ctx.button,'renewal');
+};
+
+$('plan-choice-cancel').onclick=closePlanChoice;
+
+$('plan-choice-overlay').addEventListener('click',event=>{
+  if(event.target===$('plan-choice-overlay')){
+    closePlanChoice();
+  }
+});
 
 async function cancelPending(){
   if(busy)return;
@@ -2523,5 +2683,27 @@ function ensureUpgradeRefresh(){
   }
 })();
 </script>
+
+<div class="plan-choice-overlay" id="plan-choice-overlay" hidden>
+  <div class="plan-choice-sheet" role="dialog" aria-modal="true" aria-labelledby="plan-choice-title">
+    <div class="plan-choice-kicker">Plan upgrade</div>
+    <div class="plan-choice-title" id="plan-choice-title">Choose when to upgrade</div>
+    <div class="plan-choice-copy" id="plan-choice-copy"></div>
+
+    <div class="plan-choice-options">
+      <button class="plan-choice-option primary" id="plan-choice-now" type="button">
+        <strong id="plan-choice-now-title">Upgrade now</strong>
+        <span id="plan-choice-now-copy"></span>
+      </button>
+
+      <button class="plan-choice-option" id="plan-choice-renewal" type="button">
+        <strong id="plan-choice-renewal-title">Change at next billing</strong>
+        <span id="plan-choice-renewal-copy"></span>
+      </button>
+    </div>
+
+    <button class="plan-choice-cancel" id="plan-choice-cancel" type="button">Cancel</button>
+  </div>
+</div>
 </body>
 </html>
