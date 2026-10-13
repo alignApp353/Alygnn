@@ -2826,6 +2826,92 @@ function ensureUpgradeRefresh(){
 }
 
 
+// Use the company's actual Alygnn account number (ALY-XXXXXX), not the
+// Supabase auth user's UUID, when composing Enterprise inquiry emails.
+function validAlygnnAccountNumber(value){
+  const code=String(value||'').trim().toUpperCase();
+  return /^ALY-[A-Z0-9]{6}$/.test(code) ? code : '';
+}
+
+async function getEnterpriseAccountNumber(){
+  const userId=session?.user?.id;
+  if(!userId)return '';
+
+  const fromBilling=validAlygnnAccountNumber(
+    summary?.billing_account?.account_number || entitlement?.account_number
+  );
+  if(fromBilling)return fromBilling;
+
+  // Canonical lookup: authenticated user -> company membership -> companies.account_number.
+  try{
+    const {data,error}=await withTimeout(
+      sb.rpc('get_my_employer_company'),5000,'Alygnn account'
+    );
+    if(!error){
+      const company=data?.company||data;
+      const code=validAlygnnAccountNumber(
+        company?.account_number||company?.accountNumber
+      );
+      if(code)return code;
+    }
+  }catch(error){
+    console.warn('Alygnn account lookup unavailable:',error);
+  }
+
+  // Compatibility with employer accounts linked in app-employer-login.
+  let userCompanyId='';
+  try{
+    userCompanyId=localStorage.getItem('alygnn_company_id_'+userId)||'';
+  }catch(_){/* storage can be unavailable */}
+
+  if(userCompanyId){
+    try{
+      const {data,error}=await withTimeout(
+        sb.from('companies').select('account_number')
+          .eq('id',userCompanyId).maybeSingle(),
+        5000,'Company account'
+      );
+      if(!error){
+        const code=validAlygnnAccountNumber(data?.account_number);
+        if(code)return code;
+      }
+    }catch(error){
+      console.warn('Company account lookup unavailable:',error);
+    }
+  }
+
+  // Older logins may have a company membership without the cached company id.
+  try{
+    const {data,error}=await withTimeout(
+      sb.from('company_members')
+        .select('company_id,companies(account_number)')
+        .eq('user_id',userId)
+        .in('membership_status',['active','pending'])
+        .limit(1).maybeSingle(),
+      5000,'Employer membership'
+    );
+    if(!error){
+      const company=Array.isArray(data?.companies)
+        ? data.companies[0] : data?.companies;
+      const code=validAlygnnAccountNumber(company?.account_number);
+      if(code)return code;
+    }
+  }catch(error){
+    console.warn('Employer membership lookup unavailable:',error);
+  }
+
+  // Last resort: account number cached at login, but only for the same user/company.
+  try{
+    const activeCompanyId=localStorage.getItem('alygnn_company_id');
+    if(userCompanyId && userCompanyId===activeCompanyId){
+      return validAlygnnAccountNumber(
+        localStorage.getItem('alygnn_company_account_number')
+      );
+    }
+  }catch(_){/* storage can be unavailable */}
+  return '';
+}
+
 function openEnterpriseContact(){
   const overlay=$('enterprise-contact-overlay');
   if(!overlay)return;
@@ -2893,10 +2979,12 @@ function bindEnterpriseContactEvents(){
     try{
       // Reuse the SAME Supabase Edge Function as the Alygnn website contact form.
       // It expects name, email and message; include employer details in message.
+      const accountNumber=await getEnterpriseAccountNumber();
+      const accountLine=accountNumber?`\nAlygnn account: ${accountNumber}`:'';
       const body={
         name,
         email,
-        message:`Enterprise plan inquiry\nCompany: ${company}\nAccount: ${session?.user?.id||'Unknown'}\nCurrent plan: ${planName(currentContext().plan)}\n\n${message}`
+        message:`Enterprise plan inquiry\nCompany: ${company}${accountLine}\nCurrent plan: ${planName(currentContext().plan)}\n\n${message}`
       };
       const {error}=await withTimeout(
         sb.functions.invoke('send-contact-message',{body}),
