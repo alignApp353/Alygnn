@@ -1067,6 +1067,32 @@ const sb=supabase.createClient(
 
 const MANAGE_ENDPOINT='https://alygnn.com/api/create-checkout-session';
 
+// Settings > Billing is for full plan management (including downgrades).
+// Job-posting / capacity flows should offer upgrades only.
+const UPGRADE_ONLY_FLOW=(()=>{
+  const params=new URLSearchParams(location.search);
+  const context=String(
+    params.get('mode') ||
+    params.get('intent') ||
+    params.get('source') ||
+    ''
+  ).toLowerCase().replace(/[\s-]/g,'_');
+
+  if(['upgrade','upgrade_only','post_job','post_more_jobs',
+      'more_jobs','add_jobs','more_slots','job_slots','capacity']
+      .includes(context)) return true;
+
+  // Preserve the correct experience for direct navigation from posting steps.
+  // Never classify the general dashboard as an upgrade flow: Settings lives there.
+  try{
+    const ref=new URL(document.referrer);
+    return ref.origin===location.origin &&
+      /\/(?:app-post-job|app-job-preview)(?:\.html)?$/i.test(ref.pathname);
+  }catch(_){
+    return false;
+  }
+})();
+
 const PLAN_CATALOG={
   monthly:{
     launch:{name:'Launch',price:299,cents:29900,slots:3,rank:1},
@@ -1734,22 +1760,32 @@ function renderPlans(){
 
   $('change-title').textContent=
     currentItem
-      ?`Change ${billingLabel(displayBilling).toLowerCase()} plan`
+      ?(UPGRADE_ONLY_FLOW
+          ?'Upgrade your plan'
+          :`Change ${billingLabel(displayBilling).toLowerCase()} plan`)
       :'Choose a paid plan';
 
-  if(currentItem&&!managed&&entitlement?.test_mode!==true){
+  const displayedPlans=Object.entries(catalog)
+    .filter(([key,p])=>!UPGRADE_ONLY_FLOW || !currentItem || p.rank>currentItem.rank);
+
+  if(UPGRADE_ONLY_FLOW&&currentItem&&!displayedPlans.length){
     $('change-copy').textContent=
-      `Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. New recurring subscriptions can be managed automatically from this page.`;
+      'You are already on Scale, our highest available self-serve plan. Add temporary capacity below if needed.';
+  }else if(currentItem&&!managed&&entitlement?.test_mode!==true){
+    $('change-copy').textContent=UPGRADE_ONLY_FLOW
+      ?`Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. Higher plans become available after your current term.`
+      :`Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. New recurring subscriptions can be managed automatically from this page.`;
   }else if(currentItem){
-    $('change-copy').textContent=
-      'For upgrades, choose immediate access or switch at your next billing date. Downgrades take effect at renewal.';
+    $('change-copy').textContent=UPGRADE_ONLY_FLOW
+      ?'Unlock more job slots. Choose immediate access or upgrade at your next billing date.'
+      :'For upgrades, choose immediate access or switch at your next billing date. Downgrades take effect at renewal.';
   }else{
     $('change-copy').textContent=
       'Choose the hiring capacity that fits your team. Your always-free reusable slot remains included.';
   }
 
   $('plans').innerHTML=
-    Object.entries(catalog)
+    displayedPlans
       .map(([key,p])=>{
         const isCurrent=
           !!currentItem &&
@@ -1782,7 +1818,7 @@ function renderPlans(){
           hint='Your existing prepaid term must finish first.';
         }else if(higher){
           button=
-            `<button class="action primary" data-change-plan="${key}">Upgrade options</button>`;
+            `<button class="action primary" data-change-plan="${key}">Upgrade to ${p.name}</button>`;
           const upgradeDifference=
             Math.max(
               0,
@@ -1848,7 +1884,9 @@ function renderPlans(){
           </article>
         `;
       })
-      .join('');
+      .join('') || (currentItem
+        ?'<div class="empty">You are on the highest available plan. For more capacity, see the additional job-slot options below.</div>'
+        :'');
 
   document
     .querySelectorAll('[data-change-plan]')
