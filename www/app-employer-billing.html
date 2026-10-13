@@ -1161,18 +1161,45 @@ async function openUrl(url){
   location.href=url;
 }
 
+function withTimeout(promise,ms=10000,label='Request'){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>{
+      setTimeout(
+        ()=>reject(new Error(label+' timed out.')),
+        ms
+      );
+    })
+  ]);
+}
+
 async function api(payload){
-  const response=await fetch(
-    MANAGE_ENDPOINT,
-    {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+session.access_token
-      },
-      body:JSON.stringify(payload)
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+
+  let response;
+
+  try{
+    response=await fetch(
+      MANAGE_ENDPOINT,
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+session.access_token
+        },
+        body:JSON.stringify(payload),
+        signal:controller.signal
+      }
+    );
+  }catch(error){
+    if(error?.name==='AbortError'){
+      throw new Error('Billing server took too long to respond.');
     }
-  );
+    throw error;
+  }finally{
+    clearTimeout(timeout);
+  }
 
   const data=await response.json().catch(()=>({}));
 
@@ -1210,13 +1237,27 @@ function exactEntitlementPlan(){
 
 async function loadData(){
   const [summaryResult,accessResult,entResult]=await Promise.all([
-    api({action:'summary'}).catch(error=>({error})),
-    sb.rpc('get_employer_posting_access'),
-    sb
-      .from('employer_entitlements')
-      .select('*')
-      .eq('employer_id',session.user.id)
-      .maybeSingle()
+    withTimeout(
+      api({action:'summary'}),
+      10000,
+      'Billing summary'
+    ).catch(error=>({error})),
+
+    withTimeout(
+      sb.rpc('get_employer_posting_access'),
+      10000,
+      'Posting access'
+    ).catch(error=>({error})),
+
+    withTimeout(
+      sb
+        .from('employer_entitlements')
+        .select('*')
+        .eq('employer_id',session.user.id)
+        .maybeSingle(),
+      10000,
+      'Plan details'
+    ).catch(error=>({error}))
   ]);
 
   if(summaryResult.error){
@@ -2543,7 +2584,20 @@ $('addon-cancel-btn').onclick=toggleSecondSlotCancellation;
 async function refresh(){
   if(document.visibilityState!=='visible')return;
 
-  const {data}=await sb.auth.getSession();
+  let sessionResult;
+
+  try{
+    sessionResult=await withTimeout(
+      sb.auth.getSession(),
+      8000,
+      'Account session'
+    );
+  }catch(error){
+    console.warn(error);
+    return;
+  }
+
+  const {data}=sessionResult;
 
   if(!data?.session)return;
 
@@ -2656,7 +2710,11 @@ function ensureUpgradeRefresh(){
 (async()=>{
   try{
     const {data,error}=
-      await sb.auth.getSession();
+      await withTimeout(
+        sb.auth.getSession(),
+        8000,
+        'Account session'
+      );
 
     if(error||!data.session){
       location.replace(
@@ -2674,11 +2732,12 @@ function ensureUpgradeRefresh(){
     console.error(error);
 
     showMessage(
-      'Could not load your billing account. Please try again.',
+      'Billing took too long to load. Please try again.',
       'error'
     );
 
   }finally{
+    // Never leave the employer trapped behind the loading screen.
     $('loading').hidden=true;
   }
 })();
