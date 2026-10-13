@@ -575,7 +575,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Weekly Job Slots cost $150/7 days on Free accounts and $99/7 days with an active paid plan; each adds 1 temporary reusable slot for 7 days on top of your current capacity and can be purchased on Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
+  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Weekly Job Slots cost $99/7 days for every employer, including Free accounts; each adds 1 temporary reusable slot for 7 days on top of your current capacity and can be purchased on Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
   <div class="message" id="message" hidden></div>
 </main>
 
@@ -755,8 +755,8 @@ function basePaidPlanActive(){
 }
 
 function weeklyPrice(){
-  // Plan discount applies only when the employer actually has an active plan.
-  return basePaidPlanActive()?99:150;
+  // One universal 7-day price for all employers, including Free accounts.
+  return 99;
 }
 function weeklyPriceLabel(){return '$'+weeklyPrice();}
 function standaloneSecondSlotActive(){
@@ -1314,7 +1314,7 @@ function renderPlans(){
     'Starts after Stripe confirms payment',
     'Expires 7 days after purchase',
     'Close or pause a job and reuse the slot before expiration',
-    basePaidPlanActive()?'Active-plan price: $99 for 7 days':'Free-account price: $150 for 7 days',
+    'Same $99 price for Free, Launch, Growth, and Scale',
     'Additional Weekly Job Slots can be added when more temporary capacity is needed'
   ];
 
@@ -2177,12 +2177,12 @@ $('enterprise-plan-btn').addEventListener('click',()=>{
 
 $('additional-slot-btn').addEventListener('click',()=>{
   if(basePaidPlanActive()){
-    showMessage('The $150/month Second Job Slot is only available without a monthly or quarterly plan. With an active plan, weekly capacity is $99/7 days; otherwise $150/7 days.');
+    showMessage('The $150/month Second Job Slot is only available without a monthly or quarterly plan. Weekly capacity is $99/7 days for all accounts.');
     return;
   }
 
   if(standaloneSecondSlotActive()){
-    showMessage('Your $150/month Second Job Slot is already active. Weekly capacity is $150/7 days for Free accounts.');
+    showMessage('Your $150/month Second Job Slot is already active. Weekly capacity is $99/7 days for all accounts.');
     return;
   }
 
