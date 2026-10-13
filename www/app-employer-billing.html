@@ -969,6 +969,9 @@ textarea.enterprise-contact-control{min-height:118px;resize:vertical}
     </div>
   </section>
 
+  <!-- Plan selection lives on app-employer-pricing.html, opened by Manage plan.
+       Keep existing hidden nodes for billing's legacy rendering helpers. -->
+  <style>#plan-management,#plans{display:none!important}</style>
   <!-- PLAN MANAGEMENT -->
   <div class="section-head" id="plan-management">
     <div>
@@ -2702,15 +2705,14 @@ $('back-btn').onclick=()=>{
 };
 
 $('manage-plan-btn').onclick=()=>{
-  $('plan-management').scrollIntoView({
-    behavior:'smooth',
-    block:'start'
-  });
+  // Share the same hiring-capacity plan selector as View Pricing.
+  // Settings context permits renewal changes and downgrades.
+  location.href='app-employer-pricing.html?mode=manage&from=billing';
 };
 
 $('pricing-btn-top').onclick=
 $('pricing-btn-bottom').onclick=()=>{
-  location.href='app-employer-pricing.html';
+  location.href='app-employer-pricing.html?from=billing';
 };
 
 $('addon-btn').onclick=()=>{
@@ -3034,6 +3036,11 @@ function bindEnterpriseContactEvents(){
 }
 
 window.addEventListener('DOMContentLoaded', bindEnterpriseContactEvents, {once:true});
+window.addEventListener('DOMContentLoaded',()=>{
+  if(new URLSearchParams(location.search).get('enterprise')==='1'){
+    setTimeout(openEnterpriseContact,250);
+  }
+},{once:true});
 window.addEventListener('DOMContentLoaded', bindPlanChoiceEvents, {once:true});
 
 (async()=>{
