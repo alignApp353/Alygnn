@@ -1857,23 +1857,22 @@ async function runManageAction(res,user,input){
     });
   }
 
-// Stripe upcoming invoice previews also include the NEXT renewal. Only the
-// two proration lines belong to an immediate plan change.
-function planChangeProration(preview){
-  const lines=Array.isArray(preview?.lines?.data)?preview.lines.data:[];
-  const prorations=lines.filter(line=>
-    line?.proration===true || line?.parent?.subscription_item_details?.proration===true
-  );
-  if(!prorations.length){
-    throw new Error('Stripe did not provide a separate upgrade proration. No payment was made.');
+// Only proration lines belong to the remaining-period upgrade charge.
+// Invoice amount_due can also include renewal items or older balances.
+function remainingUpgradePreview(invoice,fullDifference){
+  const lines=invoice?.lines?.data;
+  if(!Array.isArray(lines))throw new Error('Stripe did not return the upgrade invoice line items.');
+  if(invoice?.lines?.has_more)throw new Error('Upgrade invoice contains more items than can be verified.');
+  const prorations=lines.filter(line=>line?.proration===true || line?.parent?.subscription_item_details?.proration===true);
+  if(!prorations.length)throw new Error('Stripe did not return a separate remaining-period upgrade calculation.');
+  const subtotal=prorations.reduce((sum,line)=>sum+Number(line.amount||0),0);
+  if(!Number.isFinite(subtotal)||subtotal<0||subtotal>fullDifference+1){
+    throw new Error('The upgrade preview includes an unexpected amount. No charge was made.');
   }
-  const subtotalCents=prorations.reduce((sum,line)=>sum+Number(line.amount||0),0);
-  const taxCents=prorations.reduce((sum,line)=>sum+
-    (Array.isArray(line.tax_amounts)?line.tax_amounts.reduce((tax,item)=>tax+Number(item.amount||0),0):0),0);
-  if(!Number.isFinite(subtotalCents)||!Number.isFinite(taxCents)){
-    throw new Error('Invalid upgrade amount returned by Stripe. No payment was made.');
-  }
-  return {subtotalCents,taxCents,amountCents:Math.max(0,subtotalCents+taxCents)};
+  // Tax must be computed on the selected proration lines, not on unrelated invoice items.
+  const tax=prorations.reduce((sum,line)=>sum+(Array.isArray(line.taxes)?line.taxes.reduce((s,t)=>s+Number(t.amount||0),0):0),0);
+  if(!Number.isFinite(tax)||tax<0)throw new Error('Could not verify the tax on the upgrade.');
+  return {subtotal_cents:Math.round(subtotal),tax_cents:Math.round(tax),amount_due_now_cents:Math.round(subtotal+tax)};
 }
 
   if(action==='preview_plan_change'){
@@ -1899,18 +1898,8 @@ function planChangeProration(preview){
       'subscription_details[proration_behavior]':'always_invoice'
     });
     const fullDifference=Math.max(0,MANAGE_CATALOG[billing][target].cents-MANAGE_CATALOG[billing][current].cents);
-    const quote=planChangeProration(preview);
-    if(MANAGE_CATALOG[billing][target].rank>MANAGE_CATALOG[billing][current].rank &&
-       (quote.subtotalCents<0 || quote.subtotalCents>fullDifference+1)){
-      return send(res,409,{error:'Stripe returned an unexpected upgrade difference. No payment was made.'});
-    }
-    return send(res,200,{
-      ok:true,
-      subtotal_cents:Math.max(0,quote.subtotalCents),
-      amount_due_now_cents:quote.amountCents,
-      tax_cents:quote.taxCents,
-      currency:String(preview.currency||'usd').toLowerCase()
-    });
+    const amount=remainingUpgradePreview(preview,fullDifference);
+    return send(res,200,{ok:true,...amount,currency:String(preview.currency||'usd').toLowerCase()});
   }
 
   if(action==='cancel_scheduled_change'){
@@ -2093,11 +2082,8 @@ function planChangeProration(preview){
         'subscription_details[items][0][quantity]':1,
         'subscription_details[proration_behavior]':'always_invoice'
       });
-      const quote=planChangeProration(preview);
       const fullDifference=targetCatalog[target].cents-currentCatalog[current].cents;
-      if(quote.subtotalCents<0 || quote.subtotalCents>fullDifference+1){
-        return send(res,409,{error:'Stripe returned an unexpected upgrade difference. No payment was made.'});
-      }
+      remainingUpgradePreview(preview,fullDifference);
     }
     // Stripe computes the unused-time credit and remaining-time difference,
     // invoices immediately and rejects incomplete payments without applying
