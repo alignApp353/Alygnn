@@ -29,7 +29,10 @@ const PRICE_IDS = {
   upgrade_launch_scale_monthly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_MONTHLY || 'price_1UEKA8RvnGY3BeGX6VzTZoKp',
   upgrade_launch_growth_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_GROWTH_QUARTERLY || 'price_1UEKC3RvnGY3BeGX2c5xyzTO',
   upgrade_growth_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_GROWTH_SCALE_QUARTERLY || 'price_1UEKCsRvnGY3BeGX0kG04aVd',
-  upgrade_launch_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_QUARTERLY || 'price_1UEKDnRvnGY3BeGXgUiBR0hY'
+  upgrade_launch_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_QUARTERLY || 'price_1UEKDnRvnGY3BeGXgUiBR0hY',
+  upgrade_launch_monthly_growth_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_MONTHLY_GROWTH_QUARTERLY || 'price_1UQCiyRvnGY3BeGXwWupW6sf',
+  upgrade_growth_monthly_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_GROWTH_MONTHLY_SCALE_QUARTERLY || 'price_1UQCcwRvnGY3BeGXaZZqsCkb',
+  upgrade_launch_monthly_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_MONTHLY_SCALE_QUARTERLY || 'price_1UQCjfRvnGY3BeGX4EY6sA82'
 };
 
 const CHECKOUT_CATALOG = {
@@ -195,6 +198,15 @@ function fixedUpgradePrice(currentPlan,targetPlan,billing){
     'quarterly:growth->scale':{priceId:PRICE_IDS.upgrade_growth_scale_quarterly,cents:56000},
     'quarterly:launch->scale':{priceId:PRICE_IDS.upgrade_launch_scale_quarterly,cents:95000}
   }[key]||null;
+}
+
+// Only the three explicitly priced Monthly → Quarterly tier upgrades.
+function monthlyToQuarterlyUpgradePrice(currentPlan,targetPlan){
+  return {
+    'launch->growth':{priceId:PRICE_IDS.upgrade_launch_monthly_growth_quarterly,cents:84100},
+    'launch->scale':{priceId:PRICE_IDS.upgrade_launch_monthly_scale_quarterly,cents:140100},
+    'growth->scale':{priceId:PRICE_IDS.upgrade_growth_monthly_scale_quarterly,cents:125100}
+  }[`${currentPlan}->${targetPlan}`]||null;
 }
 
 async function stripeCreateCheckout(params) {
@@ -1184,19 +1196,21 @@ async function confirmZeroUpgradeInvoice({
   return{invoiceId:invoice.id,customerId:customer};
 }
 
-async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
+async function upgradeNow({employerId,ent,sub,targetPlan,billing,currentBilling=billing,input={}}){
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
   const currentPlan=subscriptionPlan(ent,sub);
-  const currentCatalog=MANAGE_CATALOG[billing]?.[currentPlan];
+  const currentCatalog=MANAGE_CATALOG[currentBilling]?.[currentPlan];
   const targetCatalog=MANAGE_CATALOG[billing]?.[targetPlan];
   if(!currentCatalog||!targetCatalog)throw new Error('Could not calculate the plan upgrade price.');
 
   const difference=Math.max(0,Number(targetCatalog.cents)-Number(currentCatalog.cents));
   if(difference<=0)throw new Error('This plan change is not an upgrade.');
 
-  const upgrade=fixedUpgradePrice(currentPlan,targetPlan,billing);
+  const upgrade=currentBilling==='monthly' && billing==='quarterly'
+    ? monthlyToQuarterlyUpgradePrice(currentPlan,targetPlan)
+    : fixedUpgradePrice(currentPlan,targetPlan,billing);
   if(!upgrade?.priceId){
     throw new Error('The Stripe Price ID for this Alygnn upgrade difference is not configured.');
   }
@@ -1236,6 +1250,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     current_plan:currentPlan,
     target_plan:targetPlan,
     billing,
+    current_billing:currentBilling,
     subscription_id:sub.id,
     subscription_item_id:item.id,
     target_price_id:targetPrice,
@@ -2096,6 +2111,29 @@ async function runManageAction(res,user,input){
     return send(res,200,{ok:true,...result});
   }
 
+  if(action==='preview_plan_change'){
+    const current=subscriptionPlan(ent,sub);
+    const currentBilling=subscriptionBilling(ent,sub);
+    const target=String(input.target_plan||'').toLowerCase();
+    const targetBilling=String(input.billing||'').toLowerCase();
+    const from=MANAGE_CATALOG[currentBilling]?.[current];
+    const to=MANAGE_CATALOG[targetBilling]?.[target];
+    if(!subscriptionIsActive(sub)||!from||!to||to.rank<=from.rank){
+      return send(res,409,{error:'No active paid plan is eligible for this immediate upgrade.'});
+    }
+    const upgrade=currentBilling==='monthly'&&targetBilling==='quarterly'
+      ?monthlyToQuarterlyUpgradePrice(current,target)
+      :currentBilling===targetBilling?fixedUpgradePrice(current,target,targetBilling):null;
+    const expected=to.cents-from.cents;
+    if(!upgrade?.priceId||upgrade.cents!==expected){
+      return send(res,409,{error:'The selected immediate upgrade price is not configured.'});
+    }
+    return send(res,200,{
+      ok:true,subtotal_cents:upgrade.cents,amount_due_now_cents:upgrade.cents,
+      tax_cents:null,currency:'usd',stripe_upgrade_price_id:upgrade.priceId
+    });
+  }
+
   if(action!=='change_plan'){
     return send(res,400,{error:'Unknown billing action.'});
   }
@@ -2239,7 +2277,8 @@ async function runManageAction(res,user,input){
     });
   }
 
-  const immediateUpgradeRequest=currentBilling===targetBilling &&
+  const immediateUpgradeRequest=(currentBilling===targetBilling ||
+    (currentBilling==='monthly'&&targetBilling==='quarterly')) &&
     Number(targetCatalog?.[target]?.rank||0)>Number(currentCatalog?.[current]?.rank||0) &&
     !['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming);
 
@@ -2311,13 +2350,15 @@ async function runManageAction(res,user,input){
 
   // Same-cadence upgrades create payment FIRST. A schedule, if present, is
   // only released by the confirmed-payment fulfillment path.
-  if(sameBilling&&targetRank>currentRank){
+  if((sameBilling || (currentBilling==='monthly'&&targetBilling==='quarterly')) &&
+     targetRank>currentRank && immediateUpgradeRequest){
     const result=await upgradeNow({
       employerId:user.id,
       ent,
       sub,
       targetPlan:target,
       billing:targetBilling,
+      currentBilling,
       input
     });
     return send(res,200,{ok:true,...result});
@@ -2579,6 +2620,7 @@ module.exports = async function handler(req, res) {
     if ([
       'summary',
       'change_plan',
+      'preview_plan_change',
       'cancel_scheduled_change',
       'cancel_plan',
       'resume_plan',
