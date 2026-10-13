@@ -1058,6 +1058,62 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
+  // Stripe resets the invoice anchor and immediately invoices when changing
+  // billing intervals. Keep the current price until the existing renewal;
+  // the paid checkout is what grants the upgraded entitlement immediately.
+  if(subscriptionBilling({},sub)!==billing){
+    const currentPlan=String(sub.metadata?.plan||'').toLowerCase();
+    const currentBilling=String(sub.metadata?.billing||'').toLowerCase();
+    const existingEnd=Number(sub.current_period_end||0);
+    const existingStart=Number(sub.current_period_start||0);
+    const currentPriceId=typeof item.price==='string'?item.price:item.price?.id;
+    if(!existingStart||existingEnd<=Math.floor(Date.now()/1000)||!currentPriceId)
+      throw new Error('Current Stripe renewal date or price is unavailable.');
+    if(sub.schedule)throw new Error('Please resolve the existing scheduled billing change before upgrading immediately.');
+    const schedule=await manageStripe('POST','subscription_schedules',{from_subscription:sub.id});
+    const scheduleId=schedule.id;
+    const phase=(schedule.phases||[]).find(p=>p.start_date<=Math.floor(Date.now()/1000)&&p.end_date>Math.floor(Date.now()/1000))||(schedule.phases||[])[0];
+    const start=Number(phase?.start_date||existingStart);
+    const end=Number(phase?.end_date||existingEnd);
+    if(end!==existingEnd)throw new Error('The scheduled renewal boundary differs from the active subscription.');
+    await manageStripe('POST','subscription_schedules/'+encodeURIComponent(scheduleId),{
+      end_behavior:'release',
+      'phases[0][start_date]':start,
+      'phases[0][end_date]':end,
+      'phases[0][items][0][price]':currentPriceId,
+      'phases[0][items][0][quantity]':item.quantity||1,
+      'phases[0][proration_behavior]':'none',
+      'phases[0][metadata][employer_id]':employerId,
+      'phases[0][metadata][product]':'job_plan',
+      'phases[0][metadata][plan]':targetPlan,
+      'phases[0][metadata][billing]':billing,
+      'phases[1][start_date]':end,
+      'phases[1][duration][interval]':'month',
+      'phases[1][duration][interval_count]':MANAGE_CATALOG[billing][targetPlan].intervalCount,
+      'phases[1][items][0][price]':targetPrice,
+      'phases[1][items][0][quantity]':1,
+      'phases[1][proration_behavior]':'none',
+      'phases[1][metadata][employer_id]':employerId,
+      'phases[1][metadata][product]':'job_plan',
+      'phases[1][metadata][plan]':targetPlan,
+      'phases[1][metadata][billing]':billing
+    });
+    const updated=await manageStripe('GET','subscriptions/'+encodeURIComponent(sub.id));
+    const catalog=MANAGE_CATALOG[billing][targetPlan];
+    await patchEntitlement(employerId,{
+      plan:planLegacyName(targetPlan),test_plan:targetPlan,test_mode:false,
+      subscription_status:'active',
+      current_period_end:new Date(existingEnd*1000).toISOString(),
+      slot_limit:catalog.slots,billing_period:billing,
+      urgently_hiring:['growth','scale'].includes(targetPlan),
+      alygnn_recommended:targetPlan==='scale',plan_amount_cents:catalog.cents,
+      stripe_plan_subscription_id:sub.id,
+      stripe_plan_schedule_id:scheduleId,
+      pending_plan:null,pending_billing_period:null,pending_plan_effective_at:null
+    });
+    return updated;
+  }
+
   const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
     'items[0][id]':item.id,
     'items[0][price]':targetPrice,
@@ -1099,18 +1155,20 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
   const currentPlan=subscriptionPlan(ent,sub);
-  const currentCatalog=MANAGE_CATALOG[billing]?.[currentPlan];
+  const currentBilling=subscriptionBilling(ent,sub);
+  const currentCatalog=MANAGE_CATALOG[currentBilling]?.[currentPlan];
   const targetCatalog=MANAGE_CATALOG[billing]?.[targetPlan];
   if(!currentCatalog||!targetCatalog)throw new Error('Could not calculate the plan upgrade price.');
 
   const difference=Math.max(0,Number(targetCatalog.cents)-Number(currentCatalog.cents));
   if(difference<=0)throw new Error('This plan change is not an upgrade.');
 
-  const upgrade=fixedUpgradePrice(currentPlan,targetPlan,billing);
-  if(!upgrade?.priceId){
+  const sameBilling=currentBilling===billing;
+  const upgrade=sameBilling?fixedUpgradePrice(currentPlan,targetPlan,billing):{priceId:null,cents:difference};
+  if(sameBilling&&!upgrade?.priceId){
     throw new Error('The Stripe Price ID for this Alygnn upgrade difference is not configured.');
   }
-  if(Number(upgrade.cents)!==difference){
+  if(sameBilling&&Number(upgrade.cents)!==difference){
     throw new Error("The configured Stripe upgrade Price does not match Alygnn's fixed plan difference.");
   }
 
@@ -1146,6 +1204,8 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     current_plan:currentPlan,
     target_plan:targetPlan,
     billing,
+    current_billing:currentBilling,
+    original_period_end:String(sub.current_period_end||''),
     subscription_id:sub.id,
     subscription_item_id:item.id,
     target_price_id:targetPrice,
@@ -1166,7 +1226,8 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
       sub,
       targetPlan,
       billing,
-      targetPrice
+      targetPrice,
+      currentBilling
     });
     return{
       change:'upgrade_applied',
@@ -1230,7 +1291,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     success_url:successUrl,
     cancel_url:cancelUrl,
     client_reference_id:employerId,
-    'line_items[0][price]':upgrade.priceId,
+    ...(sameBilling?{'line_items[0][price]':upgrade.priceId}:{'line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':difference,'line_items[0][price_data][product_data][name]':`Alygnn ${currentPlan} ${currentBilling} to ${targetPlan} ${billing} upgrade`}),
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto'
@@ -1876,13 +1937,11 @@ async function runManageAction(res,user,input){
     const requestedBilling=String(input.billing||billing).toLowerCase();
     if(!subscriptionIsActive(sub)||!MANAGE_CATALOG[billing]?.[current])
       return send(res,409,{error:'No active recurring plan is available for a payment preview.'});
-    if(requestedBilling!==billing)
-      return send(res,409,{error:'A billing-period change must be scheduled at renewal.'});
-    if(!MANAGE_CATALOG[billing]?.[target]||target===current)
+    if(!MANAGE_CATALOG[requestedBilling]?.[target]||(target===current&&requestedBilling===billing))
       return send(res,400,{error:'Select a different plan to preview.'});
-    if(MANAGE_CATALOG[billing][target].rank <= MANAGE_CATALOG[billing][current].rank)
+    if(MANAGE_CATALOG[requestedBilling][target].rank <= MANAGE_CATALOG[billing][current].rank)
       return send(res,409,{error:'Downgrades take effect at your next renewal.'});
-    const quote=await remainingUpgradeQuote(sub,MANAGE_CATALOG[billing][current].cents,MANAGE_CATALOG[billing][target].cents);
+    const quote=await remainingUpgradeQuote(sub,MANAGE_CATALOG[billing][current].cents,MANAGE_CATALOG[requestedBilling][target].cents);
     return send(res,200,{
       ok:true,
       amount_due_now_cents:quote.total_cents,
@@ -2039,7 +2098,6 @@ async function runManageAction(res,user,input){
   const sameBilling=currentBilling===targetBilling;
 
   if(changeTiming==='immediate'){
-    if(!sameBilling) return send(res,409,{error:'Monthly and Quarterly changes take effect at renewal.'});
     if(targetRank<=currentRank) return send(res,409,{error:'Downgrades take effect at next renewal without any charge or credit.'});
     const result=await upgradeNow({employerId:user.id,ent,sub,targetPlan:target,billing:targetBilling,input});
     return send(res,200,{ok:true,...result});
