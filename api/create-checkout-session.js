@@ -1103,6 +1103,87 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
   return updated;
 }
 
+
+/*
+ * Fully-discounted plan upgrades are completed server-side with a real, paid
+ * $0 Stripe invoice. A PaymentIntent cannot collect $0, so it must NOT open
+ * Stripe Checkout (which previously redirected Capacitor to a website login).
+ * Stripe validates/redeems the promotion on this one-time invoice first.
+ * Alygnn grants access ONLY after Stripe finalizes the invoice as PAID at $0.
+ */
+async function confirmZeroUpgradeInvoice({
+  employerId,userEmail,customerId,priceId,promotionId,expectedCents,metadata,periodKey
+}){
+  if(!promotionId||!priceId||!(Number(expectedCents)>0)){
+    throw new Error('Alygnn cannot verify the discounted upgrade.');
+  }
+  let customer=customerId||null;
+  if(!customer){
+    const existing=await findStripeCustomerForEmployer(employerId);
+    customer=existing?.id||null;
+    if(!customer){
+      const created=await stripeNativeRequest('POST','customers',{
+        email:userEmail||undefined,
+        'metadata[employer_id]':employerId
+      },{'Idempotency-Key':'alygnn-zero-customer-'+employerId});
+      customer=created.id;
+    }
+  }
+  if(!customer)throw new Error('Stripe customer could not be prepared.');
+
+  // Stable across retries; never accidentally charge or redeem twice after a
+  // network interruption. PeriodKey distinguishes a later billing term.
+  const idempotencyBase='alygnn-zero-'+require('crypto').createHash('sha256')
+    .update([employerId,customer,priceId,promotionId,periodKey||''].join('|'))
+    .digest('hex').slice(0,42);
+  const invoiceParams={
+    customer,
+    currency:'usd',
+    collection_method:'charge_automatically',
+    auto_advance:'false',
+    pending_invoice_items_behavior:'exclude',
+    'discounts[0][promotion_code]':promotionId,
+    description:'Alygnn '+String(metadata.current_plan||'')+' to '+String(metadata.target_plan||'')+' plan upgrade'
+  };
+  for(const [key,value] of Object.entries(metadata||{})){
+    if(value!==undefined&&value!==null&&value!=='')invoiceParams[`metadata[${key}]`]=String(value);
+  }
+  const draft=await stripeNativeRequest('POST','invoices',invoiceParams,{
+    'Idempotency-Key':idempotencyBase+'-invoice'
+  });
+  if(!draft?.id)throw new Error('Stripe did not create an upgrade invoice.');
+
+  // Attach ONLY the selected upgrade Price to this invoice, never the next
+  // subscription invoice. Its coupon redemption is limited to this invoice.
+  if(draft.status==='draft'){
+    await stripeNativeRequest('POST','invoiceitems',{
+      customer,invoice:draft.id,
+      'pricing[price]':priceId,
+      quantity:1,
+      discountable:'true'
+    },{'Idempotency-Key':idempotencyBase+'-item'});
+  }
+  let invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(draft.id));
+  const subtotal=Number(invoice.subtotal);
+  const total=Number(invoice.total);
+  const discountTotal=(invoice.total_discount_amounts||[])
+    .reduce((sum,item)=>sum+Number(item?.amount||0),0);
+  const hasInvoiceDiscount=Boolean((invoice.discounts||[]).length)||discountTotal>0;
+  // Absolutely do not finalize an invoice with any amount due.
+  if(subtotal!==Number(expectedCents)||total!==0||!hasInvoiceDiscount){
+    throw new Error('Stripe did not apply the full discount. No payment was attempted or plan access changed.');
+  }
+  if(invoice.status==='draft'){
+    invoice=await stripeNativeRequest('POST','invoices/'+encodeURIComponent(invoice.id)+'/finalize',{
+      auto_advance:'false'
+    },{'Idempotency-Key':idempotencyBase+'-finalize'});
+  }
+  if(invoice.status!=='paid'||Number(invoice.total)!==0||Number(invoice.amount_remaining)!==0){
+    throw new Error('Stripe has not confirmed the $0 upgrade invoice as paid yet. No upgrade was activated.');
+  }
+  return{invoiceId:invoice.id,customerId:customer};
+}
+
 async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
@@ -1166,10 +1247,36 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     terms_version:String(input.terms_version||'')
   };
 
-  // Even $0 upgrades must go through Stripe Checkout. This enforces coupon
-  // redemption limits and gives the verified webhook a checkout.session.completed
-  // event (with payment_status=no_payment_required) to activate the plan.
-  // Never change the recurring subscription on an unconfirmed promo submission.
+  // No browser for a fully discounted immediate upgrade. Stripe first
+  // records the coupon redemption on a paid $0 invoice, then we switch plans.
+  if(resolvedPromotion?.promotion?.id && amountDue===0){
+    const paid=await confirmZeroUpgradeInvoice({
+      employerId,
+      userEmail:input.employer_email||null,
+      customerId,
+      priceId:upgrade.priceId,
+      promotionId:resolvedPromotion.promotion.id,
+      expectedCents:difference,
+      metadata,
+      periodKey:sub.current_period_end||''
+    });
+    // Apply the Stripe subscription change ONLY after invoice verification.
+    const current=await detachPlanScheduleForImmediateChange({employerId,ent,sub});
+    await applyPaidFixedUpgrade({
+      employerId,sub:current,targetPlan,billing,targetPrice
+    });
+    return{
+      ok:true,change:'upgrade_applied',effective:'immediate',
+      amount_due_now_cents:0,amount_due_cents:0,amount_paid_cents:0,
+      invoice_id:paid.invoiceId,
+      current_plan:currentPlan,target_plan:targetPlan,billing_period:billing,
+      next_renewal_amount_cents:targetCatalog.cents
+    };
+  }
+
+  // Other upgrades use the native Stripe PaymentSheet when possible.
+  // For partial promotional payments, Stripe's hosted Checkout still verifies
+  // coupon usage; do not bypass that verification for a positive amount.
   if(nativePaymentSheetRequested(input)&&!resolvedPromotion){
     const native=await createNativePaymentSheetCheckout({
       user:{email:input.employer_email||null},
@@ -2041,36 +2148,51 @@ async function runManageAction(res,user,input){
         return send(res,409,{error:'Test plan expiration is missing. Contact Alygnn support before upgrading.'});
       }
       const meta={
-        employer_id:user.id, product:'test_plan_upgrade',
+        employer_id:user.id,product:'test_plan_upgrade',
         current_plan:current,target_plan:target,billing:targetBilling,
         current_period_end:String(ent.current_period_end),
         promotion_code:promo,source:String(input.source||'capacitor_app')
       };
-      const checkoutParams={
-        mode:'payment',
-        customer_email:user.email,
-        success_url:`https://alygnn.com/employer-dashboard.html?payment=test-upgrade-success&plan=${encodeURIComponent(target)}`,
-        cancel_url:'https://alygnn.com/employer-account.html?billing=upgrade-cancelled',
-        client_reference_id:user.id,
-        'line_items[0][price]':price.priceId,
-        'line_items[0][quantity]':1,
-        'discounts[0][promotion_code]':resolved.promotion.id,
-        'automatic_tax[enabled]':'true',
-        billing_address_collection:'auto'
-      };
-      Object.entries(meta).forEach(([key,value])=>{
-        if(value)checkoutParams[`metadata[${key}]`]=value;
+      // This account has test access but no paid recurring subscription.
+      // Verify a genuine $0 Stripe invoice, then grant immediate TEST access.
+      const paid=await confirmZeroUpgradeInvoice({
+        employerId:user.id,
+        userEmail:user.email,
+        customerId:ent?.stripe_plan_customer_id||null,
+        priceId:price.priceId,
+        promotionId:resolved.promotion.id,
+        expectedCents:price.cents,
+        metadata:meta,
+        periodKey:ent.current_period_end
       });
-      const checkout=await stripeCreateCheckout(checkoutParams);
+      const nextPlan=MANAGE_CATALOG[targetBilling][target];
+      await patchEntitlement(user.id,{
+        plan:target==='launch'?'business':'enterprise',
+        test_plan:target,
+        test_mode:true,
+        subscription_status:'active',
+        slot_limit:nextPlan.slots,
+        billing_period:targetBilling,
+        plan_amount_cents:nextPlan.cents,
+        urgently_hiring:['growth','scale'].includes(target),
+        alygnn_recommended:target==='scale',
+        stripe_plan_customer_id:paid.customerId,
+        pending_plan:null,
+        pending_billing_period:null,
+        pending_plan_effective_at:null,
+        stripe_plan_schedule_id:null
+        // Keep the test access end date; no recurring Stripe charge is created.
+      });
       return send(res,200,{
-        ok:true,change:'upgrade_payment_required',effective:'after_checkout',
+        ok:true,change:'upgrade_applied',effective:'immediate',
         amount_due_now_cents:0,amount_due_cents:0,
+        current_plan:current,target_plan:target,billing_period:targetBilling,
         test_mode:true,has_recurring_subscription:false,
         test_access_expires_at:ent.current_period_end,
-        current_plan:current,target_plan:target,billing_period:targetBilling,
-        hosted_invoice_url:checkout.url,checkout_session_id:checkout.id
+        invoice_id:paid.invoiceId
       });
     }
+
     // Only renewals/downgrades are scheduled. Test-mode immediate requests
     // must never silently fall through to this scheduled branch.
     const effectiveAt=ent?.current_period_end||null;
