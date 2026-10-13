@@ -2067,7 +2067,9 @@ async function executeExistingPlanChange(){
         `${planNameFromCode(change.target)} activated ✓`;
 
       showMessage(
-        `${planNameFromCode(change.target)} is active now. ${display(amount)} was the plan-price difference due today, and your renewal date stays the same.`
+        data.test_mode
+          ?`${planNameFromCode(change.target)} test access is active now. Your existing test access expiration is unchanged; no recurring Stripe subscription was created.`
+          :`${planNameFromCode(change.target)} is active now. ${money(amount)} was due today. Your existing renewal date stays the same.`
       );
 
       setTimeout(()=>{
