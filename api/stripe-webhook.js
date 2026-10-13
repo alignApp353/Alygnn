@@ -306,8 +306,8 @@ async function fulfillCheckout(session) {
           'phases[0][proration_behavior]':'none',
           'phases[0][metadata][employer_id]':employerId,
           'phases[0][metadata][product]':'job_plan',
-          'phases[0][metadata][plan]':targetPlan,
-          'phases[0][metadata][billing]':billing,
+          'phases[0][metadata][plan]':String(meta.current_plan||currentSubscription.metadata?.plan||''),
+          'phases[0][metadata][billing]':previousBilling,
           'phases[1][start_date]':end,
           'phases[1][duration][interval]':'month',
           'phases[1][duration][interval_count]':billing==='quarterly'?3:1,
@@ -433,7 +433,10 @@ module.exports = async function handler(req, res) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        if (event.data.object.payment_status === 'paid' || event.data.object.mode === 'subscription') {
+        if (event.data.object.payment_status === 'paid' ||
+            event.data.object.payment_status === 'no_payment_required' ||
+            (event.data.object.status === 'complete' && Number(event.data.object.amount_total) === 0) ||
+            event.data.object.mode === 'subscription') {
           await fulfillCheckout(event.data.object);
         }
         break;
