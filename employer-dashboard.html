@@ -3504,11 +3504,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const access = getPostingAccess();
 
     if (slotUsage && Number.isFinite(access.used) && Number.isFinite(access.limit)) {
-      const over = Math.max(0, access.used - access.limit);
-      const neededToPost = Math.max(0, access.used - access.limit + 1);
+      // Display actual open/reserved jobs, not an RPC count that may lag after
+      // an expired Weekly Job Slot closes. Server access still gates posting.
+      const displayedUsed = activeJobCount();
+      const over = Math.max(0, displayedUsed - access.limit);
+      const neededToPost = Math.max(0, displayedUsed - access.limit + 1);
       slotUsage.textContent = over > 0
-        ? `· ${access.used} of ${access.limit} slots used · excess jobs close automatically when paid access ends`
-        : `· ${access.used} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
+        ? `· ${displayedUsed} of ${access.limit} slots used · excess jobs close automatically when paid access ends`
+        : `· ${displayedUsed} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
     }
 
     if (testBanner) {
