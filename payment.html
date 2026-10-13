@@ -475,14 +475,14 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(eyebrow) eyebrow.textContent='Plan change review';
     if(heading) heading.textContent='Review your plan change.';
     if(headingCopy){
-      headingCopy.textContent=immediate?'See the remaining price for your current billing period and pay now to change plans.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
+      headingCopy.textContent=immediate?'Pay the fixed difference between your selected plan prices now to activate extra job slots.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
     }
 
     const firstTitle=document.querySelector('.panel-title');
     if(firstTitle) firstTitle.textContent='1. Review your change';
 
     const options=document.getElementById('plan-options');
-    const canChangeImmediately=currentBilling===targetBilling;
+    const canChangeImmediately=tierUpgrade;
     options.innerHTML=`
       <div class="change-review">
         ${!tierUpgrade && !billingChanged ? `<div class="change-plan-box" style="margin-bottom:16px">
@@ -495,7 +495,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           <div class="change-label">When should this change take effect?</div>
           <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the plan price difference now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
-          ${canChangeImmediately?'':'<div class="change-price">Changes between monthly and quarterly billing must start at the next renewal to preserve the renewal date.</div>'}
+          ${canChangeImmediately?'':'<div class="change-price">Downgrades start at the next renewal.</div>'}
         </div>`}
         <div class="change-path">
           <div class="change-plan-box">
@@ -519,10 +519,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         </div>
         <div class="change-notice downgrade">
           <strong>${immediate?'Your change takes effect after Stripe confirms payment.':'Your current plan stays active until renewal.'}</strong>
-          ${immediate?'Your fixed upgrade price is shown before you confirm. Any applicable tax is confirmed during checkout. Existing renewal timing is preserved. Immediate downgrades require enough free capacity for your current jobs.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
+          ${immediate?'Your fixed upgrade price is shown before you confirm. Any applicable tax is confirmed during checkout. Existing renewal timing is preserved. Downgrades take effect at renewal.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
         </div>
         <ul class="review-list">
-          <li>${immediate?'See the remaining-period charge before confirming.':'No plan-change charge is taken today.'}</li>
+          <li>${immediate?'See the fixed upgrade price before confirming.':'No plan-change charge is taken today.'}</li>
           <li>Your permanent free job slot remains included.</li>
           <li>Your jobs, applications, messages, and history are preserved.</li>
         </ul>
@@ -531,7 +531,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('enterprise-note').style.display='none';
     document.getElementById('payment-section-title').textContent='3. Confirm change';
     document.getElementById('secure-title').textContent=immediate?'Confirm immediate plan change':'Schedule your plan change';
-    document.getElementById('secure-copy').textContent=immediate?'Stripe will charge or credit the unused portion of your current period and apply your new plan after successful payment.':`${currentProduct.name} ${currentBillingLabel} stays active until the end of the current period. ${targetProduct.name} ${targetBillingLabel} starts at renewal.`;
+    document.getElementById('secure-copy').textContent=immediate?'You pay the fixed difference between the plan prices now. Your new recurring price starts at the existing renewal date.':`${currentProduct.name} ${currentBillingLabel} stays active until the end of the current period. ${targetProduct.name} ${targetBillingLabel} starts at renewal.`;
 
     const targetFeatures=targetProduct.features||[];
     document.getElementById('summary-name').textContent=targetProduct.name;
@@ -539,7 +539,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-price').innerHTML=`${displayPrice(targetPrice)} <span>${targetProduct.suffix}</span>`;
     document.getElementById('summary-sub').textContent=targetProduct.slots;
     document.getElementById('summary-features').innerHTML=targetFeatures.map(x=>`<li>${x}</li>`).join('');
-    document.getElementById('summary-change-line').innerHTML=`<strong>Scheduled change:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} at ${periodEnd||'your next renewal'}.`;
+    document.getElementById('summary-change-line').innerHTML=`<strong>${immediate?'New recurring billing':'Scheduled change'}:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} ${immediate?'at the existing renewal date ' : 'at '}${periodEnd||'your next renewal'}.`;
     document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangeSubtotal/100)):'$0.00';
     document.getElementById('tax-row').style.display=immediate?'flex':'none';
     document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Checking tax…':money((planChangeTax||0)/100)):'$0.00';
@@ -587,7 +587,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function setPlanChangeTiming(value){
-    planChangeTiming=planChangeIsUpgrade() && !planChangeBillingChanged() && value==='immediate'?'immediate':'next_billing';
+    planChangeTiming=planChangeIsUpgrade() && value==='immediate'?'immediate':'next_billing';
     planChangePreview=null;
     planChangeTax=null;
     planChangeSubtotal=null;
