@@ -787,6 +787,54 @@ button,a{-webkit-tap-highlight-color:transparent}
   cursor:pointer;
 }
 
+/* In-app Enterprise inquiry — separate from the website contact page. */
+.enterprise-contact-overlay{
+  position:fixed;
+  inset:0;
+  z-index:170;
+  padding:calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+  background:rgba(12,26,39,.56);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.enterprise-contact-overlay[hidden]{display:none!important}
+.enterprise-contact-sheet{
+  width:min(100%,530px);
+  max-height:100%;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  background:var(--card);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:23px;
+  padding:22px;
+  box-shadow:0 18px 60px rgba(12,26,39,.27);
+}
+.enterprise-contact-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.enterprise-contact-title{font-size:24px;font-weight:900;letter-spacing:-.4px;margin-top:5px}
+.enterprise-contact-copy{color:var(--muted);font-size:12px;line-height:1.55;margin-top:8px}
+.enterprise-contact-close{
+  flex:0 0 38px;width:38px;height:38px;border:1px solid var(--border);
+  border-radius:50%;background:var(--card-soft);color:var(--text);
+  font-size:23px;line-height:1;cursor:pointer;
+}
+.enterprise-contact-field{display:block;margin-top:15px;font-size:12px;font-weight:800}
+.enterprise-contact-control{
+  width:100%;margin-top:6px;min-height:46px;padding:11px 13px;
+  font-size:14px;border:1px solid var(--border);border-radius:12px;
+  background:var(--card-soft);color:var(--text);font-family:inherit!important;
+}
+.enterprise-contact-control:focus{outline:2px solid var(--brand);outline-offset:1px}
+textarea.enterprise-contact-control{min-height:118px;resize:vertical}
+.enterprise-contact-submit{width:100%;margin-top:18px}
+.enterprise-contact-status{margin-top:12px;font-size:12px;line-height:1.55;font-weight:700}
+.enterprise-contact-status:empty{display:none}
+.enterprise-contact-status.success{color:var(--green)}
+.enterprise-contact-status.error{color:var(--red)}
+.enterprise-contact-help{color:var(--muted);font-size:11px;margin-top:14px;line-height:1.5}
+
 </style>
 
 <style>
@@ -1904,14 +1952,8 @@ function renderPlans(){
     </article>
   `);
 
-  $('enterprise-contact-btn').onclick=async()=>{
-    try{
-      await openUrl('https://alygnn.com/contact.html');
-    }catch(error){
-      console.error('Could not open Enterprise contact page:',error);
-      showMessage('Could not open the contact page. Visit alygnn.com/contact.html to get in touch.','error');
-    }
-  };
+  // Open an in-app Enterprise inquiry instead of an external browser.
+  $('enterprise-contact-btn').onclick=openEnterpriseContact;
 
   document
     .querySelectorAll('[data-change-plan]')
@@ -2783,6 +2825,101 @@ function ensureUpgradeRefresh(){
   },3000);
 }
 
+
+function openEnterpriseContact(){
+  const overlay=$('enterprise-contact-overlay');
+  if(!overlay)return;
+
+  const form=$('enterprise-contact-form');
+  form.hidden=false;
+  form.reset();
+  $('enterprise-contact-status').textContent='';
+  $('enterprise-contact-status').className='enterprise-contact-status';
+  $('enterprise-contact-submit').disabled=false;
+  $('enterprise-contact-submit').textContent='Send Enterprise inquiry';
+
+  const user=session?.user||{};
+  const metadata=user.user_metadata||{};
+  $('enterprise-contact-name').value=String(
+    metadata.full_name || metadata.name || metadata.contact_name || ''
+  );
+  $('enterprise-contact-email').value=String(user.email||'');
+  $('enterprise-contact-company').value=String(
+    metadata.company_name || metadata.company || metadata.business_name ||
+    summary?.billing_account?.company_name || ''
+  );
+
+  overlay.hidden=false;
+  document.body.style.overflow='hidden';
+  // Restore keyboard focus to the dialog rather than the underlying page.
+  $('enterprise-contact-name').focus({preventScroll:true});
+}
+
+function closeEnterpriseContact(){
+  const overlay=$('enterprise-contact-overlay');
+  if(!overlay || overlay.hidden)return;
+  overlay.hidden=true;
+  document.body.style.overflow='';
+  $('enterprise-contact-btn')?.focus({preventScroll:true});
+}
+
+function bindEnterpriseContactEvents(){
+  const overlay=$('enterprise-contact-overlay');
+  const form=$('enterprise-contact-form');
+  if(!overlay||!form)return;
+
+  $('enterprise-contact-close').onclick=closeEnterpriseContact;
+  overlay.addEventListener('click',event=>{
+    if(event.target===overlay) closeEnterpriseContact();
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!overlay.hidden) closeEnterpriseContact();
+  });
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const name=$('enterprise-contact-name').value.trim();
+    const company=$('enterprise-contact-company').value.trim();
+    const email=$('enterprise-contact-email').value.trim();
+    const message=$('enterprise-contact-message').value.trim();
+    if(!name||!company||!email||!message||!form.reportValidity())return;
+
+    const submit=$('enterprise-contact-submit');
+    const status=$('enterprise-contact-status');
+    status.textContent='';
+    status.className='enterprise-contact-status';
+    submit.disabled=true;
+    submit.textContent='Sending…';
+
+    try{
+      // Reuse the SAME Supabase Edge Function as the Alygnn website contact form.
+      // It expects name, email and message; include employer details in message.
+      const body={
+        name,
+        email,
+        message:`Enterprise plan inquiry\nCompany: ${company}\nAccount: ${session?.user?.id||'Unknown'}\nCurrent plan: ${planName(currentContext().plan)}\n\n${message}`
+      };
+      const {error}=await withTimeout(
+        sb.functions.invoke('send-contact-message',{body}),
+        15000,
+        'Enterprise inquiry'
+      );
+      if(error)throw error;
+
+      form.hidden=true;
+      status.className='enterprise-contact-status success';
+      status.textContent='Your Enterprise inquiry has been sent. Our team will contact you by email.';
+    }catch(error){
+      console.error('Enterprise contact failed:',error);
+      status.className='enterprise-contact-status error';
+      status.textContent='Could not send your inquiry. Please try again, or email admin@alygnn.com.';
+    }finally{
+      submit.disabled=false;
+      submit.textContent='Send Enterprise inquiry';
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', bindEnterpriseContactEvents, {once:true});
 window.addEventListener('DOMContentLoaded', bindPlanChoiceEvents, {once:true});
 
 (async()=>{
@@ -2842,5 +2979,32 @@ window.addEventListener('DOMContentLoaded', bindPlanChoiceEvents, {once:true});
     <button class="plan-choice-cancel" id="plan-choice-cancel" type="button">Cancel</button>
   </div>
 </div>
+
+<div class="enterprise-contact-overlay" id="enterprise-contact-overlay" hidden>
+  <div class="enterprise-contact-sheet" role="dialog" aria-modal="true" aria-labelledby="enterprise-contact-title">
+    <div class="enterprise-contact-header">
+      <div>
+        <div class="kicker">Enterprise plan</div>
+        <h2 class="enterprise-contact-title" id="enterprise-contact-title">Contact Alygnn</h2>
+      </div>
+      <button class="enterprise-contact-close" id="enterprise-contact-close" type="button" aria-label="Close">×</button>
+    </div>
+    <p class="enterprise-contact-copy">Tell us what your business needs. We'll follow up about custom hiring capacity and pricing.</p>
+    <form id="enterprise-contact-form">
+      <label class="enterprise-contact-field" for="enterprise-contact-name">Full name</label>
+      <input class="enterprise-contact-control" id="enterprise-contact-name" name="name" autocomplete="name" placeholder="Your name" required maxlength="120">
+      <label class="enterprise-contact-field" for="enterprise-contact-company">Company name</label>
+      <input class="enterprise-contact-control" id="enterprise-contact-company" name="company" autocomplete="organization" placeholder="Company name" required maxlength="150">
+      <label class="enterprise-contact-field" for="enterprise-contact-email">Email address</label>
+      <input class="enterprise-contact-control" id="enterprise-contact-email" type="email" name="email" autocomplete="email" placeholder="you@company.com" required maxlength="254">
+      <label class="enterprise-contact-field" for="enterprise-contact-message">What does your team need?</label>
+      <textarea class="enterprise-contact-control" id="enterprise-contact-message" name="message" placeholder="Tell us about the number of roles, hiring volume, or other requirements" required maxlength="5000"></textarea>
+      <button class="action primary enterprise-contact-submit" id="enterprise-contact-submit" type="submit">Send Enterprise inquiry</button>
+    </form>
+    <p class="enterprise-contact-status" id="enterprise-contact-status" role="status" aria-live="polite"></p>
+    <p class="enterprise-contact-help">You can also email admin@alygnn.com.</p>
+  </div>
+</div>
+
 </body>
 </html>
