@@ -517,10 +517,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           <div class="change-detail"><span class="label">Next renewal</span><span class="value">${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}</span></div>
           <div class="change-detail"><span class="label">Job-slot capacity</span><span class="value">${currentSlots} → ${targetSlots} total slots</span></div>
         </div>
-        <div class="change-notice downgrade">
-          <strong>${immediate?'Your change takes effect after Stripe confirms payment.':'Your current plan stays active until renewal.'}</strong>
-          ${immediate?'Your fixed upgrade price is shown before you confirm. Any applicable tax is confirmed during checkout. Existing renewal timing is preserved. Downgrades take effect at renewal.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
-        </div>
+        ${immediate?'':`<div class="change-notice downgrade">
+          <strong>Your current plan stays active until renewal.</strong>
+          ${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.
+        </div>`}
         <ul class="review-list">
           <li>${immediate?'See the fixed upgrade price before confirming.':'No plan-change charge is taken today.'}</li>
           <li>Your permanent free job slot remains included.</li>
