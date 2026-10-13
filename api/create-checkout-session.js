@@ -1857,6 +1857,25 @@ async function runManageAction(res,user,input){
     });
   }
 
+// Stripe upcoming invoice previews also include the NEXT renewal. Only the
+// two proration lines belong to an immediate plan change.
+function planChangeProration(preview){
+  const lines=Array.isArray(preview?.lines?.data)?preview.lines.data:[];
+  const prorations=lines.filter(line=>
+    line?.proration===true || line?.parent?.subscription_item_details?.proration===true
+  );
+  if(!prorations.length){
+    throw new Error('Stripe did not provide a separate upgrade proration. No payment was made.');
+  }
+  const subtotalCents=prorations.reduce((sum,line)=>sum+Number(line.amount||0),0);
+  const taxCents=prorations.reduce((sum,line)=>sum+
+    (Array.isArray(line.tax_amounts)?line.tax_amounts.reduce((tax,item)=>tax+Number(item.amount||0),0):0),0);
+  if(!Number.isFinite(subtotalCents)||!Number.isFinite(taxCents)){
+    throw new Error('Invalid upgrade amount returned by Stripe. No payment was made.');
+  }
+  return {subtotalCents,taxCents,amountCents:Math.max(0,subtotalCents+taxCents)};
+}
+
   if(action==='preview_plan_change'){
     const target=String(input.target_plan||'').toLowerCase();
     const current=subscriptionPlan(ent,sub);
@@ -1879,20 +1898,17 @@ async function runManageAction(res,user,input){
       'subscription_details[items][0][quantity]':1,
       'subscription_details[proration_behavior]':'always_invoice'
     });
-    // Do not present existing balances or unrelated invoice items as the price
-    // of upgrading. The full-period upgrade difference is a hard upper bound
-    // on its before-tax proration; otherwise require account reconciliation.
     const fullDifference=Math.max(0,MANAGE_CATALOG[billing][target].cents-MANAGE_CATALOG[billing][current].cents);
-    const taxes=Array.isArray(preview.total_taxes)?preview.total_taxes:[];
-    const taxCents=Math.max(0,taxes.reduce((sum,t)=>sum+Number(t.amount||0),0));
-    const amount=Math.max(0,Number(preview.amount_due||0));
-    if(MANAGE_CATALOG[billing][target].rank>MANAGE_CATALOG[billing][current].rank && amount-taxCents>fullDifference+1){
-      return send(res,409,{error:'Your invoice includes another balance. The upgrade cannot proceed until that balance is resolved.'});
+    const quote=planChangeProration(preview);
+    if(MANAGE_CATALOG[billing][target].rank>MANAGE_CATALOG[billing][current].rank &&
+       (quote.subtotalCents<0 || quote.subtotalCents>fullDifference+1)){
+      return send(res,409,{error:'Stripe returned an unexpected upgrade difference. No payment was made.'});
     }
     return send(res,200,{
       ok:true,
-      amount_due_now_cents:amount,
-      tax_cents:taxCents,
+      subtotal_cents:Math.max(0,quote.subtotalCents),
+      amount_due_now_cents:quote.amountCents,
+      tax_cents:quote.taxCents,
       currency:String(preview.currency||'usd').toLowerCase()
     });
   }
@@ -2077,10 +2093,10 @@ async function runManageAction(res,user,input){
         'subscription_details[items][0][quantity]':1,
         'subscription_details[proration_behavior]':'always_invoice'
       });
-      const taxCents=Array.isArray(preview.total_taxes)?preview.total_taxes.reduce((s,t)=>s+Number(t.amount||0),0):0;
+      const quote=planChangeProration(preview);
       const fullDifference=targetCatalog[target].cents-currentCatalog[current].cents;
-      if(Number(preview.amount_due||0)-taxCents>fullDifference+1){
-        return send(res,409,{error:'Your invoice includes another balance. Resolve it before upgrading so you are only charged the remaining plan difference.'});
+      if(quote.subtotalCents<0 || quote.subtotalCents>fullDifference+1){
+        return send(res,409,{error:'Stripe returned an unexpected upgrade difference. No payment was made.'});
       }
     }
     // Stripe computes the unused-time credit and remaining-time difference,
