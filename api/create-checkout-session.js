@@ -1857,23 +1857,38 @@ async function runManageAction(res,user,input){
     });
   }
 
-// Only proration lines belong to the remaining-period upgrade charge.
-// Invoice amount_due can also include renewal items or older balances.
-function remainingUpgradePreview(invoice,fullDifference){
-  const lines=invoice?.lines?.data;
-  if(!Array.isArray(lines))throw new Error('Stripe did not return the upgrade invoice line items.');
-  if(invoice?.lines?.has_more)throw new Error('Upgrade invoice contains more items than can be verified.');
-  const prorations=lines.filter(line=>line?.proration===true || line?.parent?.subscription_item_details?.proration===true);
-  if(!prorations.length)throw new Error('Stripe did not return a separate remaining-period upgrade calculation.');
-  const subtotal=prorations.reduce((sum,line)=>sum+Number(line.amount||0),0);
-  if(!Number.isFinite(subtotal)||subtotal<0||subtotal>fullDifference+1){
-    throw new Error('The upgrade preview includes an unexpected amount. No charge was made.');
+  // Isolate the remaining-plan price from old invoices and next renewals.
+  // The customer's subscription itself sets the exact active billing interval.
+  function remainingUpgradeCents(subscription, currentCents, targetCents) {
+    const item = subscription?.items?.data?.[0] || {};
+    const start = Number(item.current_period_start || subscription.current_period_start);
+    const end = Number(item.current_period_end || subscription.current_period_end);
+    const now = Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || end <= now) {
+      throw new Error('The current subscription billing period could not be verified.');
+    }
+    const difference = Number(targetCents) - Number(currentCents);
+    if (!Number.isFinite(difference) || difference <= 0) {
+      throw new Error('This immediate payment is only available for plan upgrades.');
+    }
+    return Math.max(0, Math.round(difference * Math.min(1, (end - now) / (end - start))));
   }
-  // Tax must be computed on the selected proration lines, not on unrelated invoice items.
-  const tax=prorations.reduce((sum,line)=>sum+(Array.isArray(line.taxes)?line.taxes.reduce((s,t)=>s+Number(t.amount||0),0):0),0);
-  if(!Number.isFinite(tax)||tax<0)throw new Error('Could not verify the tax on the upgrade.');
-  return {subtotal_cents:Math.round(subtotal),tax_cents:Math.round(tax),amount_due_now_cents:Math.round(subtotal+tax)};
-}
+
+  async function remainingUpgradeQuote(subscription, currentCents, targetCents) {
+    const subtotalCents = remainingUpgradeCents(subscription, currentCents, targetCents);
+    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+    if (!customerId) throw new Error('Stripe customer information is missing.');
+    if (subtotalCents === 0) return {subtotal_cents:0, tax_cents:0, total_cents:0};
+    // This is a read-only Stripe Tax calculation. Never assume a rate or force tax to zero.
+    const tax = await createNativeTaxCalculation({
+      customerId, cents:subtotalCents, reference:'alygnn-plan-upgrade-preview'
+    });
+    const total = Number(tax.amount_total);
+    if (!Number.isFinite(total) || total < subtotalCents) {
+      throw new Error('Stripe could not confirm the upgrade total and tax.');
+    }
+    return {subtotal_cents:subtotalCents, tax_cents:total-subtotalCents, total_cents:total};
+  }
 
   if(action==='preview_plan_change'){
     const target=String(input.target_plan||'').toLowerCase();
@@ -1886,20 +1901,16 @@ function remainingUpgradePreview(invoice,fullDifference){
       return send(res,409,{error:'A billing-period change must be scheduled at renewal.'});
     if(!MANAGE_CATALOG[billing]?.[target]||target===current)
       return send(res,400,{error:'Select a different plan to preview.'});
-    const item=sub?.items?.data?.[0];
-    if(!item?.id)throw new Error('Subscription item is unavailable for preview.');
-    const targetPrice=await ensureRecurringPrice(target,billing);
-    // Invoice preview does not charge the card or modify the subscription.
-    const preview=await manageStripe('POST','invoices/create_preview',{
-      subscription:sub.id,
-      'subscription_details[items][0][id]':item.id,
-      'subscription_details[items][0][price]':targetPrice,
-      'subscription_details[items][0][quantity]':1,
-      'subscription_details[proration_behavior]':'always_invoice'
+    if(MANAGE_CATALOG[billing][target].rank <= MANAGE_CATALOG[billing][current].rank)
+      return send(res,409,{error:'Downgrades take effect at your next renewal.'});
+    const quote=await remainingUpgradeQuote(sub,MANAGE_CATALOG[billing][current].cents,MANAGE_CATALOG[billing][target].cents);
+    return send(res,200,{
+      ok:true,
+      amount_due_now_cents:quote.total_cents,
+      subtotal_cents:quote.subtotal_cents,
+      tax_cents:quote.tax_cents,
+      currency:'usd'
     });
-    const fullDifference=Math.max(0,MANAGE_CATALOG[billing][target].cents-MANAGE_CATALOG[billing][current].cents);
-    const amount=remainingUpgradePreview(preview,fullDifference);
-    return send(res,200,{ok:true,...amount,currency:String(preview.currency||'usd').toLowerCase()});
   }
 
   if(action==='cancel_scheduled_change'){
@@ -2075,6 +2086,7 @@ function remainingUpgradePreview(invoice,fullDifference){
 
     const targetPrice=await ensureRecurringPrice(target,targetBilling);
     if(targetRank>currentRank){
+      const quote=await remainingUpgradeQuote(sub,currentCatalog[current].cents,targetCatalog[target].cents);
       const preview=await manageStripe('POST','invoices/create_preview',{
         subscription:sub.id,
         'subscription_details[items][0][id]':item.id,
@@ -2082,8 +2094,12 @@ function remainingUpgradePreview(invoice,fullDifference){
         'subscription_details[items][0][quantity]':1,
         'subscription_details[proration_behavior]':'always_invoice'
       });
-      const fullDifference=targetCatalog[target].cents-currentCatalog[current].cents;
-      remainingUpgradePreview(preview,fullDifference);
+      // Stripe can include other invoices or balances in an upcoming-invoice preview.
+      // Never silently collect those as part of this upgrade.
+      const charged=Number(preview.amount_due);
+      if(!Number.isFinite(charged) || Math.abs(charged-quote.total_cents)>2){
+        return send(res,409,{error:'Stripe has another amount in this invoice or the tax has changed. No charge was made. Please review the billing account before upgrading.'});
+      }
     }
     // Stripe computes the unused-time credit and remaining-time difference,
     // invoices immediately and rejects incomplete payments without applying
