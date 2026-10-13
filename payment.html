@@ -378,6 +378,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let planChangeCurrentBilling = null;
   let planChangeBusy = false;
   let planChangeTiming = 'next_billing';
+  let planChangePreview = null;
+  let planChangePreviewRequest = 0;
 
   const PLAN_TOTAL_SLOTS={launch:4,growth:6,scale:9};
   const PLAN_RANK={launch:1,growth:2,scale:3};
@@ -471,7 +473,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(eyebrow) eyebrow.textContent='Plan change review';
     if(heading) heading.textContent='Review your plan change.';
     if(headingCopy){
-      headingCopy.textContent=immediate?'Review the plan and approve Stripe-calculated prorations for an immediate change.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
+      headingCopy.textContent=immediate?'See the remaining price for your current billing period and pay now to change plans.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
     }
 
     const firstTitle=document.querySelector('.panel-title');
@@ -483,7 +485,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       <div class="change-review">
         <div class="change-plan-box" style="margin-bottom:16px">
           <div class="change-label">When should this change take effect?</div>
-          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — Stripe calculates the prorated payment or credit; new job slots activate after successful payment.</label>
+          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the remaining price now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
           ${canChangeImmediately?'':'<div class="change-price">Changes between monthly and quarterly billing must start at the next renewal to preserve the renewal date.</div>'}
         </div>
@@ -503,17 +505,17 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         <div class="change-details">
           <div class="change-detail"><span class="label">Billing change</span><span class="value">${currentBillingLabel} → ${targetBillingLabel}</span></div>
           <div class="change-detail"><span class="label">Effective</span><span class="value">${immediate?'Immediately after successful payment':effectiveText}</span></div>
-          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?'Calculated and charged or credited by Stripe':'$0.00'}</span></div>
+          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00'}</span></div>
           <div class="change-detail"><span class="label">Next renewal</span><span class="value">${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}</span></div>
           <div class="change-detail"><span class="label">Job-slot capacity</span><span class="value">${currentSlots} → ${targetSlots} total slots</span></div>
         </div>
         <div class="change-notice downgrade">
           <strong>${immediate?'Your change takes effect after Stripe confirms payment.':'Your current plan stays active until renewal.'}</strong>
-          ${immediate?'Stripe calculates the unused-time credit and remaining-time charge at confirmation. Existing renewal timing is preserved. Immediate downgrades require enough free capacity for your current jobs.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
+          ${immediate?'Your remaining-period price is displayed before you confirm. The final charge can change slightly if time passes before confirmation. Existing renewal timing is preserved. Immediate downgrades require enough free capacity for your current jobs.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
         </div>
         ${weeklyCount>0?`<div class="change-notice"><strong>Your Weekly Job Slot is separate.</strong>Any active $99 Weekly Job Slot keeps its own 7-day expiration and is not extended by this plan change.</div>`:''}
         <ul class="review-list">
-          <li>${immediate?'Any prorated amount is calculated by Stripe at confirmation.':'No plan-change charge is taken today.'}</li>
+          <li>${immediate?'See the remaining-period charge before confirming.':'No plan-change charge is taken today.'}</li>
           <li>Your permanent free job slot remains included.</li>
           <li>Your jobs, applications, messages, and history are preserved.</li>
         </ul>
@@ -531,26 +533,56 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-sub').textContent=targetProduct.slots;
     document.getElementById('summary-features').innerHTML=targetFeatures.map(x=>`<li>${x}</li>`).join('');
     document.getElementById('summary-change-line').innerHTML=`<strong>Scheduled change:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} at ${periodEnd||'your next renewal'}.`;
-    document.getElementById('subtotal').textContent=immediate?'Calculated by Stripe':'$0.00';
+    document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
     document.getElementById('tax-row').style.display='none';
-    document.getElementById('due-total').textContent=immediate?'Calculated by Stripe':'$0.00';
-    document.getElementById('trust-copy').textContent=immediate?'Stripe handles prorations · access changes after payment':'No charge today · change takes effect at renewal';
+    document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
+    document.getElementById('trust-copy').textContent=immediate?'Pay the remaining-period price now · access changes after payment':'No charge today · change takes effect at renewal';
 
-    document.getElementById('authorization-copy').textContent=immediate?'I authorize Stripe to calculate and collect the prorated difference or apply a credit for the unused time. The new plan will take effect after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
+    document.getElementById('authorization-copy').textContent=immediate?'I authorize payment of the remaining-period amount shown above. My new plan will take effect after successful payment. The final amount may adjust slightly before confirmation.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
 
     const fineprint=document.querySelector('.fineprint');
-    if(fineprint) fineprint.textContent=immediate?'Stripe calculates the exact prorated charge or credit at confirmation.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
+    if(fineprint) fineprint.textContent=immediate?'Your remaining-period price is shown before you confirm. The final charged amount may change slightly with time.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
 
     updateCheckoutState();
   }
 
+  async function refreshPlanChangePreview(){
+    const request=++planChangePreviewRequest;
+    planChangePreview=null;
+    if(!planChangeMode||planChangeTiming!=='immediate'||!session)return;
+    try{
+      const response=await fetch(CHECKOUT_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'preview_plan_change',target_plan:planChangeTarget,billing:planChangeBilling})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'Could not preview the remaining price.');
+      if(request!==planChangePreviewRequest)return;
+      planChangePreview=Number(data.amount_due_now_cents);
+      if(!Number.isFinite(planChangePreview))throw new Error('Invalid amount preview.');
+      renderPlanChangeReview();
+    }catch(error){
+      if(request!==planChangePreviewRequest)return;
+      const value='Amount unavailable';
+      document.getElementById('subtotal').textContent=value;
+      document.getElementById('due-total').textContent=value;
+      showMessage(error.message||'Unable to display the amount due. Please try again.','error');
+      updateCheckoutState();
+    }
+  }
+
   function setPlanChangeTiming(value){
     planChangeTiming=value==='immediate'?'immediate':'next_billing';
+    planChangePreview=null;
+    ++planChangePreviewRequest;
     renderPlanChangeReview();
+    if(planChangeTiming==='immediate')refreshPlanChangePreview();
   }
 
   async function startPlanChange(){
     if(planChangeBusy||!session) return;
+    if(planChangeTiming==='immediate'&&planChangePreview===null)return;
     const accepted=document.getElementById('terms-accept').checked;
     if(!accepted){
       showMessage('Please confirm that you reviewed and accept the plan-change terms.','error');
@@ -835,9 +867,9 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(planChangeMode){
       const immediateUpgrade=planChangeIsImmediateUpgrade();
       const {difference}=planChangePrices();
-      button.disabled=!accepted || planChangeBusy;
+      button.disabled=!accepted || planChangeBusy || (planChangeTiming==='immediate'&&planChangePreview===null);
       button.textContent=accepted
-        ? `${planChangeTiming==='immediate'?'Change now to':'Schedule'} ${titleCasePlan(planChangeTarget)} ${planChangeBilling==='quarterly'?'Quarterly':'Monthly'}${planChangeTiming==='immediate'?'':' at renewal'}`
+        ? `${planChangeTiming==='immediate'?'Pay now · Change to':'Schedule'} ${titleCasePlan(planChangeTarget)} ${planChangeBilling==='quarterly'?'Quarterly':'Monthly'}${planChangeTiming==='immediate'?'':' at renewal'}`
         : 'Accept terms to continue';
       return;
     }
@@ -1011,6 +1043,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return;
       }
       renderPlanChangeReview();
+      if(planChangeTiming==='immediate')refreshPlanChangePreview();
       updateUrl();
     }
 
