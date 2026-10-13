@@ -450,6 +450,10 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     aria-label="Back to Jobs"
     style="display:grid;place-items:center"
     onclick="
+      if(new URLSearchParams(location.search).get('from')==='billing'){
+        window.location.replace('app-employer-billing.html');
+        return false;
+      }
       try{
         sessionStorage.removeItem('alygnn_job_slot_gate');
         sessionStorage.removeItem('alygnnPostJobCapacityPass');
@@ -519,6 +523,21 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
   </div>
 
   <div class="plan-list" id="plan-list"></div>
+  <article class="plan" style="margin-top:12px">
+    <div class="plan-kicker">Enterprise</div>
+    <div class="plan-price-row"><div class="plan-price" style="font-size:26px">Custom</div><div class="plan-suffix">pricing</div></div>
+    <p class="lede">Custom hiring capacity and support for larger teams.</p>
+    <button class="btn primary full" id="enterprise-plan-btn" type="button">Contact us</button>
+  </article>
+  <div id="plan-change-sheet" hidden style="position:fixed;inset:0;z-index:100;background:rgba(12,25,39,.55);padding:16px;display:flex;align-items:flex-end;justify-content:center">
+    <div style="background:var(--card);color:var(--text);border-radius:22px;padding:22px;width:min(100%,520px);display:grid;gap:13px">
+      <h2 id="plan-change-heading" style="margin:0;font-size:21px">Change plan</h2>
+      <p id="plan-change-description" class="lede"></p>
+      <button class="btn primary full" id="plan-change-immediate" type="button">Upgrade now</button>
+      <button class="btn secondary full" id="plan-change-renewal" type="button">Change at next billing</button>
+      <button class="btn secondary full" id="plan-change-cancel" type="button">Cancel</button>
+    </div>
+  </div>
 
   <section class="current-features" id="current-plan-features" hidden>
     <div class="current-features-kicker">Included with your plan</div>
@@ -556,7 +575,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:34px;line-height:1.05;
     </div>
   </section>
 
-  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Every $99 Weekly Job Slot adds 1 temporary reusable slot for 7 days on top of your current capacity and can be purchased on Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
+  <p class="fineprint">The $150 Second Job Slot is available only when you are not on a monthly or quarterly plan. Weekly Job Slots cost $150/7 days on Free accounts and $99/7 days with an active paid plan; each adds 1 temporary reusable slot for 7 days on top of your current capacity and can be purchased on Free, Launch, Growth, or Scale. Monthly plans renew monthly and quarterly plans renew every 3 months until canceled.</p>
   <div class="message" id="message" hidden></div>
 </main>
 
@@ -584,6 +603,8 @@ const CATALOG={
 };
 
 const PAGE_PARAMS=new URLSearchParams(location.search);
+const SETTINGS_MANAGE_MODE=PAGE_PARAMS.get('mode')==='manage';
+const FROM_BILLING=PAGE_PARAMS.get('from')==='billing';
 
 const SLOT_GATE_REASON=
   PAGE_PARAMS.get('reason')==='slot_limit';
@@ -733,6 +754,11 @@ function basePaidPlanActive(){
     && (!end || Number.isNaN(endTime) || endTime>Date.now());
 }
 
+function weeklyPrice(){
+  // Plan discount applies only when the employer actually has an active plan.
+  return basePaidPlanActive()?99:150;
+}
+function weeklyPriceLabel(){return '$'+weeklyPrice();}
 function standaloneSecondSlotActive(){
   if(postingAccess){
     if(postingAccess.second_slot_active === true) return true;
@@ -969,7 +995,9 @@ function nextUpgradePlan(){
 }
 
 function weeklyUpgradeRecommended(){
-  return basePaidPlanActive()
+  // Weekly capacity must remain purchasable; do not replace the Weekly tab
+  // with a separate upsell-only screen.
+  return false && basePaidPlanActive()
     && weeklySlotCount()>=1
     && !!nextUpgradePlan();
 }
@@ -1116,7 +1144,7 @@ function renderSlotGateNotice(){
         REPOST_TITLE
           ? `"${REPOST_TITLE}" is still inside that 5-job history. `
           : ''
-      }Post ${DIFFERENT_JOBS_NEEDED} more different job${DIFFERENT_JOBS_NEEDED===1?'':'s'} to keep using the free slot, or add the $150/month Second Job Slot or choose a monthly/quarterly plan to repost this role now. A $99 Weekly Slot does not bypass this rule.`;
+      }Post ${DIFFERENT_JOBS_NEEDED} more different job${DIFFERENT_JOBS_NEEDED===1?'':'s'} to keep using the free slot, or add the $150/month Second Job Slot or choose a monthly/quarterly plan to repost this role now. A Weekly Slot does not bypass this rule.`;
 
     notice.hidden=false;
     return;
@@ -1166,7 +1194,7 @@ function renderSlotGateNotice(){
     }
   }else if(!standaloneSecondSlotActive()){
     $('slot-gate-copy').textContent=
-      `Your included free slot is in use. Choose the $150/month Second Job Slot for ongoing two-job capacity, or add a $99 Weekly Job Slot for 7 days.`;
+      `Your included free slot is in use. Choose the $150/month Second Job Slot for ongoing two-job capacity, or add a ${weeklyPriceLabel()} Weekly Job Slot for 7 days.`;
   }else{
     $('slot-gate-copy').textContent=
       `You are using ${used} of ${limit} slots. Your Second Job Slot is active; add another temporary slot for $99/week to reach ${limit+1} total.`;
@@ -1279,6 +1307,16 @@ function renderCurrent(){
 
 function renderPlans(){
   const currentLimit=effectiveSlotLimit();
+  CATALOG.weekly.weekly_slot.price=weeklyPrice();
+  CATALOG.weekly.weekly_slot.popular=basePaidPlanActive();
+  CATALOG.weekly.weekly_slot.features=[
+    'Adds 1 reusable job slot on top of your current capacity',
+    'Starts after Stripe confirms payment',
+    'Expires 7 days after purchase',
+    'Close or pause a job and reuse the slot before expiration',
+    basePaidPlanActive()?'Active-plan price: $99 for 7 days':'Free-account price: $150 for 7 days',
+    'Additional Weekly Job Slots can be added when more temporary capacity is needed'
+  ];
 
   renderPlanContext();
   renderCurrentPlanFeatures();
@@ -1325,7 +1363,7 @@ function renderPlans(){
             ? `Upgrade costs only $${difference.toLocaleString('en-US')} more ${period==='quarterly'?'per 3-month term':'per month'} than your current plan`
             : 'Move to the next plan for better ongoing capacity'
           }</li>
-          <li>Avoid stacking another $99 temporary weekly slot</li>
+          <li>Avoid stacking temporary weekly slots</li>
           <li>Your current paid period is credited when upgrading</li>
         </ul>
 
@@ -1350,7 +1388,14 @@ function renderPlans(){
     const currentPeriod=activeBillingPeriod();
 
     $('plan-list').innerHTML=
-      Object.entries(plans).map(([key,item])=>{
+      Object.entries(plans)
+      .filter(([key])=>{
+        if(billing==='weekly' || FROM_BILLING || !basePaidPlanActive())return true;
+        const ranks={launch:1,growth:2,scale:3};
+        const current=ranks[activePlanCode()]||0;
+        return (ranks[key]||0)>=current;
+      })
+      .map(([key,item])=>{
         const samePlan=
           basePaidPlanActive() &&
           ['launch','growth','scale'].includes(key) &&
@@ -1373,8 +1418,8 @@ function renderPlans(){
             : '';
 
         const buttonText=
-          key==='weekly_slot'
-            ? 'Add 1 Weekly Job Slot — $99'
+              key==='weekly_slot'
+            ? `Add 1 Weekly Job Slot — ${weeklyPriceLabel()}`
             : exactCurrent
               ? 'Current plan'
               : samePlan
@@ -1418,6 +1463,11 @@ function renderPlans(){
         if(btn.disabled)return;
 
         const selected=btn.dataset.plan;
+        if(selected!=='weekly_slot' && basePaidPlanActive() &&
+           ['launch','growth','scale'].includes(selected)){
+          chooseExistingSubscriptionChange(selected);
+          return;
+        }
 
         if(
           basePaidPlanActive() &&
@@ -1501,6 +1551,98 @@ function renderPlans(){
       basePaidPlanActive();
   }
 }
+
+
+// Same plan-picker UI for Settings > Billing and View Pricing. Subscription
+// management is verified server-side; it never starts another subscription.
+let selectedChange=null;
+function hidePlanChangeSheet(){
+  const node=$('plan-change-sheet');
+  if(node)node.hidden=true;
+  selectedChange=null;
+}
+function startPricingCheckout({plan:target,billing:period,immediate=true}){
+  const payload={
+    product:'job_plan', plan:target, billing:period,
+    change:'upgrade', effective:immediate?'immediate':'renewal',
+    back_to:'app-employer-pricing.html'+location.search,
+    from_pricing:'1'
+  };
+  const handoff={...payload,created_at:Date.now()};
+  try{
+    sessionStorage.setItem('alygnnEmployerPricingHandoff',JSON.stringify(handoff));
+    sessionStorage.setItem('alygnn_pending_employer_checkout',JSON.stringify(handoff));
+  }catch(error){showMessage('Could not prepare checkout. Please try again.');return;}
+  location.href='app-employer-payment.html?'+new URLSearchParams(payload).toString();
+}
+async function scheduleExistingChange(target,period,button){
+  if(button){button.disabled=true;button.textContent='Scheduling…';}
+  try{
+    const {data:{session:currentSession}}=await sb.auth.getSession();
+    if(!currentSession?.access_token)throw new Error('Please sign in again.');
+    const response=await fetch('https://alygnn.com/api/create-checkout-session',{
+      method:'POST',headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+currentSession.access_token
+      },
+      body:JSON.stringify({action:'change_plan',target_plan:target,billing:period,effective:'renewal'})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(result.error||'Could not schedule plan change.');
+    hidePlanChangeSheet();
+    showMessage(`${CATALOG[period][target].name} is scheduled to begin at your next billing date. $0 due today.`);
+    await loadAccount();
+    switchBilling(period);
+  }catch(error){showMessage(error.message||'Could not schedule plan change.');}
+  finally{if(button){button.disabled=false;button.textContent='Change at next billing';}}
+}
+function chooseExistingSubscriptionChange(target){
+  const current=activePlanCode();
+  const period=activeBillingPeriod();
+  const targetPeriod=billing==='weekly'?period:billing;
+  const currentItem=CATALOG[period]?.[current];
+  const nextItem=CATALOG[targetPeriod]?.[target];
+  if(!currentItem||!nextItem){
+    showMessage('Please open Billing to review your subscription.');return;
+  }
+  if(current===target&&period===targetPeriod)return;
+  if(current!==target && targetPeriod!==period){
+    showMessage(`Plan changes currently keep your ${period} billing cycle. Select ${period==='quarterly'?'Quarterly':'Monthly'} to change plans.`);
+    switchBilling(period);return;
+  }
+  if(postingAccess?.cancel_at_period_end===true){
+    showMessage('Restore your subscription in Billing before changing plans.');return;
+  }
+  const rank={launch:1,growth:2,scale:3};
+  const upgrade=rank[target]>rank[current]&&targetPeriod===period;
+  const priceDifference=Math.max(0,nextItem.price-currentItem.price);
+  const modal=$('plan-change-sheet');
+  if(!modal)throw new Error('Plan change dialog is unavailable.');
+  selectedChange={target,period:targetPeriod,upgrade};
+  $('plan-change-heading').textContent=`${upgrade?'Upgrade to':'Change to'} ${nextItem.name}`;
+  $('plan-change-description').textContent=upgrade
+    ?`${nextItem.name} includes ${nextItem.slots+1} reusable slots. Choose immediate access or next renewal.`
+    :`Your current plan remains active until the next billing date; no refund or credit is issued.`;
+  $('plan-change-immediate').hidden=!upgrade;
+  $('plan-change-immediate').textContent=`Pay $${priceDifference} now & upgrade`;
+  $('plan-change-renewal').textContent='Change at next billing — $0 today';
+  modal.hidden=false;
+}
+$('plan-change-cancel')?.addEventListener('click',hidePlanChangeSheet);
+$('plan-change-sheet')?.addEventListener('click',event=>{
+  if(event.target===$('plan-change-sheet'))hidePlanChangeSheet();
+});
+$('plan-change-immediate')?.addEventListener('click',()=>{
+  if(!selectedChange)return;
+  const {target,period}=selectedChange;
+  hidePlanChangeSheet();
+  startPricingCheckout({plan:target,billing:period});
+});
+$('plan-change-renewal')?.addEventListener('click',()=>{
+  const chosen=selectedChange;
+  if(!chosen)return;
+  scheduleExistingChange(chosen.target,chosen.period,$('plan-change-renewal'));
+});
 
 function switchBilling(next){
   if(
@@ -2028,14 +2170,19 @@ $('free-btn').addEventListener('click',()=>{
   );
 });
 
+$('enterprise-plan-btn').addEventListener('click',()=>{
+  // Reuse existing secure, email-only Enterprise inquiry form.
+  location.href='app-employer-billing.html?enterprise=1';
+});
+
 $('additional-slot-btn').addEventListener('click',()=>{
   if(basePaidPlanActive()){
-    showMessage('The $150/month Second Job Slot is only available without a monthly or quarterly plan. Plan customers can add capacity for $99/week.');
+    showMessage('The $150/month Second Job Slot is only available without a monthly or quarterly plan. With an active plan, weekly capacity is $99/7 days; otherwise $150/7 days.');
     return;
   }
 
   if(standaloneSecondSlotActive()){
-    showMessage('Your $150/month Second Job Slot is already active. Additional capacity is $99/week.');
+    showMessage('Your $150/month Second Job Slot is already active. Weekly capacity is $150/7 days for Free accounts.');
     return;
   }
 
@@ -2093,12 +2240,12 @@ const capacityLoadingWatchdog=
   );
 
 loadAccount().finally(()=>{
-  clearTimeout(
-    capacityLoadingWatchdog
-  );
-
-  billing='quarterly';
-  switchBilling('quarterly');
+  clearTimeout(capacityLoadingWatchdog);
+  const initialPeriod=basePaidPlanActive()
+    ?activeBillingPeriod()
+    :'quarterly';
+  billing=initialPeriod;
+  switchBilling(initialPeriod);
 });
 </script>
 
