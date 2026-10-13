@@ -261,7 +261,7 @@
       <div class="summary-change-line" id="summary-change-line"></div>
       <div class="total">
         <div class="total-row"><span>Plan subtotal</span><span id="subtotal">$750.00</span></div>
-        <div class="total-row muted" id="tax-row"><span>Tax</span><span>Calculated at checkout</span></div>
+        <div class="total-row muted" id="tax-row"><span>Tax</span><span id="tax-amount">Confirmed at checkout</span></div>
         <div class="total-row final"><span>Due today</span><span id="due-total">$750.00 + tax</span></div>
       </div>
       <div class="trust" id="trust-copy">🔒 Secure checkout · 3 months paid upfront</div>
@@ -379,6 +379,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let planChangeBusy = false;
   let planChangeTiming = 'next_billing';
   let planChangePreview = null;
+  let planChangeTax = null;
   let planChangePreviewRequest = 0;
 
   const PLAN_TOTAL_SLOTS={launch:4,growth:6,scale:9};
@@ -534,7 +535,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-features').innerHTML=targetFeatures.map(x=>`<li>${x}</li>`).join('');
     document.getElementById('summary-change-line').innerHTML=`<strong>Scheduled change:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} at ${periodEnd||'your next renewal'}.`;
     document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
-    document.getElementById('tax-row').style.display='none';
+    document.getElementById('tax-row').style.display=immediate?'flex':'none';
+    document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Checking tax…':money((planChangeTax||0)/100)):'$0.00';
     document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
     document.getElementById('trust-copy').textContent=immediate?'Pay the remaining-period price now · access changes after payment':'No charge today · change takes effect at renewal';
 
@@ -549,6 +551,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   async function refreshPlanChangePreview(){
     const request=++planChangePreviewRequest;
     planChangePreview=null;
+    planChangeTax=null;
     if(!planChangeMode||planChangeTiming!=='immediate'||!session)return;
     try{
       const response=await fetch(CHECKOUT_ENDPOINT,{
@@ -560,6 +563,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(!response.ok)throw new Error(data.error||'Could not preview the remaining price.');
       if(request!==planChangePreviewRequest)return;
       planChangePreview=Number(data.amount_due_now_cents);
+      planChangeTax=Number(data.tax_cents||0);
       if(!Number.isFinite(planChangePreview))throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
     }catch(error){
@@ -567,6 +571,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const value='Amount unavailable';
       document.getElementById('subtotal').textContent=value;
       document.getElementById('due-total').textContent=value;
+      document.getElementById('tax-amount').textContent='Unavailable';
       showMessage(error.message||'Unable to display the amount due. Please try again.','error');
       updateCheckoutState();
     }
@@ -575,6 +580,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function setPlanChangeTiming(value){
     planChangeTiming=value==='immediate'?'immediate':'next_billing';
     planChangePreview=null;
+    planChangeTax=null;
     ++planChangePreviewRequest;
     renderPlanChangeReview();
     if(planChangeTiming==='immediate')refreshPlanChangePreview();
@@ -802,7 +808,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       document.getElementById('authorization-copy').textContent=isAddon() ? 'By continuing, you confirm this is a developer test activation of the Free-account-only $150/month Second Job Slot. No payment will be processed.' : `By continuing, you confirm this is a test activation of the ${p.name} ${p.billing.toLowerCase()} package. No payment will be processed.`;
     }else{
       document.getElementById('tax-row').style.display='flex';
-      document.getElementById('due-total').textContent=money(p.price)+' + tax';
+      document.getElementById('tax-amount').textContent='Confirmed at checkout';
+      document.getElementById('due-total').textContent='Confirmed at checkout';
       if(isAddon()){
         document.getElementById('trust-copy').textContent='🔒 Secure checkout · Second Job Slot billed monthly';
         document.getElementById('authorization-copy').textContent='By continuing, you authorize $150 plus applicable tax each month for the Free-account-only Second Job Slot until canceled according to the Terms.';
