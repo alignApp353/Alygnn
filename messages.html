@@ -571,6 +571,21 @@ body.employer-role .notif-dropdown{
   box-shadow:0 12px 32px rgba(0,0,0,.12) !important;
   z-index:1200 !important;
 }
+/* Mobile website only: keep the employer notification panel inside the viewport. */
+@media (max-width: 860px) {
+  body.employer-role .notif-dropdown {
+    position: fixed !important;
+    top: 72px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: min(65dvh, 520px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 body.employer-role .notif-dropdown-header{
   background:var(--card, #FCFCFA) !important;
   display:flex !important;
