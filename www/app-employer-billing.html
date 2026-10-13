@@ -1141,6 +1141,36 @@ const UPGRADE_ONLY_FLOW=(()=>{
   }
 })();
 
+// Billing can start a checkout directly once a specific plan/slot was chosen.
+// The Payment page validates the same short-lived handoff that Pricing creates.
+// Without it Payment redirects back to Pricing and loses the selected action.
+function openSelectedBillingCheckout(options){
+  const product=String(options.product||'job_plan');
+  const plan=String(options.plan||'');
+  const billing=String(options.billing||'monthly');
+  const selection={
+    product,plan,billing,
+    back_to:'app-employer-billing.html',
+    ...(options.change?{change:String(options.change)}:{}),
+    ...(options.effective?{effective:String(options.effective)}:{})
+  };
+  const handoff={...selection,created_at:Date.now()};
+
+  try{
+    sessionStorage.setItem('alygnnEmployerPricingHandoff',JSON.stringify(handoff));
+    sessionStorage.setItem('alygnn_pending_employer_checkout',JSON.stringify(handoff));
+  }catch(error){
+    console.warn('Could not preserve selected billing checkout:',error);
+    showMessage('Could not open checkout. Please try again.','error');
+    return;
+  }
+
+  const query=new URLSearchParams(selection);
+  query.set('return','billing');
+  query.set('from_pricing','1');
+  location.href='app-employer-payment.html?'+query.toString();
+}
+
 const PLAN_CATALOG={
   monthly:{
     launch:{name:'Launch',price:299,cents:29900,slots:3,rank:1},
@@ -1977,12 +2007,11 @@ function renderPlans(){
     .querySelectorAll('[data-checkout-plan]')
     .forEach(button=>{
       button.onclick=()=>{
-        location.href=
-          'app-employer-payment.html?return=billing&plan='+
-          encodeURIComponent(
-            button.dataset.checkoutPlan
-          )+
-          '&billing=monthly';
+        openSelectedBillingCheckout({
+          product:'job_plan',
+          plan:button.dataset.checkoutPlan,
+          billing:displayBilling
+        });
       };
     });
 
@@ -2089,8 +2118,9 @@ function renderPaidExtraCapacity(){
       'Add 1 Weekly Job Slot — $99';
 
     $('paid-extra-btn').onclick=()=>{
-      location.href=
-        'app-employer-payment.html?return=billing&plan=weekly_slot&billing=weekly';
+      openSelectedBillingCheckout({
+        product:'job_plan',plan:'weekly_slot',billing:'weekly'
+      });
     };
 
     return;
@@ -2146,8 +2176,9 @@ function renderPaidExtraCapacity(){
     'Add 1 Weekly Job Slot — $99';
 
   $('paid-extra-btn').onclick=()=>{
-    location.href=
-      'app-employer-payment.html?return=billing&plan=weekly_slot&billing=weekly';
+    openSelectedBillingCheckout({
+      product:'job_plan',plan:'weekly_slot',billing:'weekly'
+    });
   };
 }
 
@@ -2382,19 +2413,13 @@ You keep ${planName(current)} through ${fmtDate(summary?.current_period_end)}. O
   if(upgrade&&selectedTiming==='immediate'){
     closePlanChoice();
 
-    const u=new URL(
-      'app-employer-payment.html',
-      location.href
-    );
-
-    u.searchParams.set('return','billing');
-    u.searchParams.set('product','job_plan');
-    u.searchParams.set('plan',target);
-    u.searchParams.set('billing',billing);
-    u.searchParams.set('change','upgrade');
-    u.searchParams.set('effective','immediate');
-
-    location.href=u.toString();
+    openSelectedBillingCheckout({
+      product:'job_plan',
+      plan:target,
+      billing,
+      change:'upgrade',
+      effective:'immediate'
+    });
     return;
   }
 
@@ -2690,8 +2715,9 @@ $('pricing-btn-bottom').onclick=()=>{
 
 $('addon-btn').onclick=()=>{
   if(!$('addon-btn').disabled){
-    location.href=
-      'app-employer-payment.html?return=billing&product=additional_slot&billing=monthly';
+    openSelectedBillingCheckout({
+      product:'additional_slot',billing:'monthly'
+    });
   }
 };
 
