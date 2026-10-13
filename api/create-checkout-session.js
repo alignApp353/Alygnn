@@ -1085,8 +1085,8 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
       'phases[0][proration_behavior]':'none',
       'phases[0][metadata][employer_id]':employerId,
       'phases[0][metadata][product]':'job_plan',
-      'phases[0][metadata][plan]':targetPlan,
-      'phases[0][metadata][billing]':billing,
+      'phases[0][metadata][plan]':currentPlan,
+      'phases[0][metadata][billing]':currentBilling,
       'phases[1][start_date]':end,
       'phases[1][duration][interval]':'month',
       'phases[1][duration][interval_count]':MANAGE_CATALOG[billing][targetPlan].intervalCount,
@@ -1278,7 +1278,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
 
   const successUrl=allowedReturnUrl(
     input.success_url,
-    `https://alygnn.com/employer-dashboard.html?payment=upgrade-success&plan=${encodeURIComponent(targetPlan)}&billing=${encodeURIComponent(billing)}`
+    `https://alygnn.com/payment.html?action=change_plan&target_plan=${encodeURIComponent(targetPlan)}&billing=${encodeURIComponent(billing)}&upgrade_session_id={CHECKOUT_SESSION_ID}`
   );
   const cancelUrl=allowedReturnUrl(
     input.cancel_url,
@@ -1693,6 +1693,39 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   };
 }
 
+
+async function syncCompletedPlanUpgradeCheckout({user,checkoutSessionId}){
+  const id=String(checkoutSessionId||'').trim();
+  if(!/^cs_(test|live)_[a-zA-Z0-9]+$/.test(id)){
+    const e=new Error('Invalid checkout reference.');e.status=400;throw e;
+  }
+  const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(id));
+  const meta=checkout?.metadata||{};
+  if(String(meta.product||'')!=='plan_upgrade' || String(meta.employer_id||'')!==String(user.id)){
+    const e=new Error('This checkout does not belong to your employer account.');e.status=403;throw e;
+  }
+  const completed=checkout.status==='complete' && (
+    checkout.payment_status==='paid' || checkout.payment_status==='no_payment_required'
+  );
+  if(!completed){const e=new Error('Stripe has not confirmed this checkout.');e.status=409;throw e;}
+  const targetPlan=String(meta.target_plan||'').toLowerCase();
+  const targetBilling=String(meta.billing||'').toLowerCase();
+  if(!MANAGE_CATALOG[targetBilling]?.[targetPlan] || !meta.subscription_id ||
+     meta.target_price_id!==MANAGE_CATALOG[targetBilling][targetPlan].priceId){
+    const e=new Error('Upgrade checkout metadata is invalid.');e.status=400;throw e;
+  }
+  const ent=await getEntitlement(user.id);
+  if(exactPlan(ent)===targetPlan && billingPeriod(ent)===targetBilling){
+    return {ok:true,change:'upgrade_applied',already_applied:true,target_plan:targetPlan};
+  }
+  const sub=await manageStripe('GET','subscriptions/'+encodeURIComponent(meta.subscription_id));
+  if(!subscriptionIsActive(sub)){const e=new Error('The original subscription is not active.');e.status=409;throw e;}
+  if(meta.current_plan && subscriptionPlan(ent,sub)!==meta.current_plan){
+    const e=new Error('Your original plan has changed. Contact Alygnn support to reconcile the payment.');e.status=409;throw e;
+  }
+  await applyPaidFixedUpgrade({employerId:user.id,sub,targetPlan,billing:targetBilling,targetPrice:meta.target_price_id});
+  return {ok:true,change:'upgrade_applied',already_applied:false,target_plan:targetPlan};
+}
 
 async function syncPlanUpgradePayment({user,paymentIntentId}){
   const paymentId=String(paymentIntentId||'').trim();
@@ -2267,6 +2300,11 @@ module.exports = async function handler(req, res) {
         checkoutSessionId: input.checkout_session_id
       });
       return send(res, 200, result);
+    }
+
+    if (billingAction === 'sync_plan_upgrade_checkout') {
+      const result=await syncCompletedPlanUpgradeCheckout({user,checkoutSessionId:input.checkout_session_id});
+      return send(res,200,result);
     }
 
     if (billingAction === 'sync_plan_upgrade_payment') {
