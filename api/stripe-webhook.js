@@ -265,6 +265,76 @@ async function fulfillCheckout(session) {
       throw new Error('Plan upgrade subscription item could not be identified.');
     }
 
+    const previousBilling=String(meta.current_billing||currentSubscription.metadata?.billing||'monthly').toLowerCase();
+    if(previousBilling!==billing){
+      // Idempotency for Stripe webhook retries.
+      if(currentSubscription.schedule){
+        const existingScheduleId=typeof currentSubscription.schedule==='string'
+          ?currentSubscription.schedule:currentSubscription.schedule.id;
+        const existingSchedule=await stripeGet(`subscription_schedules/${encodeURIComponent(existingScheduleId)}`);
+        const nextPhase=(existingSchedule.phases||[]).find(p=>p.start_date===Number(meta.original_period_end));
+        const phasePrice=typeof nextPhase?.items?.[0]?.price==='string'
+          ?nextPhase.items[0].price:nextPhase?.items?.[0]?.price?.id;
+        if(phasePrice!==targetPriceId)throw new Error('A different billing schedule is already active.');
+        await upsertPlan({employerId,plan:targetPlan,billing,status:'active',periodEnd:Number(meta.original_period_end),subscription:currentSubscription});
+        const patched=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,{
+          method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),
+          body:JSON.stringify({stripe_plan_schedule_id:existingScheduleId})
+        });
+        if(!patched.ok)throw new Error('Could not record existing upgrade billing schedule.');
+        return;
+      }
+      const end=Number(currentSubscription.current_period_end||0);
+      const start=Number(currentSubscription.current_period_start||0);
+      const currentItem=currentSubscription.items?.data?.find(x=>x.id===itemId);
+      const currentPriceId=typeof currentItem?.price==='string'?currentItem.price:currentItem?.price?.id;
+      if(!end||end<=Math.floor(Date.now()/1000)||!start||!currentPriceId)
+        throw new Error('Cannot preserve upgrade renewal date; invalid subscription term.');
+      if(meta.original_period_end&&Number(meta.original_period_end)!==end)
+        throw new Error('Subscription renewal date changed since the upgrade checkout; manual review required.');
+      if(currentSubscription.schedule)
+        throw new Error('Subscription has an existing schedule; review before upgrading.');
+      const schedule=await stripePost('subscription_schedules',{from_subscription:subscriptionId});
+      const scheduleId=schedule.id;
+      try{
+        await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}`,{
+          end_behavior:'release',
+          'phases[0][start_date]':start,
+          'phases[0][end_date]':end,
+          'phases[0][items][0][price]':currentPriceId,
+          'phases[0][items][0][quantity]':currentItem.quantity||1,
+          'phases[0][proration_behavior]':'none',
+          'phases[0][metadata][employer_id]':employerId,
+          'phases[0][metadata][product]':'job_plan',
+          'phases[0][metadata][plan]':targetPlan,
+          'phases[0][metadata][billing]':billing,
+          'phases[1][start_date]':end,
+          'phases[1][duration][interval]':'month',
+          'phases[1][duration][interval_count]':billing==='quarterly'?3:1,
+          'phases[1][items][0][price]':targetPriceId,
+          'phases[1][items][0][quantity]':1,
+          'phases[1][proration_behavior]':'none',
+          'phases[1][metadata][employer_id]':employerId,
+          'phases[1][metadata][product]':'job_plan',
+          'phases[1][metadata][plan]':targetPlan,
+          'phases[1][metadata][billing]':billing
+        });
+      }catch(error){
+        // Leave the schedule available for retry/reconciliation; don't swap
+        // price or grant access unless the schedule update succeeds.
+        throw error;
+      }
+      const updatedSubscription=await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+      await upsertPlan({employerId,plan:targetPlan,billing,status:'active',periodEnd:end,subscription:updatedSubscription});
+      // Preserve the schedule reference after upsertPlan clears pending changes.
+      const patch=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,{
+        method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),
+        body:JSON.stringify({stripe_plan_schedule_id:scheduleId})
+      });
+      if(!patch.ok)throw new Error('Could not record the new Stripe billing schedule.');
+      return;
+    }
+
     const updatedSubscription = await stripePost(
       `subscriptions/${encodeURIComponent(subscriptionId)}`,
       {
