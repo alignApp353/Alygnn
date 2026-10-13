@@ -380,6 +380,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let planChangeTiming = 'next_billing';
   let planChangePreview = null;
   let planChangeTax = null;
+  let planChangeSubtotal = null;
   let planChangePreviewRequest = 0;
 
   const PLAN_TOTAL_SLOTS={launch:4,growth:6,scale:9};
@@ -534,7 +535,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-sub').textContent=targetProduct.slots;
     document.getElementById('summary-features').innerHTML=targetFeatures.map(x=>`<li>${x}</li>`).join('');
     document.getElementById('summary-change-line').innerHTML=`<strong>Scheduled change:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} at ${periodEnd||'your next renewal'}.`;
-    document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
+    document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money((planChangeSubtotal??(planChangePreview-(planChangeTax||0)))/100)):'$0.00';
     document.getElementById('tax-row').style.display=immediate?'flex':'none';
     document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Checking tax…':money((planChangeTax||0)/100)):'$0.00';
     document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
@@ -552,6 +553,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const request=++planChangePreviewRequest;
     planChangePreview=null;
     planChangeTax=null;
+    planChangeSubtotal=null;
     if(!planChangeMode||planChangeTiming!=='immediate'||!session)return;
     try{
       const response=await fetch(CHECKOUT_ENDPOINT,{
@@ -564,7 +566,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(request!==planChangePreviewRequest)return;
       planChangePreview=Number(data.amount_due_now_cents);
       planChangeTax=Number(data.tax_cents||0);
-      if(!Number.isFinite(planChangePreview))throw new Error('Invalid amount preview.');
+      planChangeSubtotal=Number(data.subtotal_cents ?? (planChangePreview-planChangeTax));
+      if(!Number.isFinite(planChangePreview)||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
     }catch(error){
       if(request!==planChangePreviewRequest)return;
@@ -581,6 +584,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     planChangeTiming=value==='immediate'?'immediate':'next_billing';
     planChangePreview=null;
     planChangeTax=null;
+    planChangeSubtotal=null;
     ++planChangePreviewRequest;
     renderPlanChangeReview();
     if(planChangeTiming==='immediate')refreshPlanChangePreview();
