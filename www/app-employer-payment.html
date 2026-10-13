@@ -1118,6 +1118,26 @@ async function handleNativePaymentCompleted(){
   btn.disabled=true;
   btn.textContent='Payment received ✓';
 
+  if(context?.product==='weekly_slot' && context?.payment_intent_id){
+    const paymentId=context.payment_intent_id;
+    let confirmed=false;
+    for(let attempt=0;attempt<5;attempt++){
+      try{
+        const response=await fetch(CHECKOUT_ENDPOINT,{
+          method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+          body:JSON.stringify({action:'sync_weekly_slot_payment',payment_intent_id:paymentId})
+        });
+        const data=await response.json().catch(()=>({}));
+        if(response.ok&&data.synced===true){confirmed=true;break;}
+      }catch(error){console.warn('Weekly payment reconciliation:',error);}
+      await new Promise(resolve=>setTimeout(resolve,650));
+    }
+    showMessage(confirmed?'Your Weekly Job Slot is active.':'Stripe received your payment. Alygnn is still confirming the slot.');
+    await new Promise(resolve=>setTimeout(resolve,550));
+    location.replace(nativeSuccessDestination(context));
+    return;
+  }
+
   if(context?.upgrade&&context?.payment_intent_id){
     const targetName=planNameFromCode(context.target_plan);
     showMessage(`Payment received. Activating ${targetName} now…`);
@@ -1387,7 +1407,13 @@ function isUrgentAddon(){
   return product==='urgently_hiring_addon';
 }
 
+function weeklyCheckoutPrice(){
+  return basePaidPlanActive()?99:150;
+}
 function item(){
+  if(billing==='weekly'||plan==='weekly_slot'){
+    return {...CATALOG.weekly.weekly_slot,price:weeklyCheckoutPrice()};
+  }
   if(isAddon()) return ADDITIONAL_SLOT;
 
   if(isUrgentAddon()){
@@ -1585,6 +1611,7 @@ function renderOptions(){
   }
 
   const change=existingPlanChange();
+  if(billing==='weekly')CATALOG.weekly.weekly_slot.price=weeklyCheckoutPrice();
 
   $('plan-options').innerHTML=Object.entries(CATALOG[billing]).map(([key,p])=>`
     <button
@@ -1738,12 +1765,12 @@ function renderAll(){
   }else if(billing==='weekly' || plan==='weekly_slot'){
     $('checkout-heading').textContent='Add a weekly job slot.';
     $('checkout-lede').textContent=
-      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This $99 Weekly Job Slot adds 1 additional reusable slot for 7 days, giving you ${addedSlotTotal()} total while this weekly slot is active.`;
+      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This ${weeklyCheckoutPrice()===99?"$99":"$150"} Weekly Job Slot adds 1 additional reusable slot for 7 days, giving you ${addedSlotTotal()} total while this weekly slot is active.`;
     $('plan-panel-title').textContent='1. Confirm your Weekly Job Slot';
   }else{
     $('checkout-heading').textContent='Confirm your job-slot plan.';
     $('checkout-lede').textContent=
-      'Weekly Job Slots are available to every employer account. Each $99 Weekly Job Slot adds 1 reusable slot for 7 days on top of your current capacity — whether you are on Free, a standalone slot, Launch, Growth, or Scale.';
+      'Weekly Job Slots are available to every employer account. Each Weekly Job Slot adds 1 reusable slot for 7 days on top of your current capacity — whether you are on Free, a standalone slot, Launch, Growth, or Scale.';
     $('plan-panel-title').textContent='1. Confirm your plan';
   }
 
@@ -2200,11 +2227,11 @@ function weeklyIneligibleMessage(){
 
 function addonIneligibleMessage(){
   if(basePaidPlanActive()){
-    return 'The $150/month Second Job Slot is only available when you are not on a monthly or quarterly plan. Your plan can add another slot for $99/week.';
+    return 'The $150/month Second Job Slot is only available when you are not on a monthly or quarterly plan. Weekly capacity is $99/7 days with an active paid plan, or $150/7 days without one.';
   }
 
   if(secondSlotActive()){
-    return `Your $150/month Second Job Slot is already active. You currently have ${currentSlotLimit()} total reusable job slots. Add more capacity for $99/week.`;
+    return `Your $150/month Second Job Slot is already active. You currently have ${currentSlotLimit()} total reusable job slots. Weekly capacity costs $150/7 days without a paid plan.`;
   }
 
   return 'The Second Job Slot is not available for this account right now.';
@@ -2422,7 +2449,7 @@ async function initialize(){
       `Upgrade to ${next==='growth'?'Growth':'Scale'} instead.`;
 
     $('checkout-lede').textContent=
-      'You already have one active Weekly Job Slot. For ongoing capacity, the next plan is the better-value choice.';
+      'You already have one active Weekly Job Slot. Consider a monthly or quarterly plan if you need longer-term capacity.';
   }
 
   renderAll();
@@ -2511,7 +2538,9 @@ async function startCheckout(){
         ?'additional_slot'
         :isBoost()
           ?'job_boost'
-          :'job_plan',
+          :(billing==='weekly'||plan==='weekly_slot')
+            ?'weekly_slot'
+            :'job_plan',
       plan:(isAddon()||isBoost())?'':plan,
       billing:isAddon()
         ?'monthly'
