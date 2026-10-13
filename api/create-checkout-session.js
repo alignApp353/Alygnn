@@ -390,7 +390,6 @@ async function createNativePaymentIntent({
     description:name,
     receipt_email:user?.email||undefined,
     'automatic_payment_methods[enabled]':'true',
-    setup_future_usage:'off_session',
     'hooks[inputs][tax][calculation]':tax.id
   };
 
@@ -1234,8 +1233,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     'line_items[0][price]':upgrade.priceId,
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
-    billing_address_collection:'auto',
-    'payment_intent_data[setup_future_usage]':'off_session'
+    billing_address_collection:'auto'
   };
 
   if(resolvedPromotion?.promotion?.id){
@@ -1700,40 +1698,10 @@ async function syncPlanUpgradePayment({user,paymentIntentId}){
     };
   }
 
-  let sub=await manageStripe(
+  const sub=await manageStripe(
     'GET',
     'subscriptions/'+encodeURIComponent(subscriptionId)
   );
-
-  const paymentMethodId=
-    typeof payment?.payment_method==='string'
-      ?payment.payment_method
-      :payment?.payment_method?.id||null;
-
-  if(paymentMethodId){
-    const customerId=
-      typeof sub?.customer==='string'
-        ?sub.customer
-        :sub?.customer?.id||null;
-
-    sub=await manageStripe(
-      'POST',
-      'subscriptions/'+encodeURIComponent(subscriptionId),
-      {
-        default_payment_method:paymentMethodId
-      }
-    );
-
-    if(customerId){
-      await manageStripe(
-        'POST',
-        'customers/'+encodeURIComponent(customerId),
-        {
-          'invoice_settings[default_payment_method]':paymentMethodId
-        }
-      );
-    }
-  }
 
   await applyPaidFixedUpgrade({
     employerId:user.id,
@@ -1889,6 +1857,35 @@ async function runManageAction(res,user,input){
     });
   }
 
+  if(action==='preview_plan_change'){
+    const target=String(input.target_plan||'').toLowerCase();
+    const current=subscriptionPlan(ent,sub);
+    const billing=subscriptionBilling(ent,sub);
+    const requestedBilling=String(input.billing||billing).toLowerCase();
+    if(!subscriptionIsActive(sub)||!MANAGE_CATALOG[billing]?.[current])
+      return send(res,409,{error:'No active recurring plan is available for a payment preview.'});
+    if(requestedBilling!==billing)
+      return send(res,409,{error:'A billing-period change must be scheduled at renewal.'});
+    if(!MANAGE_CATALOG[billing]?.[target]||target===current)
+      return send(res,400,{error:'Select a different plan to preview.'});
+    const item=sub?.items?.data?.[0];
+    if(!item?.id)throw new Error('Subscription item is unavailable for preview.');
+    const targetPrice=await ensureRecurringPrice(target,billing);
+    // Invoice preview does not charge the card or modify the subscription.
+    const preview=await manageStripe('POST','invoices/create_preview',{
+      subscription:sub.id,
+      'subscription_details[items][0][id]':item.id,
+      'subscription_details[items][0][price]':targetPrice,
+      'subscription_details[items][0][quantity]':1,
+      'subscription_details[proration_behavior]':'always_invoice'
+    });
+    return send(res,200,{
+      ok:true,
+      amount_due_now_cents:Math.max(0,Number(preview.amount_due||0)),
+      currency:String(preview.currency||'usd').toLowerCase()
+    });
+  }
+
   if(action==='cancel_scheduled_change'){
     if(sub)await releaseSchedule(sub,ent);
     await patchEntitlement(user.id,{
@@ -1934,6 +1931,8 @@ async function runManageAction(res,user,input){
     return send(res,400,{error:'Unknown billing action.'});
   }
 
+  const changeTiming=String(input.change_timing||'next_billing').toLowerCase();
+  if(!['immediate','next_billing'].includes(changeTiming))return send(res,400,{error:'Choose when to change your plan.'});
   const target=String(input.target_plan||'').toLowerCase();
   const current=subscriptionPlan(ent,sub);
   const currentBilling=subscriptionBilling(ent,sub);
@@ -1944,6 +1943,10 @@ async function runManageAction(res,user,input){
 
   if(!targetCatalog?.[target]){
     return send(res,400,{error:'Choose Launch, Growth, or Scale with Monthly or Quarterly billing.'});
+  }
+
+  if(ent?.test_mode===true&&changeTiming==='immediate'){
+    return send(res,409,{error:'Immediate billing changes require an active Stripe subscription.'});
   }
 
   // Developer test entitlements mirror the same renewal-only plan-change UX.
@@ -2028,64 +2031,69 @@ async function runManageAction(res,user,input){
   const currentRank=Number(currentCatalog?.[current]?.rank||0);
   const targetRank=Number(targetCatalog?.[target]?.rank||0);
   const sameBilling=currentBilling===targetBilling;
-  const requestedTiming=String(
-    input.effective||
-    input.timing||
-    input.change_timing||
-    'immediate'
-  ).toLowerCase();
 
-  // Every higher-plan move supports two choices:
-  // 1) immediate = pay the exact difference now and unlock immediately
-  // 2) renewal   = pay $0 today and switch on the next billing date
-  if(
-    sameBilling &&
-    targetRank>currentRank &&
-    ['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming)
-  ){
-    const scheduled=await scheduleDowngrade({
-      employerId:user.id,
-      ent,
-      sub,
-      currentPlan:current,
-      targetPlan:target,
-      billing:targetBilling,
-      currentBilling
+  if(changeTiming==='immediate'){
+    // Changing monthly to quarterly resets Stripe's billing anchor; do not
+    // silently change the employer's renewal date.
+    if(!sameBilling)return send(res,409,{
+      error:'To preserve your existing renewal date, changes between Monthly and Quarterly billing must be scheduled for the next billing cycle.'
     });
 
+    const item=sub?.items?.data?.[0];
+    if(!item?.id)throw new Error('The current Stripe subscription item could not be found.');
+    if(targetRank<currentRank){
+      // Do not revoke access to existing plan-backed jobs on a downgrade.
+      const jobsUrl=new URL(manageBase()+'/rest/v1/jobs');
+      jobsUrl.searchParams.set('employer_id','eq.'+user.id);
+      jobsUrl.searchParams.set('posting_access_type','eq.plan');
+      jobsUrl.searchParams.set('status','in.(active,pending)');
+      jobsUrl.searchParams.set('select','id');
+      const jobsResponse=await fetch(jobsUrl,{headers:manageServiceHeaders()});
+      if(!jobsResponse.ok)throw new Error('Could not verify existing job usage. No change was made.');
+      const jobs=await jobsResponse.json();
+      const allowed=Number(targetCatalog[target].slots||0);
+      if(jobs.length>allowed)return send(res,409,{
+        error:`You have ${jobs.length} plan-backed jobs. Close enough jobs to reach the ${allowed}-slot limit before downgrading immediately, or schedule the downgrade for renewal.`
+      });
+    }
+
+    const targetPrice=await ensureRecurringPrice(target,targetBilling);
+    // Stripe computes the unused-time credit and remaining-time difference,
+    // invoices immediately and rejects incomplete payments without applying
+    // the upgrade. No hardcoded fixed-price upgrade charge is used.
+    sub=await detachPlanScheduleForImmediateChange({employerId:user.id,ent,sub});
+    const changed=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
+      'items[0][id]':item.id,
+      'items[0][price]':targetPrice,
+      'items[0][quantity]':1,
+      'billing_cycle_anchor':'unchanged',
+      'proration_behavior':'always_invoice',
+      'payment_behavior':'error_if_incomplete',
+      'metadata[employer_id]':user.id,
+      'metadata[product]':'job_plan',
+      'metadata[plan]':target,
+      'metadata[billing]':targetBilling,
+      'expand[]':'latest_invoice'
+    });
+    const invoice=changed?.latest_invoice;
+    await patchEntitlement(user.id,{
+      plan:planLegacyName(target),test_plan:target,test_mode:false,
+      subscription_status:String(changed.status||'active').toLowerCase(),
+      current_period_end:changed.current_period_end?new Date(Number(changed.current_period_end)*1000).toISOString():null,
+      slot_limit:targetCatalog[target].slots,billing_period:targetBilling,
+      urgently_hiring:['growth','scale'].includes(target),
+      alygnn_recommended:target==='scale',
+      plan_amount_cents:targetCatalog[target].cents,
+      stripe_plan_subscription_id:changed.id,
+      stripe_plan_schedule_id:null,pending_plan:null,
+      pending_billing_period:null,pending_plan_effective_at:null
+    });
     return send(res,200,{
-      ok:true,
-      ...scheduled,
-      change:'upgrade_scheduled',
-      current_billing_period:currentBilling,
-      target_billing_period:targetBilling,
-      current_plan:current,
-      target_plan:target,
-      amount_due_now_cents:0,
-      next_renewal_amount_cents:targetCatalog?.[target]?.cents??null
+      ok:true,change:'plan_change_applied',effective:'immediate',
+      current_plan:current,target_plan:target,billing_period:targetBilling,
+      amount_due_now_cents:typeof invoice==='object'?Number(invoice.amount_paid||0):null,
+      next_renewal_amount_cents:targetCatalog[target].cents
     });
-  }
-
-  // Same-cadence upgrades are immediate when "upgrade now" is chosen.
-  // If an older plan change left a Stripe Subscription Schedule attached,
-  // release it first so Stripe can swap the recurring Price immediately.
-  if(sameBilling&&targetRank>currentRank){
-    sub=await detachPlanScheduleForImmediateChange({
-      employerId:user.id,
-      ent,
-      sub
-    });
-    ent=await getEntitlement(user.id);
-
-    const result=await upgradeNow({
-      employerId:user.id,
-      ent,
-      sub,
-      targetPlan:target,
-      billing:targetBilling,
-      input
-    });
-    return send(res,200,{ok:true,...result});
   }
 
   // Downgrades and billing-cadence changes take effect at renewal so there is
@@ -2235,6 +2243,7 @@ module.exports = async function handler(req, res) {
     if ([
       'summary',
       'change_plan',
+      'preview_plan_change',
       'cancel_scheduled_change',
       'cancel_plan',
       'resume_plan',
