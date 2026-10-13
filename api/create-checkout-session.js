@@ -2704,18 +2704,14 @@ module.exports = async function handler(req, res) {
           payment_issue: true
         });
       }
-      // Server-enforced tier: Free accounts pay $150 per 7 days; accounts
-      // with an active paid Launch/Growth/Scale plan pay $99 per 7 days.
-      // Ignore any price supplied by the client; weekly slots can stack.
-      const hasActivePlan = access?.active_paid_plan === true || access?.base_paid_plan === true;
+      // Universal $99/7-day price. Server selects the Stripe Price;
+      // never trust a client-supplied amount. Works for Free and paid plans.
       const item = CHECKOUT_CATALOG.weekly.weekly_slot;
       name = item.name;
-      cents = hasActivePlan ? 9900 : 15000;
+      cents = item.cents;
       slots = item.slots;
       mode = item.mode;
-      // $150 Free tier uses an inline one-time Stripe Price so an extra
-      // Dashboard Price does not need to be created manually.
-      priceId = hasActivePlan ? item.priceId : '';
+      priceId = item.priceId;
 
 
     } else {
@@ -2749,7 +2745,7 @@ module.exports = async function handler(req, res) {
       priceId = item.priceId;
     }
 
-    if (!priceId && !(product==='weekly_slot' && cents===15000)) {
+    if (!priceId) {
       return send(res, 500, { error: 'Stripe Price ID is not configured for this Alygnn product.' });
     }
 
@@ -2834,13 +2830,7 @@ module.exports = async function handler(req, res) {
       'automatic_tax[enabled]': 'true',
       billing_address_collection: 'auto'
     };
-    if(product==='weekly_slot' && cents===15000){
-      params['line_items[0][price_data][currency]']='usd';
-      params['line_items[0][price_data][unit_amount]']='15000';
-      params['line_items[0][price_data][product_data][name]']=name;
-    }else{
-      params['line_items[0][price]']=priceId;
-    }
+    params['line_items[0][price]']=priceId;
 
     if(promotionCodeId){
       params['discounts[0][promotion_code]']=promotionCodeId;
