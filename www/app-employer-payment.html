@@ -343,7 +343,7 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
       <div class="billing-grid">
         <label class="billing-field billing-wide">
           <span>Country</span>
-          <select id="billing-country" autocomplete="country"></select>
+          <select id="billing-country" autocomplete="off"></select>
         </label>
         <label class="billing-field billing-wide address-autocomplete-wrap">
           <span>Address</span>
@@ -352,15 +352,15 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
         </label>
         <label class="billing-field">
           <span>City</span>
-          <input id="billing-city" autocomplete="address-level2" placeholder="City">
+          <input id="billing-city" autocomplete="off" placeholder="City">
         </label>
         <label class="billing-field">
           <span>State / province</span>
-          <input id="billing-state" autocomplete="address-level1" placeholder="State or province">
+          <input id="billing-state" autocomplete="off" placeholder="State or province">
         </label>
         <label class="billing-field billing-wide">
           <span>ZIP / postal code</span>
-          <input id="billing-postal" autocomplete="postal-code" placeholder="ZIP or postal code">
+          <input id="billing-postal" autocomplete="off" placeholder="ZIP or postal code">
         </label>
       </div>
     </div>
@@ -840,22 +840,21 @@ function populateBillingCountries(){
   let names=null;
   try{names=new Intl.DisplayNames([navigator.language||'en'],{type:'region'});}catch(_error){}
 
-  const current=select.value;
-  select.innerHTML=COUNTRY_CODES.map(code=>{
+  // Each employer must enter their own country and address for each checkout.
+  // Old versions saved the previous employer's billing address globally on the
+  // device, so clear that legacy key and never prefill from it.
+  try{localStorage.removeItem(BILLING_ADDRESS_KEY);}catch(_error){}
+
+  select.innerHTML='<option value="">Select your country</option>'+COUNTRY_CODES.map(code=>{
     let label=code;
     try{label=names?.of(code)||code;}catch(_error){}
     return `<option value="${code}">${label}</option>`;
   }).join('');
-
-  let saved=null;
-  try{saved=JSON.parse(localStorage.getItem(BILLING_ADDRESS_KEY)||'null');}catch(_error){}
-  select.value=current||saved?.country||'US';
-  if(saved){
-    $('billing-line1').value=saved.line1||'';
-    $('billing-city').value=saved.city||'';
-    $('billing-state').value=saved.state||'';
-    $('billing-postal').value=saved.postal_code||'';
-  }
+  select.value='';
+  ['billing-line1','billing-city','billing-state','billing-postal'].forEach(id=>{
+    const field=$(id);
+    if(field)field.value='';
+  });
 
   installAddressAutocomplete();
 }
@@ -1010,15 +1009,6 @@ async function chooseAddressSuggestion(item){
     if(address.state)$('billing-state').value=address.state;
     if(address.postal_code)$('billing-postal').value=address.postal_code;
 
-    try{
-      localStorage.setItem(BILLING_ADDRESS_KEY,JSON.stringify({
-        country:String($('billing-country')?.value||'').trim().toUpperCase(),
-        line1:String($('billing-line1')?.value||'').trim(),
-        city:String($('billing-city')?.value||'').trim(),
-        state:String($('billing-state')?.value||'').trim(),
-        postal_code:String($('billing-postal')?.value||'').trim()
-      }));
-    }catch(_error){}
   }catch(error){
     console.warn('Address details:',error);
   }finally{
@@ -1090,7 +1080,8 @@ function billingAddressPayload(){
     throw new Error('Enter your billing city.');
   }
 
-  try{localStorage.setItem(BILLING_ADDRESS_KEY,JSON.stringify(address));}catch(_error){}
+  // Pass the entered address only to Stripe when the employer confirms checkout.
+  // Never keep it in app-wide storage for the next signed-in employer.
   return address;
 }
 
