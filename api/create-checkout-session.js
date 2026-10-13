@@ -2509,6 +2509,7 @@ module.exports = async function handler(req, res) {
     }
     if ([
       'summary',
+      'preview_plan_change',
       'change_plan',
       'cancel_scheduled_change',
       'cancel_plan',
