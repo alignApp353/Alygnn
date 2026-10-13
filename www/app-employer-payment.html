@@ -726,6 +726,56 @@ async function reconcilePendingWeeklyCheckout(){
   }
 }
 
+const UPGRADE_PENDING_CHECKOUT_KEY='alygnn_pending_upgrade_checkout';
+let upgradeSyncInProgress=false;
+function savePendingPlanUpgrade(checkoutSessionId,context){
+  if(!checkoutSessionId||!context?.upgrade)return;
+  try{localStorage.setItem(UPGRADE_PENDING_CHECKOUT_KEY,JSON.stringify({
+    checkout_session_id:String(checkoutSessionId),
+    target_plan:String(context.target_plan||''),
+    returnMode:String(context.returnMode||'billing'),
+    created_at:Date.now()
+  }));}catch(_){}
+}
+async function reconcilePendingPlanUpgradeCheckout(){
+  if(!session?.access_token||upgradeSyncInProgress)return false;
+  let pending=null;
+  try{pending=JSON.parse(localStorage.getItem(UPGRADE_PENDING_CHECKOUT_KEY)||'null');}catch(_){}
+  if(!pending?.checkout_session_id)return false;
+  if(Date.now()-Number(pending.created_at||0)>24*60*60*1000){
+    localStorage.removeItem(UPGRADE_PENDING_CHECKOUT_KEY);
+    return false;
+  }
+  upgradeSyncInProgress=true;
+  try{
+    const response=await fetch(CHECKOUT_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({
+        action:'sync_plan_upgrade_checkout',
+        checkout_session_id:pending.checkout_session_id
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      if(response.status!==409)showMessage(data.error||'Could not verify the upgrade checkout.');
+      return false;
+    }
+    if(data.change==='upgrade_applied'){
+      localStorage.removeItem(UPGRADE_PENDING_CHECKOUT_KEY);
+      showMessage(`${planNameFromCode(pending.target_plan)} activated. Your additional hiring capacity is ready.`);
+      setTimeout(()=>location.replace(nativeSuccessDestination({
+        upgrade:true,target_plan:pending.target_plan,returnMode:pending.returnMode
+      })),450);
+      return true;
+    }
+    return false;
+  }catch(error){
+    console.warn('Could not reconcile Stripe upgrade checkout:',error);
+    return false;
+  }finally{upgradeSyncInProgress=false;}
+}
+
 let hostedCheckoutListenersInstalled=false;
 
 async function installHostedCheckoutReturnListeners(){
@@ -739,7 +789,7 @@ async function installHostedCheckoutReturnListeners(){
     if(browser?.addListener){
       await browser.addListener(
         'browserFinished',
-        ()=>reconcilePendingWeeklyCheckout()
+        ()=>{reconcilePendingWeeklyCheckout();reconcilePendingPlanUpgradeCheckout();}
       );
     }
   }catch(error){
@@ -751,7 +801,7 @@ async function installHostedCheckoutReturnListeners(){
       await app.addListener(
         'appStateChange',
         ({isActive})=>{
-          if(isActive)reconcilePendingWeeklyCheckout();
+          if(isActive){reconcilePendingWeeklyCheckout();reconcilePendingPlanUpgradeCheckout();}
         }
       );
     }
@@ -760,8 +810,9 @@ async function installHostedCheckoutReturnListeners(){
   }
 }
 
-async function openHostedCheckoutInApp(url,checkoutSessionId){
+async function openHostedCheckoutInApp(url,checkoutSessionId,context=null){
   savePendingWeeklyCheckout(checkoutSessionId);
+  savePendingPlanUpgrade(checkoutSessionId,context);
   await installHostedCheckoutReturnListeners();
 
   const browser=capacitorBrowser();
@@ -1238,6 +1289,14 @@ function clearMessage(){
 }
 
 let validatedPromotionCode='';
+let validatedPromotionDetails=null;
+
+function fullUpgradePromotion(){
+  const active=existingPlanChange();
+  return Boolean(active?.upgrade && validatedPromotionDetails?.percent_off===100 &&
+    validatedPromotionCode && validatedPromotionCode===checkoutPromotionCode());
+}
+
 
 function checkoutPromotionCode(){
   return String(
@@ -1295,6 +1354,7 @@ async function validatePromotionCode(){
     }
 
     validatedPromotionCode=code;
+    validatedPromotionDetails=data;
 
     const detail=
       data.percent_off!=null
@@ -1303,10 +1363,12 @@ async function validatePromotionCode(){
           ?`${money(Number(data.amount_off_cents)/100)} off`
           :'Promotion code accepted';
 
-    setPromoStatus(`${detail} — applied at secure checkout.`,'success');
+    setPromoStatus(`${detail} — verified. Stripe confirms the final checkout total.`,'success');
     button.textContent='Applied';
+    if(existingPlanChange()?.upgrade){renderSummary();updateCheckoutButton();}
   }catch(error){
     validatedPromotionCode='';
+    validatedPromotionDetails=null;
     setPromoStatus(
       error?.message||
       'This promotion code could not be applied.',
@@ -1582,9 +1644,12 @@ function renderSummary(){
       $('features').innerHTML=target.features.map(x=>`<li>${x}</li>`).join('');
       $('subtotal').textContent=money(change.difference);
       $('tax-row').hidden=false;
-      $('due').textContent=money(change.difference)+' + tax';
-      $('authorization').textContent=
-        `By continuing, you authorize the full ${display(change.difference)} plan-price difference plus applicable tax to be charged upfront today. ${planNameFromCode(change.target)} activates only after that payment succeeds. Your current renewal date stays the same.`;
+      $('due').textContent=fullUpgradePromotion()
+        ?'Estimated $0.00 with promo'
+        :money(change.difference)+' + tax';
+      $('authorization').textContent=fullUpgradePromotion()
+        ?`Your promotional upgrade is estimated at $0. Stripe will verify the code and confirm the total at checkout. ${planNameFromCode(change.target)} activates only after checkout completes. If this is a test plan, access lasts until the current test term ends.`
+        :`By continuing, you authorize the full ${display(change.difference)} plan-price difference plus applicable tax to be charged upfront today. ${planNameFromCode(change.target)} activates only after that payment succeeds. Your current renewal date stays the same.`;
       updateCheckoutButton();
       return;
     }
@@ -1759,7 +1824,9 @@ function updateCheckoutButton(){
   }
 
   if(change?.upgrade){
-    $('checkout-btn').textContent=`Pay ${display(change.difference)} upfront & upgrade`;
+    $('checkout-btn').textContent=fullUpgradePromotion()
+      ?'Continue to $0 checkout & upgrade'
+      :`Pay ${display(change.difference)} upfront & upgrade`;
     return;
   }
 
@@ -1956,9 +2023,9 @@ async function executeExistingPlanChange(){
           change.difference*100
         )/100;
 
-      showMessage(
-        `${display(amount)} is the upgrade difference. Complete the secure payment to unlock ${planNameFromCode(change.target)} immediately.`
-      );
+      showMessage(amount===0
+        ?`Complete the $0 Stripe Checkout to activate ${planNameFromCode(change.target)} immediately after confirmation.`
+        :`${display(amount)} is the upgrade difference. Complete secure payment to unlock ${planNameFromCode(change.target)} after confirmation.`);
 
       if(data.payment_sheet&&data.client_secret){
         const address=billingAddressPayload();
@@ -1971,9 +2038,11 @@ async function executeExistingPlanChange(){
       }
 
       if(data.hosted_invoice_url){
-        setTimeout(()=>{
-          location.href=data.hosted_invoice_url;
-        },350);
+        await openHostedCheckoutInApp(
+          data.hosted_invoice_url,
+          data.checkout_session_id,
+          {upgrade:true,target_plan:change.target,returnMode}
+        );
         return true;
       }
 
@@ -2010,6 +2079,9 @@ async function executeExistingPlanChange(){
       return true;
     }
 
+    if(data.change==='plan_change_scheduled' && change.upgrade){
+      throw new Error('This immediate upgrade was scheduled instead of activated. Please contact Alygnn; no payment was confirmed.');
+    }
     if(
       data.change==='downgrade_scheduled' ||
       data.change==='plan_change_scheduled'
@@ -2272,12 +2344,10 @@ async function initialize(){
    * If Android returned to this page after a hosted promo checkout,
    * confirm the Stripe session before rendering another payment attempt.
    */
-  const reconciledWeekly=
-    await reconcilePendingWeeklyCheckout();
-
-  if(reconciledWeekly){
-    return;
-  }
+  const reconciledWeekly=await reconcilePendingWeeklyCheckout();
+  if(reconciledWeekly)return;
+  const reconciledUpgrade=await reconcilePendingPlanUpgradeCheckout();
+  if(reconciledUpgrade)return;
 
   const email=String(
     session.user?.email ||
@@ -2567,7 +2637,9 @@ $('promo-toggle')?.addEventListener('click',()=>{
 $('promo-code')?.addEventListener('input',event=>{
   event.target.value=String(event.target.value||'').toUpperCase();
   validatedPromotionCode='';
+  validatedPromotionDetails=null;
   setPromoStatus('');
+  if(existingPlanChange()?.upgrade){renderSummary();updateCheckoutButton();}
   if($('promo-apply'))$('promo-apply').textContent='Apply';
 });
 
