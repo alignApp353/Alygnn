@@ -1067,10 +1067,17 @@ async function applyPaidFixedUpgrade({employerId,sub,targetPlan,billing,targetPr
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
+  const currentBilling=subscriptionBilling(ent,sub);
+  const oldRenewal=stripePeriodEndUnix(sub);
+  const cadenceChange=currentBilling!==billing;
+  if(cadenceChange&&(!oldRenewal||oldRenewal<=Math.floor(Date.now()/1000)+60)){
+    throw new Error('The current renewal date cannot be preserved; contact billing support.');
+  }
   const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
     'items[0][id]':item.id,
     'items[0][price]':targetPrice,
     'items[0][quantity]':1,
+    ...(cadenceChange?{trial_end:oldRenewal}:{}),
     proration_behavior:'none',
     'metadata[employer_id]':employerId,
     'metadata[product]':'job_plan',
@@ -1196,11 +1203,13 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const difference=Math.max(0,Number(targetCatalog.cents)-Number(currentCatalog.cents));
   if(difference<=0)throw new Error('This plan change is not an upgrade.');
 
-  const upgrade=fixedUpgradePrice(currentPlan,targetPlan,billing);
-  if(!upgrade?.priceId){
+  const currentBilling=subscriptionBilling(ent,sub);
+  const sameBilling=currentBilling===billing;
+  const upgrade=sameBilling?fixedUpgradePrice(currentPlan,targetPlan,billing):null;
+  if(sameBilling&&!upgrade?.priceId){
     throw new Error('The Stripe Price ID for this Alygnn upgrade difference is not configured.');
   }
-  if(Number(upgrade.cents)!==difference){
+  if(sameBilling&&Number(upgrade.cents)!==difference){
     throw new Error("The configured Stripe upgrade Price does not match Alygnn's fixed plan difference.");
   }
 
@@ -1239,7 +1248,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     subscription_id:sub.id,
     subscription_item_id:item.id,
     target_price_id:targetPrice,
-    upgrade_price_id:upgrade.priceId,
+    upgrade_price_id:upgrade?.priceId||'',
     fixed_difference_cents:difference,
     charged_difference_cents:amountDue,
     promotion_code:requestedPromotionCode||'',
@@ -1249,7 +1258,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
 
   // No browser for a fully discounted immediate upgrade. Stripe first
   // records the coupon redemption on a paid $0 invoice, then we switch plans.
-  if(resolvedPromotion?.promotion?.id && amountDue===0){
+  if(sameBilling&&resolvedPromotion?.promotion?.id && amountDue===0){
     const paid=await confirmZeroUpgradeInvoice({
       employerId,
       userEmail:input.employer_email||null,
@@ -1277,7 +1286,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   // Other upgrades use the native Stripe PaymentSheet when possible.
   // For partial promotional payments, Stripe's hosted Checkout still verifies
   // coupon usage; do not bypass that verification for a positive amount.
-  if(nativePaymentSheetRequested(input)&&!resolvedPromotion){
+  if(sameBilling&&nativePaymentSheetRequested(input)&&!resolvedPromotion){
     const native=await createNativePaymentSheetCheckout({
       user:{email:input.employer_email||null},
       employerId,
@@ -1302,7 +1311,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
       current_plan:currentPlan,
       target_plan:targetPlan,
       next_renewal_amount_cents:targetCatalog.cents,
-      stripe_upgrade_price_id:upgrade.priceId,
+      stripe_upgrade_price_id:upgrade?.priceId||null,
       stripe_target_plan_price_id:targetPrice,
       ...native
     };
@@ -1323,11 +1332,18 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     success_url:successUrl,
     cancel_url:cancelUrl,
     client_reference_id:employerId,
-    'line_items[0][price]':upgrade.priceId,
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto'
   };
+  if(sameBilling){
+    params['line_items[0][price]']=upgrade.priceId;
+  }else{
+    params['line_items[0][price_data][currency]']='usd';
+    params['line_items[0][price_data][unit_amount]']=difference;
+    params['line_items[0][price_data][product_data][name]']=`Alygnn ${currentPlan} ${currentBilling} to ${targetPlan} ${billing} upgrade`;
+    params['line_items[0][price_data][product_data][tax_code]']=ALYGNN_TAX_CODE;
+  }
   if(amountDue>0){
     params['payment_intent_data[setup_future_usage]']='off_session';
   }
@@ -1361,7 +1377,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     current_plan:currentPlan,
     target_plan:targetPlan,
     next_renewal_amount_cents:targetCatalog.cents,
-    stripe_upgrade_price_id:upgrade.priceId,
+    stripe_upgrade_price_id:upgrade?.priceId||null,
     stripe_target_plan_price_id:targetPrice
   };
 }
@@ -2055,6 +2071,31 @@ async function runManageAction(res,user,input){
     });
   }
 
+  // Read-only quote: use the same catalog amounts as the actual upgrade charge.
+  // Stripe Checkout calculates location-dependent tax once the billing address is known.
+  if(action==='preview_plan_change'){
+    const target=String(input.target_plan||'').toLowerCase();
+    const current=subscriptionPlan(ent,sub);
+    const currentBilling=subscriptionBilling(ent,sub);
+    const targetBilling=String(input.billing||input.target_billing||currentBilling).toLowerCase();
+    const from=MANAGE_CATALOG[currentBilling]?.[current];
+    const to=MANAGE_CATALOG[targetBilling]?.[target];
+    if(!from||!to||Number(to.rank)<=Number(from.rank)){
+      return send(res,400,{error:'An immediate price quote is only available for a higher-tier plan.'});
+    }
+    if(!subscriptionIsActive(sub)||String(sub.status||'').toLowerCase()==='past_due'){
+      return send(res,409,{error:'An active, current Stripe subscription is required to quote this upgrade.'});
+    }
+    const subtotal=Math.max(0,to.cents-from.cents);
+    if(subtotal<=0)return send(res,400,{error:'The requested plan has no positive upgrade balance.'});
+    return send(res,200,{
+      ok:true,subtotal_cents:subtotal,amount_due_now_cents:subtotal,
+      tax_cents:null,tax_pending:true,
+      tax_message:'Applicable tax is calculated by Stripe Checkout using your billing address.',
+      current_plan:current,current_billing:currentBilling,target_plan:target,target_billing:targetBilling
+    });
+  }
+
   if(action==='cancel_scheduled_change'){
     if(sub)await releaseSchedule(sub,ent);
     await patchEntitlement(user.id,{
@@ -2239,7 +2280,7 @@ async function runManageAction(res,user,input){
     });
   }
 
-  const immediateUpgradeRequest=currentBilling===targetBilling &&
+  const immediateUpgradeRequest=
     Number(targetCatalog?.[target]?.rank||0)>Number(currentCatalog?.[current]?.rank||0) &&
     !['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming);
 
@@ -2282,7 +2323,6 @@ async function runManageAction(res,user,input){
   // 1) immediate = pay the exact difference now and unlock immediately
   // 2) renewal   = pay $0 today and switch on the next billing date
   if(
-    sameBilling &&
     targetRank>currentRank &&
     ['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming)
   ){
@@ -2311,7 +2351,7 @@ async function runManageAction(res,user,input){
 
   // Same-cadence upgrades create payment FIRST. A schedule, if present, is
   // only released by the confirmed-payment fulfillment path.
-  if(sameBilling&&targetRank>currentRank){
+  if(targetRank>currentRank && immediateUpgradeRequest){
     const result=await upgradeNow({
       employerId:user.id,
       ent,
