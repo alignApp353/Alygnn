@@ -1602,6 +1602,10 @@ function renderBillingOverview(context){
 }
 
 function renderPending(){
+  // The scheduled-change card is currently not present in this page.
+  // Do nothing instead of crashing the billing page.
+  if(!$('pending-card') || !$('cancel-pending')) return;
+
   /*
    * A pending downgrade/cancellation only makes sense while a paid plan
    * is actually current. Old pending_plan fields can survive a canceled
@@ -2353,25 +2357,34 @@ You keep ${planName(current)} through ${fmtDate(summary?.current_period_end)}. O
   }
 }
 
-$('plan-choice-now').onclick=()=>{
-  const ctx=planChoiceContext;
-  if(!ctx)return;
-  changePlan(ctx.target,ctx.button,'immediate');
-};
+function bindPlanChoiceEvents(){
+  const nowBtn=$('plan-choice-now');
+  const renewalBtn=$('plan-choice-renewal');
+  const cancelBtn=$('plan-choice-cancel');
+  const overlay=$('plan-choice-overlay');
 
-$('plan-choice-renewal').onclick=()=>{
-  const ctx=planChoiceContext;
-  if(!ctx)return;
-  changePlan(ctx.target,ctx.button,'renewal');
-};
+  if(!nowBtn || !renewalBtn || !cancelBtn || !overlay) return;
 
-$('plan-choice-cancel').onclick=closePlanChoice;
+  nowBtn.onclick=()=>{
+    const ctx=planChoiceContext;
+    if(!ctx)return;
+    changePlan(ctx.target,ctx.button,'immediate');
+  };
 
-$('plan-choice-overlay').addEventListener('click',event=>{
-  if(event.target===$('plan-choice-overlay')){
-    closePlanChoice();
-  }
-});
+  renewalBtn.onclick=()=>{
+    const ctx=planChoiceContext;
+    if(!ctx)return;
+    changePlan(ctx.target,ctx.button,'renewal');
+  };
+
+  cancelBtn.onclick=closePlanChoice;
+
+  overlay.addEventListener('click',event=>{
+    if(event.target===overlay){
+      closePlanChoice();
+    }
+  });
+}
 
 async function cancelPending(){
   if(busy)return;
@@ -2577,9 +2590,9 @@ $('addon-btn').onclick=()=>{
   }
 };
 
-$('cancel-pending').onclick=cancelPending;
-$('cancel-plan-btn').onclick=cancelPlan;
-$('addon-cancel-btn').onclick=toggleSecondSlotCancellation;
+if($('cancel-pending')) $('cancel-pending').onclick=cancelPending;
+if($('cancel-plan-btn')) $('cancel-plan-btn').onclick=cancelPlan;
+if($('addon-cancel-btn')) $('addon-cancel-btn').onclick=toggleSecondSlotCancellation;
 
 async function refresh(){
   if(document.visibilityState!=='visible')return;
@@ -2706,6 +2719,8 @@ function ensureUpgradeRefresh(){
     }
   },3000);
 }
+
+window.addEventListener('DOMContentLoaded', bindPlanChoiceEvents, {once:true});
 
 (async()=>{
   try{
