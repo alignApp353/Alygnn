@@ -1408,7 +1408,8 @@ function isUrgentAddon(){
 }
 
 function weeklyCheckoutPrice(){
-  return basePaidPlanActive()?99:150;
+  // Universal weekly rate. The separate Second Job Slot remains $150/month.
+  return 99;
 }
 function item(){
   if(billing==='weekly'||plan==='weekly_slot'){
@@ -1765,7 +1766,7 @@ function renderAll(){
   }else if(billing==='weekly' || plan==='weekly_slot'){
     $('checkout-heading').textContent='Add a weekly job slot.';
     $('checkout-lede').textContent=
-      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This ${weeklyCheckoutPrice()===99?"$99":"$150"} Weekly Job Slot adds 1 additional reusable slot for 7 days, giving you ${addedSlotTotal()} total while this weekly slot is active.`;
+      `You currently have ${currentSlotLimit()} reusable job slot${currentSlotLimit()===1?'':'s'}. This $99 Weekly Job Slot adds 1 additional reusable slot for 7 days, giving you ${addedSlotTotal()} total while this weekly slot is active.`;
     $('plan-panel-title').textContent='1. Confirm your Weekly Job Slot';
   }else{
     $('checkout-heading').textContent='Confirm your job-slot plan.';
@@ -2227,11 +2228,11 @@ function weeklyIneligibleMessage(){
 
 function addonIneligibleMessage(){
   if(basePaidPlanActive()){
-    return 'The $150/month Second Job Slot is only available when you are not on a monthly or quarterly plan. Weekly capacity is $99/7 days with an active paid plan, or $150/7 days without one.';
+    return 'The $150/month Second Job Slot is only available when you are not on a monthly or quarterly plan. Weekly capacity is $99/7 days for every employer.';
   }
 
   if(secondSlotActive()){
-    return `Your $150/month Second Job Slot is already active. You currently have ${currentSlotLimit()} total reusable job slots. Weekly capacity costs $150/7 days without a paid plan.`;
+    return `Your $150/month Second Job Slot is already active. You currently have ${currentSlotLimit()} total reusable job slots. Weekly capacity costs $99/7 days for every employer.`;
   }
 
   return 'The Second Job Slot is not available for this account right now.';
