@@ -1857,36 +1857,15 @@ async function runManageAction(res,user,input){
     });
   }
 
-  // Isolate the remaining-plan price from old invoices and next renewals.
-  // The customer's subscription itself sets the exact active billing interval.
-  function remainingUpgradeCents(subscription, currentCents, targetCents) {
-    const item = subscription?.items?.data?.[0] || {};
-    const start = Number(item.current_period_start || subscription.current_period_start);
-    const end = Number(item.current_period_end || subscription.current_period_end);
-    const now = Math.floor(Date.now() / 1000);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || end <= now) {
-      throw new Error('The current subscription billing period could not be verified.');
-    }
-    const difference = Number(targetCents) - Number(currentCents);
-    if (!Number.isFinite(difference) || difference <= 0) {
-      throw new Error('This immediate payment is only available for plan upgrades.');
-    }
-    return Math.max(0, Math.round(difference * Math.min(1, (end - now) / (end - start))));
-  }
-
+  // Fixed upgrade difference, independent of days remaining in the billing cycle.
   async function remainingUpgradeQuote(subscription, currentCents, targetCents) {
-    const subtotalCents = remainingUpgradeCents(subscription, currentCents, targetCents);
+    const subtotalCents = Number(targetCents) - Number(currentCents);
+    if (!Number.isSafeInteger(subtotalCents) || subtotalCents <= 0) throw new Error('This payment is only for upgrades.');
     const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
     if (!customerId) throw new Error('Stripe customer information is missing.');
-    if (subtotalCents === 0) return {subtotal_cents:0, tax_cents:0, total_cents:0};
-    // This is a read-only Stripe Tax calculation. Never assume a rate or force tax to zero.
-    const tax = await createNativeTaxCalculation({
-      customerId, cents:subtotalCents, reference:'alygnn-plan-upgrade-preview'
-    });
+    const tax = await createNativeTaxCalculation({customerId, cents:subtotalCents, reference:'alygnn-fixed-upgrade-preview'});
     const total = Number(tax.amount_total);
-    if (!Number.isFinite(total) || total < subtotalCents) {
-      throw new Error('Stripe could not confirm the upgrade total and tax.');
-    }
+    if (!Number.isSafeInteger(total) || total < subtotalCents) throw new Error('Stripe could not calculate the applicable tax.');
     return {subtotal_cents:subtotalCents, tax_cents:total-subtotalCents, total_cents:total};
   }
 
@@ -2060,83 +2039,10 @@ async function runManageAction(res,user,input){
   const sameBilling=currentBilling===targetBilling;
 
   if(changeTiming==='immediate'){
-    // Changing monthly to quarterly resets Stripe's billing anchor; do not
-    // silently change the employer's renewal date.
-    if(!sameBilling)return send(res,409,{
-      error:'To preserve your existing renewal date, changes between Monthly and Quarterly billing must be scheduled for the next billing cycle.'
-    });
-
-    const item=sub?.items?.data?.[0];
-    if(!item?.id)throw new Error('The current Stripe subscription item could not be found.');
-    if(targetRank<currentRank){
-      // Do not revoke access to existing plan-backed jobs on a downgrade.
-      const jobsUrl=new URL(manageBase()+'/rest/v1/jobs');
-      jobsUrl.searchParams.set('employer_id','eq.'+user.id);
-      jobsUrl.searchParams.set('posting_access_type','eq.plan');
-      jobsUrl.searchParams.set('status','in.(active,pending)');
-      jobsUrl.searchParams.set('select','id');
-      const jobsResponse=await fetch(jobsUrl,{headers:manageServiceHeaders()});
-      if(!jobsResponse.ok)throw new Error('Could not verify existing job usage. No change was made.');
-      const jobs=await jobsResponse.json();
-      const allowed=Number(targetCatalog[target].slots||0);
-      if(jobs.length>allowed)return send(res,409,{
-        error:`You have ${jobs.length} plan-backed jobs. Close enough jobs to reach the ${allowed}-slot limit before downgrading immediately, or schedule the downgrade for renewal.`
-      });
-    }
-
-    const targetPrice=await ensureRecurringPrice(target,targetBilling);
-    if(targetRank>currentRank){
-      const quote=await remainingUpgradeQuote(sub,currentCatalog[current].cents,targetCatalog[target].cents);
-      const preview=await manageStripe('POST','invoices/create_preview',{
-        subscription:sub.id,
-        'subscription_details[items][0][id]':item.id,
-        'subscription_details[items][0][price]':targetPrice,
-        'subscription_details[items][0][quantity]':1,
-        'subscription_details[proration_behavior]':'always_invoice'
-      });
-      // Stripe can include other invoices or balances in an upcoming-invoice preview.
-      // Never silently collect those as part of this upgrade.
-      const charged=Number(preview.amount_due);
-      if(!Number.isFinite(charged) || Math.abs(charged-quote.total_cents)>2){
-        return send(res,409,{error:'Stripe has another amount in this invoice or the tax has changed. No charge was made. Please review the billing account before upgrading.'});
-      }
-    }
-    // Stripe computes the unused-time credit and remaining-time difference,
-    // invoices immediately and rejects incomplete payments without applying
-    // the upgrade. No hardcoded fixed-price upgrade charge is used.
-    sub=await detachPlanScheduleForImmediateChange({employerId:user.id,ent,sub});
-    const changed=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
-      'items[0][id]':item.id,
-      'items[0][price]':targetPrice,
-      'items[0][quantity]':1,
-      'billing_cycle_anchor':'unchanged',
-      'proration_behavior':'always_invoice',
-      'payment_behavior':'error_if_incomplete',
-      'metadata[employer_id]':user.id,
-      'metadata[product]':'job_plan',
-      'metadata[plan]':target,
-      'metadata[billing]':targetBilling,
-      'expand[]':'latest_invoice'
-    });
-    const invoice=changed?.latest_invoice;
-    await patchEntitlement(user.id,{
-      plan:planLegacyName(target),test_plan:target,test_mode:false,
-      subscription_status:String(changed.status||'active').toLowerCase(),
-      current_period_end:changed.current_period_end?new Date(Number(changed.current_period_end)*1000).toISOString():null,
-      slot_limit:targetCatalog[target].slots,billing_period:targetBilling,
-      urgently_hiring:['growth','scale'].includes(target),
-      alygnn_recommended:target==='scale',
-      plan_amount_cents:targetCatalog[target].cents,
-      stripe_plan_subscription_id:changed.id,
-      stripe_plan_schedule_id:null,pending_plan:null,
-      pending_billing_period:null,pending_plan_effective_at:null
-    });
-    return send(res,200,{
-      ok:true,change:'plan_change_applied',effective:'immediate',
-      current_plan:current,target_plan:target,billing_period:targetBilling,
-      amount_due_now_cents:typeof invoice==='object'?Number(invoice.amount_paid||0):null,
-      next_renewal_amount_cents:targetCatalog[target].cents
-    });
+    if(!sameBilling) return send(res,409,{error:'Monthly and Quarterly changes take effect at renewal.'});
+    if(targetRank<=currentRank) return send(res,409,{error:'Downgrades take effect at next renewal without any charge or credit.'});
+    const result=await upgradeNow({employerId:user.id,ent,sub,targetPlan:target,billing:targetBilling,input});
+    return send(res,200,{ok:true,...result});
   }
 
   // Downgrades and billing-cadence changes take effect at renewal so there is
