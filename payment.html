@@ -513,7 +513,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         <div class="change-details">
           <div class="change-detail"><span class="label">Billing change</span><span class="value">${currentBillingLabel} → ${targetBillingLabel}</span></div>
           <div class="change-detail"><span class="label">Effective</span><span class="value">${immediate?'Immediately after successful payment':effectiveText}</span></div>
-          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00'}</span></div>
+          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)+(planChangeTax===null?' + tax':'')):'$0.00'}</span></div>
           <div class="change-detail"><span class="label">Next renewal</span><span class="value">${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}</span></div>
           <div class="change-detail"><span class="label">Job-slot capacity</span><span class="value">${currentSlots} → ${targetSlots} total slots</span></div>
         </div>
@@ -542,8 +542,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-change-line').innerHTML=`<strong>${immediate?'New recurring billing':'Scheduled change'}:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} ${immediate?'at the existing renewal date ' : 'at '}${periodEnd||'your next renewal'}.`;
     document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangeSubtotal/100)):'$0.00';
     document.getElementById('tax-row').style.display=immediate?'flex':'none';
-    document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Checking tax…':money((planChangeTax||0)/100)):'$0.00';
-    document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
+    document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Calculated at checkout':planChangeTax===null?'Calculated at checkout':money(planChangeTax/100)):'$0.00';
+    document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)+(planChangeTax===null?' + tax':'')):'$0.00';
     document.getElementById('trust-copy').textContent=immediate?'Pay the plan price difference now · access changes after payment':'No charge today · change takes effect at renewal';
 
     document.getElementById('authorization-copy').textContent=immediate?'I authorize the fixed upgrade difference plus applicable tax. My new plan will take effect after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
@@ -570,9 +570,9 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(!response.ok)throw new Error(data.error||'Could not preview the remaining price.');
       if(request!==planChangePreviewRequest)return;
       planChangePreview=Number(data.amount_due_now_cents);
-      planChangeTax=Number(data.tax_cents);
+      planChangeTax=data.tax_cents===null||data.tax_cents===undefined?null:Number(data.tax_cents);
       planChangeSubtotal=Number(data.subtotal_cents);
-      if(!Number.isFinite(planChangeTax)||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid tax breakdown.');
+      if((planChangeTax!==null&&!Number.isFinite(planChangeTax))||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid tax breakdown.');
       if(!Number.isFinite(planChangePreview))throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
     }catch(error){
