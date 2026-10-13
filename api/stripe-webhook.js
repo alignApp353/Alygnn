@@ -130,9 +130,17 @@ function planInfo(plan) {
   }[key] || null;
 }
 
+// Some Stripe API versions expose subscription renewal dates on the item.
+function stripePeriodEndUnix(subscription){
+  const value=Number(subscription?.current_period_end ?? subscription?.items?.data?.[0]?.current_period_end);
+  return Number.isFinite(value)&&value>0?value:null;
+}
+
 async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscription = null }) {
   const info = planInfo(plan);
   if (!employerId || !info) return;
+
+  periodEnd=periodEnd||stripePeriodEndUnix(subscription);
 
   // test_plan stores the exact Launch/Growth/Scale/Weekly code for compatibility
   // with Alygnn's existing entitlement schema; test_mode remains false.
@@ -198,6 +206,7 @@ async function fulfillCheckout(session) {
   const employerId = meta.employer_id;
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
+  if (session?.status && session.status !== 'complete') return;
 
   if (product === 'additional_slot' || product === 'single_job') {
     // Standalone $150/month Second Job Slot. The included free slot remains,
@@ -207,7 +216,9 @@ async function fulfillCheckout(session) {
       await rpc('sync_second_job_slot_subscription', {
         p_employer_id: employerId,
         p_status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        p_expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
+        p_expires_at: stripePeriodEndUnix(subscription)
+          ? new Date(stripePeriodEndUnix(subscription)*1000).toISOString()
+          : null,
         p_payment_reference: session.id,
         p_amount_cents: session.amount_total || 15000
       });
@@ -235,132 +246,118 @@ async function fulfillCheckout(session) {
     return;
   }
 
-  if (product === 'plan_upgrade') {
-    /*
-     * Growth -> Scale / Launch -> Growth / Launch -> Scale are paid as a
-     * one-time fixed difference. Once that Checkout payment succeeds, swap
-     * the existing recurring Stripe subscription to the destination Price
-     * immediately, preserve the renewal date, and activate the higher Alygnn
-     * entitlement right away.
-     */
-    const targetPlan = String(meta.target_plan || '').toLowerCase();
-    const billing = String(meta.billing || 'monthly').toLowerCase();
-    const subscriptionId = String(meta.subscription_id || '');
-    const subscriptionItemId = String(meta.subscription_item_id || '');
-    const targetPriceId = String(meta.target_price_id || '');
-
-    if (!targetPlan || !subscriptionId || !targetPriceId) {
-      throw new Error('Plan upgrade checkout is missing required Stripe metadata.');
+  if (product === 'test_plan_upgrade') {
+    // Test entitlements have no Stripe subscription. A completed, 100%-off
+    // Checkout can change ONLY the existing test entitlement, not create an
+    // unapproved recurring subscription or extend the test term.
+    if(session?.status!=='complete' ||
+       session?.payment_status!=='no_payment_required' ||
+       Number(session?.amount_total)!==0){
+      throw new Error('Test upgrade requires a verified completed $0 checkout.');
     }
-
-    const currentSubscription = await stripeGet(
-      `subscriptions/${encodeURIComponent(subscriptionId)}`
+    const current=String(meta.current_plan||'').toLowerCase();
+    const target=String(meta.target_plan||'').toLowerCase();
+    const billing=String(meta.billing||'').toLowerCase();
+    const ranks={launch:1,growth:2,scale:3};
+    if(!ranks[current]||!ranks[target]||ranks[target]<=ranks[current]||
+      !['monthly','quarterly'].includes(billing)){
+      throw new Error('Invalid promotional test-plan upgrade.');
+    }
+    const res=await fetch(
+      `${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&select=*`,
+      {headers:serviceHeaders()}
     );
+    const rows=await res.json().catch(()=>[]);
+    if(!res.ok)throw new Error('Could not verify existing employer test plan.');
+    const ent=Array.isArray(rows)?rows[0]:null;
+    if(!ent||ent.test_mode!==true){
+      // Already applied or subsequently moved to a real plan; do not overwrite.
+      return;
+    }
+    const currentEntPlan=String(ent.test_plan||'').toLowerCase();
+    if(currentEntPlan===target)return;
+    if(currentEntPlan!==current){
+      console.warn('Ignoring obsolete test upgrade for employer',employerId);
+      return;
+    }
+    const info=planInfo(target);
+    const patch={
+      plan:info.legacyPlan,test_plan:target,test_mode:true,
+      subscription_status:'active',billing_period:billing,
+      slot_limit:info.slots,urgently_hiring:info.urgent,
+      alygnn_recommended:target==='scale',
+      plan_amount_cents:target==='scale'?(billing==='monthly'?64900:170000)
+        :(target==='growth'?(billing==='monthly'?44900:114000):(billing==='monthly'?29900:75000)),
+      pending_plan:null,pending_billing_period:null,pending_plan_effective_at:null,
+      stripe_plan_schedule_id:null,updated_at:new Date().toISOString()
+    };
+    const updated=await fetch(
+      `${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,
+      {method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),body:JSON.stringify(patch)}
+    );
+    if(!updated.ok)throw new Error('Could not activate promotional test upgrade: '+await updated.text());
+    return;
+  }
 
-    const itemId =
-      subscriptionItemId ||
-      currentSubscription?.items?.data?.[0]?.id;
+  if (product === 'plan_upgrade') {
+    // An authenticated Checkout event is the only authority to apply an
+    // upgrade. For a 100%-off code, Stripe returns no_payment_required.
+    const targetPlan=String(meta.target_plan||'').toLowerCase();
+    const fromPlan=String(meta.current_plan||'').toLowerCase();
+    const billing=String(meta.billing||'').toLowerCase();
+    const subscriptionId=String(meta.subscription_id||'').trim();
+    const targetPriceId=String(meta.target_price_id||'').trim();
+    const storedItemId=String(meta.subscription_item_id||'').trim();
 
-    if (!itemId) {
-      throw new Error('Plan upgrade subscription item could not be identified.');
+    if(!['launch','growth','scale'].includes(targetPlan) ||
+       !['monthly','quarterly'].includes(billing) ||
+       !subscriptionId || !targetPriceId){
+      throw new Error('Verified plan-upgrade Checkout is missing valid metadata.');
     }
 
-    const previousBilling=String(meta.current_billing||currentSubscription.metadata?.billing||'monthly').toLowerCase();
-    if(previousBilling!==billing){
-      // Idempotency for Stripe webhook retries.
-      if(currentSubscription.schedule){
-        const existingScheduleId=typeof currentSubscription.schedule==='string'
-          ?currentSubscription.schedule:currentSubscription.schedule.id;
-        const existingSchedule=await stripeGet(`subscription_schedules/${encodeURIComponent(existingScheduleId)}`);
-        const nextPhase=(existingSchedule.phases||[]).find(p=>p.start_date===Number(meta.original_period_end));
-        const phasePrice=typeof nextPhase?.items?.[0]?.price==='string'
-          ?nextPhase.items[0].price:nextPhase?.items?.[0]?.price?.id;
-        if(phasePrice!==targetPriceId)throw new Error('A different billing schedule is already active.');
-        await upsertPlan({employerId,plan:targetPlan,billing,status:'active',periodEnd:Number(meta.original_period_end),subscription:currentSubscription});
-        const patched=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,{
-          method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),
-          body:JSON.stringify({stripe_plan_schedule_id:existingScheduleId})
-        });
-        if(!patched.ok)throw new Error('Could not record existing upgrade billing schedule.');
-        return;
-      }
-      const end=Number(currentSubscription.current_period_end||0);
-      const start=Number(currentSubscription.current_period_start||0);
-      const currentItem=currentSubscription.items?.data?.find(x=>x.id===itemId);
-      const currentPriceId=typeof currentItem?.price==='string'?currentItem.price:currentItem?.price?.id;
-      if(!end||end<=Math.floor(Date.now()/1000)||!start||!currentPriceId)
-        throw new Error('Cannot preserve upgrade renewal date; invalid subscription term.');
-      if(meta.original_period_end&&Number(meta.original_period_end)!==end)
-        throw new Error('Subscription renewal date changed since the upgrade checkout; manual review required.');
-      if(currentSubscription.schedule)
-        throw new Error('Subscription has an existing schedule; review before upgrading.');
-      const schedule=await stripePost('subscription_schedules',{from_subscription:subscriptionId});
-      const scheduleId=schedule.id;
-      try{
-        await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}`,{
-          end_behavior:'release',
-          'phases[0][start_date]':start,
-          'phases[0][end_date]':end,
-          'phases[0][items][0][price]':currentPriceId,
-          'phases[0][items][0][quantity]':currentItem.quantity||1,
-          'phases[0][proration_behavior]':'none',
-          'phases[0][metadata][employer_id]':employerId,
-          'phases[0][metadata][product]':'job_plan',
-          'phases[0][metadata][plan]':String(meta.current_plan||currentSubscription.metadata?.plan||''),
-          'phases[0][metadata][billing]':previousBilling,
-          'phases[1][start_date]':end,
-          'phases[1][duration][interval]':'month',
-          'phases[1][duration][interval_count]':billing==='quarterly'?3:1,
-          'phases[1][items][0][price]':targetPriceId,
-          'phases[1][items][0][quantity]':1,
-          'phases[1][proration_behavior]':'none',
-          'phases[1][metadata][employer_id]':employerId,
-          'phases[1][metadata][product]':'job_plan',
-          'phases[1][metadata][plan]':targetPlan,
-          'phases[1][metadata][billing]':billing
-        });
-      }catch(error){
-        // Leave the schedule available for retry/reconciliation; don't swap
-        // price or grant access unless the schedule update succeeds.
-        throw error;
-      }
-      const updatedSubscription=await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
-      await upsertPlan({employerId,plan:targetPlan,billing,status:'active',periodEnd:end,subscription:updatedSubscription});
-      // Preserve the schedule reference after upsertPlan clears pending changes.
-      const patch=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}`,{
-        method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),
-        body:JSON.stringify({stripe_plan_schedule_id:scheduleId})
-      });
-      if(!patch.ok)throw new Error('Could not record the new Stripe billing schedule.');
+    let sub=await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`);
+    const item=sub?.items?.data?.find(row=>row.id===storedItemId)||sub?.items?.data?.[0];
+    if(!item?.id)throw new Error('Plan upgrade subscription item was not found.');
+
+    const livePriceId=typeof item.price==='string'?item.price:item.price?.id;
+    const livePlan=String(sub?.metadata?.plan||'').toLowerCase();
+
+    // Stripe retries and manual redeliveries must never downgrade an employer
+    // who has since legitimately changed plans. Replays for the SAME plan can
+    // safely re-sync a missing Supabase entitlement.
+    if(livePriceId!==targetPriceId && fromPlan && livePlan && livePlan!==fromPlan){
+      console.warn('Ignoring obsolete plan-upgrade Checkout:',session.id,livePlan,'is no longer',fromPlan);
       return;
     }
 
-    const updatedSubscription = await stripePost(
-      `subscriptions/${encodeURIComponent(subscriptionId)}`,
-      {
-        'items[0][id]': itemId,
-        'items[0][price]': targetPriceId,
-        'items[0][quantity]': 1,
-        proration_behavior: 'none',
-        'metadata[employer_id]': employerId,
-        'metadata[product]': 'job_plan',
-        'metadata[plan]': targetPlan,
-        'metadata[billing]': billing
+    if(livePriceId!==targetPriceId){
+      const scheduleId=typeof sub.schedule==='string'?sub.schedule:sub.schedule?.id;
+      if(scheduleId){
+        // A previously scheduled downgrade can block Stripe price updates.
+        await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}/release`,{});
+        sub=await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=items.data.price`);
       }
-    );
+      sub=await stripePost(`subscriptions/${encodeURIComponent(subscriptionId)}`,{
+        cancel_at_period_end:'false',
+        'items[0][id]':item.id,
+        'items[0][price]':targetPriceId,
+        'items[0][quantity]':1,
+        proration_behavior:'none',
+        'metadata[employer_id]':employerId,
+        'metadata[product]':'job_plan',
+        'metadata[plan]':targetPlan,
+        'metadata[billing]':billing
+      });
+    }
 
     await upsertPlan({
       employerId,
-      plan: targetPlan,
+      plan:targetPlan,
       billing,
-      status:
-        updatedSubscription.status === 'trialing'
-          ? 'trialing'
-          : 'active',
-      periodEnd: updatedSubscription.current_period_end,
-      subscription: updatedSubscription
+      status:String(sub.status||'active').toLowerCase(),
+      periodEnd:stripePeriodEndUnix(sub),
+      subscription:sub
     });
-
     return;
   }
 
@@ -375,7 +372,7 @@ async function fulfillCheckout(session) {
         plan,
         billing,
         status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        periodEnd: subscription.current_period_end,
+        periodEnd: stripePeriodEndUnix(subscription),
         subscription
       });
       return;
@@ -396,8 +393,8 @@ async function fulfillSubscription(subscription, forceStatus) {
     await rpc('sync_second_job_slot_subscription', {
       p_employer_id: meta.employer_id,
       p_status: status,
-      p_expires_at: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
+      p_expires_at: stripePeriodEndUnix(subscription)
+        ? new Date(stripePeriodEndUnix(subscription)*1000).toISOString()
         : null,
       p_payment_reference: null,
       p_amount_cents: 15000
@@ -411,7 +408,7 @@ async function fulfillSubscription(subscription, forceStatus) {
     plan: meta.plan,
     billing: meta.billing || 'monthly',
     status: forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active'),
-    periodEnd: subscription.current_period_end,
+    periodEnd: stripePeriodEndUnix(subscription),
     subscription
   });
 }
@@ -432,18 +429,27 @@ module.exports = async function handler(req, res) {
     const event = JSON.parse(buffer.toString('utf8'));
 
     switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const intent=event.data.object;
+        if(String(intent?.metadata?.product||'')==='plan_upgrade'){
+          await fulfillCheckout({
+            id:intent.id,status:'complete',payment_status:'paid',
+            metadata:intent.metadata
+          });
+        }
+        break;
+      }
       case 'checkout.session.completed':
-        if (event.data.object.payment_status === 'paid' ||
-            event.data.object.payment_status === 'no_payment_required' ||
-            (event.data.object.status === 'complete' && Number(event.data.object.amount_total) === 0) ||
-            event.data.object.mode === 'subscription') {
+        if (['paid','no_payment_required'].includes(event.data.object.payment_status) || event.data.object.mode === 'subscription') {
           await fulfillCheckout(event.data.object);
         }
         break;
 
-      case 'customer.subscription.updated':
-        await fulfillSubscription(event.data.object);
+      case 'customer.subscription.updated': {
+        const subscription=await stripeGet(`subscriptions/${encodeURIComponent(event.data.object.id)}?expand[]=items.data.price`);
+        await fulfillSubscription(subscription);
         break;
+      }
 
       case 'customer.subscription.deleted':
         await fulfillSubscription(event.data.object, 'canceled');
