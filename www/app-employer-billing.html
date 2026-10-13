@@ -1770,7 +1770,7 @@ function renderPlans(){
 
   if(UPGRADE_ONLY_FLOW&&currentItem&&!displayedPlans.length){
     $('change-copy').textContent=
-      'You are already on Scale, our highest available self-serve plan. Add temporary capacity below if needed.';
+      'You are already on Scale, our highest self-serve plan. Contact us about Enterprise or add temporary capacity below.';
   }else if(currentItem&&!managed&&entitlement?.test_mode!==true){
     $('change-copy').textContent=UPGRADE_ONLY_FLOW
       ?`Your current prepaid term stays active through ${fmtDate(summary?.current_period_end)}. Higher plans become available after your current term.`
@@ -1884,9 +1884,34 @@ function renderPlans(){
           </article>
         `;
       })
-      .join('') || (currentItem
-        ?'<div class="empty">You are on the highest available plan. For more capacity, see the additional job-slot options below.</div>'
-        :'');
+      .join('');
+
+  // Enterprise is a custom quote, not a self-service Stripe plan.
+  // Show it both in Settings > Billing and in the extra-job capacity flow.
+  $('plans').insertAdjacentHTML('beforeend', `
+    <article class="plan-option enterprise-plan">
+      <div class="option-top">
+        <div>
+          <div class="option-name">Enterprise</div>
+          <div class="option-slots">Custom hiring capacity for larger teams</div>
+          <span class="tag">Tailored to your business</span>
+        </div>
+        <div class="option-price">Custom<small>pricing</small></div>
+      </div>
+      <p class="addon-copy">Need more flexibility or job slots? Talk with Alygnn about a plan that fits your organization.</p>
+      <button class="action primary" type="button" id="enterprise-contact-btn">Contact us</button>
+      <div class="action-hint">Reach our team to discuss your needs and pricing.</div>
+    </article>
+  `);
+
+  $('enterprise-contact-btn').onclick=async()=>{
+    try{
+      await openUrl('https://alygnn.com/contact.html');
+    }catch(error){
+      console.error('Could not open Enterprise contact page:',error);
+      showMessage('Could not open the contact page. Visit alygnn.com/contact.html to get in touch.','error');
+    }
+  };
 
   document
     .querySelectorAll('[data-change-plan]')
