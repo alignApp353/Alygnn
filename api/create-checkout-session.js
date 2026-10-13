@@ -1879,9 +1879,20 @@ async function runManageAction(res,user,input){
       'subscription_details[items][0][quantity]':1,
       'subscription_details[proration_behavior]':'always_invoice'
     });
+    // Do not present existing balances or unrelated invoice items as the price
+    // of upgrading. The full-period upgrade difference is a hard upper bound
+    // on its before-tax proration; otherwise require account reconciliation.
+    const fullDifference=Math.max(0,MANAGE_CATALOG[billing][target].cents-MANAGE_CATALOG[billing][current].cents);
+    const taxes=Array.isArray(preview.total_taxes)?preview.total_taxes:[];
+    const taxCents=Math.max(0,taxes.reduce((sum,t)=>sum+Number(t.amount||0),0));
+    const amount=Math.max(0,Number(preview.amount_due||0));
+    if(MANAGE_CATALOG[billing][target].rank>MANAGE_CATALOG[billing][current].rank && amount-taxCents>fullDifference+1){
+      return send(res,409,{error:'Your invoice includes another balance. The upgrade cannot proceed until that balance is resolved.'});
+    }
     return send(res,200,{
       ok:true,
-      amount_due_now_cents:Math.max(0,Number(preview.amount_due||0)),
+      amount_due_now_cents:amount,
+      tax_cents:taxCents,
       currency:String(preview.currency||'usd').toLowerCase()
     });
   }
@@ -2058,6 +2069,20 @@ async function runManageAction(res,user,input){
     }
 
     const targetPrice=await ensureRecurringPrice(target,targetBilling);
+    if(targetRank>currentRank){
+      const preview=await manageStripe('POST','invoices/create_preview',{
+        subscription:sub.id,
+        'subscription_details[items][0][id]':item.id,
+        'subscription_details[items][0][price]':targetPrice,
+        'subscription_details[items][0][quantity]':1,
+        'subscription_details[proration_behavior]':'always_invoice'
+      });
+      const taxCents=Array.isArray(preview.total_taxes)?preview.total_taxes.reduce((s,t)=>s+Number(t.amount||0),0):0;
+      const fullDifference=targetCatalog[target].cents-currentCatalog[current].cents;
+      if(Number(preview.amount_due||0)-taxCents>fullDifference+1){
+        return send(res,409,{error:'Your invoice includes another balance. Resolve it before upgrading so you are only charged the remaining plan difference.'});
+      }
+    }
     // Stripe computes the unused-time credit and remaining-time difference,
     // invoices immediately and rejects incomplete payments without applying
     // the upgrade. No hardcoded fixed-price upgrade charge is used.
