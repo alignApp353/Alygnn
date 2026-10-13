@@ -487,7 +487,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       <div class="change-review">
         <div class="change-plan-box" style="margin-bottom:16px">
           <div class="change-label">When should this change take effect?</div>
-          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the remaining price now; new job slots activate after successful payment.</label>
+          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the plan price difference now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
           ${canChangeImmediately?'':'<div class="change-price">Changes between monthly and quarterly billing must start at the next renewal to preserve the renewal date.</div>'}
         </div>
@@ -513,7 +513,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         </div>
         <div class="change-notice downgrade">
           <strong>${immediate?'Your change takes effect after Stripe confirms payment.':'Your current plan stays active until renewal.'}</strong>
-          ${immediate?'Your remaining-period price is displayed before you confirm. The final charge can change slightly if time passes before confirmation. Existing renewal timing is preserved. Immediate downgrades require enough free capacity for your current jobs.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
+          ${immediate?'Your fixed upgrade price is shown before you confirm. Any applicable tax is confirmed during checkout. Existing renewal timing is preserved. Immediate downgrades require enough free capacity for your current jobs.':`${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.`}
         </div>
         ${weeklyCount>0?`<div class="change-notice"><strong>Your Weekly Job Slot is separate.</strong>Any active $99 Weekly Job Slot keeps its own 7-day expiration and is not extended by this plan change.</div>`:''}
         <ul class="review-list">
@@ -539,12 +539,12 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('tax-row').style.display=immediate?'flex':'none';
     document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Checking tax…':money((planChangeTax||0)/100)):'$0.00';
     document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
-    document.getElementById('trust-copy').textContent=immediate?'Pay the remaining-period price now · access changes after payment':'No charge today · change takes effect at renewal';
+    document.getElementById('trust-copy').textContent=immediate?'Pay the plan price difference now · access changes after payment':'No charge today · change takes effect at renewal';
 
-    document.getElementById('authorization-copy').textContent=immediate?'I authorize payment of the remaining-period amount shown above. My new plan will take effect after successful payment. The final amount may adjust slightly before confirmation.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
+    document.getElementById('authorization-copy').textContent=immediate?'I authorize the fixed upgrade difference plus applicable tax. My new plan will take effect after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
 
     const fineprint=document.querySelector('.fineprint');
-    if(fineprint) fineprint.textContent=immediate?'Your remaining-period price is shown before you confirm. The final charged amount may change slightly with time.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
+    if(fineprint) fineprint.textContent=immediate?'The fixed plan price difference is shown. Any applicable tax is confirmed by Stripe Checkout before payment.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
 
     updateCheckoutState();
   }
@@ -631,6 +631,17 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         button.textContent='Change scheduled ✓';
         const when=formattedDate(data.effective_at)||'your next renewal';
         showMessage(`${titleCasePlan(target)} is scheduled for ${when}. Your current plan stays active until then.`,'info');
+        setTimeout(()=>location.href='employer-account.html#billing-section',1100);
+        return;
+      }
+
+      if(data.change==='upgrade_payment_required' && (data.checkout_url||data.hosted_invoice_url)){
+        window.location.assign(data.checkout_url||data.hosted_invoice_url);
+        return;
+      }
+      if(data.change==='upgrade_applied'){
+        button.textContent='Plan updated ✓';
+        showMessage('Your upgrade was applied successfully.','info');
         setTimeout(()=>location.href='employer-account.html#billing-section',1100);
         return;
       }
