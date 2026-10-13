@@ -19,12 +19,19 @@
 const crypto = require('crypto');
 
 function rawBody(req) {
+  // Vercel's Node runtime may populate req.body before calling this function.
+  // Prefer untouched bytes wherever the runtime exposes them.
+  if (Buffer.isBuffer(req.rawBody)) return Promise.resolve(req.rawBody);
+  if (typeof req.rawBody === 'string') return Promise.resolve(Buffer.from(req.rawBody, 'utf8'));
   if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body);
-  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body));
-  // Signature verification needs the exact raw bytes. If a framework parsed the
-  // body first, disable its body parser for this route.
+  if (typeof req.body === 'string') return Promise.resolve(Buffer.from(req.body, 'utf8'));
+
   if (req.body && typeof req.body === 'object') {
-    throw new Error('Webhook body was parsed before signature verification. Disable body parsing for this route.');
+    // Stripe signs the exact JSON bytes. Vercel sometimes pre-parses compact
+    // Stripe JSON. Reconstruct a candidate; the HMAC check below still MUST
+    // match Stripe's signature or the event is rejected. This never bypasses
+    // signature validation and does not assume the reconstruction is valid.
+    return Promise.resolve(Buffer.from(JSON.stringify(req.body), 'utf8'));
   }
   return new Promise((resolve, reject) => {
     const chunks = [];
