@@ -109,7 +109,7 @@ h1{
 .invoice-amount{font-size:12px;font-weight:600}
 .invoice-link{font-size:11.5px;color:var(--brand);text-decoration:none;font-weight:600;white-space:nowrap}
 .invoice-link:hover{text-decoration:underline}
-.invoice-receipt-btn{border:0;background:none;padding:0;font:600 11.5px 'DM Sans',sans-serif;color:var(--brand);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.invoice-receipt-btn{border:0;background:none;padding:0;font:600 11.5px 'DM Sans',sans-serif;color:var(--brand);cursor:pointer;text-decoration:none}
 .receipt-overlay{display:none;position:fixed;inset:0;z-index:1400;background:rgba(26,37,48,.44);padding:20px;align-items:center;justify-content:center}
 .receipt-overlay.open{display:flex}
 .receipt-sheet{background:white;border:1px solid var(--border);border-radius:16px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:28px}
@@ -446,7 +446,8 @@ async function loadBilling(){
     console.warn('Could not verify the Second Job Slot for billing display:', err);
   }
   renderBilling();
-  if(!historyLoaded){historyLoaded=true;await loadMoreHistory();}
+  // Billing summary already contains Stripe invoices and verified weekly purchases.
+  // Do not call the unsupported payment_history checkout action from this page.
 }
 
 function renderBilling(){
