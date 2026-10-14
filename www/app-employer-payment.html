@@ -325,7 +325,8 @@ h1{font-family:'DM Serif Display',Georgia,serif;font-size:32px;line-height:1.08;
     <ul class="features" id="features"></ul>
     <div style="margin-top:10px">
       <div class="summary-row"><span>Subtotal</span><strong id="subtotal">$750.00</strong></div>
-      <div class="summary-row" id="tax-row"><span>Tax</span><strong>Calculated at checkout</strong></div>
+      <div class="summary-row" id="discount-row" hidden><span>Discount</span><strong id="discount-total">−$0.00</strong></div>
+      <div class="summary-row" id="tax-row"><span id="tax-label">Tax</span><strong>Calculated at checkout</strong></div>
       <div class="summary-row"><span>Due today</span><strong id="due">$750.00 + tax</strong></div>
 </div>
   </section>
@@ -1086,12 +1087,33 @@ function billingAddressPayload(){
 }
 
 function applyServerTotal(data){
+  // Both native PaymentIntents and subscription invoices return Stripe's exact
+  // calculated totals. Display those before opening the native PaymentSheet.
   const total=Number(data?.amount_total_cents);
-  const taxStrong=document.querySelector('#tax-row strong');
+  const subtotal=Number(data?.amount_subtotal_cents);
+  const tax=Number(data?.tax_cents);
+  const includedTax=Number(data?.tax_included_cents||0);
+  const discount=Number(data?.discount_cents||0);
+  const taxRow=$('tax-row');
+  const taxStrong=taxRow?.querySelector('strong');
+  const taxLabel=$('tax-label');
+  const discountRow=$('discount-row');
 
-  // Keep tax wording clear until Stripe checkout calculates the final tax.
-  if(taxStrong)taxStrong.textContent='Calculated at checkout';
+  if(Number.isFinite(subtotal)&&subtotal>=0 && $('subtotal')){
+    $('subtotal').textContent=money(subtotal/100);
+  }
+  if(Number.isFinite(discount)&&discount>0){
+    if(discountRow)discountRow.hidden=false;
+    if($('discount-total'))$('discount-total').textContent='−'+money(discount/100);
+  }else if(discountRow){discountRow.hidden=true;}
 
+  if(taxRow){taxRow.hidden=false;}
+  if(Number.isFinite(tax)&&tax>=0 && taxStrong){
+    if(taxLabel)taxLabel.textContent=includedTax>0 && tax===0?'Tax (included)':'Tax';
+    taxStrong.textContent=money((tax>0?tax:includedTax)/100);
+  }else if(taxStrong){
+    taxStrong.textContent='Calculated at checkout';
+  }
   if(Number.isFinite(total)&&total>=0){
     $('due').textContent=money(total/100);
   }
@@ -1649,6 +1671,11 @@ function renderOptions(){
 }
 
 function renderSummary(){
+  // Clear any previous PaymentSheet tax/discount when selecting another plan.
+  if($('discount-row'))$('discount-row').hidden=true;
+  if($('tax-label'))$('tax-label').textContent='Tax';
+  const taxStrong=$('tax-row')?.querySelector('strong');
+  if(taxStrong)taxStrong.textContent='Calculated at checkout';
   const p=item();
   const change=existingPlanChange();
 
@@ -2488,6 +2515,13 @@ async function startCheckout(){
 
   if(isBoost()&&!boostEligible()){
     showMessage(boostIneligibleMessage());
+    return;
+  }
+
+  // This optional add-on has no Stripe Price configured on the server.
+  // Prevent accidentally sending its purchase as an unrelated paid job plan.
+  if(isUrgentAddon()){
+    showMessage('Urgently Hiring checkout is not configured with a Stripe Price yet. Nothing has been charged.');
     return;
   }
 
