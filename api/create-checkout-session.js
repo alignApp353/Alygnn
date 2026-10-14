@@ -29,10 +29,7 @@ const PRICE_IDS = {
   upgrade_launch_scale_monthly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_MONTHLY || 'price_1UEKA8RvnGY3BeGX6VzTZoKp',
   upgrade_launch_growth_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_GROWTH_QUARTERLY || 'price_1UEKC3RvnGY3BeGX2c5xyzTO',
   upgrade_growth_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_GROWTH_SCALE_QUARTERLY || 'price_1UEKCsRvnGY3BeGX0kG04aVd',
-  upgrade_launch_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_QUARTERLY || 'price_1UEKDnRvnGY3BeGXgUiBR0hY',
-  upgrade_launch_monthly_growth_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_MONTHLY_GROWTH_QUARTERLY || 'price_1UQCiyRvnGY3BeGXwWupW6sf',
-  upgrade_growth_monthly_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_GROWTH_MONTHLY_SCALE_QUARTERLY || 'price_1UQCcwRvnGY3BeGXaZZqsCkb',
-  upgrade_launch_monthly_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_MONTHLY_SCALE_QUARTERLY || 'price_1UQCjfRvnGY3BeGX4EY6sA82'
+  upgrade_launch_scale_quarterly: process.env.STRIPE_PRICE_UPGRADE_LAUNCH_SCALE_QUARTERLY || 'price_1UEKDnRvnGY3BeGXgUiBR0hY'
 };
 
 const CHECKOUT_CATALOG = {
@@ -200,15 +197,6 @@ function fixedUpgradePrice(currentPlan,targetPlan,billing){
   }[key]||null;
 }
 
-// Only the three explicitly priced Monthly → Quarterly tier upgrades.
-function monthlyToQuarterlyUpgradePrice(currentPlan,targetPlan){
-  return {
-    'launch->growth':{priceId:PRICE_IDS.upgrade_launch_monthly_growth_quarterly,cents:84100},
-    'launch->scale':{priceId:PRICE_IDS.upgrade_launch_monthly_scale_quarterly,cents:140100},
-    'growth->scale':{priceId:PRICE_IDS.upgrade_growth_monthly_scale_quarterly,cents:125100}
-  }[`${currentPlan}->${targetPlan}`]||null;
-}
-
 async function stripeCreateCheckout(params) {
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) throw new Error('STRIPE_SECRET_KEY is not configured.');
@@ -239,7 +227,21 @@ async function stripeCreateCheckout(params) {
 // Stripe Checkout; Capacitor can request a client secret instead so payment
 // stays inside Alygnn on iOS/Android.
 const STRIPE_NATIVE_API_VERSION='2025-11-17.clover';
-const ALYGNN_TAX_CODE='txcd_20040006';
+// Use the actual Stripe Product's tax category for every one-time native payment.
+// Different products (especially upgrade Prices) can have different tax codes.
+// Hosted Checkout and subscriptions already use those Stripe Product settings.
+async function nativeStripeProductForPrice(priceId){
+  if(!priceId)throw new Error('A Stripe Price is required to calculate tax.');
+  const price=await stripeNativeRequest('GET',
+    'prices/'+encodeURIComponent(priceId),{'expand[]':'product'});
+  const product=typeof price?.product==='string'?price.product:price?.product?.id;
+  if(!product)throw new Error('Stripe Price is missing its Product tax classification.');
+  if(String(price?.currency||'').toLowerCase()!=='usd'){
+    throw new Error('This Alygnn payment Price is not configured in USD.');
+  }
+  const behavior=String(price?.tax_behavior||'').toLowerCase();
+  return {product, taxBehavior:['inclusive','exclusive'].includes(behavior)?behavior:null};
+}
 
 async function stripeNativeRequest(method,path,params={},extraHeaders={}){
   const secret=process.env.STRIPE_SECRET_KEY;
@@ -365,14 +367,20 @@ async function ensureNativeStripeCustomer({user,employerId,address,preferredCust
   return await stripeNativeRequest('POST','customers',common);
 }
 
-async function createNativeTaxCalculation({customerId,cents,reference}){
-  const calculation=await stripeNativeRequest('POST','tax/calculations',{
+async function createNativeTaxCalculation({customerId,cents,reference,priceId}){
+  // Match hosted Stripe Checkout by reading the *selected Price's* Product.
+  // Stripe applies the product's real tax code, not a single hard-coded code
+  // for every plan difference, boost, seat, or weekly slot.
+  const price=await nativeStripeProductForPrice(priceId);
+  const params={
     currency:'usd',
     customer:customerId,
     'line_items[0][amount]':cents,
     'line_items[0][reference]':String(reference||'alygnn-payment'),
-    'line_items[0][tax_code]':ALYGNN_TAX_CODE
-  });
+    'line_items[0][product]':price.product
+  };
+  if(price.taxBehavior)params['line_items[0][tax_behavior]']=price.taxBehavior;
+  const calculation=await stripeNativeRequest('POST','tax/calculations',params);
 
   if(!calculation?.id||!Number.isFinite(Number(calculation?.amount_total))){
     throw new Error('Stripe Tax could not calculate this payment.');
@@ -385,6 +393,7 @@ async function createNativePaymentIntent({
   employerId,
   customerId,
   cents,
+  priceId,
   name,
   metadata,
   requestId
@@ -392,6 +401,7 @@ async function createNativePaymentIntent({
   const tax=await createNativeTaxCalculation({
     customerId,
     cents,
+    priceId,
     reference:`${metadata?.product||'alygnn'}:${requestId||Date.now()}`
   });
 
@@ -418,8 +428,15 @@ async function createNativePaymentIntent({
   if(!intent?.client_secret)throw new Error('Stripe did not return a PaymentSheet client secret.');
 
   const subtotal=Number(cents)||0;
-  const total=Number(tax.amount_total)||subtotal;
-  const taxCents=Math.max(0,Number(tax.tax_amount_exclusive||0)||total-subtotal);
+  const total=Number(tax.amount_total);
+  const taxCents=Number(tax.tax_amount_exclusive||0);
+  const includedTaxCents=Number(tax.tax_amount_inclusive||0);
+  // Never silently use a pre-tax total if Stripe returns unexpected data.
+  if(!Number.isSafeInteger(total)||total<0||
+     !Number.isSafeInteger(taxCents)||taxCents<0||
+     !Number.isSafeInteger(includedTaxCents)||includedTaxCents<0){
+    throw new Error('Stripe returned an invalid tax amount. Payment was not prepared.');
+  }
 
   return{
     payment_sheet:true,
@@ -428,6 +445,8 @@ async function createNativePaymentIntent({
     customer_id:customerId,
     amount_subtotal_cents:subtotal,
     tax_cents:taxCents,
+    tax_included_cents:includedTaxCents,
+    discount_cents:0,
     amount_total_cents:total,
     currency:'usd'
   };
@@ -475,7 +494,21 @@ async function createNativeSubscription({
   }
 
   const subtotal=Number(invoice?.subtotal||0);
-  const total=Number(invoice?.total||subtotal);
+  const total=Number(invoice?.total ?? subtotal);
+  const discounts=(invoice?.total_discount_amounts||[])
+    .reduce((sum,row)=>sum+Number(row?.amount||0),0);
+  // Read actual invoice taxes instead of calculating total - subtotal:
+  // discounts make that subtraction incorrect for promotional purchases.
+  const taxes=Array.isArray(invoice?.total_taxes)?invoice.total_taxes:
+    (Array.isArray(invoice?.total_tax_amounts)?invoice.total_tax_amounts:[]);
+  const exclusiveTax=taxes.reduce((sum,row)=>
+    sum+(String(row?.tax_behavior||'exclusive')==='inclusive'?0:Number(row?.amount||0)),0);
+  const includedTax=taxes.reduce((sum,row)=>
+    sum+(String(row?.tax_behavior||'exclusive')==='inclusive'?Number(row?.amount||0):0),0);
+  if(![subtotal,total,discounts,exclusiveTax,includedTax].every(
+    value=>Number.isSafeInteger(value)&&value>=0)){
+    throw new Error('Stripe returned an invalid subscription tax total.');
+  }
 
   return{
     payment_sheet:true,
@@ -484,7 +517,9 @@ async function createNativeSubscription({
     customer_id:customerId,
     already_paid:!clientSecret&&['active','trialing'].includes(status),
     amount_subtotal_cents:subtotal,
-    tax_cents:Math.max(0,total-subtotal),
+    tax_cents:exclusiveTax,
+    tax_included_cents:includedTax,
+    discount_cents:discounts,
     amount_total_cents:total,
     currency:String(invoice?.currency||'usd').toLowerCase()
   };
@@ -530,6 +565,7 @@ async function createNativePaymentSheetCheckout({
         employerId,
         customerId:customer.id,
         cents,
+        priceId,
         name,
         metadata,
         requestId
@@ -1196,21 +1232,19 @@ async function confirmZeroUpgradeInvoice({
   return{invoiceId:invoice.id,customerId:customer};
 }
 
-async function upgradeNow({employerId,ent,sub,targetPlan,billing,currentBilling=billing,input={}}){
+async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
 
   const currentPlan=subscriptionPlan(ent,sub);
-  const currentCatalog=MANAGE_CATALOG[currentBilling]?.[currentPlan];
+  const currentCatalog=MANAGE_CATALOG[billing]?.[currentPlan];
   const targetCatalog=MANAGE_CATALOG[billing]?.[targetPlan];
   if(!currentCatalog||!targetCatalog)throw new Error('Could not calculate the plan upgrade price.');
 
   const difference=Math.max(0,Number(targetCatalog.cents)-Number(currentCatalog.cents));
   if(difference<=0)throw new Error('This plan change is not an upgrade.');
 
-  const upgrade=currentBilling==='monthly' && billing==='quarterly'
-    ? monthlyToQuarterlyUpgradePrice(currentPlan,targetPlan)
-    : fixedUpgradePrice(currentPlan,targetPlan,billing);
+  const upgrade=fixedUpgradePrice(currentPlan,targetPlan,billing);
   if(!upgrade?.priceId){
     throw new Error('The Stripe Price ID for this Alygnn upgrade difference is not configured.');
   }
@@ -1250,7 +1284,6 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,currentBilling=
     current_plan:currentPlan,
     target_plan:targetPlan,
     billing,
-    current_billing:currentBilling,
     subscription_id:sub.id,
     subscription_item_id:item.id,
     target_price_id:targetPrice,
@@ -1657,35 +1690,6 @@ async function employerOneTimePayments(employerId){
   return payments;
 }
 
-// Billing display only: include fulfilled weekly purchases, including $0 promo
-// checkouts that never create a Stripe PaymentIntent.
-async function employerWeeklyPurchaseHistory(employerId){
-  const url=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
-  url.searchParams.set('employer_id','eq.'+employerId);
-  url.searchParams.set('select','id,payment_reference,amount_cents,created_at,expires_at');
-  url.searchParams.set('order','created_at.desc');
-  url.searchParams.set('limit','100');
-  const response=await fetch(url,{headers:manageServiceHeaders()});
-  const rows=await response.json().catch(()=>[]);
-  if(!response.ok)throw new Error(rows?.message||'Could not load weekly purchase history.');
-  return (Array.isArray(rows)?rows:[]).map(row=>({
-    id:'weekly-purchase-'+row.id,
-    payment_kind:'weekly_purchase',
-    product:'weekly_slot',
-    description:'Weekly Job Slot',
-    created:row.created_at||null,
-    status:row.expires_at&&new Date(row.expires_at).getTime()<=Date.now()?'expired':'active',
-    expires_at:row.expires_at||null,
-    subtotal_cents:Number(row.amount_cents||0),
-    total_cents:Number(row.amount_cents||0),
-    amount_paid_cents:Number(row.amount_cents||0),
-    tax_cents:0,
-    currency:'usd',
-    checkout_session_id:String(row.payment_reference||'').startsWith('cs_')?row.payment_reference:null,
-    payment_intent_id:String(row.payment_reference||'').startsWith('pi_')?row.payment_reference:null
-  }));
-}
-
 function calculateNextPlanCharge(ent,sub){
   if(ent?.test_mode===true && !sub) return 0;
   const currentPlan=subscriptionPlan(ent,sub);
@@ -1762,28 +1766,12 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   });
 
   const oneTimePayments=await employerOneTimePayments(user?.id);
-  // Fulfilled weekly records are authoritative even for fully discounted $0 orders.
-  // Suppress the Stripe PaymentIntent counterpart to avoid showing one purchase twice.
-  let weeklyPurchases=[];
-  try{
-    weeklyPurchases=await employerWeeklyPurchaseHistory(user?.id);
-  }catch(error){
-    console.warn('Could not load weekly purchase billing history:',error?.message||error);
-  }
-  const weeklyReferences=new Set(weeklyPurchases.flatMap(row=>[
-    row.checkout_session_id,row.payment_intent_id
-  ].filter(Boolean)));
-  const historicalPayments=[
-    ...weeklyPurchases,
-    ...oneTimePayments.filter(row=>!(row.product==='weekly_slot' &&
-      (weeklyReferences.has(row.id)||weeklyReferences.has(row.checkout_session_id))))
-  ].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));
 
   return {
     billing_email:stripeEmail||user?.email||null,
     payment_method:paymentMethod,
     invoices:invoices.slice(0,12),
-    one_time_payments:historicalPayments.slice(0,100),
+    one_time_payments:oneTimePayments.slice(0,25),
     stripe_customer_count:uniqueIds.length,
     next_plan_charge_cents:calculateNextPlanCharge(ent,planSub)
   };
@@ -2156,29 +2144,6 @@ async function runManageAction(res,user,input){
     return send(res,200,{ok:true,...result});
   }
 
-  if(action==='preview_plan_change'){
-    const current=subscriptionPlan(ent,sub);
-    const currentBilling=subscriptionBilling(ent,sub);
-    const target=String(input.target_plan||'').toLowerCase();
-    const targetBilling=String(input.billing||'').toLowerCase();
-    const from=MANAGE_CATALOG[currentBilling]?.[current];
-    const to=MANAGE_CATALOG[targetBilling]?.[target];
-    if(!subscriptionIsActive(sub)||!from||!to||to.rank<=from.rank){
-      return send(res,409,{error:'No active paid plan is eligible for this immediate upgrade.'});
-    }
-    const upgrade=currentBilling==='monthly'&&targetBilling==='quarterly'
-      ?monthlyToQuarterlyUpgradePrice(current,target)
-      :currentBilling===targetBilling?fixedUpgradePrice(current,target,targetBilling):null;
-    const expected=to.cents-from.cents;
-    if(!upgrade?.priceId||upgrade.cents!==expected){
-      return send(res,409,{error:'The selected immediate upgrade price is not configured.'});
-    }
-    return send(res,200,{
-      ok:true,subtotal_cents:upgrade.cents,amount_due_now_cents:upgrade.cents,
-      tax_cents:null,currency:'usd',stripe_upgrade_price_id:upgrade.priceId
-    });
-  }
-
   if(action!=='change_plan'){
     return send(res,400,{error:'Unknown billing action.'});
   }
@@ -2322,8 +2287,7 @@ async function runManageAction(res,user,input){
     });
   }
 
-  const immediateUpgradeRequest=(currentBilling===targetBilling ||
-    (currentBilling==='monthly'&&targetBilling==='quarterly')) &&
+  const immediateUpgradeRequest=currentBilling===targetBilling &&
     Number(targetCatalog?.[target]?.rank||0)>Number(currentCatalog?.[current]?.rank||0) &&
     !['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming);
 
@@ -2395,15 +2359,13 @@ async function runManageAction(res,user,input){
 
   // Same-cadence upgrades create payment FIRST. A schedule, if present, is
   // only released by the confirmed-payment fulfillment path.
-  if((sameBilling || (currentBilling==='monthly'&&targetBilling==='quarterly')) &&
-     targetRank>currentRank && immediateUpgradeRequest){
+  if(sameBilling&&targetRank>currentRank){
     const result=await upgradeNow({
       employerId:user.id,
       ent,
       sub,
       targetPlan:target,
       billing:targetBilling,
-      currentBilling,
       input
     });
     return send(res,200,{ok:true,...result});
@@ -2665,7 +2627,6 @@ module.exports = async function handler(req, res) {
     if ([
       'summary',
       'change_plan',
-      'preview_plan_change',
       'cancel_scheduled_change',
       'cancel_plan',
       'resume_plan',
@@ -2728,6 +2689,15 @@ module.exports = async function handler(req, res) {
     if (!product && plan && plan !== 'single_job') product = 'job_plan';
     if (!product && plan === 'single_job') product = 'additional_slot';
     if (product === 'single_job') product = 'additional_slot';
+
+    // This add-on is displayed in the app, but no Stripe Price exists in
+    // this checkout catalogue yet. Never substitute a Launch/Growth/Scale
+    // charge when the employer selected Urgently Hiring.
+    if(product==='urgently_hiring_addon'){
+      return send(res,400,{
+        error:'Urgently Hiring checkout is not configured with a Stripe Price yet. No charge was created.'
+      });
+    }
 
     if (product === 'additional_slot') {
       const access = await getEmployerPostingAccess(token);
