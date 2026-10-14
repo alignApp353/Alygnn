@@ -1657,6 +1657,35 @@ async function employerOneTimePayments(employerId){
   return payments;
 }
 
+// Billing display only: include fulfilled weekly purchases, including $0 promo
+// checkouts that never create a Stripe PaymentIntent.
+async function employerWeeklyPurchaseHistory(employerId){
+  const url=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
+  url.searchParams.set('employer_id','eq.'+employerId);
+  url.searchParams.set('select','id,payment_reference,amount_cents,created_at,expires_at');
+  url.searchParams.set('order','created_at.desc');
+  url.searchParams.set('limit','100');
+  const response=await fetch(url,{headers:manageServiceHeaders()});
+  const rows=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(rows?.message||'Could not load weekly purchase history.');
+  return (Array.isArray(rows)?rows:[]).map(row=>({
+    id:'weekly-purchase-'+row.id,
+    payment_kind:'weekly_purchase',
+    product:'weekly_slot',
+    description:'Weekly Job Slot',
+    created:row.created_at||null,
+    status:row.expires_at&&new Date(row.expires_at).getTime()<=Date.now()?'expired':'active',
+    expires_at:row.expires_at||null,
+    subtotal_cents:Number(row.amount_cents||0),
+    total_cents:Number(row.amount_cents||0),
+    amount_paid_cents:Number(row.amount_cents||0),
+    tax_cents:0,
+    currency:'usd',
+    checkout_session_id:String(row.payment_reference||'').startsWith('cs_')?row.payment_reference:null,
+    payment_intent_id:String(row.payment_reference||'').startsWith('pi_')?row.payment_reference:null
+  }));
+}
+
 function calculateNextPlanCharge(ent,sub){
   if(ent?.test_mode===true && !sub) return 0;
   const currentPlan=subscriptionPlan(ent,sub);
@@ -1733,12 +1762,28 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   });
 
   const oneTimePayments=await employerOneTimePayments(user?.id);
+  // Fulfilled weekly records are authoritative even for fully discounted $0 orders.
+  // Suppress the Stripe PaymentIntent counterpart to avoid showing one purchase twice.
+  let weeklyPurchases=[];
+  try{
+    weeklyPurchases=await employerWeeklyPurchaseHistory(user?.id);
+  }catch(error){
+    console.warn('Could not load weekly purchase billing history:',error?.message||error);
+  }
+  const weeklyReferences=new Set(weeklyPurchases.flatMap(row=>[
+    row.checkout_session_id,row.payment_intent_id
+  ].filter(Boolean)));
+  const historicalPayments=[
+    ...weeklyPurchases,
+    ...oneTimePayments.filter(row=>!(row.product==='weekly_slot' &&
+      (weeklyReferences.has(row.id)||weeklyReferences.has(row.checkout_session_id))))
+  ].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));
 
   return {
     billing_email:stripeEmail||user?.email||null,
     payment_method:paymentMethod,
     invoices:invoices.slice(0,12),
-    one_time_payments:oneTimePayments.slice(0,25),
+    one_time_payments:historicalPayments.slice(0,100),
     stripe_customer_count:uniqueIds.length,
     next_plan_charge_cents:calculateNextPlanCharge(ent,planSub)
   };
