@@ -343,6 +343,7 @@ async function fulfillCheckout(session) {
   }
 
   if (product === 'plan_upgrade') {
+    if (!['paid','no_payment_required'].includes(String(session.payment_status||''))) return;
     // An authenticated Checkout event is the only authority to apply an
     // upgrade. For a 100%-off code, Stripe returns no_payment_required.
     const targetPlan=String(meta.target_plan||'').toLowerCase();
@@ -455,10 +456,28 @@ async function fulfillSubscription(subscription, forceStatus) {
   }
 
   if (product !== 'job_plan') return;
+  // A paid pending update may change the Price before metadata is refreshed.
+  // Always derive the effective tier from Stripe's actual subscription Price.
+  const activePrice=subscription?.items?.data?.[0]?.price;
+  const priceId=typeof activePrice==='string'?activePrice:activePrice?.id;
+  const catalog={
+    'price_1UACGoRvnGY3BeGX4Dnlv9ZP':['launch','monthly'],
+    'price_1UEJGJRvnGY3BeGX9yK3XL2i':['launch','quarterly'],
+    'price_1UEJI7RvnGY3BeGXXDSX5rqM':['growth','monthly'],
+    'price_1UEJJIRvnGY3BeGXPIAyRF2z':['growth','quarterly'],
+    'price_1UEJK6RvnGY3BeGXKfZEsIIk':['scale','monthly'],
+    'price_1UEJMSRvnGY3BeGXEwCM1bmu':['scale','quarterly']
+  };
+  const resolved=catalog[priceId]||[meta.plan,meta.billing||'monthly'];
+  if(catalog[priceId]&&(meta.plan!==resolved[0]||meta.billing!==resolved[1])&&!subscription.pending_update){
+    await stripePost('subscriptions/'+encodeURIComponent(subscription.id),{
+      'metadata[plan]':resolved[0], 'metadata[billing]':resolved[1]
+    });
+  }
   await upsertPlan({
     employerId: meta.employer_id,
-    plan: meta.plan,
-    billing: meta.billing || 'monthly',
+    plan: resolved[0],
+    billing: resolved[1],
     status: forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active'),
     periodEnd: stripePeriodEndUnix(subscription),
     subscription
