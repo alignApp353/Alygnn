@@ -342,6 +342,91 @@ async function fulfillCheckout(session) {
     return;
   }
 
+  if (product === 'plan_upgrade' && meta.cross_billing_checkout === 'true') {
+    if(session.mode!=='payment' || session.payment_status!=='paid')return;
+    const plans={launch:1,growth:2,scale:3};
+    const from=String(meta.current_plan||'').toLowerCase();
+    const target=String(meta.target_plan||'').toLowerCase();
+    const currentBilling=String(meta.current_billing||'').toLowerCase();
+    const billing=String(meta.billing||'').toLowerCase();
+    if(!plans[from]||!plans[target]||plans[target]<=plans[from]||
+      !['monthly','quarterly'].includes(currentBilling)||billing!=='quarterly'||currentBilling!=='monthly')
+      throw new Error('Invalid cross-billing upgrade metadata.');
+    const recurringPrices={
+      growth:'price_1UEJJIRvnGY3BeGXPIAyRF2z',
+      scale:'price_1UEJMSRvnGY3BeGXEwCM1bmu'
+    };
+    const upgradePrices={
+      'launch:growth':['price_1UQCiyRvnGY3BeGXwWupW6sf',84100],
+      'launch:scale':['price_1UQCjfRvnGY3BeGX4EY6sA82',140100],
+      'growth:scale':['price_1UQCcwRvnGY3BeGXaZZqsCkb',125100]
+    };
+    const expected=upgradePrices[`${from}:${target}`];
+    if(!expected||meta.upgrade_price_id!==expected[0]||
+      meta.target_price_id!==recurringPrices[target]||
+      Number(meta.fixed_difference_cents)!==expected[1]||
+      Number(session.amount_subtotal)!==expected[1])
+      throw new Error('Cross-billing upgrade Checkout did not match the approved Stripe prices.');
+    // Verify actual purchased price instead of trusting Checkout metadata alone.
+    const lineItems=await stripeGet(`checkout/sessions/${encodeURIComponent(session.id)}/line_items?limit=10`);
+    if(lineItems.data?.length!==1 ||
+       (typeof lineItems.data[0].price==='string'?lineItems.data[0].price:lineItems.data[0].price?.id)!==expected[0])
+      throw new Error('Cross-billing upgrade Checkout line item did not match the approved Stripe price.');
+    let sub=await stripeGet(`subscriptions/${encodeURIComponent(meta.subscription_id)}?expand[]=items.data.price`);
+    const customer=typeof sub.customer==='string'?sub.customer:sub.customer?.id;
+    if(customer!==session.customer)throw new Error('Upgrade Checkout customer does not match the subscription.');
+    if(sub.metadata?.employer_id&&sub.metadata.employer_id!==employerId)
+      throw new Error('Upgrade subscription belongs to a different employer.');
+    const item=sub.items?.data?.find(row=>row.id===meta.subscription_item_id);
+    if(!item)throw new Error('Original subscription item was not found.');
+    const livePrice=typeof item.price==='string'?item.price:item.price?.id;
+    if(livePrice===recurringPrices[target]){
+      await upsertPlan({employerId,plan:target,billing,status:sub.status,
+        periodEnd:stripePeriodEndUnix(sub),subscription:sub});
+      return;
+    }
+    const oldPrices={
+      launch:'price_1UACGoRvnGY3BeGX4Dnlv9ZP',
+      growth:'price_1UEJI7RvnGY3BeGXXDSX5rqM'
+    };
+    if(livePrice!==oldPrices[from]){
+      console.warn('Ignoring obsolete paid cross-billing upgrade',session.id);
+      return;
+    }
+    if(sub.pending_update)throw new Error('An existing subscription change is still pending.');
+    if(Array.isArray(sub.discounts)&&sub.discounts.length)
+      throw new Error('Cannot automatically apply an upgrade to a subscription with existing discounts.');
+    const scheduleId=typeof sub.schedule==='string'?sub.schedule:sub.schedule?.id;
+    if(scheduleId){
+      await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}/release`,{});
+    }
+    // Checkout already collected the difference. Make the immediate quarterly
+    // subscription invoice $0 with a once-only 100% coupon. The following
+    // quarterly renewal charges the full subscription price.
+    const coupon=await stripePost('coupons',{
+      percent_off:100,duration:'once',name:'Alygnn paid upgrade offset'
+    });
+    sub=await stripePost(`subscriptions/${encodeURIComponent(sub.id)}`,{
+      cancel_at_period_end:'false',
+      'items[0][id]':item.id,
+      'items[0][price]':recurringPrices[target],
+      'items[0][quantity]':1,
+      proration_behavior:'none',
+      payment_behavior:'error_if_incomplete',
+      'discounts[0][coupon]':coupon.id,
+      'metadata[employer_id]':employerId,
+      'metadata[product]':'job_plan',
+      'metadata[plan]':target,
+      'metadata[billing]':billing,
+      'expand[]':'latest_invoice'
+    });
+    if(Number(sub.latest_invoice?.amount_due||0)!==0)
+      throw new Error('The subscription generated an unexpected invoice amount. Review Stripe billing before continuing.');
+    await upsertPlan({employerId,plan:target,billing,status:sub.status,
+      periodEnd:stripePeriodEndUnix(sub),subscription:sub});
+    return;
+  }
+
   if (product === 'plan_upgrade') {
     if (!['paid','no_payment_required'].includes(String(session.payment_status||''))) return;
     // An authenticated Checkout event is the only authority to apply an
