@@ -4,11 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Account &amp; security — Alygnn</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F6F8F7" id="alygnn-theme-color">
+<script id="alygnn-security-theme">
+(function(){
+  'use strict';
+  var media=window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function read(key){try{return window.localStorage.getItem(key)}catch(_){return null}}
+  function normalize(value){
+    var v=String(value||'').trim().toLowerCase();
+    if(v==='system'||v==='system-default'||v==='default')v='auto';
+    return ['dark','light','auto'].includes(v)?v:null;
+  }
+  function preference(){
+    // Respect Alygnn's cross-app saved appearance first, with employer aliases as fallback.
+    for(var key of ['alygnnTheme','alygnnEmployerTheme','alygnn_employer_theme','alygnn_theme','alygnn-theme']){
+      var value=normalize(read(key));if(value)return value;
+    }
+    return 'auto';
+  }
+  function apply(){
+    var pref=preference(),theme=pref==='auto'?(media&&media.matches?'dark':'light'):pref;
+    var root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.themePreference=pref;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    root.style.backgroundColor=theme==='dark'?'#07121D':'#F6F8F7';
+    var tag=document.getElementById('alygnn-theme-color');
+    if(tag)tag.content=theme==='dark'?'#07121D':'#F6F8F7';
+  }
+  apply();
+  if(media){
+    if(media.addEventListener)media.addEventListener('change',function(){if(preference()==='auto')apply()});
+    else if(media.addListener)media.addListener(function(){if(preference()==='auto')apply()});
+  }
+  window.addEventListener('pageshow',apply);
+  window.addEventListener('focus',apply);
+  window.addEventListener('storage',function(e){
+    if(['alygnnTheme','alygnnEmployerTheme','alygnn_employer_theme','alygnn_theme','alygnn-theme'].includes(e.key))apply();
+  });
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)apply()});
+  window.AlygnnSecurityTheme={apply:apply,preference:preference};
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--card:#FCFCFA;--text:#1A2530;--muted:#607181;--line:#DDE3E8;--danger:#A95558;--soft:#EBF1F5}
+html[data-theme="dark"]{
+  --brand:#7EA8D0;--sage:#92C3A2;--bg:#07121D;--card:#0F1B28;
+  --text:#F2F6F9;--muted:#A9B6C4;--line:#2B3A4A;--danger:#FF9B9B;--soft:#122436;
+}
 *{box-sizing:border-box}html{height:100%;overflow:hidden}body{margin:0;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
 button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
 .topbar{--top-clearance:max(34px,env(safe-area-inset-top,0px));height:calc(64px + var(--top-clearance));padding:var(--top-clearance) 22px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line);background:rgba(246,248,247,.96);position:relative;flex-shrink:0;z-index:50;backdrop-filter:blur(12px)}
@@ -33,6 +81,34 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
 .close-content{padding-bottom:18px}.choice{display:flex;gap:11px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;background:#fff;cursor:pointer}.choice:has(input:checked){border-color:var(--brand);background:#F4F7FB}.choice input{margin:4px 0 0;accent-color:var(--brand)}.choice strong{font-size:13px;display:block}.choice small{display:block;font-size:12px;line-height:1.5;color:var(--muted);margin-top:4px}.risk-notice{font-size:12px;color:var(--muted);line-height:1.55;margin:13px 0}
 .footer{text-align:center;color:var(--muted);font-size:11px;padding:22px 18px max(44px,env(safe-area-inset-bottom,0px))}.footer a{color:inherit;text-decoration:none}
 .modal-backdrop{position:fixed;inset:0;background:rgba(20,32,45,.62);display:none;align-items:center;justify-content:center;z-index:100;padding:18px}.modal-backdrop.open{display:flex}.modal{background:#fff;padding:22px;border-radius:20px;max-width:420px;width:100%;box-shadow:0 25px 70px #0002}.modal h2{font-size:19px;letter-spacing:-.35px;margin:0 0 10px}.modal p{font-size:13px;color:var(--muted);line-height:1.6}.modal .controls{margin-top:18px}.modal .controls>button{flex:1}
+/* Alygnn employer appearance: match the saved light/dark/auto setting. */
+html[data-theme="dark"] .topbar{background:rgba(7,18,29,.96)}
+html[data-theme="dark"] .back,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .action,
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] .choice,
+html[data-theme="dark"] .input,
+html[data-theme="dark"] .modal{background:var(--card);color:var(--text);border-color:var(--line)}
+html[data-theme="dark"] .panel{box-shadow:0 12px 28px rgba(0,0,0,.12)}
+html[data-theme="dark"] .item+.item{border-color:var(--line)}
+html[data-theme="dark"] .symbol{color:var(--brand)}
+html[data-theme="dark"] .action{color:var(--brand)}
+html[data-theme="dark"] .status{background:#203143;color:#BBCADA}
+html[data-theme="dark"] .status.on{background:#153F32;color:#86DEAF}
+html[data-theme="dark"] .expansion{background:#0B1825}
+html[data-theme="dark"] .details{border-color:var(--line)}
+html[data-theme="dark"] .input::placeholder{color:#8EA2B3}
+html[data-theme="dark"] .input:focus{box-shadow:0 0 0 3px rgba(126,168,208,.18)}
+html[data-theme="dark"] .choice:has(input:checked){background:#152D42;border-color:var(--brand)}
+html[data-theme="dark"] .message.error{background:#3A242D;border-color:#74424A;color:#FFB9BF}
+html[data-theme="dark"] .message.success{background:#173A2C;border-color:#325E4C;color:#A5EBC4}
+html[data-theme="dark"] .modal{box-shadow:0 25px 70px rgba(0,0,0,.5)}
+html[data-theme="dark"] .danger{background:#A9434D;color:#fff}
+html[data-theme="dark"] .primary{background:#5D7FA3;color:#fff}
+html[data-theme="dark"] .primary:hover{background:#6E92B7}
+html[data-theme="dark"] .back:hover,
+html[data-theme="dark"] .action:hover{border-color:var(--brand)}
 @media (max-width:400px){.topbar{height:calc(61px + var(--top-clearance))}.item{padding:16px 13px;gap:10px}.symbol{width:36px;height:36px;border-radius:11px}.action{font-size:11px;padding:9px}.panel{border-radius:18px}main{padding:22px 14px 12px}}
 </style>
 </head>
@@ -71,11 +147,6 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
       <div id="google-status"><span class="status">Checking…</span></div>
       <button class="action" id="retry-google-btn" style="display:none" type="button">Retry</button>
       <button class="action" id="link-google-btn" style="display:none" type="button">Link</button>
-    </div>
-    <div class="item">
-      <div class="symbol"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M13 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg></div>
-      <div class="item-main"><div class="name">Sign out</div><div class="hint">End your session on this device</div></div>
-      <button class="action" type="button" id="signout-btn">Sign out</button>
     </div>
   </div>
 
@@ -256,12 +327,6 @@ $('link-google-btn').addEventListener('click',async()=>{
     const cancelled=/cancel/i.test(raw);
     showMsg(cancelled?'Google linking was canceled.': 'Could not link Google: '+friendlyError(error)+( /manual.link/i.test(raw)?' Enable manual identity linking in Supabase Authentication settings.':''));
   }finally{button.disabled=false;button.textContent='Link';}
-});
-$('signout-btn').addEventListener('click',async()=>{
-  const button=$('signout-btn');button.disabled=true;
-  const {error}=await sb.auth.signOut({scope:'local'});
-  if(error){button.disabled=false;showMsg(friendlyError(error));return;}
-  location.replace('app-employer-login.html');
 });
 $('closure-continue').addEventListener('click',()=>{
   clearMsg();chosenClosure=document.querySelector('input[name="closure"]:checked').value;
