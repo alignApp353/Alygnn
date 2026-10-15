@@ -475,7 +475,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(eyebrow) eyebrow.textContent='Plan change review';
     if(heading) heading.textContent='Review your plan change.';
     if(headingCopy){
-      headingCopy.textContent=immediate?'Pay the Stripe-calculated upgrade balance now, with unused paid time credited, to activate extra job slots.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
+      headingCopy.textContent=immediate?'Pay the quoted plan-price difference now to activate extra job slots.':'Nothing changes today. Review the plan, billing cadence, capacity, and renewal price that will take effect at your next renewal.';
     }
 
     const firstTitle=document.querySelector('.panel-title');
@@ -493,7 +493,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           <div style="font-size:13px;line-height:1.6">Your new plan will start on your next billing date. No payment is due today.</div>
         </div>` : `<div class="change-plan-box" style="margin-bottom:16px">
           <div class="change-label">When should this change take effect?</div>
-          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the remaining amount after unused-time credit; new job slots activate after successful payment.</label>
+          <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the fixed plan-price difference now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
           ${canChangeImmediately?'':`<div class="change-price">${billingChanged?'Monthly ↔ Quarterly changes start at your next renewal. No payment is due today.':'Downgrades start at the next renewal.'}</div>`}
         </div>`}
@@ -522,7 +522,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           ${currentProduct.name} ${currentBillingLabel} stays active${periodEnd?' through '+periodEnd:' until your current paid period ends'}. Then ${targetProduct.name} ${targetBillingLabel} begins at ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}. No plan-change charge is taken today. Your reusable capacity changes from ${currentSlots} to ${targetSlots} total slots at that time. Alygnn will not delete existing jobs; if you are above the new limit when the change takes effect, you will need to close enough jobs before posting another one.
         </div>`}
         <ul class="review-list">
-          <li>${immediate?'See the Stripe-calculated upgrade amount before confirming.':'No plan-change charge is taken today.'}</li>
+          <li>${immediate?'See the plan-price difference before confirming.':'No plan-change charge is taken today.'}</li>
           <li>Your permanent free job slot remains included.</li>
           <li>Your jobs, applications, messages, and history are preserved.</li>
         </ul>
@@ -531,7 +531,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('enterprise-note').style.display='none';
     document.getElementById('payment-section-title').textContent='3. Confirm change';
     document.getElementById('secure-title').textContent=immediate?'Confirm immediate plan change':'Schedule your plan change';
-    document.getElementById('secure-copy').textContent=immediate?'Stripe calculates your unused-time credit and the upgrade amount. After successful payment, the new billing period starts immediately.':`${currentProduct.name} ${currentBillingLabel} stays active until the end of the current period. ${targetProduct.name} ${targetBillingLabel} starts at renewal.`;
+    document.getElementById('secure-copy').textContent=immediate?'Alygnn credits the full listed price of your current plan toward the new plan. After successful payment, the new billing period starts immediately.':`${currentProduct.name} ${currentBillingLabel} stays active until the end of the current period. ${targetProduct.name} ${targetBillingLabel} starts at renewal.`;
 
     const targetFeatures=targetProduct.features||[];
     document.getElementById('summary-name').textContent=targetProduct.name;
@@ -546,10 +546,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)+(planChangeTax===null?' + tax':'')):'$0.00';
     document.getElementById('trust-copy').textContent=immediate?'Pay the remaining upgrade balance now · access changes after payment':'No charge today · change takes effect at renewal';
 
-    document.getElementById('authorization-copy').textContent=immediate?'I authorize the Stripe-calculated upgrade amount plus applicable tax. My new quarterly or monthly billing cycle starts after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
+    document.getElementById('authorization-copy').textContent=immediate?'I authorize the quoted plan-price difference plus applicable tax. My new quarterly or monthly billing cycle starts after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
 
     const fineprint=document.querySelector('.fineprint');
-    if(fineprint) fineprint.textContent=immediate?'Unused paid time is credited in the quoted balance. Applicable tax and the final total are confirmed at Stripe Checkout.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
+    if(fineprint) fineprint.textContent=immediate?'The full listed price of your current plan is credited. Applicable tax and the final total are confirmed on the Stripe invoice.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
 
     updateCheckoutState();
   }
