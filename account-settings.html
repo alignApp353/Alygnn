@@ -80,6 +80,9 @@
   .pill.off { background: var(--border); color: var(--text-muted); }
 
   .linked-list { display: flex; flex-direction: column; }
+  .linked-feedback { display: none; margin: 0 0 14px; padding: 10px 12px; border-radius: 9px; font-size: 13px; line-height: 1.45; }
+  .linked-feedback.error { display: block; color: #8a4040; background: rgba(215,154,154,.15); border: 1px solid rgba(215,154,154,.4); }
+  .linked-feedback.success { display: block; color: #1a5c35; background: rgba(111,191,143,.15); border: 1px solid rgba(111,191,143,.4); }
   .linked-row {
     display: flex; align-items: center; justify-content: space-between; gap: 14px;
     padding: 12px 0; border-top: 1px solid var(--border);
@@ -198,6 +201,7 @@
     <h2>Linked accounts</h2>
     <div class="desc">Connect sign-in methods to this same Alygnn account</div>
 
+    <div id="linked-feedback" class="linked-feedback" role="status" aria-live="polite"></div>
     <div class="linked-list">
       <div class="linked-row">
         <div class="linked-provider">
@@ -323,10 +327,19 @@
     }
   }
 
+  function showLinkedFeedback(message, type = 'error') {
+    const feedback = document.getElementById('linked-feedback');
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.className = 'linked-feedback ' + type;
+  }
+
   async function linkIdentityProvider(provider) {
     if (!['google', 'apple'].includes(provider)) return;
 
     const button = document.getElementById(`${provider}-link-btn`);
+    const feedback = document.getElementById('linked-feedback');
+    if (feedback) { feedback.textContent = ''; feedback.className = 'linked-feedback'; }
     if (button) {
       button.disabled = true;
       button.textContent = 'Connecting…';
@@ -347,13 +360,14 @@
         window.location.assign(data.url);
         return;
       }
+      throw new Error('The authentication provider did not return a linking URL.');
     } catch (error) {
       console.error(`Could not connect ${provider}:`, error);
       const message = String(error?.message || '');
       if (/manual linking|identity linking|linking is disabled/i.test(message)) {
-        showMsg('Account linking is not enabled yet in Supabase Auth. Enable manual identity linking, then try again.');
+        showLinkedFeedback('Account linking is disabled in Supabase Auth. Enable manual identity linking in your project authentication settings, then try again.');
       } else {
-        showMsg(message || `Could not connect ${provider}. Please try again.`);
+        showLinkedFeedback(message || `Could not connect ${provider}. Please try again.`);
       }
       if (button) {
         button.disabled = false;
@@ -459,7 +473,17 @@
 
     const linkedProvider = new URLSearchParams(window.location.search).get('linked_provider');
     if (linkedProvider && ['google', 'apple'].includes(linkedProvider)) {
-      showMsg(`${linkedProvider === 'google' ? 'Google' : 'Apple'} connected successfully.`, 'success');
+      // Verify the linked identity with Supabase instead of trusting a URL parameter.
+      const { data: refreshed, error: refreshError } = await sb.auth.getUser();
+      const actualProviders = refreshed?.user?.identities?.map(i => String(i.provider || '').toLowerCase()) || [];
+      setProviderState('google', actualProviders.includes('google'));
+      setProviderState('apple', actualProviders.includes('apple'));
+      const providerLabel = linkedProvider === 'google' ? 'Google' : 'Apple';
+      if (!refreshError && refreshed?.user?.id === currentUserId && actualProviders.includes(linkedProvider)) {
+        showLinkedFeedback(`${providerLabel} connected successfully to this Alygnn account.`, 'success');
+      } else {
+        showLinkedFeedback(`${providerLabel} was not connected to this Alygnn account. Please try again or check your Supabase authentication settings.`);
+      }
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete('linked_provider');
       history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
