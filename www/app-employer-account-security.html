@@ -50,8 +50,8 @@
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<!-- Supabase is loaded after the page renders. A stalled CDN must never block settings. -->
 <style>
 :root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--card:#FCFCFA;--text:#1A2530;--muted:#607181;--line:#DDE3E8;--danger:#A95558;--soft:#EBF1F5}
 html[data-theme="dark"]{
@@ -128,7 +128,7 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
   <div class="panel">
     <div class="item">
       <div class="symbol"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></div>
-      <div class="item-main"><div class="name">Email address</div><div class="hint">Used for account notifications and sign-in</div><span class="email-text" id="email-display">Loading…</span></div>
+      <div class="item-main"><div class="name">Email address</div><div class="hint">Used for account notifications and sign-in</div><span class="email-text" id="email-display">Loading…</span><button type="button" class="action" id="retry-email-btn" style="display:none;margin-top:9px">Retry</button></div>
     </div>
     <div class="item">
       <div class="symbol"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
@@ -172,12 +172,63 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
 const SUPABASE_URL = 'https://auth.alygnn.com';
 const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const GOOGLE_WEB_CLIENT_ID = '725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
-const sb = window.supabase?.createClient ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
+let sb=null;
+const SUPABASE_SDK_CDNS=[
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+];
+let sdkLoading=null;
+// No head-blocking scripts: Android must finish rendering, even when a CDN stalls.
+function loadSdkScript(url,timeoutMs=4500){
+  return new Promise((resolve,reject)=>{
+    let completed=false;
+    const script=document.createElement('script');
+    const finish=(error)=>{
+      if(completed)return;
+      completed=true;clearTimeout(timer);script.onload=script.onerror=null;
+      if(error){script.remove();reject(error)}else resolve();
+    };
+    const timer=setTimeout(()=>finish(new Error('Authentication library download timed out')),timeoutMs);
+    script.src=url;script.async=true;
+    script.onload=()=>window.supabase?.createClient
+      ?finish(null):finish(new Error('Authentication library loaded incorrectly'));
+    script.onerror=()=>finish(new Error('Could not download authentication library'));
+    document.head.appendChild(script);
+  });
+}
+async function ensureClient(){
+  if(sb)return sb;
+  if(!sdkLoading){
+    sdkLoading=(async()=>{
+      if(!window.supabase?.createClient){
+        let last;
+        for(const url of SUPABASE_SDK_CDNS){
+          try{await loadSdkScript(url);break}catch(e){last=e}
+        }
+        if(!window.supabase?.createClient)throw last||new Error('Sign-in library unavailable');
+      }
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+        auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+      });
+      return sb;
+    })().catch(e=>{sdkLoading=null;throw e});
+  }
+  return sdkLoading;
+}
 const $=id=>document.getElementById(id);
 let accountUser=null;
 let pendingPassword=null;
 let chosenClosure='deactivate';
-const AUTH_TIMEOUT_MS = 8500;
+const AUTH_TIMEOUT_MS = 7500;
+// Independent startup watchdog: this runs even if an unrelated async call stalls.
+setTimeout(()=>{
+  if($('email-display').textContent.includes('Loading')||$('google-hint').textContent.includes('Checking linked accounts')){
+    if($('email-display').textContent.includes('Loading'))$('email-display').textContent='Temporarily unavailable';
+    $('retry-email-btn').style.display='inline-flex';
+    googleUnavailable('Could not finish checking Google. Tap Retry.');
+    showMsg('Account details took too long to load. Tap Retry to try again.');
+  }
+},17500);
 function bounded(task,label='Request'){
   let timer;
   return Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Please retry.')),AUTH_TIMEOUT_MS);})]).finally(()=>clearTimeout(timer));
@@ -190,6 +241,7 @@ function googleUnavailable(message){
 }
 function authUnavailable(message){
   $('email-display').textContent='Could not load email';
+  $('retry-email-btn').style.display='inline-flex';
   googleUnavailable('Unable to check sign-in methods. Tap Retry.');
   showMsg(message);
 }
@@ -217,40 +269,48 @@ async function refreshGoogleStatus(user){
   $('google-hint').textContent=isLinked?'Google is linked to this Alygnn account':'Connect Google without creating a new account';
 }
 async function init(){
-  if(!sb){authUnavailable('Account security could not load its sign-in library. Check your connection and reopen this page.');return;}
+  // Guard against two simultaneous refreshes fighting over the Supabase auth lock.
+  if(init.inFlight)return;
+  init.inFlight=true;
+  $('retry-email-btn').style.display='none';
+  $('retry-google-btn').style.display='none';
+  $('email-display').textContent='Loading…';
+  $('google-hint').textContent='Checking linked accounts…';
+  $('google-status').innerHTML='<span class="status">Checking…</span>';
   try{
-    // Read the existing employer-login session without a new Supabase storage key.
+    await ensureClient();
     const {data,error}=await bounded(()=>sb.auth.getSession(),'Session check');
     if(error)throw error;
     const session=data?.session;
-    if(!session){location.replace('app-employer-login.html');return;}
-    if(session.user?.email)$('email-display').textContent=session.user.email;
-    // A network call is required to trust current Google identity-link information.
-    const {data:userData,error:userError}=await bounded(()=>sb.auth.getUser(),'Account verification');
-    if(userError||!userData?.user)throw userError||new Error('Unable to verify account.');
-    accountUser=userData.user;
-    $('email-display').textContent=accountUser.email||session.user?.email||'Email unavailable';
-    await refreshGoogleStatus(accountUser);
+    if(!session){
+      // Never claim account data from an unauthenticated session.
+      location.replace('app-employer-login.html');return;
+    }
+    accountUser=session.user||null;
+    $('email-display').textContent=session.user?.email||'Email not available';
+    // The session already contains the provider identity list. Render immediately
+    // rather than keeping Google stuck behind an additional HTTP getUser request.
+    const identities=Array.isArray(session.user?.identities)?session.user.identities:null;
+    if(identities){
+      await refreshGoogleStatus(session.user);
+      clearMsg();
+    }else{
+      // Older sessions may omit identities; ask the server with a bounded request.
+      const {data:remote,error:verifyError}=await bounded(()=>sb.auth.getUser(),'Google identity check');
+      if(verifyError||!remote?.user)throw verifyError||new Error('Unable to check linked accounts.');
+      accountUser=remote.user;
+      await refreshGoogleStatus(remote.user);
+      clearMsg();
+    }
   }catch(e){
-    if($('email-display').textContent==='Loading…')$('email-display').textContent='Temporarily unavailable';
-    googleUnavailable('Could not check Google linking. Tap Retry.');
-    showMsg('Account information could not be refreshed: '+friendlyError(e));
-  }
+    if($('email-display').textContent.includes('Loading'))$('email-display').textContent='Temporarily unavailable';
+    $('retry-email-btn').style.display='inline-flex';
+    googleUnavailable('Unable to check Google sign-in. Tap Retry.');
+    showMsg('Account details could not be loaded: '+friendlyError(e));
+  }finally{init.inFlight=false;}
 }
-$('retry-google-btn').addEventListener('click',async()=>{
-  if(!sb){authUnavailable('Sign-in services are unavailable. Check your connection and reopen the page.');return;}
-  const button=$('retry-google-btn');button.disabled=true;
-  $('google-status').innerHTML='<span class="status">Checking…</span>';
-  $('google-hint').textContent='Checking your linked accounts…';
-  try{
-    const {data,error}=await bounded(()=>sb.auth.getUser(),'Google account check');
-    if(error||!data?.user)throw error||new Error('Unable to verify your account.');
-    $('email-display').textContent=data.user.email||'Email unavailable';
-    await refreshGoogleStatus(data.user);
-    clearMsg();
-  }catch(e){googleUnavailable('Could not check Google linking. Tap Retry.');showMsg(friendlyError(e));}
-  finally{button.disabled=false;}
-});
+$('retry-email-btn').addEventListener('click',()=>init());
+$('retry-google-btn').addEventListener('click',()=>init());
 $('password-toggle').addEventListener('click',()=>{
   const panel=$('password-panel');const isOpen=panel.classList.toggle('open');
   $('password-toggle').setAttribute('aria-expanded',String(isOpen));
@@ -263,6 +323,7 @@ $('send-code-btn').addEventListener('click',async()=>{
   if(next!==confirmation){showMsg('Your new passwords do not match.');return;}
   const button=$('send-code-btn');button.disabled=true;button.textContent='Sending…';
   try{
+    await ensureClient();
     // Supabase generates, stores and emails the reauthentication OTP server-side.
     // Never generate security OTPs in the browser or store them in public tables.
     const {error}=await sb.auth.reauthenticate();
@@ -279,6 +340,7 @@ $('confirm-code-btn').addEventListener('click',async()=>{
   if(!pendingPassword||!/^[0-9]{6}$/.test(code)){showMsg('Enter the 6-digit verification code.');return;}
   const button=$('confirm-code-btn');button.disabled=true;button.textContent='Updating…';
   try{
+    await ensureClient();
     const {error}=await sb.auth.updateUser({password:pendingPassword,nonce:code});
     if(error)throw error;
     try{await sb.from('profiles').update({has_password:true}).eq('id',accountUser.id)}catch(_){/* Noncritical */}
@@ -305,7 +367,8 @@ $('link-google-btn').addEventListener('click',async()=>{
   clearMsg();const button=$('link-google-btn');button.disabled=true;button.textContent='Connecting…';
   let plugin;
   try{
-    const {data:{session}}=await sb.auth.getSession();
+    await ensureClient();
+    const {data:{session}}=await bounded(()=>sb.auth.getSession(),'Session check');
     if(!session)throw new Error('Sign in before linking Google.');
     const originalId=session.user.id;
     plugin=nativeSocialPlugin();
@@ -350,6 +413,7 @@ $('modal-confirm').addEventListener('click',async()=>{
   }
   const button=$('modal-confirm');button.disabled=true;button.textContent='Submitting…';
   try{
+    await ensureClient();
     const {data:{session},error}=await sb.auth.getSession();
     if(error||!session)throw new Error('Your session has expired. Please sign in again.');
     const endpoint=chosenClosure==='deactivate'?'deactivate-account':'delete-account';
