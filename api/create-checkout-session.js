@@ -1282,63 +1282,58 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
   const target=MANAGE_CATALOG[billing]?.[targetPlan];
   if(!target||MANAGE_CATALOG[currentBilling]?.[currentPlan]?.rank>=target.rank)
     throw new Error('Immediate billing-cadence changes require a higher plan.');
-  if(sub.pending_update)throw new Error('A previous subscription update is awaiting payment. Complete that invoice first.');
+  if(sub.pending_update)throw new Error('A prior subscription invoice is awaiting payment. Resolve it in Stripe Billing before starting another upgrade.');
+  if(Array.isArray(sub.discounts)&&sub.discounts.length)
+    throw new Error('This subscription already has a discount. Contact support before a fixed-price upgrade.');
+  const existingInvoices=await manageStripe('GET','invoices',{
+    subscription:sub.id,status:'open',limit:10
+  });
+  if((existingInvoices.data||[]).some(invoice=>Number(invoice.amount_remaining||0)>0))
+    throw new Error('An existing Stripe subscription invoice is unpaid. Resolve or void it before starting a new upgrade to avoid duplicate charges.');
   const item=sub.items?.data?.[0];
   if(!item?.id)throw new Error('The existing Stripe subscription item could not be identified.');
   const targetPrice=await ensureRecurringPrice(targetPlan,billing);
   const quote=fixedCrossBillingQuote({ent,sub,targetPlan,billing});
-  await verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quote});
-  // A duration=once coupon discounts ONLY the first invoice. The next
-  // quarterly renewal is charged at the full destination plan price.
-  const coupon=await manageStripe('POST','coupons',{
-    amount_off:quote.credit_cents,currency:'usd',duration:'once',
-    name:`Alygnn ${currentPlan} to ${targetPlan} credit`.slice(0,40)
+  const upgradePriceId=await verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quote});
+  const customerId=stripeCustomerId(sub,ent);
+  if(!customerId)throw new Error('Stripe customer could not be identified.');
+  const successUrl=allowedReturnUrl(input.success_url,
+    `https://alygnn.com/employer-dashboard.html?payment=upgrade-success&plan=${encodeURIComponent(targetPlan)}&billing=${encodeURIComponent(billing)}`);
+  const cancelUrl=allowedReturnUrl(input.cancel_url,
+    'https://alygnn.com/employer-account.html?billing=upgrade-cancelled');
+  const metadata={
+    employer_id:employerId,product:'plan_upgrade',cross_billing_checkout:'true',
+    current_plan:currentPlan,current_billing:currentBilling,
+    target_plan:targetPlan,billing,
+    subscription_id:sub.id,subscription_item_id:item.id,
+    target_price_id:targetPrice,upgrade_price_id:upgradePriceId,
+    fixed_difference_cents:String(quote.amount_due_now_cents),
+    terms_version:String(input.terms_version||'')
+  };
+  const params={
+    mode:'payment',customer:customerId,
+    success_url:successUrl,cancel_url:cancelUrl,
+    client_reference_id:employerId,
+    'line_items[0][price]':upgradePriceId,
+    'line_items[0][quantity]':1,
+    'automatic_tax[enabled]':'true',
+    billing_address_collection:'auto',
+    'payment_intent_data[setup_future_usage]':'off_session'
+  };
+  Object.entries(metadata).forEach(([key,value])=>{
+    if(value===undefined||value===null||value==='')return;
+    params[`metadata[${key}]`]=String(value);
   });
-  if(!coupon?.id)throw new Error('Stripe could not prepare the upgrade credit.');
-  // Changing cadence resets billing to now. Turn OFF Stripe time-proration
-  // because the one-time coupon provides the deliberate FULL plan credit.
-  // pending_if_incomplete keeps the old price active until invoice payment.
-  const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
-    'items[0][id]':item.id,
-    'items[0][price]':targetPrice,
-    'items[0][quantity]':1,
-    billing_cycle_anchor:'now',
-    proration_behavior:'none',
-    payment_behavior:'pending_if_incomplete',
-    'discounts[0][coupon]':coupon.id,
-    'expand[]':'latest_invoice'
-  });
-  const currentItemPrice=typeof updated.items?.data?.[0]?.price==='string'
-    ?updated.items.data[0].price:updated.items?.data?.[0]?.price?.id;
-  const invoice=updated.latest_invoice&&typeof updated.latest_invoice==='object'
-    ?updated.latest_invoice:null;
-  const paid=invoice?.status==='paid';
-  if(currentItemPrice===targetPrice&&paid){
-    // Payment succeeded synchronously. The webhook also reconciles entitlement.
-    const normalized=await manageStripe('POST','subscriptions/'+encodeURIComponent(updated.id),{
-      'metadata[employer_id]':employerId,
-      'metadata[product]':'job_plan',
-      'metadata[plan]':targetPlan,
-      'metadata[billing]':billing
-    });
-    await patchEntitlement(employerId,{
-      plan:planLegacyName(targetPlan),test_plan:targetPlan,test_mode:false,
-      subscription_status:'active',slot_limit:target.slots,billing_period:billing,
-      current_period_end:stripePeriodEndUnix(normalized)?new Date(stripePeriodEndUnix(normalized)*1000).toISOString():null,
-      urgently_hiring:['growth','scale'].includes(targetPlan),alygnn_recommended:targetPlan==='scale',
-      plan_amount_cents:target.cents,pending_plan:null,pending_billing_period:null,
-      pending_plan_effective_at:null,stripe_plan_schedule_id:null
-    });
-    return {change:'upgrade_applied',effective:'immediate',amount_paid_cents:invoice.total??null,
-      billing_period:billing,target_plan:targetPlan};
-  }
-  if(updated.pending_update&&invoice?.hosted_invoice_url){
-    return {change:'upgrade_payment_required',effective:'after_payment',
-      hosted_invoice_url:invoice.hosted_invoice_url,
-      amount_due_now_cents:invoice.amount_remaining??null,
-      invoice_id:invoice.id,target_plan:targetPlan,billing_period:billing};
-  }
-  throw new Error('Stripe could not confirm payment or provide a payable invoice. Your existing plan remains active; check Billing before retrying.');
+  // Do not allow an unrelated coupon to reduce a fixed-price cross-cadence upgrade.
+  const checkout=await stripeCreateCheckout(params);
+  return {
+    change:'upgrade_payment_required',effective:'after_payment',
+    amount_due_now_cents:quote.amount_due_now_cents,
+    fixed_difference_cents:quote.amount_due_now_cents,
+    checkout_url:checkout.url,checkout_session_id:checkout.id,
+    billing_period:billing,current_plan:currentPlan,target_plan:targetPlan,
+    next_renewal_amount_cents:target.cents
+  };
 }
 
 async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
