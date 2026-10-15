@@ -1232,20 +1232,25 @@ async function confirmZeroUpgradeInvoice({
   return{invoiceId:invoice.id,customerId:customer};
 }
 
-// The existing Stripe catalog entry is the approved one-time difference for
-// Growth Monthly -> Scale Quarterly. It is validated, NOT added as a second
-// charge: the subscription update invoice collects the amount only once.
-const GROWTH_MONTHLY_TO_SCALE_QUARTERLY_PRICE =
-  process.env.STRIPE_PRICE_GROWTH_MONTHLY_TO_SCALE_QUARTERLY || 'price_1UQCcwRvnGY3BeGXaZZqsCkb';
+// Approved one-time Stripe catalog prices for immediate monthly-to-quarterly
+// upgrades. These are validation references only: Stripe collects payment on
+// the updated subscription invoice, not by charging the one-time Price again.
+const CROSS_BILLING_PRICE_IDS = {
+  'launch:monthly:scale:quarterly': process.env.STRIPE_PRICE_LAUNCH_MONTHLY_TO_SCALE_QUARTERLY || 'price_1UQCjfRvnGY3BeGX4EY6sA82',
+  'launch:monthly:growth:quarterly': process.env.STRIPE_PRICE_LAUNCH_MONTHLY_TO_GROWTH_QUARTERLY || 'price_1UQCiyRvnGY3BeGXwWupW6sf',
+  'growth:monthly:scale:quarterly': process.env.STRIPE_PRICE_GROWTH_MONTHLY_TO_SCALE_QUARTERLY || 'price_1UQCcwRvnGY3BeGXaZZqsCkb'
+};
 async function verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quote}){
   const from=subscriptionPlan(ent,sub);
   const fromBilling=subscriptionBilling(ent,sub);
-  if(from!=='growth'||fromBilling!=='monthly'||targetPlan!=='scale'||billing!=='quarterly') return null;
-  const price=await manageStripe('GET','prices/'+encodeURIComponent(GROWTH_MONTHLY_TO_SCALE_QUARTERLY_PRICE));
+  const key=`${from}:${fromBilling}:${targetPlan}:${billing}`;
+  const priceId=CROSS_BILLING_PRICE_IDS[key];
+  if(!priceId)throw new Error('The immediate upgrade Stripe Price ID is not configured for this billing change. No plan change was started.');
+  const price=await manageStripe('GET','prices/'+encodeURIComponent(priceId));
   if(price?.active===false||String(price?.currency||'').toLowerCase()!=='usd'||
-     Number(price?.unit_amount)!==125100||Number(quote?.amount_due_now_cents)!==125100||
+     Number(price?.unit_amount)!==Number(quote?.amount_due_now_cents)||
      String(price?.type||'')!=='one_time'){
-    throw new Error('Growth Monthly → Scale Quarterly Stripe upgrade price must be an active, one-time $1,251.00 USD price. No plan change was started.');
+    throw new Error('The Stripe upgrade Price must be an active one-time USD price matching the exact plan difference. No plan change was started.');
   }
   return price.id;
 }
