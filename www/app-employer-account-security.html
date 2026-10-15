@@ -17,8 +17,9 @@
     return ['dark','light','auto'].includes(v)?v:null;
   }
   function preference(){
-    // Respect Alygnn's cross-app saved appearance first, with employer aliases as fallback.
-    for(var key of ['alygnnTheme','alygnnEmployerTheme','alygnn_employer_theme','alygnn_theme','alygnn-theme']){
+    // Employer Settings uses alygnnEmployerTheme. It must override the
+    // cross-app key, which can hold a different (candidate) preference.
+    for(var key of ['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme']){
       var value=normalize(read(key));if(value)return value;
     }
     return 'auto';
