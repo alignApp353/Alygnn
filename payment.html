@@ -423,8 +423,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     return (planChangeCurrentBilling||existingBillingPeriod()) !== planChangeBilling;
   }
 
-  // All paid-plan changes now take effect at the next renewal date. This keeps
-  // the current paid term intact and avoids any immediate plan-change charge.
+  // Immediate upgrades are supported only within the same billing period.
+  // Billing cadence changes remain scheduled for renewal.
   function planChangeIsImmediateUpgrade(){
     return planChangeTiming==='immediate';
   }
@@ -482,7 +482,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(firstTitle) firstTitle.textContent='1. Review your change';
 
     const options=document.getElementById('plan-options');
-    const canChangeImmediately=tierUpgrade;
+    const canChangeImmediately=tierUpgrade && !billingChanged;
     options.innerHTML=`
       <div class="change-review">
         ${!tierUpgrade && !billingChanged ? `<div class="change-plan-box" style="margin-bottom:16px">
@@ -495,7 +495,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           <div class="change-label">When should this change take effect?</div>
           <label style="display:block;margin:12px 0;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="immediate" ${immediate?'checked':''} ${canChangeImmediately?'':'disabled'} onchange="setPlanChangeTiming('immediate')"> Change immediately — pay the plan price difference now; new job slots activate after successful payment.</label>
           <label style="display:block;font-size:13px;cursor:pointer"><input type="radio" name="change-timing" value="next_billing" ${!immediate?'checked':''} onchange="setPlanChangeTiming('next_billing')"> At next billing — no charge today; keep existing plan and slots until renewal.</label>
-          ${canChangeImmediately?'':'<div class="change-price">Downgrades start at the next renewal.</div>'}
+          ${canChangeImmediately?'':`<div class="change-price">${billingChanged?'Monthly ↔ Quarterly changes start at your next renewal. No payment is due today.':'Downgrades start at the next renewal.'}</div>`}
         </div>`}
         <div class="change-path">
           <div class="change-plan-box">
@@ -573,11 +573,11 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       planChangeTax=data.tax_cents===null||data.tax_cents===undefined?null:Number(data.tax_cents);
       planChangeSubtotal=Number(data.subtotal_cents);
       if((planChangeTax!==null&&!Number.isFinite(planChangeTax))||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid tax breakdown.');
-      if(!Number.isFinite(planChangePreview))throw new Error('Invalid amount preview.');
+      if(!Number.isFinite(planChangePreview)||planChangePreview<0)throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
     }catch(error){
       if(request!==planChangePreviewRequest)return;
-      const value='Amount unavailable';
+      const value='Unable to get quote';
       document.getElementById('subtotal').textContent=value;
       document.getElementById('due-total').textContent=value;
       document.getElementById('tax-amount').textContent='Unavailable';
@@ -587,7 +587,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function setPlanChangeTiming(value){
-    planChangeTiming=planChangeIsUpgrade() && value==='immediate'?'immediate':'next_billing';
+    planChangeTiming=planChangeIsUpgrade() && !planChangeBillingChanged() && value==='immediate'?'immediate':'next_billing';
     planChangePreview=null;
     planChangeTax=null;
     planChangeSubtotal=null;
@@ -598,7 +598,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   async function startPlanChange(){
     if(planChangeBusy||!session) return;
-    if(!planChangeIsUpgrade()) planChangeTiming='next_billing';
+    if(!planChangeIsUpgrade() || planChangeBillingChanged()) planChangeTiming='next_billing';
     if(planChangeTiming==='immediate'&&planChangePreview===null)return;
     const accepted=document.getElementById('terms-accept').checked;
     if(!accepted){
@@ -1088,7 +1088,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         location.replace('pricing.html?mode='+encodeURIComponent(planChangeBilling));
         return;
       }
-      if(!planChangeIsUpgrade()) planChangeTiming='next_billing';
+      if(!planChangeIsUpgrade() || planChangeBillingChanged()) planChangeTiming='next_billing';
       renderPlanChangeReview();
       if(planChangeTiming==='immediate')refreshPlanChangePreview();
       updateUrl();
