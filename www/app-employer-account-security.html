@@ -9,13 +9,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--card:#FCFCFA;--text:#1A2530;--muted:#607181;--line:#DDE3E8;--danger:#A95558;--soft:#EBF1F5}
-*{box-sizing:border-box}html{min-height:100%}body{margin:0;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}html{height:100%;overflow:hidden}body{margin:0;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
 button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}
-.topbar{height:75px;padding:0 22px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line);background:rgba(246,248,247,.96);position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.topbar{--top-clearance:max(34px,env(safe-area-inset-top,0px));height:calc(64px + var(--top-clearance));padding:var(--top-clearance) 22px 0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line);background:rgba(246,248,247,.96);position:relative;flex-shrink:0;z-index:50;backdrop-filter:blur(12px)}
+.page-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y}
 .logo{text-decoration:none;font-family:'DM Serif Display',Georgia,serif;font-size:25px;font-weight:400;color:var(--brand);grid-column:2;line-height:1}.logo span{color:var(--sage)}
 .back{grid-column:1;grid-row:1;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--text);display:grid;place-items:center;text-decoration:none}
 .back svg{width:19px;height:19px}
-main{max-width:680px;margin:0 auto;padding:30px 18px calc(78px + env(safe-area-inset-bottom))}
+main{max-width:680px;margin:0 auto;padding:26px 18px 16px}
 .eyebrow{font-size:11px;letter-spacing:1.6px;font-weight:800;color:var(--brand);text-transform:uppercase;margin:0 0 9px}
 h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 0 9px}.intro{color:var(--muted);font-size:14px;line-height:1.6;margin:0 0 29px}
 .group-label{font-size:11px;letter-spacing:1.2px;font-weight:800;text-transform:uppercase;color:var(--muted);margin:27px 2px 11px}
@@ -30,9 +31,9 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
 .message{display:none;font-size:13px;line-height:1.5;margin:0 0 17px;border-radius:13px;padding:12px 13px;border:1px solid}.message.error{display:block;background:#FBEEEE;border-color:#F0D0D0;color:#904448}.message.success{display:block;background:#EAF6EE;border-color:#CFE8D7;color:#276B48}
 .details{padding:0 18px;border-top:1px solid var(--line)}.details>summary{cursor:pointer;display:flex;align-items:center;gap:12px;padding:18px 0;list-style:none}.details>summary::-webkit-details-marker{display:none}.details .chevron{margin-left:auto;color:var(--muted);font-size:18px;transform:rotate(90deg)}.details[open] .chevron{transform:rotate(-90deg)}
 .close-content{padding-bottom:18px}.choice{display:flex;gap:11px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:13px;margin-bottom:9px;background:#fff;cursor:pointer}.choice:has(input:checked){border-color:var(--brand);background:#F4F7FB}.choice input{margin:4px 0 0;accent-color:var(--brand)}.choice strong{font-size:13px;display:block}.choice small{display:block;font-size:12px;line-height:1.5;color:var(--muted);margin-top:4px}.risk-notice{font-size:12px;color:var(--muted);line-height:1.55;margin:13px 0}
-.footer{text-align:center;color:var(--muted);font-size:11px;padding:0 18px 28px}.footer a{color:inherit;text-decoration:none}
+.footer{text-align:center;color:var(--muted);font-size:11px;padding:22px 18px max(44px,env(safe-area-inset-bottom,0px))}.footer a{color:inherit;text-decoration:none}
 .modal-backdrop{position:fixed;inset:0;background:rgba(20,32,45,.62);display:none;align-items:center;justify-content:center;z-index:100;padding:18px}.modal-backdrop.open{display:flex}.modal{background:#fff;padding:22px;border-radius:20px;max-width:420px;width:100%;box-shadow:0 25px 70px #0002}.modal h2{font-size:19px;letter-spacing:-.35px;margin:0 0 10px}.modal p{font-size:13px;color:var(--muted);line-height:1.6}.modal .controls{margin-top:18px}.modal .controls>button{flex:1}
-@media (max-width:400px){.topbar{height:66px}.item{padding:16px 13px;gap:10px}.symbol{width:36px;height:36px;border-radius:11px}.action{font-size:11px;padding:9px}.panel{border-radius:18px}main{padding:25px 14px 65px}}
+@media (max-width:400px){.topbar{height:calc(61px + var(--top-clearance))}.item{padding:16px 13px;gap:10px}.symbol{width:36px;height:36px;border-radius:11px}.action{font-size:11px;padding:9px}.panel{border-radius:18px}main{padding:22px 14px 12px}}
 </style>
 </head>
 <body>
@@ -40,6 +41,7 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
   <a class="back" href="app-employer-dashboard.html#settings" aria-label="Back to Settings" title="Back to Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></a>
   <a class="logo" href="app-employer-dashboard.html#settings">Alygnn<span>.</span></a>
 </header>
+<div class="page-scroll" id="page-scroll">
 <main>
   <p class="eyebrow">Employer workspace</p><h1>Account &amp; security</h1>
   <p class="intro">Manage your sign-in methods and account preferences.</p>
@@ -67,6 +69,7 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
       <div class="symbol"><svg viewBox="0 0 24 24"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8a8 8 0 0 1 5.4 2.1"/><path d="M21 5v6h-6"/><path d="m21 11-5 1"/></svg></div>
       <div class="item-main"><div class="name">Google sign-in</div><div class="hint" id="google-hint">Checking linked accounts…</div></div>
       <div id="google-status"><span class="status">Checking…</span></div>
+      <button class="action" id="retry-google-btn" style="display:none" type="button">Retry</button>
       <button class="action" id="link-google-btn" style="display:none" type="button">Link</button>
     </div>
     <div class="item">
@@ -90,17 +93,34 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.9px;line-height:1.2;margin:0 
   </div>
 </main>
 <div class="footer"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a></div>
+</div>
 <div class="modal-backdrop" id="closure-modal" aria-hidden="true"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">Confirm account closure</h2><p id="modal-desc"></p><div id="delete-confirm" style="display:none"><label class="field-label" for="delete-word">Type DELETE to confirm</label><input class="input" id="delete-word" autocomplete="off" placeholder="DELETE"></div><div class="controls"><button class="secondary" type="button" id="modal-cancel">Cancel</button><button class="danger" type="button" id="modal-confirm">Confirm</button></div></div></div>
 <script>
 'use strict';
 const SUPABASE_URL = 'https://auth.alygnn.com';
 const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const GOOGLE_WEB_CLIENT_ID = '725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const sb = window.supabase?.createClient ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) : null;
 const $=id=>document.getElementById(id);
 let accountUser=null;
 let pendingPassword=null;
 let chosenClosure='deactivate';
+const AUTH_TIMEOUT_MS = 8500;
+function bounded(task,label='Request'){
+  let timer;
+  return Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Please retry.')),AUTH_TIMEOUT_MS);})]).finally(()=>clearTimeout(timer));
+}
+function googleUnavailable(message){
+  $('google-hint').textContent=message;
+  $('google-status').innerHTML='<span class="status">Unavailable</span>';
+  $('link-google-btn').style.display='none';
+  $('retry-google-btn').style.display='inline-flex';
+}
+function authUnavailable(message){
+  $('email-display').textContent='Could not load email';
+  googleUnavailable('Unable to check sign-in methods. Tap Retry.');
+  showMsg(message);
+}
 function showMsg(message,type='error'){
   const b=$('msg-box');b.textContent=message;b.className='message '+type;b.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
@@ -111,27 +131,54 @@ function friendlyError(error){
   if(/rate limit|too many/i.test(raw))return 'Too many attempts. Wait a few minutes and try again.';
   return raw||'Something went wrong. Please try again.';
 }
-async function refreshGoogleStatus(){
-  const {data,error}=await sb.auth.getUser();
-  if(error)throw error;
-  accountUser=data.user;
-  const identities=accountUser.identities || [];
+async function refreshGoogleStatus(user){
+  // Use the same verified user data; calling getUser() a second time could hang
+  // the entire page during a slow auth-server response.
+  const freshUser=user || (await bounded(()=>sb.auth.getUser(),'Google account check')).data?.user;
+  if(!freshUser)throw new Error('Unable to verify linked accounts.');
+  accountUser=freshUser;
+  const identities=Array.isArray(freshUser.identities)?freshUser.identities:[];
   const isLinked=identities.some(x=>x.provider==='google');
   $('google-status').innerHTML=isLinked?'<span class="status on">Connected</span>':'';
   $('link-google-btn').style.display=isLinked?'none':'inline-flex';
+  $('retry-google-btn').style.display='none';
   $('google-hint').textContent=isLinked?'Google is linked to this Alygnn account':'Connect Google without creating a new account';
 }
 async function init(){
+  if(!sb){authUnavailable('Account security could not load its sign-in library. Check your connection and reopen this page.');return;}
   try{
-    const {data:{session},error}=await sb.auth.getSession();
-    if(error||!session){location.replace('app-employer-login.html');return;}
-    const {data:userData,error:userError}=await sb.auth.getUser();
-    if(userError||!userData.user)throw userError||new Error('Unable to verify your session.');
+    // Read the existing employer-login session without a new Supabase storage key.
+    const {data,error}=await bounded(()=>sb.auth.getSession(),'Session check');
+    if(error)throw error;
+    const session=data?.session;
+    if(!session){location.replace('app-employer-login.html');return;}
+    if(session.user?.email)$('email-display').textContent=session.user.email;
+    // A network call is required to trust current Google identity-link information.
+    const {data:userData,error:userError}=await bounded(()=>sb.auth.getUser(),'Account verification');
+    if(userError||!userData?.user)throw userError||new Error('Unable to verify account.');
     accountUser=userData.user;
-    $('email-display').textContent=accountUser.email||'—';
-    await refreshGoogleStatus();
-  }catch(e){showMsg(friendlyError(e));}
+    $('email-display').textContent=accountUser.email||session.user?.email||'Email unavailable';
+    await refreshGoogleStatus(accountUser);
+  }catch(e){
+    if($('email-display').textContent==='Loading…')$('email-display').textContent='Temporarily unavailable';
+    googleUnavailable('Could not check Google linking. Tap Retry.');
+    showMsg('Account information could not be refreshed: '+friendlyError(e));
+  }
 }
+$('retry-google-btn').addEventListener('click',async()=>{
+  if(!sb){authUnavailable('Sign-in services are unavailable. Check your connection and reopen the page.');return;}
+  const button=$('retry-google-btn');button.disabled=true;
+  $('google-status').innerHTML='<span class="status">Checking…</span>';
+  $('google-hint').textContent='Checking your linked accounts…';
+  try{
+    const {data,error}=await bounded(()=>sb.auth.getUser(),'Google account check');
+    if(error||!data?.user)throw error||new Error('Unable to verify your account.');
+    $('email-display').textContent=data.user.email||'Email unavailable';
+    await refreshGoogleStatus(data.user);
+    clearMsg();
+  }catch(e){googleUnavailable('Could not check Google linking. Tap Retry.');showMsg(friendlyError(e));}
+  finally{button.disabled=false;}
+});
 $('password-toggle').addEventListener('click',()=>{
   const panel=$('password-panel');const isOpen=panel.classList.toggle('open');
   $('password-toggle').setAttribute('aria-expanded',String(isOpen));
