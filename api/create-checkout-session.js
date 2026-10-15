@@ -1232,6 +1232,87 @@ async function confirmZeroUpgradeInvoice({
   return{invoiceId:invoice.id,customerId:customer};
 }
 
+// Stripe's invoice preview is the authority for an immediate cadence-change quote.
+// Charge the previewed net amount through Checkout BEFORE changing entitlement.
+async function crossBillingQuote({sub,targetPrice}){
+  const item=sub?.items?.data?.[0];
+  if(!sub?.id||!item?.id)throw new Error('Stripe subscription item is missing.');
+  if(sub.pending_update)throw new Error('A previous subscription change is awaiting payment.');
+  const preview=await manageStripe('POST','invoices/create_preview',{
+    customer:typeof sub.customer==='string'?sub.customer:sub.customer?.id,
+    subscription:sub.id,
+    'subscription_details[items][0][id]':item.id,
+    'subscription_details[items][0][price]':targetPrice,
+    'subscription_details[items][0][quantity]':1,
+    'subscription_details[billing_cycle_anchor]':'now',
+    'subscription_details[proration_behavior]':'always_invoice'
+  });
+  // Stripe's preview includes credits for unused time and the new term.
+  // Keep an exact integer amount. Taxes are re-evaluated at Checkout.
+  const total=Number(preview.total);
+  const taxes=(preview.total_taxes||preview.total_tax_amounts||[])
+    .filter(t=>t.tax_behavior!=='inclusive')
+    .reduce((sum,t)=>sum+Number(t.amount||0),0);
+  const subtotal=total-taxes;
+  if(!Number.isSafeInteger(subtotal)||subtotal<=0)
+    throw new Error('Stripe could not produce a positive, payable upgrade amount. Contact support.');
+  return {subtotal_cents:subtotal,amount_due_now_cents:subtotal,tax_cents:null,
+    quote_type:'stripe_proration',tax_note:'Stripe Checkout confirms applicable taxes before payment.'};
+}
+
+async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
+  const currentPlan=subscriptionPlan(ent,sub);
+  const currentBilling=subscriptionBilling(ent,sub);
+  const target=MANAGE_CATALOG[billing]?.[targetPlan];
+  if(!target||MANAGE_CATALOG[currentBilling]?.[currentPlan]?.rank>=target.rank)
+    throw new Error('Immediate billing-cadence changes require a higher plan.');
+  if(sub.pending_update)throw new Error('A previous subscription update is awaiting payment. Complete that invoice first.');
+  const item=sub.items?.data?.[0];
+  if(!item?.id)throw new Error('The existing Stripe subscription item could not be identified.');
+  const targetPrice=await ensureRecurringPrice(targetPlan,billing);
+  // Stripe creates and collects ONE invoice, crediting unused time. The
+  // pending update does not apply the new Price until invoice payment succeeds.
+  const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
+    'items[0][id]':item.id,
+    'items[0][price]':targetPrice,
+    'items[0][quantity]':1,
+    proration_behavior:'always_invoice',
+    payment_behavior:'pending_if_incomplete',
+    'expand[]':'latest_invoice'
+  });
+  const currentItemPrice=typeof updated.items?.data?.[0]?.price==='string'
+    ?updated.items.data[0].price:updated.items?.data?.[0]?.price?.id;
+  const invoice=updated.latest_invoice&&typeof updated.latest_invoice==='object'
+    ?updated.latest_invoice:null;
+  const paid=invoice?.status==='paid';
+  if(currentItemPrice===targetPrice&&paid){
+    // Payment succeeded synchronously. The webhook also reconciles entitlement.
+    const normalized=await manageStripe('POST','subscriptions/'+encodeURIComponent(updated.id),{
+      'metadata[employer_id]':employerId,
+      'metadata[product]':'job_plan',
+      'metadata[plan]':targetPlan,
+      'metadata[billing]':billing
+    });
+    await patchEntitlement(employerId,{
+      plan:planLegacyName(targetPlan),test_plan:targetPlan,test_mode:false,
+      subscription_status:'active',slot_limit:target.slots,billing_period:billing,
+      current_period_end:stripePeriodEndUnix(normalized)?new Date(stripePeriodEndUnix(normalized)*1000).toISOString():null,
+      urgently_hiring:['growth','scale'].includes(targetPlan),alygnn_recommended:targetPlan==='scale',
+      plan_amount_cents:target.cents,pending_plan:null,pending_billing_period:null,
+      pending_plan_effective_at:null,stripe_plan_schedule_id:null
+    });
+    return {change:'upgrade_applied',effective:'immediate',amount_paid_cents:invoice.total??null,
+      billing_period:billing,target_plan:targetPlan};
+  }
+  if(updated.pending_update&&invoice?.hosted_invoice_url){
+    return {change:'upgrade_payment_required',effective:'after_payment',
+      hosted_invoice_url:invoice.hosted_invoice_url,
+      amount_due_now_cents:invoice.amount_remaining??null,
+      invoice_id:invoice.id,target_plan:targetPlan,billing_period:billing};
+  }
+  throw new Error('Stripe could not confirm payment or provide a payable invoice. Your existing plan remains active; check Billing before retrying.');
+}
+
 async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   const item=sub?.items?.data?.[0];
   if(!item?.id)throw new Error('Stripe subscription item could not be identified.');
@@ -2117,7 +2198,11 @@ async function runManageAction(res,user,input){
       return send(res,400,{error:'Invalid destination plan or billing period.'});
     }
     if(currentBilling!==targetBilling){
-      return send(res,409,{error:'Changing between monthly and quarterly billing is scheduled for renewal; no charge is due today.'});
+      if(MANAGE_CATALOG[targetBilling][target].rank<=MANAGE_CATALOG[currentBilling][current].rank)
+        return send(res,409,{error:'Immediate cadence changes require an upgrade to a higher plan.'});
+      const quote=await crossBillingQuote({sub,targetPrice:MANAGE_CATALOG[targetBilling][target].priceId});
+      return send(res,200,{ok:true,...quote,current_plan:current,target_plan:target,
+        billing_period:targetBilling});
     }
     const currentCents=MANAGE_CATALOG[currentBilling][current].cents;
     const targetCents=MANAGE_CATALOG[targetBilling][target].cents;
@@ -2321,7 +2406,7 @@ async function runManageAction(res,user,input){
     });
   }
 
-  const immediateUpgradeRequest=currentBilling===targetBilling &&
+  const immediateUpgradeRequest=
     Number(targetCatalog?.[target]?.rank||0)>Number(currentCatalog?.[current]?.rank||0) &&
     !['renewal','next_billing','next-renewal','scheduled'].includes(requestedTiming);
 
@@ -2405,8 +2490,12 @@ async function runManageAction(res,user,input){
     return send(res,200,{ok:true,...result});
   }
 
-  // Downgrades and billing-cadence changes take effect at renewal so there is
-  // no mid-cycle refund/credit calculation.
+  if(!sameBilling&&targetRank>currentRank&&immediateUpgradeRequest){
+    const result=await crossBillingUpgradeNow({employerId:user.id,ent,sub,targetPlan:target,billing:targetBilling,input});
+    return send(res,200,{ok:true,...result});
+  }
+
+  // Downgrades and renewal-selected billing-cadence changes are scheduled.
   const result=await scheduleDowngrade({
     employerId:user.id,
     ent,
