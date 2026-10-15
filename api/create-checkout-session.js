@@ -1292,7 +1292,7 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
   // quarterly renewal is charged at the full destination plan price.
   const coupon=await manageStripe('POST','coupons',{
     amount_off:quote.credit_cents,currency:'usd',duration:'once',
-    name:`Alygnn immediate upgrade credit: ${currentPlan} ${currentBilling} to ${targetPlan} ${billing}`
+    name:`Alygnn ${currentPlan} to ${targetPlan} credit`.slice(0,40)
   });
   if(!coupon?.id)throw new Error('Stripe could not prepare the upgrade credit.');
   // Changing cadence resets billing to now. Turn OFF Stripe time-proration
