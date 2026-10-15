@@ -2103,6 +2103,40 @@ async function runManageAction(res,user,input){
     });
   }
 
+  // Read-only quote. Match the amount actually charged by upgradeNow;
+  // never invent a monthly-to-quarterly proration that checkout cannot collect.
+  if(action==='preview_plan_change'){
+    const current=subscriptionPlan(ent,sub);
+    const currentBilling=subscriptionBilling(ent,sub);
+    const target=String(input.target_plan||'').toLowerCase();
+    const targetBilling=String(input.billing||currentBilling).toLowerCase();
+    if(!subscriptionIsActive(sub)||!MANAGE_CATALOG[currentBilling]?.[current]){
+      return send(res,409,{error:'No active recurring subscription was found for this account.'});
+    }
+    if(!MANAGE_CATALOG[targetBilling]?.[target]){
+      return send(res,400,{error:'Invalid destination plan or billing period.'});
+    }
+    if(currentBilling!==targetBilling){
+      return send(res,409,{error:'Changing between monthly and quarterly billing is scheduled for renewal; no charge is due today.'});
+    }
+    const currentCents=MANAGE_CATALOG[currentBilling][current].cents;
+    const targetCents=MANAGE_CATALOG[targetBilling][target].cents;
+    if(MANAGE_CATALOG[targetBilling][target].rank<=MANAGE_CATALOG[currentBilling][current].rank){
+      return send(res,409,{error:'Immediate checkout is only available for a higher plan on the same billing period.'});
+    }
+    const upgrade=fixedUpgradePrice(current,target,targetBilling);
+    const difference=targetCents-currentCents;
+    if(!upgrade||upgrade.cents!==difference){
+      return send(res,409,{error:'The configured Stripe upgrade price does not match the current plan difference.'});
+    }
+    return send(res,200,{
+      ok:true,quote_type:'fixed_plan_difference',
+      amount_due_now_cents:difference,subtotal_cents:difference,tax_cents:null,
+      current_plan:current,target_plan:target,billing_period:targetBilling,
+      tax_note:'Applicable tax and any promotion discounts are confirmed by Stripe Checkout.'
+    });
+  }
+
   if(action==='cancel_scheduled_change'){
     if(sub)await releaseSchedule(sub,ent);
     await patchEntitlement(user.id,{
@@ -2627,6 +2661,7 @@ module.exports = async function handler(req, res) {
     if ([
       'summary',
       'change_plan',
+      'preview_plan_change',
       'cancel_scheduled_change',
       'cancel_plan',
       'resume_plan',
