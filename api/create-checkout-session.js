@@ -1232,32 +1232,43 @@ async function confirmZeroUpgradeInvoice({
   return{invoiceId:invoice.id,customerId:customer};
 }
 
-// Stripe's invoice preview is the authority for an immediate cadence-change quote.
-// Charge the previewed net amount through Checkout BEFORE changing entitlement.
-async function crossBillingQuote({sub,targetPrice}){
-  const item=sub?.items?.data?.[0];
-  if(!sub?.id||!item?.id)throw new Error('Stripe subscription item is missing.');
-  if(sub.pending_update)throw new Error('A previous subscription change is awaiting payment.');
-  const preview=await manageStripe('POST','invoices/create_preview',{
-    customer:typeof sub.customer==='string'?sub.customer:sub.customer?.id,
-    subscription:sub.id,
-    'subscription_details[items][0][id]':item.id,
-    'subscription_details[items][0][price]':targetPrice,
-    'subscription_details[items][0][quantity]':1,
-    'subscription_details[billing_cycle_anchor]':'now',
-    'subscription_details[proration_behavior]':'always_invoice'
-  });
-  // Stripe's preview includes credits for unused time and the new term.
-  // Keep an exact integer amount. Taxes are re-evaluated at Checkout.
-  const total=Number(preview.total);
-  const taxes=(preview.total_taxes||preview.total_tax_amounts||[])
-    .filter(t=>t.tax_behavior!=='inclusive')
-    .reduce((sum,t)=>sum+Number(t.amount||0),0);
-  const subtotal=total-taxes;
-  if(!Number.isSafeInteger(subtotal)||subtotal<=0)
-    throw new Error('Stripe could not produce a positive, payable upgrade amount. Contact support.');
-  return {subtotal_cents:subtotal,amount_due_now_cents:subtotal,tax_cents:null,
-    quote_type:'stripe_proration',tax_note:'Stripe Checkout confirms applicable taxes before payment.'};
+// The existing Stripe catalog entry is the approved one-time difference for
+// Growth Monthly -> Scale Quarterly. It is validated, NOT added as a second
+// charge: the subscription update invoice collects the amount only once.
+const GROWTH_MONTHLY_TO_SCALE_QUARTERLY_PRICE =
+  process.env.STRIPE_PRICE_GROWTH_MONTHLY_TO_SCALE_QUARTERLY || 'price_1UQCcwRvnGY3BeGXaZZqsCkb';
+async function verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quote}){
+  const from=subscriptionPlan(ent,sub);
+  const fromBilling=subscriptionBilling(ent,sub);
+  if(from!=='growth'||fromBilling!=='monthly'||targetPlan!=='scale'||billing!=='quarterly') return null;
+  const price=await manageStripe('GET','prices/'+encodeURIComponent(GROWTH_MONTHLY_TO_SCALE_QUARTERLY_PRICE));
+  if(price?.active===false||String(price?.currency||'').toLowerCase()!=='usd'||
+     Number(price?.unit_amount)!==125100||Number(quote?.amount_due_now_cents)!==125100||
+     String(price?.type||'')!=='one_time'){
+    throw new Error('Growth Monthly → Scale Quarterly Stripe upgrade price must be an active, one-time $1,251.00 USD price. No plan change was started.');
+  }
+  return price.id;
+}
+
+// Alygnn immediate cross-cadence upgrade policy: credit the FULL listed price
+// of the current plan against the first invoice of the new plan, regardless
+// of unused days. This is a commercial fixed-price credit, not time proration.
+function fixedCrossBillingQuote({ent,sub,targetPlan,billing}){
+  const fromPlan=subscriptionPlan(ent,sub);
+  const fromBilling=subscriptionBilling(ent,sub);
+  const from=MANAGE_CATALOG[fromBilling]?.[fromPlan];
+  const to=MANAGE_CATALOG[billing]?.[targetPlan];
+  if(!from||!to||to.rank<=from.rank||fromBilling===billing)
+    throw new Error('This immediate billing change is not eligible for a fixed plan credit.');
+  if(sub?.pending_update)throw new Error('A previous subscription change is awaiting payment.');
+  if(Array.isArray(sub?.discounts)&&sub.discounts.length)
+    throw new Error('A discount already exists on this subscription. Contact support for an accurate upgrade quote.');
+  const due=to.cents-from.cents;
+  if(!Number.isSafeInteger(due)||due<=0)throw new Error('Invalid upgrade difference.');
+  return {subtotal_cents:due,amount_due_now_cents:due,tax_cents:null,
+    original_price_cents:to.cents,credit_cents:from.cents,
+    quote_type:'fixed_full_plan_credit',
+    tax_note:'Applicable taxes are confirmed on the Stripe invoice.'};
 }
 
 async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
@@ -1270,14 +1281,26 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
   const item=sub.items?.data?.[0];
   if(!item?.id)throw new Error('The existing Stripe subscription item could not be identified.');
   const targetPrice=await ensureRecurringPrice(targetPlan,billing);
-  // Stripe creates and collects ONE invoice, crediting unused time. The
-  // pending update does not apply the new Price until invoice payment succeeds.
+  const quote=fixedCrossBillingQuote({ent,sub,targetPlan,billing});
+  await verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quote});
+  // A duration=once coupon discounts ONLY the first invoice. The next
+  // quarterly renewal is charged at the full destination plan price.
+  const coupon=await manageStripe('POST','coupons',{
+    amount_off:quote.credit_cents,currency:'usd',duration:'once',
+    name:`Alygnn immediate upgrade credit: ${currentPlan} ${currentBilling} to ${targetPlan} ${billing}`
+  });
+  if(!coupon?.id)throw new Error('Stripe could not prepare the upgrade credit.');
+  // Changing cadence resets billing to now. Turn OFF Stripe time-proration
+  // because the one-time coupon provides the deliberate FULL plan credit.
+  // pending_if_incomplete keeps the old price active until invoice payment.
   const updated=await manageStripe('POST','subscriptions/'+encodeURIComponent(sub.id),{
     'items[0][id]':item.id,
     'items[0][price]':targetPrice,
     'items[0][quantity]':1,
-    proration_behavior:'always_invoice',
+    billing_cycle_anchor:'now',
+    proration_behavior:'none',
     payment_behavior:'pending_if_incomplete',
+    'discounts[0][coupon]':coupon.id,
     'expand[]':'latest_invoice'
   });
   const currentItemPrice=typeof updated.items?.data?.[0]?.price==='string'
@@ -2200,8 +2223,9 @@ async function runManageAction(res,user,input){
     if(currentBilling!==targetBilling){
       if(MANAGE_CATALOG[targetBilling][target].rank<=MANAGE_CATALOG[currentBilling][current].rank)
         return send(res,409,{error:'Immediate cadence changes require an upgrade to a higher plan.'});
-      const quote=await crossBillingQuote({sub,targetPrice:MANAGE_CATALOG[targetBilling][target].priceId});
-      return send(res,200,{ok:true,...quote,current_plan:current,target_plan:target,
+      const quote=fixedCrossBillingQuote({ent,sub,targetPlan:target,billing:targetBilling});
+      const verifiedPriceId=await verifyCrossBillingDifferencePrice({ent,sub,targetPlan:target,billing:targetBilling,quote});
+      return send(res,200,{ok:true,...quote,upgrade_price_id:verifiedPriceId,current_plan:current,target_plan:target,
         billing_period:targetBilling});
     }
     const currentCents=MANAGE_CATALOG[currentBilling][current].cents;
