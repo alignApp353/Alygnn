@@ -380,6 +380,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let planChangeTiming = 'next_billing';
   let planChangePreview = null;
   let planChangeTax = null;
+  let planChangeCheckoutBlocked = false;
   let planChangeSubtotal = null;
   let planChangePreviewRequest = 0;
 
@@ -559,6 +560,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     planChangePreview=null;
     planChangeTax=null;
     planChangeSubtotal=null;
+    planChangeCheckoutBlocked=false;
     if(!planChangeMode||planChangeTiming!=='immediate'||!session)return;
     try{
       const response=await fetch(CHECKOUT_ENDPOINT,{
@@ -569,12 +571,14 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(data.error||'Could not preview the remaining price.');
       if(request!==planChangePreviewRequest)return;
+      planChangeCheckoutBlocked=data.checkout_blocked===true;
       planChangePreview=Number(data.amount_due_now_cents);
       planChangeTax=data.tax_cents===null||data.tax_cents===undefined?null:Number(data.tax_cents);
       planChangeSubtotal=Number(data.subtotal_cents);
       if((planChangeTax!==null&&!Number.isFinite(planChangeTax))||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid tax breakdown.');
       if(!Number.isFinite(planChangePreview)||planChangePreview<0)throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
+      if(planChangeCheckoutBlocked)showMessage(data.blocked_reason||'Resolve the previous unpaid Stripe invoice before starting checkout.','error');
     }catch(error){
       if(request!==planChangePreviewRequest)return;
       const value='Unable to get quote';
@@ -591,6 +595,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     planChangePreview=null;
     planChangeTax=null;
     planChangeSubtotal=null;
+    planChangeCheckoutBlocked=false;
     ++planChangePreviewRequest;
     renderPlanChangeReview();
     if(planChangeTiming==='immediate')refreshPlanChangePreview();
@@ -599,7 +604,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   async function startPlanChange(){
     if(planChangeBusy||!session) return;
     if(!planChangeIsUpgrade()) planChangeTiming='next_billing';
-    if(planChangeTiming==='immediate'&&planChangePreview===null)return;
+    if(planChangeTiming==='immediate'&&(planChangePreview===null||planChangeCheckoutBlocked))return;
     const accepted=document.getElementById('terms-accept').checked;
     if(!accepted){
       showMessage('Please confirm that you reviewed and accept the plan-change terms.','error');
@@ -896,8 +901,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(planChangeMode){
       const immediateUpgrade=planChangeIsImmediateUpgrade();
       const {difference}=planChangePrices();
-      button.disabled=!accepted || planChangeBusy || (planChangeTiming==='immediate'&&planChangePreview===null);
-      button.textContent=accepted && !planChangeIsUpgrade() ? 'Schedule downgrade' : accepted
+      button.disabled=!accepted || planChangeBusy || (planChangeTiming==='immediate'&&(planChangePreview===null||planChangeCheckoutBlocked));
+      button.textContent=planChangeCheckoutBlocked && planChangeTiming==='immediate' ? 'Resolve previous invoice before checkout' : accepted && !planChangeIsUpgrade() ? 'Schedule downgrade' : accepted
         ? `${planChangeTiming==='immediate'?'Pay now · Change to':'Schedule'} ${titleCasePlan(planChangeTarget)} ${planChangeBilling==='quarterly'?'Quarterly':'Monthly'}${planChangeTiming==='immediate'?'':' at renewal'}`
         : 'Accept terms to continue';
       return;
