@@ -1258,14 +1258,14 @@ async function verifyCrossBillingDifferencePrice({ent,sub,targetPlan,billing,quo
 // Alygnn immediate cross-cadence upgrade policy: credit the FULL listed price
 // of the current plan against the first invoice of the new plan, regardless
 // of unused days. This is a commercial fixed-price credit, not time proration.
-function fixedCrossBillingQuote({ent,sub,targetPlan,billing}){
+function fixedCrossBillingQuote({ent,sub,targetPlan,billing,previewOnly=false}){
   const fromPlan=subscriptionPlan(ent,sub);
   const fromBilling=subscriptionBilling(ent,sub);
   const from=MANAGE_CATALOG[fromBilling]?.[fromPlan];
   const to=MANAGE_CATALOG[billing]?.[targetPlan];
   if(!from||!to||to.rank<=from.rank||fromBilling===billing)
     throw new Error('This immediate billing change is not eligible for a fixed plan credit.');
-  if(sub?.pending_update)throw new Error('A previous subscription change is awaiting payment.');
+  if(sub?.pending_update && !previewOnly)throw new Error('A previous subscription change is awaiting payment.');
   if(Array.isArray(sub?.discounts)&&sub.discounts.length)
     throw new Error('A discount already exists on this subscription. Contact support for an accurate upgrade quote.');
   const due=to.cents-from.cents;
@@ -2223,10 +2223,21 @@ async function runManageAction(res,user,input){
     if(currentBilling!==targetBilling){
       if(MANAGE_CATALOG[targetBilling][target].rank<=MANAGE_CATALOG[currentBilling][current].rank)
         return send(res,409,{error:'Immediate cadence changes require an upgrade to a higher plan.'});
-      const quote=fixedCrossBillingQuote({ent,sub,targetPlan:target,billing:targetBilling});
+      // An unpaid invoice must not hide the price quote, but must prevent checkout.
+      // This is read-only: previewing cannot modify Stripe billing.
+      const quote=fixedCrossBillingQuote({ent,sub,targetPlan:target,billing:targetBilling,previewOnly:true});
       const verifiedPriceId=await verifyCrossBillingDifferencePrice({ent,sub,targetPlan:target,billing:targetBilling,quote});
+      let checkoutBlocked=!!sub?.pending_update;
+      let blockedReason=checkoutBlocked
+        ? 'A previous subscription change is awaiting payment. Resolve the old Stripe invoice before starting another checkout.'
+        : null;
+      const openInvoices=await manageStripe('GET','invoices',{subscription:sub.id,status:'open',limit:100});
+      if((openInvoices.data||[]).some(invoice=>Number(invoice.amount_remaining||0)>0)){
+        checkoutBlocked=true;
+        blockedReason='An earlier unpaid Stripe subscription invoice is still open. Resolve or void it in Stripe before starting another checkout. No new payment has been started.';
+      }
       return send(res,200,{ok:true,...quote,upgrade_price_id:verifiedPriceId,current_plan:current,target_plan:target,
-        billing_period:targetBilling});
+        billing_period:targetBilling,checkout_blocked:checkoutBlocked,blocked_reason:blockedReason});
     }
     const currentCents=MANAGE_CATALOG[currentBilling][current].cents;
     const targetCents=MANAGE_CATALOG[targetBilling][target].cents;
