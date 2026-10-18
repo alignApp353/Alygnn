@@ -716,6 +716,49 @@ async function manageStripe(method,path,params){
 }
 
 
+// Verify a completed team-seat Checkout directly with Stripe, then reconcile
+// the existing Supabase entitlement. Safe to repeat for the same subscription.
+async function syncCompletedTeamSeatCheckout(user,sessionId){
+  const id=String(sessionId||'').trim();
+  if(!/^cs_[A-Za-z0-9_]+$/.test(id)){
+    const error=new Error('A valid Stripe Checkout Session ID is required.');error.status=400;throw error;
+  }
+  const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(id));
+  const meta=checkout.metadata||{};
+  if(String(meta.employer_id||'')!==String(user.id)){
+    const error=new Error('This checkout does not belong to the signed-in employer.');error.status=403;throw error;
+  }
+  if(meta.product!=='team_seat'||checkout.mode!=='subscription'){
+    const error=new Error('This is not an Alygnn team-seat subscription checkout.');error.status=400;throw error;
+  }
+  if(checkout.status!=='complete'||!checkout.subscription){
+    const error=new Error('Stripe has not completed this team-seat checkout.');error.status=409;throw error;
+  }
+  const sub=await manageStripe('GET','subscriptions/'+encodeURIComponent(checkout.subscription),{'expand[]':'items.data.price'});
+  const status=String(sub.status||'').toLowerCase();
+  const item=sub.items?.data?.[0];
+  const actualPrice=typeof item?.price==='string'?item.price:item?.price?.id;
+  const expectedPrice=teamSeatPrice(meta.plan)?.priceId;
+  if(!expectedPrice||actualPrice!==expectedPrice||String(sub.metadata?.employer_id||'')!==String(user.id)||sub.metadata?.product!=='team_seat'){
+    const error=new Error('The Stripe team-seat subscription does not match this employer and plan.');error.status=409;throw error;
+  }
+  if(!['active','trialing'].includes(status)){
+    const error=new Error('Team-seat subscription is not active yet.');error.status=409;throw error;
+  }
+  const response=await fetch(manageBase()+'/rest/v1/rpc/sync_team_seat_subscription',{
+    method:'POST',headers:manageServiceHeaders(),
+    body:JSON.stringify({
+      p_employer_id:user.id,p_stripe_subscription_id:sub.id,p_status:status,
+      p_expires_at:stripePeriodEndUnix(sub)?new Date(stripePeriodEndUnix(sub)*1000).toISOString():null,
+      p_payment_reference:checkout.id,
+      p_amount_cents:Number(item.price?.unit_amount ?? meta.unit_amount_cents ?? 0)
+    })
+  });
+  const data=await response.json().catch(()=>null);
+  if(!response.ok)throw new Error(data?.message||data?.error||'Could not sync team-seat subscription in Supabase.');
+  return {synced:true,team_seat:true,subscription_status:status};
+}
+
 async function resolvePromotionCode(code){
   const normalized=String(code||'').trim().toUpperCase();
   if(!normalized)return null;
@@ -2750,6 +2793,11 @@ module.exports = async function handler(req, res) {
     // Billing & plan management shares this existing Vercel function so the
     // Hobby deployment stays below the Serverless Function limit.
     const billingAction = String(input.action || '').toLowerCase();
+
+    if (billingAction==='sync_team_seat_checkout') {
+      const result=await syncCompletedTeamSeatCheckout(user,input.checkout_session_id);
+      return send(res,200,{ok:true,...result});
+    }
 
     if (billingAction==='sync_weekly_slot_checkout') {
       const result=await syncCompletedWeeklySlotCheckout({user,checkoutSessionId:input.checkout_session_id});
