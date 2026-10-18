@@ -1489,7 +1489,7 @@ document.addEventListener('keydown',event=>{
    }else if(teamSeatSync.attempted===true){
      showMsg(
        'page-message',
-       'Payment completed, but the team seat has not synced yet. Refresh in a moment.',
+       teamSeatSync.error?.message || 'Stripe checkout returned, but the team seat has not synced. Please refresh or contact support before purchasing again.',
        'info'
      );
    }else if(paidSeats>0 || availableSeats>0){
