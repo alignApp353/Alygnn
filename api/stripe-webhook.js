@@ -235,12 +235,39 @@ async function fulfillWeeklySlotPayment({employerId,reference,amount}){
   }
 }
 
+// Reconcile team-seat subscriptions on checkout, renewals and cancellation.
+// A stable Stripe subscription ID lets the database RPC remain idempotent.
+async function syncTeamSeatSubscription(subscription, paymentReference=null, forceStatus=null){
+  const meta=subscription?.metadata||{};
+  const employerId=String(meta.employer_id||'');
+  if(meta.product!=='team_seat'||!employerId||!subscription?.id)return;
+  const status=String(forceStatus||subscription.status||'').toLowerCase();
+  const firstItem=subscription.items?.data?.[0];
+  const price=firstItem?.price;
+  const cents=Number(price?.unit_amount??meta.unit_amount_cents??0);
+  await rpc('sync_team_seat_subscription',{
+    p_employer_id:employerId,
+    p_stripe_subscription_id:subscription.id,
+    p_status:status,
+    p_expires_at:stripePeriodEndUnix(subscription)?new Date(stripePeriodEndUnix(subscription)*1000).toISOString():null,
+    p_payment_reference:paymentReference,
+    p_amount_cents:Number.isFinite(cents)?cents:0
+  });
+}
+
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
   if (session?.status && session.status !== 'complete') return;
+
+  if(product==='team_seat'){
+    if(session.mode!=='subscription'||!session.subscription)return;
+    const sub=await stripeGet('subscriptions/'+encodeURIComponent(session.subscription)+'?expand[]=items.data.price');
+    await syncTeamSeatSubscription(sub,session.id);
+    return;
+  }
 
   if (product === 'weekly_slot') {
     if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
@@ -516,6 +543,11 @@ async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
   if (!meta.employer_id) return;
+
+  if(product==='team_seat'){
+    await syncTeamSeatSubscription(subscription,null,forceStatus);
+    return;
+  }
 
   if (product === 'weekly_slot') {
     if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
