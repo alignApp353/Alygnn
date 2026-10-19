@@ -261,8 +261,8 @@
       <div class="summary-change-line" id="summary-change-line"></div>
       <div class="total">
         <div class="total-row"><span>Plan subtotal</span><span id="subtotal">$750.00</span></div>
-        <div class="total-row muted" id="tax-row"><span>Tax</span><span id="tax-amount">Confirmed at checkout</span></div>
-        <div class="total-row final"><span>Due today</span><span id="due-total">$750.00 + tax</span></div>
+        <div class="total-row muted" id="tax-row" style="display:none"><span>Tax</span><span id="tax-amount">$0.00</span></div>
+        <div class="total-row final"><span>Due today</span><span id="due-total">$750.00</span></div>
       </div>
       <div class="trust" id="trust-copy">🔒 Secure checkout · 3 months paid upfront</div>
     </aside>
@@ -514,7 +514,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         <div class="change-details">
           <div class="change-detail"><span class="label">Billing change</span><span class="value">${currentBillingLabel} → ${targetBillingLabel}</span></div>
           <div class="change-detail"><span class="label">Effective</span><span class="value">${immediate?'Immediately after successful payment':effectiveText}</span></div>
-          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)+(planChangeTax===null?' + tax':'')):'$0.00'}</span></div>
+          <div class="change-detail"><span class="label">Due today</span><span class="value">${immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00'}</span></div>
           <div class="change-detail"><span class="label">Next renewal</span><span class="value">${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}</span></div>
           <div class="change-detail"><span class="label">Job-slot capacity</span><span class="value">${currentSlots} → ${targetSlots} total slots</span></div>
         </div>
@@ -542,15 +542,15 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     document.getElementById('summary-features').innerHTML=targetFeatures.map(x=>`<li>${x}</li>`).join('');
     document.getElementById('summary-change-line').innerHTML=`<strong>${immediate?'New recurring billing':'Scheduled change'}:</strong> ${currentProduct.name} ${currentBillingLabel} → ${targetProduct.name} ${targetBillingLabel} ${immediate?'after successful payment' : 'at '+(periodEnd||'your next renewal')}.`;
     document.getElementById('subtotal').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangeSubtotal/100)):'$0.00';
-    document.getElementById('tax-row').style.display=immediate?'flex':'none';
-    document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'Calculated at checkout':planChangeTax===null?'Calculated at checkout':money(planChangeTax/100)):'$0.00';
-    document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)+(planChangeTax===null?' + tax':'')):'$0.00';
+    document.getElementById('tax-row').style.display='none';
+    document.getElementById('tax-amount').textContent=immediate?(planChangePreview===null?'$0.00':planChangeTax===null?'$0.00':money(planChangeTax/100)):'$0.00';
+    document.getElementById('due-total').textContent=immediate?(planChangePreview===null?'Checking amount…':money(planChangePreview/100)):'$0.00';
     document.getElementById('trust-copy').textContent=immediate?'Pay the remaining upgrade balance now · access changes after payment':'No charge today · change takes effect at renewal';
 
-    document.getElementById('authorization-copy').textContent=immediate?'I authorize the quoted plan-price difference plus applicable tax. My new quarterly or monthly billing cycle starts after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
+    document.getElementById('authorization-copy').textContent=immediate?'I authorize the quoted plan-price difference. My new quarterly or monthly billing cycle starts after successful payment.':`By confirming, you schedule ${targetProduct.name} ${targetBillingLabel} for your next renewal. ${currentProduct.name} ${currentBillingLabel} remains active through the current period. Your next renewal will be ${displayPrice(targetPrice)} ${billingCadenceLabel(targetBilling)}.`;
 
     const fineprint=document.querySelector('.fineprint');
-    if(fineprint) fineprint.textContent=immediate?'The full listed price of your current plan is credited. Applicable tax and the final total are confirmed on the Stripe invoice.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
+    if(fineprint) fineprint.textContent=immediate?'The full listed price of your current plan is credited. The final total is confirmed on the Stripe invoice.':'No payment is taken today. You can review the scheduled change in Billing & plan.';
 
     updateCheckoutState();
   }
@@ -575,7 +575,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       planChangePreview=Number(data.amount_due_now_cents);
       planChangeTax=data.tax_cents===null||data.tax_cents===undefined?null:Number(data.tax_cents);
       planChangeSubtotal=Number(data.subtotal_cents);
-      if((planChangeTax!==null&&!Number.isFinite(planChangeTax))||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid tax breakdown.');
+      if((planChangeTax!==null&&!Number.isFinite(planChangeTax))||!Number.isFinite(planChangeSubtotal))throw new Error('Invalid price breakdown.');
       if(!Number.isFinite(planChangePreview)||planChangePreview<0)throw new Error('Invalid amount preview.');
       renderPlanChangeReview();
       if(planChangeCheckoutBlocked)showMessage(data.blocked_reason||'Resolve the previous unpaid Stripe invoice before starting checkout.','error');
@@ -834,21 +834,21 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       document.getElementById('trust-copy').textContent='Developer test mode · No charge';
       document.getElementById('authorization-copy').textContent=isAddon() ? 'By continuing, you confirm this is a developer test activation of the Free-account-only $150/month Second Job Slot. No payment will be processed.' : `By continuing, you confirm this is a test activation of the ${p.name} ${p.billing.toLowerCase()} package. No payment will be processed.`;
     }else{
-      document.getElementById('tax-row').style.display='flex';
-      document.getElementById('tax-amount').textContent='Confirmed at checkout';
-      document.getElementById('due-total').textContent='Confirmed at checkout';
+      document.getElementById('tax-row').style.display='none';
+      document.getElementById('tax-amount').textContent='$0.00';
+      document.getElementById('due-total').textContent=money(p.price);
       if(isAddon()){
         document.getElementById('trust-copy').textContent='🔒 Secure checkout · Second Job Slot billed monthly';
-        document.getElementById('authorization-copy').textContent='By continuing, you authorize $150 plus applicable tax each month for the Free-account-only Second Job Slot until canceled according to the Terms.';
+        document.getElementById('authorization-copy').textContent='By continuing, you authorize $150 each month for the Free-account-only Second Job Slot until canceled according to the Terms.';
       }else if(selectedBilling==='monthly'){
         document.getElementById('trust-copy').textContent='🔒 Secure checkout · Subscription billed monthly';
-        document.getElementById('authorization-copy').textContent=`By continuing, you authorize ${displayPrice(p.price)} plus applicable tax each month until canceled according to the Terms.`;
+        document.getElementById('authorization-copy').textContent=`By continuing, you authorize ${displayPrice(p.price)} each month until canceled according to the Terms.`;
       }else if(selectedBilling==='quarterly'){
         document.getElementById('trust-copy').textContent='🔒 Secure checkout · 3 months paid upfront';
-        document.getElementById('authorization-copy').textContent=`By continuing, you authorize ${displayPrice(p.price)} plus applicable tax every 3 months for the ${p.name} plan until canceled according to the Terms.`;
+        document.getElementById('authorization-copy').textContent=`By continuing, you authorize ${displayPrice(p.price)} every 3 months for the ${p.name} plan until canceled according to the Terms.`;
       }else{
         document.getElementById('trust-copy').textContent='🔒 Secure checkout · 7-day job slot';
-        document.getElementById('authorization-copy').textContent=`By continuing, you authorize a ${displayPrice(p.price)} plus applicable tax payment for one 7-day Weekly Job Slot. The job using that slot will automatically close when the 7-day period ends.`;
+        document.getElementById('authorization-copy').textContent=`By continuing, you authorize a ${displayPrice(p.price)} payment for one 7-day Weekly Job Slot. The job using that slot will automatically close when the 7-day period ends.`;
       }
     }
 
