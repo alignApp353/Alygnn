@@ -128,7 +128,7 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
   <div class="panel">
     <div class="item">
       <div class="symbol"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></div>
-      <div class="item-main"><div class="name">Email address</div><div class="hint">Used for account notifications and sign-in</div><span class="email-text" id="email-display">Loading…</span><button type="button" class="action" id="retry-email-btn" style="display:none;margin-top:9px">Retry</button></div>
+      <div class="item-main"><div class="name">Email address</div><div class="hint">Used for account notifications and sign-in</div><span class="email-text" id="email-display">Sign-in email unavailable</span><button type="button" class="action" id="retry-email-btn" style="display:none;margin-top:9px">Retry</button></div>
     </div>
     <div class="item">
       <div class="symbol"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
@@ -141,13 +141,6 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
       <div class="field-row"><label class="field-label" for="confirm-password">Confirm new password</label><input class="input" id="confirm-password" type="password" autocomplete="new-password" placeholder="Re-enter new password" minlength="8"></div>
       <button class="primary" id="send-code-btn" type="button">Send verification code</button>
       <div id="code-step" style="display:none;margin-top:17px"><div class="field-row"><label class="field-label" for="verification-code">Email verification code</label><input class="input" id="verification-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="6-digit code"></div><button class="primary" id="confirm-code-btn" type="button">Verify &amp; change password</button></div>
-    </div>
-    <div class="item">
-      <div class="symbol"><svg viewBox="0 0 24 24"><path d="M20 12c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8a8 8 0 0 1 5.4 2.1"/><path d="M21 5v6h-6"/><path d="m21 11-5 1"/></svg></div>
-      <div class="item-main"><div class="name">Google sign-in</div><div class="hint" id="google-hint">Checking linked accounts…</div></div>
-      <div id="google-status"><span class="status">Checking…</span></div>
-      <button class="action" id="retry-google-btn" style="display:none" type="button">Retry</button>
-      <button class="action" id="link-google-btn" style="display:none" type="button">Link</button>
     </div>
   </div>
 
@@ -171,7 +164,6 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
 'use strict';
 const SUPABASE_URL = 'https://auth.alygnn.com';
 const SUPABASE_ANON_KEY = 'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
-const GOOGLE_WEB_CLIENT_ID = '725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
 let sb=null;
 const SUPABASE_SDK_CDNS=[
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
@@ -220,30 +212,56 @@ let accountUser=null;
 let pendingPassword=null;
 let chosenClosure='deactivate';
 const AUTH_TIMEOUT_MS = 7500;
-// Independent startup watchdog: this runs even if an unrelated async call stalls.
-setTimeout(()=>{
-  if($('email-display').textContent.includes('Loading')||$('google-hint').textContent.includes('Checking linked accounts')){
-    if($('email-display').textContent.includes('Loading'))$('email-display').textContent='Temporarily unavailable';
-    $('retry-email-btn').style.display='inline-flex';
-    googleUnavailable('Could not finish checking Google. Tap Retry.');
-    showMsg('Account details took too long to load. Tap Retry to try again.');
-  }
-},17500);
 function bounded(task,label='Request'){
   let timer;
-  return Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Please retry.')),AUTH_TIMEOUT_MS);})]).finally(()=>clearTimeout(timer));
+  return Promise.race([
+    Promise.resolve().then(task),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label+' timed out. Please retry.')),AUTH_TIMEOUT_MS);})
+  ]).finally(()=>clearTimeout(timer));
 }
-function googleUnavailable(message){
-  $('google-hint').textContent=message;
-  $('google-status').innerHTML='<span class="status">Unavailable</span>';
-  $('link-google-btn').style.display='none';
-  $('retry-google-btn').style.display='inline-flex';
+// The employer dashboard and employer login use the default Supabase localStorage
+// session at https://localhost. Read the session's user email locally instead of
+// starting a new SDK/network request whenever Settings is opened.
+function readSavedEmployerSession(){
+  const entries=[];
+  try{
+    // Default supabase-js v2 key for https://auth.alygnn.com
+    const key='sb-auth-auth-token';
+    const raw=localStorage.getItem(key);
+    if(raw)entries.push(raw);
+    // Support other Supabase storage keys if a project ref/config changes.
+    for(let i=0;i<localStorage.length;i++){
+      const name=localStorage.key(i);
+      if(name!==key && name && /^sb-[a-zA-Z0-9_-]+-auth-token$/.test(name)){
+        const value=localStorage.getItem(name);if(value)entries.push(value);
+      }
+    }
+    // Older Alygnn pages may store auth in an isolated sessionStorage key.
+    const tabId=sessionStorage.getItem('alygnn_auth_tab_id');
+    const tabKey=tabId&&'alygnn-auth-'+tabId;
+    if(tabKey){const value=sessionStorage.getItem(tabKey);if(value)entries.push(value);}
+  }catch(_){return null;}
+  for(const raw of entries){
+    try{
+      const parsed=JSON.parse(raw);
+      const session=parsed?.currentSession||parsed;
+      const email=session?.user?.email;
+      // A real stored session (not a standalone cached email) is required.
+      if(typeof session?.access_token==='string' && session.access_token &&
+         typeof email==='string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        return session;
+      }
+    }catch(_){}
+  }
+  return null;
 }
-function authUnavailable(message){
-  $('email-display').textContent='Could not load email';
-  $('retry-email-btn').style.display='inline-flex';
-  googleUnavailable('Unable to check sign-in methods. Tap Retry.');
-  showMsg(message);
+function showSavedEmail(){
+  const session=readSavedEmployerSession();
+  accountUser=session?.user||null;
+  $('email-display').textContent=session?.user?.email||'Sign-in email unavailable';
+  $('retry-email-btn').style.display=session?'none':'inline-flex';
+  $('retry-email-btn').textContent='Refresh';
+  return !!session;
 }
 function showMsg(message,type='error'){
   const b=$('msg-box');b.textContent=message;b.className='message '+type;b.scrollIntoView({block:'nearest',behavior:'smooth'});
@@ -255,62 +273,10 @@ function friendlyError(error){
   if(/rate limit|too many/i.test(raw))return 'Too many attempts. Wait a few minutes and try again.';
   return raw||'Something went wrong. Please try again.';
 }
-async function refreshGoogleStatus(user){
-  // Use the same verified user data; calling getUser() a second time could hang
-  // the entire page during a slow auth-server response.
-  const freshUser=user || (await bounded(()=>sb.auth.getUser(),'Google account check')).data?.user;
-  if(!freshUser)throw new Error('Unable to verify linked accounts.');
-  accountUser=freshUser;
-  const identities=Array.isArray(freshUser.identities)?freshUser.identities:[];
-  const isLinked=identities.some(x=>x.provider==='google');
-  $('google-status').innerHTML=isLinked?'<span class="status on">Connected</span>':'';
-  $('link-google-btn').style.display=isLinked?'none':'inline-flex';
-  $('retry-google-btn').style.display='none';
-  $('google-hint').textContent=isLinked?'Google is linked to this Alygnn account':'Connect Google without creating a new account';
-}
-async function init(){
-  // Guard against two simultaneous refreshes fighting over the Supabase auth lock.
-  if(init.inFlight)return;
-  init.inFlight=true;
-  $('retry-email-btn').style.display='none';
-  $('retry-google-btn').style.display='none';
-  $('email-display').textContent='Loading…';
-  $('google-hint').textContent='Checking linked accounts…';
-  $('google-status').innerHTML='<span class="status">Checking…</span>';
-  try{
-    await ensureClient();
-    const {data,error}=await bounded(()=>sb.auth.getSession(),'Session check');
-    if(error)throw error;
-    const session=data?.session;
-    if(!session){
-      // Never claim account data from an unauthenticated session.
-      location.replace('app-employer-login.html');return;
-    }
-    accountUser=session.user||null;
-    $('email-display').textContent=session.user?.email||'Email not available';
-    // The session already contains the provider identity list. Render immediately
-    // rather than keeping Google stuck behind an additional HTTP getUser request.
-    const identities=Array.isArray(session.user?.identities)?session.user.identities:null;
-    if(identities){
-      await refreshGoogleStatus(session.user);
-      clearMsg();
-    }else{
-      // Older sessions may omit identities; ask the server with a bounded request.
-      const {data:remote,error:verifyError}=await bounded(()=>sb.auth.getUser(),'Google identity check');
-      if(verifyError||!remote?.user)throw verifyError||new Error('Unable to check linked accounts.');
-      accountUser=remote.user;
-      await refreshGoogleStatus(remote.user);
-      clearMsg();
-    }
-  }catch(e){
-    if($('email-display').textContent.includes('Loading'))$('email-display').textContent='Temporarily unavailable';
-    $('retry-email-btn').style.display='inline-flex';
-    googleUnavailable('Unable to check Google sign-in. Tap Retry.');
-    showMsg('Account details could not be loaded: '+friendlyError(e));
-  }finally{init.inFlight=false;}
-}
-$('retry-email-btn').addEventListener('click',()=>init());
-$('retry-google-btn').addEventListener('click',()=>init());
+$('retry-email-btn').addEventListener('click',()=>{
+  clearMsg();
+  if(!showSavedEmail())showMsg('Could not find a saved sign-in session on this device. Return to Settings, sign in again, and reopen Account & security.');
+});
 $('password-toggle').addEventListener('click',()=>{
   const panel=$('password-panel');const isOpen=panel.classList.toggle('open');
   $('password-toggle').setAttribute('aria-expanded',String(isOpen));
@@ -350,47 +316,6 @@ $('confirm-code-btn').addEventListener('click',async()=>{
     showMsg('Your password was updated successfully.','success');
   }catch(error){showMsg('Could not update password: '+friendlyError(error));}
   finally{button.disabled=false;button.textContent='Verify & change password';}
-});
-function nativeSocialPlugin(){
-  const cap=window.Capacitor;
-  if(!cap?.isNativePlatform?.())throw new Error('Google linking is available in the Alygnn mobile app.');
-  if(cap.Plugins?.SocialLogin)return cap.Plugins.SocialLogin;
-  if(typeof cap.registerPlugin==='function')return cap.registerPlugin('SocialLogin');
-  if(typeof cap.nativePromise==='function')return{
-    initialize:o=>cap.nativePromise('SocialLogin','initialize',o),
-    login:o=>cap.nativePromise('SocialLogin','login',o),
-    logout:o=>cap.nativePromise('SocialLogin','logout',o)
-  };
-  throw new Error('Google linking requires the Android SocialLogin bridge. Rebuild the Android app.');
-}
-$('link-google-btn').addEventListener('click',async()=>{
-  clearMsg();const button=$('link-google-btn');button.disabled=true;button.textContent='Connecting…';
-  let plugin;
-  try{
-    await ensureClient();
-    const {data:{session}}=await bounded(()=>sb.auth.getSession(),'Session check');
-    if(!session)throw new Error('Sign in before linking Google.');
-    const originalId=session.user.id;
-    plugin=nativeSocialPlugin();
-    await plugin.initialize({google:{webClientId:GOOGLE_WEB_CLIENT_ID,mode:'online'}});
-    const login=await plugin.login({provider:'google',options:{filterByAuthorizedAccounts:false}});
-    const idToken=login?.result?.idToken;
-    const accessToken=login?.result?.accessToken?.token || (typeof login?.result?.accessToken==='string' ? login.result.accessToken : null);
-    if(!idToken)throw new Error('Google did not return an ID token.');
-    // Link to the current user — signInWithIdToken() would REPLACE the session.
-    const credentials={provider:'google',token:idToken};
-    if(accessToken)credentials.access_token=accessToken;
-    const {error}=await sb.auth.linkIdentity(credentials);
-    if(error)throw error;
-    const {data:updated,error:verifyError}=await sb.auth.getUser();
-    if(verifyError||!updated?.user||updated.user.id!==originalId)throw new Error('Could not confirm that Google linked to the same employer account.');
-    if(!updated.user.identities?.some(i=>i.provider==='google'))throw new Error('Google linking could not be confirmed yet. Refresh and check again.');
-    await refreshGoogleStatus();showMsg('Google was linked to your existing Alygnn account.','success');
-  }catch(error){
-    const raw=String(error?.message||'');
-    const cancelled=/cancel/i.test(raw);
-    showMsg(cancelled?'Google linking was canceled.': 'Could not link Google: '+friendlyError(error)+( /manual.link/i.test(raw)?' Enable manual identity linking in Supabase Authentication settings.':''));
-  }finally{button.disabled=false;button.textContent='Link';}
 });
 $('closure-continue').addEventListener('click',()=>{
   clearMsg();chosenClosure=document.querySelector('input[name="closure"]:checked').value;
@@ -432,7 +357,7 @@ $('modal-confirm').addEventListener('click',async()=>{
   }catch(error){closeModal();showMsg('Could not complete account closure: '+friendlyError(error));}
   finally{button.disabled=false;button.textContent=chosenClosure==='deactivate'?'Deactivate account':'Request deletion';}
 });
-init();
+showSavedEmail();
 </script>
 </body>
 </html>
