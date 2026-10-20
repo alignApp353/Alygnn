@@ -918,6 +918,82 @@ async function adminAccountList(supabase, requester, query) {
   return rows;
 }
 
+
+// WEBSITE ACCOUNT CLOSURE: these actions share this existing function to stay
+// within Vercel Hobby's 12-function limit.
+async function accountClosureAction(req, res, sb, requester, action) {
+  const { data: current, error: readError } = await sb.from('account_closure_requests')
+    .select('status,delete_after').eq('user_id', requester.id).maybeSingle();
+  if (readError) throw readError;
+  if (action === 'closure_status') {
+    return sendJson(res, 200, { success: true, status: current?.status || 'active', delete_after: current?.delete_after || null });
+  }
+  if (action === 'deactivate') {
+    if (current?.status === 'deactivated') return sendJson(res, 200, { success: true, status: 'deactivated', delete_after: current.delete_after });
+    if (current?.status === 'deleting') return sendJson(res, 409, { success: false, error: 'This account is already pending deletion.' });
+    const { data: profile, error: profileError } = await sb.from('profiles').select('is_admin').eq('id',requester.id).maybeSingle();
+    if (profileError) throw profileError;
+    if (profile?.is_admin) return sendJson(res,403,{success:false,error:'Administrator accounts cannot use self-service deactivation.'});
+    // Block company owners until job suspension, recurring billing and all
+    // sign-in paths can be safely and consistently disabled.
+    const { data: companies, error: companyError } = await sb.from('companies').select('id').eq('owner_user_id', requester.id).limit(1);
+    if (companyError) throw companyError;
+    if (companies?.length) return sendJson(res,409,{success:false,error:'Employer company accounts cannot be deactivated yet. Alygnn must first safely suspend jobs and handle recurring billing. No account changes were made.'});
+    const now = new Date();
+    const deleteAfter = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await sb.from('account_closure_requests').upsert({user_id:requester.id,status:'deactivated',deactivated_at:now.toISOString(),delete_after:deleteAfter,updated_at:now.toISOString()}, {onConflict:'user_id'});
+    if (error) throw error;
+    return sendJson(res,200,{success:true,status:'deactivated',delete_after:deleteAfter});
+  }
+  if (action === 'reactivate') {
+    if (current?.status !== 'deactivated') return sendJson(res,409,{success:false,error:'This account is not in the recovery period.'});
+    if (!current.delete_after || Date.parse(current.delete_after) <= Date.now()) return sendJson(res,410,{success:false,error:'Your recovery period has expired. Contact Alygnn support.'});
+    const { data, error } = await sb.from('account_closure_requests').delete().eq('user_id',requester.id).eq('status','deactivated').gt('delete_after',new Date().toISOString()).select('user_id');
+    if (error) throw error;
+    if (!data?.length) return sendJson(res,409,{success:false,error:'Reactivation could not be completed. Try again.'});
+    return sendJson(res,200,{success:true,status:'active'});
+  }
+  return sendJson(res,400,{success:false,error:'Unknown account closure action.'});
+}
+
+async function scheduledClosureCleanup(req, res, sb) {
+  const crypto = require('crypto');
+  const expected = String(process.env.ACCOUNT_CLEANUP_SECRET || '');
+  const supplied = String(req.headers['x-account-cleanup-secret'] || '');
+  if (!expected || !supplied || Buffer.byteLength(expected) !== Buffer.byteLength(supplied) ||
+      !crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(supplied))) {
+    return sendJson(res,401,{success:false,error:'Unauthorized.'});
+  }
+  const {data:due,error}=await sb.from('account_closure_requests').select('user_id')
+    .eq('status','deactivated').lte('delete_after',new Date().toISOString()).limit(10);
+  if(error) throw error;
+  let processed=0, failures=0;
+  for(const row of due || []) {
+    try {
+      const {data:claimed,error:claimError}=await sb.from('account_closure_requests')
+        .update({status:'deleting',updated_at:new Date().toISOString()})
+        .eq('user_id',row.user_id).eq('status','deactivated')
+        .lte('delete_after',new Date().toISOString()).select('user_id');
+      if(claimError) throw claimError;
+      if(!claimed?.length) continue;
+      const {data,error:authError}=await sb.auth.admin.getUserById(row.user_id);
+      if(authError && !/not found|does not exist/i.test(authError.message||'')) throw authError;
+      if(data?.user) await permanentlyDeleteUser(sb,data.user);
+      const {error:removeError}=await sb.from('account_closure_requests').delete().eq('user_id',row.user_id);
+      if(removeError) throw removeError;
+      processed++;
+    } catch(error) {
+      failures++;
+      console.error('Scheduled account deletion failed for',row.user_id,error);
+      const {error:resetError}=await sb.from('account_closure_requests')
+        .update({status:'deactivated',updated_at:new Date().toISOString()})
+        .eq('user_id',row.user_id).eq('status','deleting');
+      if(resetError) console.error('Could not release deletion claim:',resetError);
+    }
+  }
+  return sendJson(res,200,{success:true,processed,failures});
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -938,8 +1014,17 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const requester = await authenticatedUser(req, supabase);
     const body = parseBody(req);
+    // A server-to-server cron call uses a dedicated secret and never a user session.
+    if (req.method === 'POST' && body.action === 'closure_cleanup') {
+      return await scheduledClosureCleanup(req, res, supabase);
+    }
+    const requester = await authenticatedUser(req, supabase);
+    const closureAction = req.method === 'GET' ? String(req.query?.action || '') : String(body.action || '');
+    if ((req.method === 'GET' && closureAction === 'closure_status') ||
+        (req.method === 'POST' && ['deactivate','reactivate'].includes(closureAction))) {
+      return await accountClosureAction(req,res,supabase,requester,closureAction);
+    }
     const scope = String(
       req.method === 'GET' ? (req.query?.scope || '') : (body.scope || '')
     ).trim().toLowerCase();
