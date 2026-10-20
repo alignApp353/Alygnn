@@ -23,18 +23,11 @@
   function read(key){try{return localStorage.getItem(key)}catch(_error){return null}}
   function write(key,value){try{localStorage.setItem(key,value)}catch(_error){}}
   function preference(){
-    let pref=normalize(read('alygnnTheme'));
-    if(pref) return pref;
-    const keys=ACCOUNT_THEME_TYPE==='employer'
-      ? ['alygnnEmployerTheme','alygnn_employer_theme']
-      : ['alygnnCandidateTheme','alygnn_candidate_theme'];
-    for(const key of keys){
-      pref=normalize(read(key));
-      if(pref){write('alygnnTheme',pref);return pref;}
-    }
-    for(const key of ['alygnn_theme','alygnn-theme']){
-      pref=normalize(read(key));
-      if(pref){write('alygnnTheme',pref);return pref;}
+    // Employer's saved appearance overrides any shared/candidate preference.
+    // It must remain identical to Employer Dashboard and Account & Security.
+    for(const key of ['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme']){
+      const pref=normalize(read(key));
+      if(pref)return pref;
     }
     return 'auto';
   }
