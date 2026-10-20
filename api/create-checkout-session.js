@@ -3069,8 +3069,17 @@ module.exports = async function handler(req, res) {
         const access = await getEmployerPostingAccess(token);
         const currentPlan = String(access?.plan || '').toLowerCase();
         const currentBilling = String(access?.billing_period || '').toLowerCase();
+        // A canceled subscription can leave stale paid-plan access in Supabase.
+        // Verify the actual Stripe subscription before refusing a new purchase.
+        // Stripe lookup errors must fail closed, not silently allow duplicates.
+        let hasLiveRecurringPlan = access?.active_paid_plan === true;
+        const currentEnt = await getEntitlement(user.id);
+        if (shouldResolveSubscription(currentEnt)) {
+          const liveSubscription = await resolveSubscription(user.id, currentEnt);
+          hasLiveRecurringPlan = subscriptionIsActive(liveSubscription);
+        }
         if (
-          access?.active_paid_plan === true &&
+          hasLiveRecurringPlan &&
           ['monthly','quarterly'].includes(currentBilling) &&
           ['launch','growth','scale','business','enterprise'].includes(currentPlan)
         ) {
