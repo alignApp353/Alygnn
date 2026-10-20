@@ -953,7 +953,26 @@
   .card, .panel, .form-card, .section, .modal-box { max-width: 100%; }
 }
 
-@media(max-width:700px){nav{padding-left:16px;padding-right:16px;gap:10px}.nav-links{min-width:0;gap:10px}.nav-links a{font-size:12px}.nav-right{min-width:0;gap:8px}}
+/* Mobile account navigation only. Desktop layout is unchanged. */
+  .account-mobile-menu-button,.account-mobile-menu{display:none;}
+  @media(max-width:700px){
+    nav{padding:0 16px;gap:12px;justify-content:space-between;}
+    nav .logo{flex:0 0 auto;white-space:nowrap;}
+    nav .nav-links{display:none;}
+    nav .nav-right{margin-left:auto;gap:10px;min-width:0;}
+    nav .nav-right > :not(.notif-wrap){display:none!important;}
+    nav .notif-bell{width:40px;height:40px;flex:0 0 40px;}
+    .account-mobile-menu-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text);cursor:pointer;}
+    .account-mobile-menu-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
+    .account-mobile-menu{display:flex;position:fixed;top:64px;right:12px;left:12px;z-index:1001;flex-direction:column;gap:3px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:9px;box-shadow:0 14px 36px rgba(26,37,48,.14);}
+    .account-mobile-menu[hidden]{display:none!important;}
+    .account-mobile-menu a,.account-mobile-menu button{display:block;width:100%;padding:12px 14px;text-align:left;border:0;border-radius:9px;background:transparent;text-decoration:none;color:var(--text);font:500 14px 'DM Sans',sans-serif;cursor:pointer;}
+    .account-mobile-menu button[hidden]{display:none!important;}
+    .account-mobile-menu a:hover,.account-mobile-menu button:hover{background:var(--brand-tint);}
+    .account-mobile-menu a[aria-current="page"]{color:var(--brand);background:var(--brand-tint);}
+    .account-mobile-menu .account-mobile-signout{border-top:1px solid var(--border);border-radius:0;margin-top:4px;}
+    .notif-dropdown{position:fixed;top:70px;left:12px;right:12px;width:auto;max-width:none;max-height:min(70vh,420px);}
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
   window.addEventListener('hashchange',()=>{
@@ -997,7 +1016,46 @@
     <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
+  <button type="button" class="account-mobile-menu-button" id="account-mobile-menu-button" aria-label="Open account menu" aria-expanded="false" aria-controls="account-mobile-menu" onclick="toggleAccountMobileMenu()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
 </nav>
+<div class="account-mobile-menu" id="account-mobile-menu" hidden>
+  <a href="employers.html">Home</a>
+  <a href="employer-account.html" aria-current="page">Account</a>
+  <button type="button" id="account-mobile-post-job" onclick="closeAccountMobileMenu();document.getElementById('account-post-job-btn').click()">Post a job</button>
+  <button type="button" id="account-mobile-dashboard" onclick="closeAccountMobileMenu();document.getElementById('dashboard-btn').click()">Dashboard</button>
+  <button type="button" class="account-mobile-signout" onclick="closeAccountMobileMenu();signOut()">Sign out</button>
+</div>
+<script>
+  function closeAccountMobileMenu(){
+    const menu=document.getElementById('account-mobile-menu');
+    const button=document.getElementById('account-mobile-menu-button');
+    if(menu)menu.hidden=true;
+    if(button)button.setAttribute('aria-expanded','false');
+  }
+  function toggleAccountMobileMenu(){
+    const menu=document.getElementById('account-mobile-menu');
+    const button=document.getElementById('account-mobile-menu-button');
+    if(!menu||!button)return;
+    if(menu.hidden){
+      const originalPost=document.getElementById('account-post-job-btn');
+      const originalDashboard=document.getElementById('dashboard-btn');
+      // Respect existing JS permissions: the menu only mirrors the original controls.
+      document.getElementById('account-mobile-post-job').hidden=!originalPost||originalPost.style.display==='none'||originalPost.hidden;
+      document.getElementById('account-mobile-dashboard').hidden=!originalDashboard||originalDashboard.style.display==='none'||originalDashboard.hidden;
+      if(originalPost)document.getElementById('account-mobile-post-job').textContent=originalPost.textContent.trim();
+    }
+    menu.hidden=!menu.hidden;
+    button.setAttribute('aria-expanded',String(!menu.hidden));
+  }
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccountMobileMenu();});
+  document.addEventListener('click',e=>{
+    const menu=document.getElementById('account-mobile-menu');
+    if(menu&&!menu.hidden&&!menu.contains(e.target)&&!document.getElementById('account-mobile-menu-button').contains(e.target))closeAccountMobileMenu();
+  });
+  window.addEventListener('resize',()=>{if(window.innerWidth>700)closeAccountMobileMenu();});
+</script>
 
 <div class="page">
 
