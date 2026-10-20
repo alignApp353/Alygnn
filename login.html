@@ -613,12 +613,8 @@
         return;
       }
       if (closure.status === 'deactivated') {
-        const deadline = closure.delete_after ? new Date(closure.delete_after).toLocaleDateString() : 'the recovery deadline';
-        if (!confirm('Your Alygnn account is deactivated. Reactivate it now to prevent deletion after ' + deadline + '?')) {
-          await sb.auth.signOut({ scope: 'local' }).catch(() => {});
-          showMsg('Your account remains deactivated. Sign in again before the deadline to reactivate it.');
-          return;
-        }
+        // A successful sign-in within the recovery period restores the account
+        // automatically. The server validates the deadline before reactivation.
         const reactivateResponse = await fetch('/api/delete-account', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
