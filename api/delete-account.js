@@ -953,7 +953,7 @@ function formatDeactivationDeadline(iso) {
 
 // The brand mark is Alygnn's actual image asset (GitHub root /alygnn-logo.png),
 // not an approximate text logo drawn with an email client's fallback font.
-const ACCOUNT_EMAIL_LOGO_URL = 'https://alygnn.com/alygnn-email-wordmark.png';
+const ACCOUNT_EMAIL_LOGO_URL = 'https://alygnn.com/alygnn-email-logo.png';
 function accountEmailLayout(contentHtml) {
   return `
   <div style="margin:0;padding:32px 12px;background:#F6F8F7;font-family:Arial,Helvetica,sans-serif;color:#1A2530">
