@@ -1631,7 +1631,7 @@ async function customerSnapshot(customerId,sub){
   try{
     const result=await manageStripe('GET','invoices',{
       customer:customerId,
-      limit:100
+      limit:8
     });
 
     invoices=(result?.data||[]).map(invoice=>{
@@ -1649,9 +1649,6 @@ async function customerSnapshot(customerId,sub){
         amount_paid_cents:Number(invoice.amount_paid||0),
         amount_due_cents:Number(invoice.amount_due||0),
         subtotal_cents:Number(invoice.subtotal||0),
-        discount_cents:(invoice.total_discount_amounts||[]).reduce(
-          (sum,row)=>sum+Number(row?.amount||0),0
-        ),
         tax_cents:taxCents,
         total_cents:Number(invoice.total||invoice.amount_due||invoice.amount_paid||0),
         currency:String(invoice.currency||'usd').toLowerCase(),
@@ -1750,7 +1747,7 @@ async function employerOneTimePayments(employerId){
       'payment_intents/search',
       {
         query:`metadata["employer_id"]:"${safeEmployer}"`,
-        limit:100
+        limit:25
       }
     );
   }catch(error){
@@ -1815,7 +1812,6 @@ async function employerOneTimePayments(employerId){
       product,
       subtotal_cents:subtotal,
       tax_cents:tax,
-      discount_cents:Number(checkout?.total_details?.amount_discount||0),
       total_cents:total,
       amount_paid_cents:Number(payment.amount_received||total||0),
       receipt_url:
@@ -1877,20 +1873,6 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
       : secondSub?.customer?.id
   ].filter(Boolean);
 
-  // Read-only billing history: include Stripe customers created by one-time
-  // Checkout or native PaymentSheet, not only recurring plan subscriptions.
-  // Customer records must explicitly belong to this authenticated employer.
-  try{
-    const owned=await manageStripe('GET','customers/search',{
-      query:`metadata["employer_id"]:"${String(user.id).replace(/"/g,'')}"`,limit:100
-    });
-    for(const customer of owned?.data||[]){
-      if(customer?.id&&!customer.deleted)ids.push(customer.id);
-    }
-  }catch(error){
-    console.warn('Could not expand billing customer history:',error?.message||error);
-  }
-
   const uniqueIds=[...new Set(ids)];
   const snapshots=[];
 
@@ -1935,8 +1917,8 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   return {
     billing_email:stripeEmail||user?.email||null,
     payment_method:paymentMethod,
-    invoices,
-    one_time_payments:oneTimePayments,
+    invoices:invoices.slice(0,12),
+    one_time_payments:oneTimePayments.slice(0,25),
     stripe_customer_count:uniqueIds.length,
     next_plan_charge_cents:calculateNextPlanCharge(ent,planSub)
   };
@@ -2059,6 +2041,80 @@ async function syncPlanUpgradePayment({user,paymentIntentId}){
     billing_period:billing,
     already_applied:false
   };
+}
+
+// Recover a verified, completed plan Checkout if the webhook has not yet
+// recorded the subscription in Supabase. Applies to full-price and $0 promos.
+// Never trusts a plan, amount, or entitlement supplied by the browser.
+async function syncCompletedPlanCheckout({user,checkoutSessionId}){
+  const id=String(checkoutSessionId||'').trim();
+  if(!/^cs_(?:live|test)_[A-Za-z0-9]+$/.test(id)){
+    const error=new Error('Invalid Stripe checkout session ID.');error.status=400;throw error;
+  }
+  const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(id));
+  const meta=checkout?.metadata||{};
+  if(String(meta.employer_id||'')!==String(user.id)){
+    const error=new Error('Checkout does not belong to this employer.');error.status=403;throw error;
+  }
+  if(checkout.mode!=='subscription'||meta.product!=='job_plan'||
+     checkout.status!=='complete'||!checkout.subscription){
+    const error=new Error('This is not a completed plan subscription Checkout.');error.status=409;throw error;
+  }
+  const sub=await manageStripe('GET','subscriptions/'+encodeURIComponent(checkout.subscription),{
+    'expand[]':'items.data.price'
+  });
+  if(String(sub.metadata?.employer_id||'')!==String(user.id)||
+     String(sub.metadata?.product||'')!=='job_plan'){
+    const error=new Error('Stripe subscription ownership could not be verified.');error.status=403;throw error;
+  }
+  const customerId=typeof sub.customer==='string'?sub.customer:sub.customer?.id;
+  const checkoutCustomer=typeof checkout.customer==='string'?checkout.customer:checkout.customer?.id;
+  if(!customerId||customerId!==checkoutCustomer){
+    const error=new Error('Checkout customer and subscription do not match.');error.status=409;throw error;
+  }
+  const status=String(sub.status||'').toLowerCase();
+  if(!['active','trialing','past_due'].includes(status)){
+    const error=new Error('The Stripe subscription is not active yet.');error.status=409;throw error;
+  }
+  const price=sub.items?.data?.[0]?.price;
+  const priceId=typeof price==='string'?price:price?.id;
+  const allowed=Object.entries(MANAGE_CATALOG).flatMap(([billing,plans])=>
+    Object.entries(plans).map(([plan,value])=>({billing,plan,value})));
+  const match=allowed.find(row=>row.value.priceId===priceId);
+  if(!match||String(meta.plan||'').toLowerCase()!==match.plan||
+     String(meta.billing||'').toLowerCase()!==match.billing){
+    const error=new Error('Subscription price does not match the purchased plan.');error.status=409;throw error;
+  }
+  const ent=await getEntitlement(user.id);
+  const existingId=String(ent.stripe_plan_subscription_id||'');
+  if(existingId&&existingId!==sub.id){
+    const other=await manageStripe('GET','subscriptions/'+encodeURIComponent(existingId));
+    if(subscriptionIsActive(other)){
+      const error=new Error('Another active plan subscription is already linked to this account.');
+      error.status=409;throw error;
+    }
+  }
+  const endUnix=stripePeriodEndUnix(sub);
+  const patch={
+    employer_id:user.id,
+    plan:match.plan==='launch'?'business':'enterprise',
+    test_plan:match.plan,test_mode:false,subscription_status:status,
+    billing_period:match.billing,slot_limit:match.value.slots,
+    plan_amount_cents:match.value.cents,
+    urgently_hiring:['growth','scale'].includes(match.plan),
+    alygnn_recommended:match.plan==='scale',
+    current_period_end:endUnix?new Date(endUnix*1000).toISOString():null,
+    stripe_plan_subscription_id:sub.id,stripe_plan_customer_id:customerId,
+    stripe_plan_schedule_id:null,
+    pending_plan:null,pending_billing_period:null,pending_plan_effective_at:null,
+    updated_at:new Date().toISOString()
+  };
+  const response=await fetch(manageBase()+'/rest/v1/employer_entitlements?on_conflict=employer_id',{
+    method:'POST',headers:manageServiceHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify(patch)
+  });
+  if(!response.ok)throw new Error('Could not synchronize paid plan: '+await response.text());
+  return{ok:true,synced:true,plan:match.plan,billing:match.billing,subscription_status:status};
 }
 
 async function syncCompletedPlanUpgradeCheckout({user,checkoutSessionId}){
@@ -2868,6 +2924,11 @@ module.exports = async function handler(req, res) {
         checkoutSessionId: input.checkout_session_id
       });
       return send(res, 200, result);
+    }
+
+    if (billingAction === 'sync_checkout_session') {
+      const result=await syncCompletedPlanCheckout({user,checkoutSessionId:input.checkout_session_id});
+      return send(res,200,result);
     }
 
     if (billingAction === 'sync_plan_upgrade_checkout') {
