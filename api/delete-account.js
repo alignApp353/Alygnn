@@ -2,6 +2,24 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
+// Native Capacitor WebViews use https://localhost; the deployed web app uses alygnn.com.
+// Reflect ONLY an explicitly permitted origin (never allow arbitrary origins).
+const ALLOWED_ORIGINS = new Set([
+  'https://alygnn.com', 'https://www.alygnn.com',
+  'https://localhost', 'http://localhost', 'capacitor://localhost', 'ionic://localhost'
+]);
+function setAccountCors(req, res) {
+  const origin = String(req.headers?.origin || '');
+  if (ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Apikey');
+  res.setHeader('Access-Control-Max-Age', '600');
+}
+
+
 function sendJson(res, status, payload) {
   return res.status(status).json(payload);
 }
@@ -918,180 +936,8 @@ async function adminAccountList(supabase, requester, query) {
   return rows;
 }
 
-
-// Transactional account lifecycle emails use the existing Vercel API function.
-// Sender must be a verified domain in Resend. Email failures must not roll back
-// completed account status changes. Never expose the API key to browser code.
-async function sendClosureEmail(recipient, kind, deadline = null) {
-  const key = String(process.env.RESEND_API_KEY || '');
-  const from = String(process.env.ALYGNN_EMAIL_FROM || '');
-  if (!key || !from || !recipient) {
-    console.warn('Account closure email skipped: RESEND_API_KEY, ALYGNN_EMAIL_FROM, or recipient missing.');
-    return false;
-  }
-  const dateText = deadline ? new Date(deadline).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
-  }) : '';
-  const loginLink = 'https://alygnn.com/login.html';
-  const variants = {
-    deactivated: {
-      subject: 'Your Alygnn account has been deactivated',
-      lines: [
-        'Your Alygnn account was deactivated.',
-        `You can reactivate it by signing in at ${loginLink} and selecting Reactivate Account before ${dateText} (UTC).`,
-        `If you do not reactivate, your account is scheduled for permanent deletion after ${dateText} (UTC).`,
-        'If you did not request this change, contact Alygnn support promptly.'
-      ]
-    },
-    reminder: {
-      subject: 'Your Alygnn account is scheduled for deletion in 7 days',
-      lines: [
-        `Your Alygnn account is scheduled for permanent deletion after ${dateText} (UTC).`,
-        `To keep your account, sign in at ${loginLink} and select Reactivate Account before the deadline.`,
-        'If you did not request deactivation, contact Alygnn support.'
-      ]
-    },
-    reactivated: {
-      subject: 'Your Alygnn account has been reactivated',
-      lines: [
-        'Your Alygnn account has been reactivated.',
-        'The pending account-deletion request was canceled.',
-        `You can sign in at ${loginLink}.`,
-        'If you did not request this change, secure your account and contact Alygnn support.'
-      ]
-    }
-  };
-  const mail = variants[kind];
-  if (!mail) throw new Error('Unknown account email event');
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json'},
-      body: JSON.stringify({from, to: [recipient], subject: mail.subject,
-        text: `Hello,\n\n${mail.lines.join('\n\n')}\n\n— Alygnn`})
-    });
-    if (!response.ok) {
-      const result = await response.text().catch(() => '');
-      console.error('Account closure email provider rejected request:', response.status, result.slice(0, 300));
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error('Account closure email could not be sent:', error);
-    return false;
-  }
-}
-
-// WEBSITE ACCOUNT CLOSURE: these actions share this existing function to stay
-// within Vercel Hobby's 12-function limit.
-async function accountClosureAction(req, res, sb, requester, action) {
-  const { data: current, error: readError } = await sb.from('account_closure_requests')
-    .select('status,delete_after').eq('user_id', requester.id).maybeSingle();
-  if (readError) throw readError;
-  if (action === 'closure_status') {
-    return sendJson(res, 200, { success: true, status: current?.status || 'active', delete_after: current?.delete_after || null });
-  }
-  if (action === 'deactivate') {
-    if (current?.status === 'deactivated') return sendJson(res, 200, { success: true, status: 'deactivated', delete_after: current.delete_after });
-    if (current?.status === 'deleting') return sendJson(res, 409, { success: false, error: 'This account is already pending deletion.' });
-    const { data: profile, error: profileError } = await sb.from('profiles').select('is_admin').eq('id',requester.id).maybeSingle();
-    if (profileError) throw profileError;
-    if (profile?.is_admin) return sendJson(res,403,{success:false,error:'Administrator accounts cannot use self-service deactivation.'});
-    // Block company owners until job suspension, recurring billing and all
-    // sign-in paths can be safely and consistently disabled.
-    const { data: companies, error: companyError } = await sb.from('companies').select('id').eq('owner_user_id', requester.id).limit(1);
-    if (companyError) throw companyError;
-    if (companies?.length) return sendJson(res,409,{success:false,error:'Employer company accounts cannot be deactivated yet. Alygnn must first safely suspend jobs and handle recurring billing. No account changes were made.'});
-    const now = new Date();
-    const deleteAfter = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await sb.from('account_closure_requests').upsert({user_id:requester.id,status:'deactivated',deactivated_at:now.toISOString(),delete_after:deleteAfter,updated_at:now.toISOString()}, {onConflict:'user_id'});
-    if (error) throw error;
-    const emailSent = await sendClosureEmail(requester.email, 'deactivated', deleteAfter);
-    return sendJson(res,200,{success:true,status:'deactivated',delete_after:deleteAfter,email_sent:emailSent});
-  }
-  if (action === 'reactivate') {
-    if (current?.status !== 'deactivated') return sendJson(res,409,{success:false,error:'This account is not in the recovery period.'});
-    if (!current.delete_after || Date.parse(current.delete_after) <= Date.now()) return sendJson(res,410,{success:false,error:'Your recovery period has expired. Contact Alygnn support.'});
-    const { data, error } = await sb.from('account_closure_requests').delete().eq('user_id',requester.id).eq('status','deactivated').gt('delete_after',new Date().toISOString()).select('user_id');
-    if (error) throw error;
-    if (!data?.length) return sendJson(res,409,{success:false,error:'Reactivation could not be completed. Try again.'});
-    const emailSent = await sendClosureEmail(requester.email, 'reactivated');
-    return sendJson(res,200,{success:true,status:'active',email_sent:emailSent});
-  }
-  return sendJson(res,400,{success:false,error:'Unknown account closure action.'});
-}
-
-async function scheduledClosureCleanup(req, res, sb) {
-  const crypto = require('crypto');
-  const expected = String(process.env.ACCOUNT_CLEANUP_SECRET || '');
-  const supplied = String(req.headers['x-account-cleanup-secret'] || '');
-  if (!expected || !supplied || Buffer.byteLength(expected) !== Buffer.byteLength(supplied) ||
-      !crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(supplied))) {
-    return sendJson(res,401,{success:false,error:'Unauthorized.'});
-  }
-  // Send seven-day reminders once per account. If email delivery fails, leave
-  // reminder_sent_at NULL so the next daily run can retry.
-  const now = new Date();
-  const upper = new Date(now.getTime() + 7*24*60*60*1000).toISOString();
-  const {data:reminders,error:reminderReadError} = await sb.from('account_closure_requests')
-    .select('user_id,delete_after').eq('status','deactivated')
-    .is('reminder_sent_at',null).gt('delete_after',now.toISOString())
-    .lte('delete_after',upper).limit(100);
-  if (reminderReadError) throw reminderReadError;
-  let reminded = 0, reminderFailures = 0;
-  for (const row of reminders || []) {
-    try {
-      const {data:latest,error:latestError} = await sb.from('account_closure_requests')
-        .select('status,delete_after,reminder_sent_at').eq('user_id',row.user_id).maybeSingle();
-      if (latestError) throw latestError;
-      if (latest?.status !== 'deactivated' || latest?.reminder_sent_at ||
-          !latest.delete_after || Date.parse(latest.delete_after) <= Date.now()) continue;
-      const {data:auth,error:authError} = await sb.auth.admin.getUserById(row.user_id);
-      if (authError || !auth?.user?.email) throw authError || new Error('User email missing');
-      const sent = await sendClosureEmail(auth.user.email,'reminder',latest.delete_after);
-      if (!sent) { reminderFailures++; continue; }
-      const {error:markedError} = await sb.from('account_closure_requests')
-        .update({reminder_sent_at:new Date().toISOString()})
-        .eq('user_id',row.user_id).eq('status','deactivated')
-        .is('reminder_sent_at',null);
-      if (markedError) throw markedError;
-      reminded++;
-    } catch (error) {
-      reminderFailures++;
-      console.error('Account deletion reminder failed:',row.user_id,error);
-    }
-  }
-  const {data:due,error}=await sb.from('account_closure_requests').select('user_id')
-    .eq('status','deactivated').lte('delete_after',new Date().toISOString()).limit(10);
-  if(error) throw error;
-  let processed=0, failures=0;
-  for(const row of due || []) {
-    try {
-      const {data:claimed,error:claimError}=await sb.from('account_closure_requests')
-        .update({status:'deleting',updated_at:new Date().toISOString()})
-        .eq('user_id',row.user_id).eq('status','deactivated')
-        .lte('delete_after',new Date().toISOString()).select('user_id');
-      if(claimError) throw claimError;
-      if(!claimed?.length) continue;
-      const {data,error:authError}=await sb.auth.admin.getUserById(row.user_id);
-      if(authError && !/not found|does not exist/i.test(authError.message||'')) throw authError;
-      if(data?.user) await permanentlyDeleteUser(sb,data.user);
-      const {error:removeError}=await sb.from('account_closure_requests').delete().eq('user_id',row.user_id);
-      if(removeError) throw removeError;
-      processed++;
-    } catch(error) {
-      failures++;
-      console.error('Scheduled account deletion failed for',row.user_id,error);
-      const {error:resetError}=await sb.from('account_closure_requests')
-        .update({status:'deactivated',updated_at:new Date().toISOString()})
-        .eq('user_id',row.user_id).eq('status','deleting');
-      if(resetError) console.error('Could not release deletion claim:',resetError);
-    }
-  }
-  return sendJson(res,200,{success:true,processed,failures,reminded,reminder_failures:reminderFailures});
-}
-
 module.exports = async function handler(req, res) {
+  setAccountCors(req,res);
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -1111,17 +957,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const body = parseBody(req);
-    // A server-to-server cron call uses a dedicated secret and never a user session.
-    if (req.method === 'POST' && body.action === 'closure_cleanup') {
-      return await scheduledClosureCleanup(req, res, supabase);
-    }
     const requester = await authenticatedUser(req, supabase);
-    const closureAction = req.method === 'GET' ? String(req.query?.action || '') : String(body.action || '');
-    if ((req.method === 'GET' && closureAction === 'closure_status') ||
-        (req.method === 'POST' && ['deactivate','reactivate'].includes(closureAction))) {
-      return await accountClosureAction(req,res,supabase,requester,closureAction);
-    }
+    const body = parseBody(req);
     const scope = String(
       req.method === 'GET' ? (req.query?.scope || '') : (body.scope || '')
     ).trim().toLowerCase();
@@ -1263,3 +1100,17 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+
+// Internal utilities reused by the separate 30-day account lifecycle route.
+// These are server-only exports; no new deletion behavior is introduced here.
+module.exports.__accountLifecycle = Object.freeze({
+  serviceClient,
+  authenticatedUser,
+  safeSelect,
+  schemaMissing,
+  cancelEmployerStripeSubscriptions,
+  permanentlyDeleteUser,
+  setAccountCors,
+  profileFor
+});
