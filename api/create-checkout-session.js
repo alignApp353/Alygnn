@@ -398,23 +398,25 @@ async function createNativePaymentIntent({
   metadata,
   requestId
 }){
-  const tax=await createNativeTaxCalculation({
+  // Preserve Stripe Tax for Job Boost advertising only. All other one-time
+  // products continue using their original no-tax PaymentSheet amount.
+  const isJobBoost = metadata?.product === 'job_boost';
+  const tax = isJobBoost ? await createNativeTaxCalculation({
     customerId,
     cents,
     priceId,
-    reference:`${metadata?.product||'alygnn'}:${requestId||Date.now()}`
-  });
-
+    reference:`job_boost:${requestId||Date.now()}`
+  }) : null;
   const params={
-    amount:Number(tax.amount_total),
+    amount:isJobBoost ? Number(tax.amount_total) : Number(cents),
     currency:'usd',
     customer:customerId,
     description:name,
     receipt_email:user?.email||undefined,
     'automatic_payment_methods[enabled]':'true',
-    setup_future_usage:'off_session',
-    'hooks[inputs][tax][calculation]':tax.id
+    setup_future_usage:'off_session'
   };
+  if(isJobBoost)params['hooks[inputs][tax][calculation]']=tax.id;
 
   Object.entries(metadata||{}).forEach(([key,value])=>{
     if(value===undefined||value===null||value==='')return;
@@ -428,14 +430,12 @@ async function createNativePaymentIntent({
   if(!intent?.client_secret)throw new Error('Stripe did not return a PaymentSheet client secret.');
 
   const subtotal=Number(cents)||0;
-  const total=Number(tax.amount_total);
-  const taxCents=Number(tax.tax_amount_exclusive||0);
-  const includedTaxCents=Number(tax.tax_amount_inclusive||0);
-  // Never silently use a pre-tax total if Stripe returns unexpected data.
-  if(!Number.isSafeInteger(total)||total<0||
-     !Number.isSafeInteger(taxCents)||taxCents<0||
-     !Number.isSafeInteger(includedTaxCents)||includedTaxCents<0){
-    throw new Error('Stripe returned an invalid tax amount. Payment was not prepared.');
+  const total=isJobBoost ? Number(tax.amount_total) : subtotal;
+  const taxCents=isJobBoost ? Number(tax.tax_amount_exclusive||0) : 0;
+  const includedTaxCents=isJobBoost ? Number(tax.tax_amount_inclusive||0) : 0;
+  if(![total,taxCents,includedTaxCents].every(Number.isSafeInteger)||
+     total<0||taxCents<0||includedTaxCents<0){
+    throw new Error('Stripe returned an invalid payment amount. Payment was not prepared.');
   }
 
   return{
@@ -468,7 +468,7 @@ async function createNativeSubscription({
     payment_behavior:'default_incomplete',
     collection_method:'charge_automatically',
     'payment_settings[save_default_payment_method]':'on_subscription',
-    'automatic_tax[enabled]':'true',
+    'automatic_tax[enabled]':'false',
     'expand[]':'latest_invoice.confirmation_secret'
   };
 
@@ -1359,7 +1359,7 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
     client_reference_id:employerId,
     'line_items[0][price]':upgradePriceId,
     'line_items[0][quantity]':1,
-    'automatic_tax[enabled]':'true',
+    'automatic_tax[enabled]':'false',
     billing_address_collection:'auto',
     'payment_intent_data[setup_future_usage]':'off_session'
   };
@@ -1520,7 +1520,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     client_reference_id:employerId,
     'line_items[0][price]':upgrade.priceId,
     'line_items[0][quantity]':1,
-    'automatic_tax[enabled]':'true',
+    'automatic_tax[enabled]':'false',
     billing_address_collection:'auto'
   };
   if(amountDue>0){
@@ -3091,7 +3091,7 @@ module.exports = async function handler(req, res) {
       cancel_url: cancelUrl,
       customer_email: user.email || undefined,
       'line_items[0][quantity]': quantity,
-      'automatic_tax[enabled]': 'true',
+      'automatic_tax[enabled]': product === 'job_boost' ? 'true' : 'false',
       billing_address_collection: 'auto'
     };
     params['line_items[0][price]']=priceId;
