@@ -951,6 +951,24 @@ function formatDeactivationDeadline(iso) {
   }).format(new Date(iso));
 }
 
+// The brand mark is Alygnn's actual image asset (GitHub root /alygnn-logo.png),
+// not an approximate text logo drawn with an email client's fallback font.
+const ACCOUNT_EMAIL_LOGO_URL = 'https://alygnn.com/alygnn-logo.png';
+function accountEmailLayout(contentHtml) {
+  return `
+  <div style="margin:0;padding:32px 12px;background:#F6F8F7;font-family:Arial,Helvetica,sans-serif;color:#1A2530">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="max-width:540px;width:100%;margin:0 auto;background:#ffffff;border:1px solid #DDE3E8;border-radius:16px">
+      <tr><td style="padding:18px 30px;border-bottom:1px solid #DDE3E8;background:#ffffff">
+        <a href="https://alygnn.com/" style="text-decoration:none" target="_blank">
+          <img alt="Alygnn" src="${ACCOUNT_EMAIL_LOGO_URL}" width="88" height="88" style="width:88px;height:88px;display:block;border:0;background:#F6F8F7;border-radius:12px" />
+        </a>
+      </td></tr>
+      <tr><td style="padding:30px 30px 24px;font-size:15px;line-height:1.7;color:#4A5968">${contentHtml}</td></tr>
+      <tr><td style="padding:18px 30px;border-top:1px solid #DDE3E8;color:#718295;font-size:12px;line-height:1.6">Security notification from Alygnn. <a href="https://alygnn.com/" style="color:#5D7FA3;text-decoration:underline">alygnn.com</a></td></tr>
+    </table>
+  </div>`;
+}
+
 async function sendDeactivationConfirmationOnce(sb, user) {
   // A missing or failed email must never undo a completed deactivation.
   const row = await lifecycleRow(sb, user.id);
@@ -985,28 +1003,17 @@ async function sendDeactivationConfirmationOnce(sb, user) {
     '',
     'Alygnn Support | https://alygnn.com'
   ].join('\n');
-  const html = `
-    <div style="margin:0;padding:32px 16px;background:#f4f7f8;font-family:Arial,Helvetica,sans-serif;color:#1a2938">
-      <div style="max-width:540px;margin:auto;background:#fff;border:1px solid #e0e7ec;border-radius:16px;overflow:hidden">
-        <div style="padding:24px 30px;border-bottom:1px solid #e9eef1">
-          <div style="font-family:Georgia,serif;font-size:30px;font-weight:bold;color:#5d7fa3">Alygnn<span style="color:#87b99b">.</span></div>
-        </div>
-        <div style="padding:30px">
-          <h1 style="font-size:24px;line-height:1.3;margin:0 0 18px">Your account is deactivated</h1>
-          <p style="color:#506274;line-height:1.7;margin:0 0 18px">This email confirms that your Alygnn account has been deactivated.</p>
-          <div style="background:#f0f6f8;border:1px solid #dae7ed;padding:16px 18px;border-radius:12px;margin:0 0 18px">
-            <div style="font-size:13px;color:#506274">Your 30-day recovery period ends</div>
-            <div style="font-size:17px;font-weight:700;margin-top:6px">${dateText}</div>
-          </div>
-          <p style="color:#506274;line-height:1.7">To reactivate, sign in to Alygnn before this deadline and follow the recovery instructions. After the recovery period, your account is scheduled for permanent deletion.</p>
-          <p style="color:#506274;line-height:1.7">Canceled subscriptions and closed job postings will not automatically reopen if you reactivate.</p>
-          <p style="color:#506274;line-height:1.7">Didn't request this? Please email <a href="mailto:contact@alygnn.com" style="color:#5d7fa3">contact@alygnn.com</a> right away.</p>
-        </div>
-        <div style="padding:20px 30px;border-top:1px solid #e9eef1;font-size:12px;color:#718295">
-          This is an automated security confirmation from Alygnn.
-        </div>
-      </div>
-    </div>`;
+  const html = accountEmailLayout(`
+    <h1 style="font-size:25px;line-height:1.3;margin:0 0 18px;color:#1A2530">Your account is deactivated</h1>
+    <p style="margin:0 0 18px">This email confirms your Alygnn account has been deactivated.</p>
+    <div style="background:#F0F6F8;border:1px solid #DAE7ED;padding:16px 18px;border-radius:12px;margin:0 0 18px">
+      <div style="font-size:13px;color:#506274">Your 30-day recovery period ends</div>
+      <div style="font-size:17px;font-weight:700;color:#1A2530;margin-top:6px">${dateText}</div>
+    </div>
+    <p style="margin:0 0 16px">To reactivate, sign in to Alygnn before this deadline and follow the recovery instructions. After the recovery period, the account is scheduled for permanent deletion.</p>
+    <p style="margin:0 0 16px">Canceled subscriptions and closed job postings will not automatically reopen if you reactivate.</p>
+    <p style="margin:0">Didn't request this? Contact <a href="mailto:contact@alygnn.com" style="color:#5D7FA3">contact@alygnn.com</a> right away.</p>
+  `);
 
   // Resend deduplicates retries with the same idempotency key for 24 hours.
   // A distinct deactivation period uses a distinct key.
@@ -1049,7 +1056,7 @@ async function sendDeactivationConfirmationOnce(sb, user) {
 
 async function lifecycleRow(sb, userId) {
   const {data, error} = await sb.from(LIFE_TABLE)
-    .select('user_id,status,deactivated_at,delete_after,reactivated_at,cleanup_completed_at,deactivation_email_sent_at')
+    .select('user_id,status,deactivated_at,delete_after,reactivated_at,cleanup_completed_at,deactivation_email_sent_at,reactivation_email_sent_at')
     .eq('user_id', userId).maybeSingle();
   if (error) throw error;
   return data || null;
@@ -1098,6 +1105,7 @@ async function deactivateAccount(sb, user) {
     deactivated_at:(current?.status === 'deactivated' && current.deactivated_at) || now,
     delete_after:deadline, reactivated_at:null, cleanup_completed_at:null,
     deactivation_email_sent_at:current?.status === 'deactivated' ? (current.deactivation_email_sent_at || null) : null,
+    reactivation_email_sent_at:null,
     updated_at:now
   },{onConflict:'user_id'});
   if (writeError) throw writeError;
@@ -1130,7 +1138,7 @@ async function reactivateAccount(sb, user) {
   const now = new Date().toISOString();
   const {data,error} = await sb.from(LIFE_TABLE)
     .update({status:'active',reactivated_at:now,delete_after:null,
-      cleanup_completed_at:null,updated_at:now})
+      cleanup_completed_at:null,reactivation_email_sent_at:null,updated_at:now})
     .eq('user_id',user.id).eq('status','deactivated')
     .gt('delete_after',now).select('user_id');
   if (error) throw error;
@@ -1141,6 +1149,81 @@ async function reactivateAccount(sb, user) {
   }
   return {success:true,status:'active',
     subscriptions_restored:false,jobs_restored:false};
+}
+
+async function sendReactivationConfirmationOnce(sb, user) {
+  // Send only after the database confirms that this account was reactivated.
+  const row = await lifecycleRow(sb, user.id);
+  if (row?.status !== 'active' || !row.reactivated_at) {
+    return {queued:false, reason:'reactivation_not_confirmed'};
+  }
+  if (row.reactivation_email_sent_at) return {queued:true, already_sent:true};
+  if (!user.email) return {queued:false, reason:'missing_email'};
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not configured; reactivation was successful but no email could be sent.');
+    return {queued:false, reason:'email_not_configured'};
+  }
+
+  const dateText = formatDeactivationDeadline(row.reactivated_at);
+  const subject = 'Your Alygnn account has been reactivated';
+  const text = [
+    'Your Alygnn account has been successfully reactivated.',
+    '',
+    'Reactivated on ' + dateText + '.',
+    'You can sign in to your account again.',
+    '',
+    'Canceled subscriptions and closed job postings are not automatically restored.',
+    'If you did not reactivate this account, contact contact@alygnn.com immediately.',
+    '',
+    'Alygnn Support | https://alygnn.com'
+  ].join('\n');
+  const html = accountEmailLayout(`
+    <h1 style="font-size:25px;line-height:1.3;margin:0 0 18px;color:#1A2530">Your account is active again</h1>
+    <p style="margin:0 0 16px">Your Alygnn account has been <strong style="color:#206B45">successfully reactivated</strong>. Welcome back!</p>
+    <div style="background:#EEF8F0;border:1px solid #D1E9DA;border-radius:12px;padding:15px 18px;margin:0 0 18px">
+      <div style="font-size:13px;color:#49715C">Account status</div>
+      <div style="font-size:18px;font-weight:700;color:#206B45;margin-top:4px">Active</div>
+      <div style="font-size:13px;color:#506274;margin-top:5px">Reactivated on ${dateText}</div>
+    </div>
+    <p style="margin:0 0 16px">You can now sign in and use your Alygnn account again.</p>
+    <p style="margin:0 0 18px"><strong>Important:</strong> Any subscriptions canceled or job postings closed during deactivation have not automatically been restored.</p>
+    <p style="margin:0 0 20px"><a href="https://alygnn.com/" style="display:inline-block;background:#5D7FA3;padding:11px 19px;border-radius:8px;color:#ffffff;text-decoration:none;font-weight:700">Go to Alygnn</a></p>
+    <p style="margin:0">Didn't reactivate your account? Contact <a href="mailto:contact@alygnn.com" style="color:#5D7FA3">contact@alygnn.com</a> immediately.</p>
+  `);
+
+  const key = `alygnn-reactivated-${user.id}-${row.reactivated_at}`;
+  let response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method:'POST',
+      headers:{
+        Authorization:`Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type':'application/json',
+        'Idempotency-Key':key
+      },
+      body:JSON.stringify({
+        from:'Alygnn <admin@alygnn.com>',
+        reply_to:'contact@alygnn.com',
+        to:[user.email], subject, text, html
+      }),
+      signal:AbortSignal.timeout(9000)
+    });
+  } catch (error) {
+    console.error('Resend reactivation email request failed:', error);
+    return {queued:false, reason:'email_service_unavailable'};
+  }
+  if (!response.ok) {
+    const errorText = await response.text().catch(()=>'');
+    console.error('Resend rejected reactivation email:',response.status,errorText.slice(0,600));
+    return {queued:false, reason:'email_provider_rejected'};
+  }
+  // Guard against overwriting a later deactivation/reactivation event.
+  const {error:markError} = await sb.from(LIFE_TABLE)
+    .update({reactivation_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()})
+    .eq('user_id',user.id).eq('status','active').eq('reactivated_at',row.reactivated_at)
+    .is('reactivation_email_sent_at',null);
+  if (markError) console.error('Resend accepted reactivation email but Supabase marker update failed:',markError);
+  return {queued:true};
 }
 
 async function lifecycleAction(req,res,sb,user,action) {
@@ -1177,7 +1260,18 @@ async function lifecycleAction(req,res,sb,user,action) {
     }
   }
   if (action === 'reactivate') {
-    return sendJson(res,200,await reactivateAccount(sb,user));
+    const outcome = await reactivateAccount(sb,user);
+    let confirmation = {queued:false};
+    try {
+      confirmation = await sendReactivationConfirmationOnce(sb,user);
+    } catch (emailError) {
+      console.error('Unexpected reactivation notification error:',emailError);
+    }
+    return sendJson(res,200,{
+      ...outcome,
+      confirmation_email_queued:!!confirmation.queued,
+      confirmation_email_reason:confirmation.queued ? undefined : (confirmation.reason || 'email_unavailable')
+    });
   }
   return sendJson(res,400,{success:false,error:'Unknown account action.'});
 }
