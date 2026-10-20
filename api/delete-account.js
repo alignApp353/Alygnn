@@ -941,9 +941,115 @@ async function adminAccountList(supabase, requester, query) {
 const LIFE_TABLE = 'account_deactivation_requests';
 const LIFECYCLE_DAY_MS = 24 * 60 * 60 * 1000;
 
+// Send a security confirmation only after Stripe/job cleanup is complete.
+// This uses Alygnn's existing Resend account; no new API route is needed.
+function formatDeactivationDeadline(iso) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York',
+    timeZoneName: 'short'
+  }).format(new Date(iso));
+}
+
+async function sendDeactivationConfirmationOnce(sb, user) {
+  // A missing or failed email must never undo a completed deactivation.
+  const row = await lifecycleRow(sb, user.id);
+  if (row?.status !== 'deactivated' || !row.cleanup_completed_at) {
+    return {queued:false, reason:'cleanup_incomplete'};
+  }
+  if (row.deactivation_email_sent_at) return {queued:true, already_sent:true};
+  if (!row.delete_after || Date.parse(row.delete_after) <= Date.now()) {
+    return {queued:false, reason:'recovery_window_expired'};
+  }
+  if (!user.email) {
+    console.error('Alygnn account deactivated without a verified notification address:', user.id);
+    return {queued:false, reason:'missing_email'};
+  }
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not configured; account was deactivated, but its email was not sent.');
+    return {queued:false, reason:'email_not_configured'};
+  }
+
+  const dateText = formatDeactivationDeadline(row.delete_after);
+  const subject = 'Your Alygnn account has been deactivated';
+  const text = [
+    'Your Alygnn account has been deactivated.',
+    '',
+    'Your 30-day recovery period ends on ' + dateText + '.',
+    'To reactivate, sign in to Alygnn before that deadline and follow the instructions.',
+    'Your account is scheduled for permanent deletion after the recovery period.',
+    '',
+    'Any canceled subscriptions and closed job postings are not automatically restored when you reactivate.',
+    '',
+    'If you did not request this change, contact contact@alygnn.com as soon as possible.',
+    '',
+    'Alygnn Support | https://alygnn.com'
+  ].join('\n');
+  const html = `
+    <div style="margin:0;padding:32px 16px;background:#f4f7f8;font-family:Arial,Helvetica,sans-serif;color:#1a2938">
+      <div style="max-width:540px;margin:auto;background:#fff;border:1px solid #e0e7ec;border-radius:16px;overflow:hidden">
+        <div style="padding:24px 30px;border-bottom:1px solid #e9eef1">
+          <div style="font-family:Georgia,serif;font-size:30px;font-weight:bold;color:#5d7fa3">Alygnn<span style="color:#87b99b">.</span></div>
+        </div>
+        <div style="padding:30px">
+          <h1 style="font-size:24px;line-height:1.3;margin:0 0 18px">Your account is deactivated</h1>
+          <p style="color:#506274;line-height:1.7;margin:0 0 18px">This email confirms that your Alygnn account has been deactivated.</p>
+          <div style="background:#f0f6f8;border:1px solid #dae7ed;padding:16px 18px;border-radius:12px;margin:0 0 18px">
+            <div style="font-size:13px;color:#506274">Your 30-day recovery period ends</div>
+            <div style="font-size:17px;font-weight:700;margin-top:6px">${dateText}</div>
+          </div>
+          <p style="color:#506274;line-height:1.7">To reactivate, sign in to Alygnn before this deadline and follow the recovery instructions. After the recovery period, your account is scheduled for permanent deletion.</p>
+          <p style="color:#506274;line-height:1.7">Canceled subscriptions and closed job postings will not automatically reopen if you reactivate.</p>
+          <p style="color:#506274;line-height:1.7">Didn't request this? Please email <a href="mailto:contact@alygnn.com" style="color:#5d7fa3">contact@alygnn.com</a> right away.</p>
+        </div>
+        <div style="padding:20px 30px;border-top:1px solid #e9eef1;font-size:12px;color:#718295">
+          This is an automated security confirmation from Alygnn.
+        </div>
+      </div>
+    </div>`;
+
+  // Resend deduplicates retries with the same idempotency key for 24 hours.
+  // A distinct deactivation period uses a distinct key.
+  const key = `alygnn-deactivated-${user.id}-${row.deactivated_at}`;
+  let response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': key
+      },
+      body: JSON.stringify({
+        from: 'Alygnn <admin@alygnn.com>',
+        reply_to: 'contact@alygnn.com',
+        to: [user.email],
+        subject, text, html
+      }),
+      signal: AbortSignal.timeout(9000)
+    });
+  } catch (error) {
+    console.error('Resend account deactivation notification connection failed:', error);
+    return {queued:false, reason:'email_service_unavailable'};
+  }
+  if (!response.ok) {
+    const errorText = await response.text().catch(()=>'');
+    console.error('Resend rejected account deactivation notification:', response.status, errorText.slice(0,600));
+    return {queued:false, reason:'email_provider_rejected'};
+  }
+
+  // Resend accepted the email. Record this for future requests/retries.
+  const {error:markError} = await sb.from(LIFE_TABLE)
+    .update({deactivation_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()})
+    .eq('user_id', user.id).eq('status','deactivated')
+    .is('deactivation_email_sent_at', null);
+  if (markError) console.error('Email accepted by Resend but could not mark it sent in Supabase:', markError);
+  return {queued:true};
+}
+
 async function lifecycleRow(sb, userId) {
   const {data, error} = await sb.from(LIFE_TABLE)
-    .select('user_id,status,deactivated_at,delete_after,reactivated_at,cleanup_completed_at')
+    .select('user_id,status,deactivated_at,delete_after,reactivated_at,cleanup_completed_at,deactivation_email_sent_at')
     .eq('user_id', userId).maybeSingle();
   if (error) throw error;
   return data || null;
@@ -989,8 +1095,9 @@ async function deactivateAccount(sb, user) {
     : new Date(Date.now() + 30 * LIFECYCLE_DAY_MS).toISOString();
   const {error:writeError} = await sb.from(LIFE_TABLE).upsert({
     user_id:user.id, status:'deactivated',
-    deactivated_at:current?.deactivated_at || now,
+    deactivated_at:(current?.status === 'deactivated' && current.deactivated_at) || now,
     delete_after:deadline, reactivated_at:null, cleanup_completed_at:null,
+    deactivation_email_sent_at:current?.status === 'deactivated' ? (current.deactivation_email_sent_at || null) : null,
     updated_at:now
   },{onConflict:'user_id'});
   if (writeError) throw writeError;
@@ -1045,7 +1152,19 @@ async function lifecycleAction(req,res,sb,user,action) {
   }
   if (action === 'deactivate') {
     try {
-      return sendJson(res,200,await deactivateAccount(sb,user));
+      const outcome = await deactivateAccount(sb,user);
+      let confirmation = {queued:false};
+      try {
+        confirmation = await sendDeactivationConfirmationOnce(sb,user);
+      } catch (emailError) {
+        // Do not turn an account-closure success into a failure if email logging fails.
+        console.error('Unexpected deactivation notification error:', emailError);
+      }
+      return sendJson(res,200,{
+        ...outcome,
+        confirmation_email_queued:!!confirmation.queued,
+        confirmation_email_reason:confirmation.queued ? undefined : (confirmation.reason || 'email_unavailable')
+      });
     } catch (error) {
       // A partial Stripe/job failure must never be misreported as no change.
       const current=await lifecycleRow(sb,user.id).catch(()=>null);
