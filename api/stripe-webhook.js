@@ -539,6 +539,31 @@ async function fulfillCheckout(session) {
   }
 }
 
+// Reconcile only the subscription that is still linked to the employer.
+// A delayed cancellation event for an older subscription must not erase a
+// newer paid plan. This updates plan entitlement only, not jobs or payments.
+async function revokeCanceledPlan(subscription) {
+  const employerId=String(subscription?.metadata?.employer_id||'');
+  if(!employerId||!subscription?.id)return;
+  const url=`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&select=stripe_plan_subscription_id`;
+  const read=await fetch(url,{headers:serviceHeaders()});
+  const rows=await read.json().catch(()=>[]);
+  if(!read.ok)throw new Error('Could not verify canceled plan ownership.');
+  if(String(rows?.[0]?.stripe_plan_subscription_id||'')!==String(subscription.id))return;
+  const patch={
+    plan:'free',test_plan:null,test_mode:false,subscription_status:'canceled',
+    billing_period:null,slot_limit:0,plan_amount_cents:0,
+    urgently_hiring:false,alygnn_recommended:false,
+    current_period_end:null,
+    pending_plan:null,pending_billing_period:null,pending_plan_effective_at:null,
+    stripe_plan_schedule_id:null,updated_at:new Date().toISOString()
+  };
+  const updated=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&stripe_plan_subscription_id=eq.${encodeURIComponent(subscription.id)}`,{
+    method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),body:JSON.stringify(patch)
+  });
+  if(!updated.ok)throw new Error('Could not reconcile canceled plan: '+await updated.text());
+}
+
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
@@ -573,6 +598,10 @@ async function fulfillSubscription(subscription, forceStatus) {
   }
 
   if (product !== 'job_plan') return;
+  if(String(forceStatus||subscription.status||'').toLowerCase()==='canceled'){
+    await revokeCanceledPlan(subscription);
+    return;
+  }
   // A paid pending update may change the Price before metadata is refreshed.
   // Always derive the effective tier from Stripe's actual subscription Price.
   const activePrice=subscription?.items?.data?.[0]?.price;
