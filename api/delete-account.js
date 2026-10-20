@@ -1067,12 +1067,12 @@ async function closeOwnedJobs(sb, userId, companyIds) {
   // reject applications against inactive/closed jobs.
   for (const column of ['employer_id', 'created_by', 'user_id', 'owner_id']) {
     const {error} = await sb.from('jobs').update({status:'closed'})
-      .eq(column, userId).in('status', ['active','pending']);
+      .eq(column, userId).in('status', ['active','pending','paused']);
     if (error && !schemaMissing(error)) throw error;
   }
   for (const companyId of companyIds) {
     const {error} = await sb.from('jobs').update({status:'closed'})
-      .eq('company_id',companyId).in('status',['active','pending']);
+      .eq('company_id',companyId).in('status',['active','pending','paused']);
     if (error && !schemaMissing(error)) throw error;
   }
 }
