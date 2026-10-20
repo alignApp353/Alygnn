@@ -924,9 +924,9 @@ async function adminAccountList(supabase, requester, query) {
 // completed account status changes. Never expose the API key to browser code.
 async function sendClosureEmail(recipient, kind, deadline = null) {
   const key = String(process.env.RESEND_API_KEY || '');
-  const from = String(process.env.ALYGNN_EMAIL_FROM || '');
+  const from = String(process.env.RESEND_FROM_EMAIL || process.env.ALYGNN_EMAIL_FROM || '');
   if (!key || !from || !recipient) {
-    console.warn('Account closure email skipped: RESEND_API_KEY, ALYGNN_EMAIL_FROM, or recipient missing.');
+    console.warn('Account closure email skipped: RESEND_API_KEY, RESEND_FROM_EMAIL (or ALYGNN_EMAIL_FROM), or recipient missing.');
     return false;
   }
   const dateText = deadline ? new Date(deadline).toLocaleDateString('en-US', {
