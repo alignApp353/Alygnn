@@ -5502,14 +5502,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       statusLabel = 'Closed · Weekly expired';
     }
 
-    const closedAction = closeReason === 'free_candidate_cap'
-      ? `<button class="btn-view" onclick="redirectToPricing('free-candidate-cap')">Add a job slot</button>`
-      : closeReason === 'weekly_slot_expired'
-        ? `<button class="btn-view" onclick="redirectToPricing('weekly-expired')">Get a job slot</button>`
-        : `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`;
-
     const weeklyPurchaseId = job.weekly_slot_purchase_id ? String(job.weekly_slot_purchase_id) : '';
     const isWeeklyJob = Boolean(weeklyPurchaseId);
+    const closedAction = isWeeklyJob || closeReason === 'weekly_slot_expired'
+      ? `<button class="btn-view" onclick="redirectToPricing('weekly-expired')">Get a job slot</button>`
+      : closeReason === 'free_candidate_cap'
+        ? `<button class="btn-view" onclick="redirectToPricing('free-candidate-cap')">Add a job slot</button>`
+        : `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`;
     const weeklyExpiresAt = isWeeklyJob
       ? weeklySlotExpiryByPurchaseId[weeklyPurchaseId] || null
       : null;
@@ -6123,6 +6122,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
+    if (job.weekly_slot_purchase_id || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired') {
+      showToast('This closed Weekly Job needs a new job slot.');
+      redirectToPricing('weekly-expired');
+      return;
+    }
 
     // Reopening occupies a job slot, just like posting a new job.
     // Refresh capacity before changing this closed job's status.
