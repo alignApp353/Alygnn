@@ -1631,7 +1631,7 @@ async function customerSnapshot(customerId,sub){
   try{
     const result=await manageStripe('GET','invoices',{
       customer:customerId,
-      limit:8
+      limit:100
     });
 
     invoices=(result?.data||[]).map(invoice=>{
@@ -1649,6 +1649,9 @@ async function customerSnapshot(customerId,sub){
         amount_paid_cents:Number(invoice.amount_paid||0),
         amount_due_cents:Number(invoice.amount_due||0),
         subtotal_cents:Number(invoice.subtotal||0),
+        discount_cents:(invoice.total_discount_amounts||[]).reduce(
+          (sum,row)=>sum+Number(row?.amount||0),0
+        ),
         tax_cents:taxCents,
         total_cents:Number(invoice.total||invoice.amount_due||invoice.amount_paid||0),
         currency:String(invoice.currency||'usd').toLowerCase(),
@@ -1747,7 +1750,7 @@ async function employerOneTimePayments(employerId){
       'payment_intents/search',
       {
         query:`metadata["employer_id"]:"${safeEmployer}"`,
-        limit:25
+        limit:100
       }
     );
   }catch(error){
@@ -1812,6 +1815,7 @@ async function employerOneTimePayments(employerId){
       product,
       subtotal_cents:subtotal,
       tax_cents:tax,
+      discount_cents:Number(checkout?.total_details?.amount_discount||0),
       total_cents:total,
       amount_paid_cents:Number(payment.amount_received||total||0),
       receipt_url:
@@ -1873,6 +1877,20 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
       : secondSub?.customer?.id
   ].filter(Boolean);
 
+  // Read-only billing history: include Stripe customers created by one-time
+  // Checkout or native PaymentSheet, not only recurring plan subscriptions.
+  // Customer records must explicitly belong to this authenticated employer.
+  try{
+    const owned=await manageStripe('GET','customers/search',{
+      query:`metadata["employer_id"]:"${String(user.id).replace(/"/g,'')}"`,limit:100
+    });
+    for(const customer of owned?.data||[]){
+      if(customer?.id&&!customer.deleted)ids.push(customer.id);
+    }
+  }catch(error){
+    console.warn('Could not expand billing customer history:',error?.message||error);
+  }
+
   const uniqueIds=[...new Set(ids)];
   const snapshots=[];
 
@@ -1917,8 +1935,8 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
   return {
     billing_email:stripeEmail||user?.email||null,
     payment_method:paymentMethod,
-    invoices:invoices.slice(0,12),
-    one_time_payments:oneTimePayments.slice(0,25),
+    invoices,
+    one_time_payments:oneTimePayments,
     stripe_customer_count:uniqueIds.length,
     next_plan_charge_cents:calculateNextPlanCharge(ent,planSub)
   };
