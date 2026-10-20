@@ -600,6 +600,42 @@
         return;
       }
 
+      // Before redirecting into Alygnn, check for a deactivated account.
+      // The server owns this state; query parameters/browser storage are never trusted.
+      const closureResponse = await fetch('/api/deactivate-account', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
+      });
+      const closure = await closureResponse.json().catch(() => ({}));
+      if (!closureResponse.ok || !closure.success) {
+        await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+        showMsg(closure.error || 'Could not verify account status. Please retry.');
+        return;
+      }
+      if (closure.status === 'deactivated') {
+        const deadline = closure.delete_after ? new Date(closure.delete_after).toLocaleDateString() : 'the recovery deadline';
+        if (!confirm('Your Alygnn account is deactivated. Reactivate it now to prevent deletion after ' + deadline + '?')) {
+          await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+          showMsg('Your account remains deactivated. Sign in again before the deadline to reactivate it.');
+          return;
+        }
+        const reactivateResponse = await fetch('/api/deactivate-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
+          body: JSON.stringify({ action: 'reactivate' })
+        });
+        const restored = await reactivateResponse.json().catch(() => ({}));
+        if (!reactivateResponse.ok || !restored.success) {
+          await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+          showMsg(restored.error || 'Reactivation failed. Contact Alygnn support.');
+          return;
+        }
+      } else if (closure.status !== 'active') {
+        await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+        showMsg('This account is pending deletion. Contact Alygnn support.');
+        return;
+      }
+
       const destination = await redirectForUser(signedInUser, currentRole);
 
       // If the account type does not match the selected sign-in side,
