@@ -6124,6 +6124,16 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
 
+    // Reopening occupies a job slot, just like posting a new job.
+    // Refresh capacity before changing this closed job's status.
+    await loadBillingEntitlement();
+    const reopenAccess = getPostingAccess();
+    if (!reopenAccess.allowed) {
+      showToast('No available job slots. Close another active job or add a job slot to reopen this one.');
+      updatePostingAccessUI();
+      return;
+    }
+
     const closeReason = String(job.closed_reason || '').toLowerCase();
 
     if (closeReason === 'free_candidate_cap' && !hasActivePaidPlan()) {
