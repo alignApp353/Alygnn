@@ -602,7 +602,7 @@
 
       // Before redirecting into Alygnn, check for a deactivated account.
       // The server owns this state; query parameters/browser storage are never trusted.
-      const closureResponse = await fetch('/api/deactivate-account', {
+      const closureResponse = await fetch('/api/delete-account?action=closure_status', {
         method: 'GET',
         headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
       });
@@ -619,7 +619,7 @@
           showMsg('Your account remains deactivated. Sign in again before the deadline to reactivate it.');
           return;
         }
-        const reactivateResponse = await fetch('/api/deactivate-account', {
+        const reactivateResponse = await fetch('/api/delete-account', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
           body: JSON.stringify({ action: 'reactivate' })
