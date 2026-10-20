@@ -111,6 +111,14 @@ input::placeholder{color:#98A2AD}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
 .social{width:100%;min-height:54px;margin-top:10px;border:1px solid var(--border);border-radius:17px;background:#fff;color:var(--text);display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;font-weight:900}
 .social:first-of-type{margin-top:0}
+.recovery{margin:25px 0 16px;padding:22px 20px;border:1px solid var(--border);border-radius:21px;background:rgba(255,255,255,.94);text-align:center;box-shadow:0 12px 28px rgba(23,35,51,.04)}
+.recovery[hidden]{display:none!important}
+.recovery-icon{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;font-size:24px;color:var(--brand);background:var(--accent-bg)}
+.recovery h2{font-size:22px;letter-spacing:-.3px}
+.recovery p{color:var(--muted);font-size:13px;line-height:1.65;margin:11px 0}
+.recovery .primary{margin-top:12px}
+.recovery .secondary{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:15px;min-height:44px;width:100%;font-weight:800;margin-top:12px}
+html[data-theme="dark"] .recovery{background:#10232D;border-color:#29404C}
 .google-mark{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 21px}.google-mark svg{width:21px;height:21px;display:block}
 .apple-mark{font-size:22px;line-height:1}
 .signup{margin-top:25px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
@@ -223,7 +231,14 @@ html[data-theme="dark"] .switch-btn{
 <h1>Welcome back</h1>
 <p class="subtitle">Sign in to manage your jobs and candidates.</p>
 </div>
-<div class="form">
+<section class="recovery" id="recovery-panel" aria-live="polite" hidden>
+ <div class="recovery-icon" aria-hidden="true">↻</div>
+ <h2>Account deactivated</h2>
+ <p id="recovery-description">Your Alygnn account is paused.</p>
+ <button type="button" class="primary" id="reactivate-btn">Reactivate my account</button>
+ <button type="button" class="secondary" id="recovery-signout-btn">Keep account deactivated</button>
+</section>
+<div class="form" id="login-form">
 <div class="field">
 <div class="label-row"><label for="email">Email address</label></div>
 <div class="input-wrap">
@@ -260,6 +275,18 @@ const TARGET_PAGE='app-employer-dashboard.html';
 const ONBOARDING_PAGE='app-employer-onboarding.html';
 const STATUS_PAGE='app-employer-verification-status.html';
 const DOCUMENT_UPLOAD_PAGE='app-employer-document-upload.html';
+const LIFECYCLE_ENDPOINT='https://alygnn.com/api/deactivate-account';
+let recoveringUserId='';
+async function lifecycleFetch(options){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),12000);
+  try{return await fetch(LIFECYCLE_ENDPOINT,{...options,signal:controller.signal});}
+  catch(e){
+    if(e?.name==='AbortError')throw new Error('Account status request timed out. Check your connection and retry.');
+    throw e;
+  }finally{clearTimeout(timer);}
+}
+
 function showMessage(text,type){
   const m=document.getElementById('message');
   m.textContent=text;
@@ -652,18 +679,104 @@ async function resolveEmployerLoginAccess(user){
   };
 }
 
+// A deactivated account must never be routed into employer onboarding/dashboard.
+// Checking this endpoint also works for users signing in with Google.
+async function lifecycleStatus(session){
+  if(!session?.access_token)throw new Error('Sign in required to check account status.');
+  let response;
+  try{
+    response=await lifecycleFetch({
+      method:'GET',cache:'no-store',
+      headers:{'Authorization':'Bearer '+session.access_token}
+    });
+  }catch(_){throw new Error('Could not verify your account status. Check your connection and try again.');}
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok || result.success!==true){
+    throw new Error(result.error || 'Unable to verify account status. Please try again.');
+  }
+  return result;
+}
+function showRecovery(status,session){
+  recoveringUserId=session?.user?.id||'';
+  const form=document.getElementById('login-form');
+  const panel=document.getElementById('recovery-panel');
+  form.hidden=true;
+  form.style.display='none';
+  panel.hidden=false;
+  const desc=document.getElementById('recovery-description');
+  const reactivate=document.getElementById('reactivate-btn');
+  reactivate.disabled=false;
+  reactivate.textContent='Reactivate my account';
+  if(status.status==='deleting'){
+    desc.textContent='Account deletion is already in progress. Reactivation is no longer available. Contact Alygnn support if you need assistance.';
+    reactivate.hidden=true;
+    return;
+  }
+  const expires=status.delete_after ? new Date(status.delete_after) : null;
+  if(expires && Number.isFinite(expires.getTime()) && expires.getTime()<=Date.now()){
+    desc.textContent='Your 30-day recovery period has ended. Please contact Alygnn support for account status.';
+    reactivate.hidden=true;
+    return;
+  }
+  reactivate.hidden=false;
+  const due=expires && Number.isFinite(expires.getTime()) ? expires.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}) : '';
+  desc.textContent='Your account is deactivated.'+(due?' Reactivate by '+due+' to keep your account.':' You can reactivate during your recovery window.')+' Canceled subscriptions and closed jobs will not restart automatically.'+(status.cleanup_complete===false?' Account cleanup still needs attention; contact Alygnn support.':'');
+  showMessage('Your account is currently deactivated.','error');
+}
+async function checkBeforeEmployerRouting(session){
+  const status=await lifecycleStatus(session);
+  if(status.status==='deactivated' || status.status==='deleting'){
+    showRecovery(status,session);
+    return false;
+  }
+  if(status.status!=='active')throw new Error('Unable to verify whether your account is active. Contact Alygnn support.');
+  return true;
+}
+async function reactivateAccount(){
+  const button=document.getElementById('reactivate-btn');
+  button.disabled=true;button.textContent='Reactivating…';
+  try{
+    const {data:{session},error}=await sb.auth.getSession();
+    if(error||!session||session.user.id!==recoveringUserId)throw new Error('Please sign in again to reactivate this account.');
+    const response=await lifecycleFetch({
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'reactivate'})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||result.success!==true)throw new Error(result.error||'Account reactivation was not confirmed.');
+    document.getElementById('recovery-panel').hidden=true;
+    showMessage('Account reactivated. Opening your employer workspace…','success');
+    const access=await resolveEmployerLoginAccess(session.user);
+    if(!access.allowed){
+      await sb.auth.signOut({scope:'local'}).catch(()=>{});
+      showRejectedAccount(access);
+      document.getElementById('login-form').style.display='block';
+      document.getElementById('login-form').hidden=false;
+      return;
+    }
+    localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
+    location.replace(access.destination);
+  }catch(error){showMessage(friendlyError(error),'error');}
+  finally{button.disabled=false;button.textContent='Reactivate my account';}
+}
+async function keepDeactivated(){
+  await sb.auth.signOut({scope:'local'}).catch(()=>{});
+  document.getElementById('recovery-panel').hidden=true;
+  document.getElementById('login-form').style.display='block';
+  document.getElementById('login-form').hidden=false;
+  showMessage('Your account remains deactivated. You can sign in again to request reactivation.','success');
+}
 async function redirectIfLoggedIn(){
   const params=new URLSearchParams(location.search);
   if(params.has('logout'))return;
 
-  const {data}=await sb.auth.getSession();
-  if(!data.session)return;
-
-  const access=await resolveEmployerLoginAccess(data.session.user);
-
-  if(access.allowed){
-    location.replace(access.destination);
-  }
+  try{
+    const {data,error}=await sb.auth.getSession();
+    if(error||!data.session)return;
+    if(!(await checkBeforeEmployerRouting(data.session)))return;
+    const access=await resolveEmployerLoginAccess(data.session.user);
+    if(access.allowed)location.replace(access.destination);
+  }catch(error){showMessage(friendlyError(error),'error');}
 }
 async function signIn(){
   const email=document.getElementById('email').value.trim().toLowerCase();
@@ -682,28 +795,22 @@ async function signIn(){
 
   setLoading(button,true,'Signing in…','Sign in');
 
-  const {data,error}=await sb.auth.signInWithPassword({email,password});
-
-  if(error){
-    showMessage(friendlyError(error),'error');
-    setLoading(button,false,'Signing in…','Sign in');
-    return;
-  }
-
-  const access=await resolveEmployerLoginAccess(data.user);
-
-  if(!access.allowed){
-    await sb.auth.signOut();
-
-    showRejectedAccount(access);
-    setLoading(button,false,'Signing in…','Sign in');
-    return;
-  }
-
-  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-  showMessage('Welcome back. Opening your employer workspace…','success');
-
-  setTimeout(()=>location.replace(access.destination),300);
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    const session=data.session||(await sb.auth.getSession()).data?.session;
+    if(!(await checkBeforeEmployerRouting(session)))return;
+    const access=await resolveEmployerLoginAccess(data.user);
+    if(!access.allowed){
+      await sb.auth.signOut({scope:'local'});
+      showRejectedAccount(access);
+      return;
+    }
+    localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
+    showMessage('Welcome back. Opening your employer workspace…','success');
+    setTimeout(()=>location.replace(access.destination),300);
+  }catch(error){showMessage(friendlyError(error),'error');}
+  finally{setLoading(button,false,'Signing in…','Sign in');}
 }
 const GOOGLE_WEB_CLIENT_ID='725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
 const SUPABASE_FUNCTIONS_URL='https://auth.alygnn.com/functions/v1';
@@ -814,6 +921,7 @@ async function nativeGoogleLogin(){
   if(error)throw error;
 
   const session=data?.session || (await sb.auth.getSession()).data?.session;
+  if(!(await checkBeforeEmployerRouting(session)))return false;
   const validation=await validateGoogleIntent(session);
   if(!validation?.allowed){
     // A real candidate account must NEVER be redirected to create an employer
@@ -888,6 +996,8 @@ function applyPlatformLoginUI(){
 }
 
 document.getElementById('back-btn').addEventListener('click',()=>location.href='app-start.html');
+document.getElementById('reactivate-btn').addEventListener('click',reactivateAccount);
+document.getElementById('recovery-signout-btn').addEventListener('click',keepDeactivated);
 document.getElementById('show-btn').addEventListener('click',e=>{const i=document.getElementById('password');const s=i.type==='text';i.type=s?'password':'text';e.currentTarget.textContent=s?'Show':'Hide'});
 document.getElementById('forgot-btn').addEventListener('click',()=>location.href='app-forgot-password.html');
 document.getElementById('sign-in-btn').addEventListener('click',signIn);
@@ -900,6 +1010,7 @@ document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='E
 
 
 applyPlatformLoginUI();
+if(new URLSearchParams(location.search).has('account_deactivated')){showMessage('Your account has been deactivated. Sign in to reactivate within 30 days.','success');}
 window.AlygnnTheme?.apply?.();
 redirectIfLoggedIn();
 </script>
