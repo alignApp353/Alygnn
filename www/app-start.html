@@ -5,76 +5,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#F6F8F7">
 <title>Welcome to Alygnn</title>
+<meta name="color-scheme" content="light dark">
 <script id="alygnn-start-theme-critical">
 (function(){
+  'use strict';
   const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
-
-  function normalize(value){
-    value=String(value||'').toLowerCase().trim();
-    if(value==='system'||value==='system-default'||value==='default') return 'auto';
-    return ['auto','light','dark'].includes(value)?value:'';
+  function read(key){try{return localStorage.getItem(key)}catch(_){return null}}
+  function normalize(v){
+    v=String(v||'').trim().toLowerCase();
+    if(['system','system-default','default'].includes(v))return 'auto';
+    return ['light','dark','auto'].includes(v)?v:'';
   }
-
-  function read(key){try{return localStorage.getItem(key)}catch(_error){return null}}
-  function write(key,value){try{localStorage.setItem(key,value)}catch(_error){}}
-
-  function lastExperience(){
-    return read('alygnn_account_type')==='employer'?'employer':'candidate';
+  function lastRole(){
+    const saved=read('alygnn_account_type');
+    if(saved==='employer'||saved==='candidate')return saved;
+    const last=read('alygnn_last_workspace');
+    return last&&last.startsWith('employer:')?'employer':'candidate';
   }
-
-  function preference(){
-    // Global app theme wins everywhere so navigation never flips themes.
-    let pref=normalize(read('alygnnTheme'));
-    if(pref) return pref;
-
-    const type=lastExperience();
-    const keys=type==='employer'
-      ? ['alygnnEmployerTheme','alygnn_employer_theme']
-      : ['alygnnCandidateTheme','alygnn_candidate_theme'];
-
-    for(const key of keys){
-      pref=normalize(read(key));
-      if(pref){ write('alygnnTheme',pref); return pref; }
-    }
-
-    for(const key of ['alygnn_theme','alygnn-theme']){
-      pref=normalize(read(key));
-      if(pref){ write('alygnnTheme',pref); return pref; }
-    }
-
+  function preference(role){
+    const keys=role==='employer'
+      ? ['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme']
+      : ['alygnnCandidateTheme','alygnn_candidate_theme','alygnnTheme','alygnn_theme','alygnn-theme'];
+    for(const key of keys){const v=normalize(read(key));if(v)return v;}
     return 'auto';
   }
-
-  function resolved(){
-    const pref=preference();
-    if(pref==='dark'||pref==='light') return pref;
-    return media&&media.matches?'dark':'light';
-  }
-
-  function apply(){
-    const theme=resolved();
+  function apply(role){
+    const pref=preference(role||lastRole());
+    const theme=pref==='auto'?(media&&media.matches?'dark':'light'):pref;
     const root=document.documentElement;
     root.dataset.theme=theme;
-    root.dataset.effectiveTheme=theme;
     root.style.colorScheme=theme;
-    root.style.backgroundColor=theme==='dark'?'#071722':'#F6F8F7';
-
-    let meta=document.querySelector('meta[name="theme-color"]');
-    if(!meta){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta)}
-    meta.setAttribute('content',theme==='dark'?'#071722':'#F6F8F7');
+    root.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta)meta.content=theme==='dark'?'#061821':'#F6F8F7';
   }
-
   apply();
   if(media){
-    const onChange=()=>{if(preference()==='auto')apply()};
-    media.addEventListener?.('change',onChange);
-    if(!media.addEventListener)media.addListener?.(onChange);
+    const handle=()=>apply();
+    media.addEventListener?.('change',handle);
+    if(!media.addEventListener)media.addListener?.(handle);
   }
-  window.addEventListener('pageshow',apply);
-  window.addEventListener('storage',event=>{
-    if(['alygnn_account_type','alygnnTheme','alygnnEmployerTheme','alygnnCandidateTheme','alygnn_theme','alygnn-theme','alygnn_employer_theme','alygnn_candidate_theme'].includes(event.key))apply();
+  window.addEventListener('pageshow',()=>apply());
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply();});
+  window.addEventListener('storage',e=>{
+    if(['alygnnEmployerTheme','alygnnCandidateTheme','alygnnTheme','alygnn_account_type'].includes(e.key))apply();
   });
-  window.AlygnnStartTheme={apply,preference,resolved,lastExperience};
+  window.AlygnnStartTheme={apply};
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,7 +58,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',Arial,sans-serif!important}
-:root{--brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;--text:#172333;--muted:#59697A;--border:#DDE3E8;--candidate:#3568C0;--employer:#23A968}
+:root{--brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;--text:#172333;--muted:#59697A;--border:#DDE3E8;--candidate:#23A968;--employer:#3568C0}
 html,body{width:100%;min-height:100%}
 body{min-height:100vh;background:radial-gradient(circle at 15% 10%,rgba(140,182,155,.15),transparent 28%),radial-gradient(circle at 90% 80%,rgba(93,127,163,.14),transparent 30%),var(--bg);color:var(--text);overflow-x:hidden}
 button,a{font:inherit}
@@ -97,17 +73,15 @@ button,a{font:inherit}
 .choice:active{transform:scale(.975)}
 .choice.selected{transform:scale(1.018);box-shadow:0 17px 40px rgba(23,35,51,.11)}
 .choice.faded{opacity:.28;transform:scale(.97)}
-.choice.candidate{background:linear-gradient(120deg,rgba(237,243,252,.98),rgba(255,255,255,.98))}
-.choice.employer{background:linear-gradient(120deg,rgba(235,248,241,.96),rgba(255,255,255,.98))}
+.choice.candidate{background:linear-gradient(120deg,rgba(235,248,241,.96),rgba(255,255,255,.98))}
+.choice.employer{background:linear-gradient(120deg,rgba(237,243,252,.98),rgba(255,255,255,.98))}
 .choice-icon{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.candidate .choice-icon{background:#DFEAFB;color:var(--candidate)}
-.employer .choice-icon{background:#DDF4E8;color:var(--employer)}
+.candidate .choice-icon{background:#DDF4E8;color:var(--candidate)}
+.employer .choice-icon{background:#DFEAFB;color:var(--employer)}
 .choice-icon svg{width:30px;height:30px}
 .choice-title{font-size:18px;font-weight:900;line-height:1.25;letter-spacing:-.2px}
 .choice-copy{margin-top:7px;color:var(--muted);font-size:13px;line-height:1.5}
-.arrow{width:43px;height:43px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 6px 16px rgba(23,35,51,.12)}
-.arrow svg{width:21px;height:21px;display:block;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .16s ease}
-.choice:active .arrow svg{transform:translateX(2px)}
+.arrow{width:43px;height:43px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:25px;font-weight:800}
 .candidate .arrow{background:var(--candidate)}
 .employer .arrow{background:var(--employer)}
 .footer{margin-top:auto;padding-top:42px;text-align:center;color:var(--muted);font-size:14px}
@@ -116,62 +90,40 @@ button,a{font:inherit}
 .transition-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(246,248,247,.98);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .transition-screen.show{opacity:1;pointer-events:auto}
 .transition-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
-.transition-icon.candidate{color:var(--candidate);background:#DFEAFB}
-.transition-icon.employer{color:var(--employer);background:#DDF4E8}
+.transition-icon.candidate{color:var(--candidate);background:#DDF4E8}
+.transition-icon.employer{color:var(--employer);background:#DFEAFB}
 .transition-icon svg{width:38px;height:38px}
 .transition-title{font-size:23px;font-weight:900}
 .transition-copy{margin-top:7px;color:var(--muted);font-size:13px}
 @media(max-height:720px){.hero{margin-top:42px}.choices{margin-top:25px}.choice{min-height:125px}.footer{padding-top:25px}}
 @media(max-width:360px){.page{padding-left:14px;padding-right:14px}.choice{grid-template-columns:54px 1fr 38px;padding:16px;gap:12px}.choice-icon{width:54px;height:54px}.arrow{width:38px;height:38px}}
 
+/* Make the experience chooser match the saved appearance before login. */
 html[data-theme="dark"]{
-  --brand:#7EA5CB;
-  --brand-dark:#8EB5DF;
-  --sage:#8CB69B;
-  --bg:#071722;
-  --text:#F4F7FA;
-  --muted:#A3B1BF;
-  --border:#263746;
-  --candidate:#73A1F0;
-  --employer:#65C995;
+  --brand:#7EA8D0;--brand-dark:#9CBADF;--sage:#8FC6A2;
+  --bg:#061821;--text:#F3F7FA;--muted:#A9B8C5;--border:#29404C;
+  color-scheme:dark;
 }
 html[data-theme="dark"] body{
-  background:
-    radial-gradient(circle at 15% 10%,rgba(140,182,155,.10),transparent 28%),
-    radial-gradient(circle at 90% 80%,rgba(93,127,163,.12),transparent 30%),
-    var(--bg);
-  color:var(--text);
+  background:radial-gradient(circle at 12% 8%,rgba(140,182,155,.07),transparent 28%),
+             radial-gradient(circle at 90% 84%,rgba(93,127,163,.12),transparent 31%),#061821;
 }
-html[data-theme="dark"] .choice{
-  border-color:#263746;
-  box-shadow:0 11px 30px rgba(0,0,0,.16);
-}
-html[data-theme="dark"] .choice.candidate{
-  background:linear-gradient(120deg,rgba(25,43,69,.96),rgba(15,32,44,.98));
-}
+html[data-theme="dark"] .choice,
+html[data-theme="dark"] .choice.candidate,
 html[data-theme="dark"] .choice.employer{
-  background:linear-gradient(120deg,rgba(15,43,34,.98),rgba(13,29,39,.98));
+  background:linear-gradient(120deg,#0C222E,#0D1C27);
+  border-color:#29404C;color:#F3F7FA;
+  box-shadow:0 10px 30px rgba(0,0,0,.14);
 }
-html[data-theme="dark"] .candidate .choice-icon{
-  background:#1B3150;
-  color:#73A1F0;
-}
-html[data-theme="dark"] .employer .choice-icon{
-  background:#123A2C;
-  color:#65C995;
-}
-html[data-theme="dark"] .choice-title{color:#F4F7FA}
-html[data-theme="dark"] .choice-copy,
-html[data-theme="dark"] .hero p,
-html[data-theme="dark"] .footer{color:#A3B1BF}
-html[data-theme="dark"] .small-note{color:#7F92A3}
-html[data-theme="dark"] .sign-in-link{color:#8EB5DF}
-html[data-theme="dark"] .transition-screen{background:rgba(7,23,34,.985)}
-html[data-theme="dark"] .transition-title{color:#F4F7FA}
-html[data-theme="dark"] .transition-copy{color:#A3B1BF}
-html[data-theme="dark"] .transition-icon.candidate{background:#1B3150}
-html[data-theme="dark"] .transition-icon.employer{background:#123A2C}
-
+html[data-theme="dark"] .choice.candidate .choice-icon{background:#103327;color:#6FD8A2}
+html[data-theme="dark"] .choice.employer .choice-icon{background:#142C46;color:#8AB1E6}
+html[data-theme="dark"] .choice.candidate .arrow{background:#199C63}
+html[data-theme="dark"] .choice.employer .arrow{background:#3568A6}
+html[data-theme="dark"] .choice-copy{color:#A9B8C5}
+html[data-theme="dark"] .small-note{color:#91A2B1}
+html[data-theme="dark"] .transition-screen{background:rgba(6,24,33,.99);color:#F3F7FA}
+html[data-theme="dark"] .transition-icon.candidate{background:#103327;color:#6FD8A2}
+html[data-theme="dark"] .transition-icon.employer{background:#142C46;color:#8AB1E6}
 </style>
 </head>
 <body>
@@ -187,17 +139,18 @@ html[data-theme="dark"] .transition-icon.employer{background:#123A2C}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21c.7-4.1 3.2-6.2 7.5-6.2s6.8 2.1 7.5 6.2"></path></svg>
       </div>
       <div><div class="choice-title">Find Your Next Opportunity</div><div class="choice-copy">Discover matched jobs, explore employers, and apply in seconds.</div></div>
-      <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13"></path><path d="m14 7 5 5-5 5"></path></svg></div>
+      <div class="arrow" aria-hidden="true">→</div>
     </button>
     <button class="choice employer" id="employer-choice" type="button">
       <div class="choice-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"></path><path d="M3 12h18"></path><path d="M10 12v2h4v-2"></path></svg>
       </div>
       <div><div class="choice-title">Hire Top Talent</div><div class="choice-copy">Post jobs, review qualified candidates, and build your team faster.</div></div>
-      <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13"></path><path d="m14 7 5 5-5 5"></path></svg></div>
+      <div class="arrow" aria-hidden="true">→</div>
     </button>
   </section>
   <footer class="footer">
+    Already have an account? <button class="sign-in-link" id="sign-in-link" type="button">Sign in</button>
     <div class="small-note">You can switch between candidate and employer experiences at any time.</div>
   </footer>
 </main>
@@ -226,40 +179,33 @@ function resetStartScreen(){
   transitionIcon.className='transition-icon';
   transitionIcon.innerHTML='';
   transitionTitle.textContent='Opening Alygnn';
-
   const url=new URL(window.location.href);
   if(url.searchParams.has('reset')){
     url.searchParams.delete('reset');
     history.replaceState({},'',url.pathname + (url.search ? url.search : '') + url.hash);
   }
-  window.AlygnnStartTheme?.apply?.();
 }
-
 function chooseExperience(type){
   resetStartScreen();
   const selected=type==='candidate'?candidateChoice:employerChoice;
   const other=type==='candidate'?employerChoice:candidateChoice;
   selected.classList.add('selected');
   other.classList.add('faded');
-  const currentTheme=window.AlygnnStartTheme?.preference?.()||'auto';
-  localStorage.setItem('alygnnTheme',currentTheme);
   localStorage.setItem('alygnn_account_type',type);
-  window.AlygnnStartTheme?.apply?.();
-
+  window.AlygnnStartTheme?.apply?.(type);
   transitionTimer=setTimeout(()=>{
     transitionIcon.className='transition-icon '+type;
     transitionIcon.innerHTML=icons[type];
     transitionTitle.textContent=type==='candidate'?'Opening candidate login':'Opening employer login';
     transitionScreen.classList.add('show');
   },180);
-
   navigationTimer=setTimeout(()=>{
     window.location.href=type==='candidate'?'app-login.html':'app-employer-login.html';
   },650);
 }
 candidateChoice.addEventListener('click',()=>chooseExperience('candidate'));
 employerChoice.addEventListener('click',()=>chooseExperience('employer'));
-
+document.getElementById('sign-in-link').addEventListener('click',()=>{const savedType=localStorage.getItem('alygnn_account_type');chooseExperience(savedType==='employer'?'employer':'candidate')});
 window.addEventListener('pageshow',resetStartScreen);
 document.addEventListener('DOMContentLoaded',resetStartScreen);
 </script>
