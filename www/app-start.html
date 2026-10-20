@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',Arial,sans-serif!important}
-:root{--brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;--text:#172333;--muted:#59697A;--border:#DDE3E8;--candidate:#23A968;--employer:#3568C0}
+:root{--brand:#5D7FA3;--brand-dark:#345F91;--sage:#8CB69B;--bg:#F6F8F7;--text:#172333;--muted:#59697A;--border:#DDE3E8;--candidate:#3568C0;--employer:#23A968}
 html,body{width:100%;min-height:100%}
 body{min-height:100vh;background:radial-gradient(circle at 15% 10%,rgba(140,182,155,.15),transparent 28%),radial-gradient(circle at 90% 80%,rgba(93,127,163,.14),transparent 30%),var(--bg);color:var(--text);overflow-x:hidden}
 button,a{font:inherit}
@@ -73,11 +73,11 @@ button,a{font:inherit}
 .choice:active{transform:scale(.975)}
 .choice.selected{transform:scale(1.018);box-shadow:0 17px 40px rgba(23,35,51,.11)}
 .choice.faded{opacity:.28;transform:scale(.97)}
-.choice.candidate{background:linear-gradient(120deg,rgba(235,248,241,.96),rgba(255,255,255,.98))}
-.choice.employer{background:linear-gradient(120deg,rgba(237,243,252,.98),rgba(255,255,255,.98))}
+.choice.candidate{background:linear-gradient(120deg,rgba(237,243,252,.98),rgba(255,255,255,.98))}
+.choice.employer{background:linear-gradient(120deg,rgba(235,248,241,.96),rgba(255,255,255,.98))}
 .choice-icon{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.candidate .choice-icon{background:#DDF4E8;color:var(--candidate)}
-.employer .choice-icon{background:#DFEAFB;color:var(--employer)}
+.candidate .choice-icon{background:#DFEAFB;color:var(--candidate)}
+.employer .choice-icon{background:#DDF4E8;color:var(--employer)}
 .choice-icon svg{width:30px;height:30px}
 .choice-title{font-size:18px;font-weight:900;line-height:1.25;letter-spacing:-.2px}
 .choice-copy{margin-top:7px;color:var(--muted);font-size:13px;line-height:1.5}
@@ -90,8 +90,8 @@ button,a{font:inherit}
 .transition-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(246,248,247,.98);opacity:0;pointer-events:none;transition:opacity .22s ease}
 .transition-screen.show{opacity:1;pointer-events:auto}
 .transition-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
-.transition-icon.candidate{color:var(--candidate);background:#DDF4E8}
-.transition-icon.employer{color:var(--employer);background:#DFEAFB}
+.transition-icon.candidate{color:var(--candidate);background:#DFEAFB}
+.transition-icon.employer{color:var(--employer);background:#DDF4E8}
 .transition-icon svg{width:38px;height:38px}
 .transition-title{font-size:23px;font-weight:900}
 .transition-copy{margin-top:7px;color:var(--muted);font-size:13px}
@@ -115,15 +115,15 @@ html[data-theme="dark"] .choice.employer{
   border-color:#29404C;color:#F3F7FA;
   box-shadow:0 10px 30px rgba(0,0,0,.14);
 }
-html[data-theme="dark"] .choice.candidate .choice-icon{background:#103327;color:#6FD8A2}
-html[data-theme="dark"] .choice.employer .choice-icon{background:#142C46;color:#8AB1E6}
-html[data-theme="dark"] .choice.candidate .arrow{background:#199C63}
-html[data-theme="dark"] .choice.employer .arrow{background:#3568A6}
+html[data-theme="dark"] .choice.candidate .choice-icon{background:#142C46;color:#8AB1E6}
+html[data-theme="dark"] .choice.employer .choice-icon{background:#103327;color:#6FD8A2}
+html[data-theme="dark"] .choice.candidate .arrow{background:#3568A6}
+html[data-theme="dark"] .choice.employer .arrow{background:#199C63}
 html[data-theme="dark"] .choice-copy{color:#A9B8C5}
 html[data-theme="dark"] .small-note{color:#91A2B1}
 html[data-theme="dark"] .transition-screen{background:rgba(6,24,33,.99);color:#F3F7FA}
-html[data-theme="dark"] .transition-icon.candidate{background:#103327;color:#6FD8A2}
-html[data-theme="dark"] .transition-icon.employer{background:#142C46;color:#8AB1E6}
+html[data-theme="dark"] .transition-icon.candidate{background:#142C46;color:#8AB1E6}
+html[data-theme="dark"] .transition-icon.employer{background:#103327;color:#6FD8A2}
 </style>
 </head>
 <body>
