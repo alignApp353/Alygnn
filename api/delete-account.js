@@ -953,14 +953,14 @@ function formatDeactivationDeadline(iso) {
 
 // The brand mark is Alygnn's actual image asset (GitHub root /alygnn-logo.png),
 // not an approximate text logo drawn with an email client's fallback font.
-const ACCOUNT_EMAIL_LOGO_URL = 'https://alygnn.com/alygnn-logo.png';
+const ACCOUNT_EMAIL_LOGO_URL = 'https://alygnn.com/alygnn-email-wordmark.png';
 function accountEmailLayout(contentHtml) {
   return `
   <div style="margin:0;padding:32px 12px;background:#F6F8F7;font-family:Arial,Helvetica,sans-serif;color:#1A2530">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="max-width:540px;width:100%;margin:0 auto;background:#ffffff;border:1px solid #DDE3E8;border-radius:16px">
-      <tr><td style="padding:18px 30px;border-bottom:1px solid #DDE3E8;background:#ffffff">
-        <a href="https://alygnn.com/" style="text-decoration:none" target="_blank">
-          <img alt="Alygnn" src="${ACCOUNT_EMAIL_LOGO_URL}" width="88" height="88" style="width:88px;height:88px;display:block;border:0;background:#F6F8F7;border-radius:12px" />
+      <tr><td align="center" style="padding:25px 24px 23px;border-bottom:1px solid #DDE3E8;background:#ffffff;text-align:center">
+        <a href="https://alygnn.com/" style="text-decoration:none;display:inline-block" target="_blank">
+          <img alt="Alygnn" src="${ACCOUNT_EMAIL_LOGO_URL}" width="226" height="69" align="center" style="width:226px;height:auto;max-width:100%;display:block;margin:0 auto;border:0;outline:none;text-decoration:none" />
         </a>
       </td></tr>
       <tr><td style="padding:30px 30px 24px;font-size:15px;line-height:1.7;color:#4A5968">${contentHtml}</td></tr>
