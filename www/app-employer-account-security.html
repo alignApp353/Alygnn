@@ -149,9 +149,9 @@ html[data-theme="dark"] .action:hover{border-color:var(--brand)}
     <details class="details" id="close-account-details">
       <summary><div class="symbol"><svg viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01"/><path d="M10.3 3.2 2.2 17.6A2 2 0 0 0 3.9 20h16.2a2 2 0 0 0 1.7-2.4L13.7 3.2a2 2 0 0 0-3.4 0Z"/></svg></div><div class="item-main"><div class="name">Close account</div><div class="hint">Deactivate temporarily or request permanent deletion</div></div><span class="chevron">›</span></summary>
       <div class="close-content">
-        <label class="choice"><input type="radio" name="closure" value="deactivate" checked><span><strong>Deactivate for 30 days</strong><small>Hide your account while you have 30 days to reactivate. After that, the server schedules permanent deletion. Active subscriptions will be canceled and jobs closed.</small></span></label>
-        <label class="choice"><input type="radio" name="closure" value="delete"><span><strong>Request permanent deletion now</strong><small>No recovery period. Your request is irreversible once processed. Some records may be retained where required by law.</small></span></label>
-        <p class="risk-notice">Employer jobs, team access, and Stripe subscriptions must be handled as part of account closure. The server must confirm completion before the app signs you out.</p>
+        <label class="choice"><input type="radio" name="closure" value="deactivate" checked><span><strong>Deactivate for 30 days</strong><small>Your account will be deactivated for up to 30 days. All job postings will close and active subscriptions will be canceled. Sign in within 30 days to reactivate. Closed postings and canceled subscriptions will not restart automatically.</small></span></label>
+        <label class="choice"><input type="radio" name="closure" value="delete"><span><strong>Request permanent deletion now</strong><small>Request permanent deletion without a recovery period. Your job postings will close and active subscriptions will be canceled. This cannot be undone once completed. Some records may be retained where required by law.</small></span></label>
+        <p class="risk-notice">Closing your account affects your job postings, active subscriptions, and team access. These changes will not automatically be reversed if you reactivate.</p>
         <button class="secondary" type="button" id="closure-continue">Continue</button>
       </div>
     </details>
@@ -336,8 +336,8 @@ $('closure-continue').addEventListener('click',()=>{
   clearMsg();chosenClosure=document.querySelector('input[name="closure"]:checked').value;
   $('modal-title').textContent=chosenClosure==='deactivate'?'Deactivate account?':'Request permanent deletion?';
   $('modal-desc').textContent=chosenClosure==='deactivate'
-    ?'Your account will be deactivated for up to 30 days. Your active listings will close and recurring subscriptions will be canceled. If you reactivate, they do not restart automatically. The server must confirm this action.'
-    :'This requests permanent removal of your account and eligible personal information. This cannot be undone after processing. Active jobs and billing must be handled by Alygnn.';
+    ?'Your account will be deactivated for up to 30 days. All job postings will close and active subscriptions will be canceled. If you reactivate, they will not automatically restart.'
+    :'This requests permanent deletion of your account and eligible personal information. All job postings will close and active subscriptions will be canceled. This cannot be undone once completed. Some records may be retained where required by law.';
   $('delete-confirm').style.display=chosenClosure==='delete'?'block':'none';
   $('delete-word').value='';
   $('modal-confirm').textContent=chosenClosure==='deactivate'?'Deactivate account':'Request deletion';
@@ -361,9 +361,9 @@ $('modal-confirm').addEventListener('click',async()=>{
     const response=await accountClosureRequest(endpoint,session,chosenClosure);
     const result=await response.json().catch(()=>({}));
     if(!response.ok||result.success!==true){
-      if(response.status===404)throw new Error('Account closure is not yet configured on the Alygnn server. No account change was confirmed.');
+      if(response.status===404)throw new Error('Account closure is currently unavailable. No account changes were confirmed.');
        if(chosenClosure==='deactivate' && result.status==='deactivated')throw new Error('Your account has been paused, but billing or job cleanup is incomplete. Contact Alygnn support before making further changes.');
-      throw new Error(result.error||'Server did not confirm account closure. Check your account status before trying again.');
+      throw new Error(result.error||'We could not confirm account closure. Check your account status before trying again.');
     }
     // Do not automatically delete locally unless the server confirms success.
     await sb.auth.signOut({scope:'local'}).catch(()=>{});
