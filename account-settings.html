@@ -126,6 +126,11 @@
   .msg-box.success { background: rgba(111,191,143,0.15); border: 1px solid rgba(111,191,143,0.4); color: #1a5c35; }
 
   .danger-section { border-color: rgba(215,154,154,0.4); }
+  .closure-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .closure-grid .section { margin-bottom:0; padding:20px; display:flex; flex-direction:column; min-width:0; }
+  .closure-grid .desc { flex:1; line-height:1.5; margin-bottom:16px; }
+  .closure-grid .btn { width:100%; padding:11px 10px; font-size:13px; }
+  @media(max-width:480px){.closure-grid { grid-template-columns:1fr; }}
 
   .code-step { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
   .code-step .desc { margin-bottom: 10px; }
@@ -245,18 +250,18 @@
     <button class="btn btn-outline" onclick="signOut()">Sign out</button>
   </div>
 
-  <!-- Deactivate account: 30-day recovery -->
-  <div class="section danger-section">
-    <h2>Deactivate account</h2>
-    <div class="desc">Your account will be deactivated for 30 days. Sign in within that period to reactivate it; otherwise, it will be scheduled for permanent deletion. Employer accounts with active company resources may need additional closure steps.</div>
-    <button class="btn btn-danger" id="deactivate-account-btn" onclick="confirmDeactivate()">Deactivate my account</button>
-  </div>
-
-  <!-- Delete account -->
-  <div class="section danger-section">
-    <h2>Delete account</h2>
-    <div class="desc">Permanently delete your account and all associated data. This can't be undone.</div>
-    <button class="btn btn-danger" id="delete-account-btn" onclick="confirmDelete()">Delete my account</button>
+  <!-- Account closure options: same actions, more compact layout -->
+  <div class="closure-grid">
+    <div class="section danger-section">
+      <h2>Deactivate account</h2>
+      <div class="desc">Recover by signing in within 30 days. After that, your account is scheduled for deletion. Employer accounts may need extra closure steps.</div>
+      <button class="btn btn-danger" id="deactivate-account-btn" onclick="confirmDeactivate()">Deactivate account</button>
+    </div>
+    <div class="section danger-section">
+      <h2>Delete account</h2>
+      <div class="desc">Permanently delete your account and eligible data. This cannot be undone.</div>
+      <button class="btn btn-danger" id="delete-account-btn" onclick="confirmDelete()">Delete account</button>
+    </div>
   </div>
 
 </div>
