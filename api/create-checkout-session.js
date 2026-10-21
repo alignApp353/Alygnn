@@ -1885,6 +1885,80 @@ async function teamSeatBillingCustomerIds(employerId){
   }
 }
 
+// Read-only history of hosted one-time Checkouts, including $0 promo orders.
+// Stripe may create a different Customer for each Checkout. Email is used only
+// for discovery: ownership is ALWAYS checked against Checkout metadata.
+async function employerHostedOneTimeCheckouts(user,knownCustomerIds=[]){
+  const employerId=String(user?.id||'').trim();
+  if(!employerId)return [];
+  const customerIds=new Set(knownCustomerIds.filter(Boolean));
+  try{
+    if(user?.email){
+      let cursor='';
+      for(let page=0;page<3;page++){
+        const params={email:String(user.email),limit:100};
+        if(cursor)params.starting_after=cursor;
+        const result=await manageStripe('GET','customers',params);
+        const rows=result?.data||[];
+        rows.forEach(c=>{if(c?.id&&!c.deleted)customerIds.add(c.id);});
+        if(!result?.has_more||!rows.length)break;
+        cursor=rows[rows.length-1].id;
+      }
+    }
+  }catch(error){
+    console.warn('Could not discover checkout billing customers:',error?.message||error);
+  }
+
+  const sessions=new Map();
+  for(const customerId of customerIds){
+    try{
+      let cursor='';
+      for(let page=0;page<3;page++){
+        const params={customer:customerId,limit:100};
+        if(cursor)params.starting_after=cursor;
+        const result=await manageStripe('GET','checkout/sessions',params);
+        const rows=result?.data||[];
+        for(const checkout of rows){
+          const meta=checkout?.metadata||{};
+          if(String(meta.employer_id||'')!==employerId)continue;
+          if(!['weekly_slot','job_boost'].includes(String(meta.product||'').toLowerCase()))continue;
+          if(checkout.mode!=='payment'||checkout.status!=='complete')continue;
+          if(!['paid','no_payment_required'].includes(String(checkout.payment_status||'')))continue;
+          sessions.set(checkout.id,checkout);
+        }
+        if(!result?.has_more||!rows.length)break;
+        cursor=rows[rows.length-1].id;
+      }
+    }catch(error){
+      console.warn('Could not read one-time Checkout history for customer:',error?.message||error);
+    }
+  }
+
+  const jobIds=[...sessions.values()].map(c=>c.metadata?.job_id).filter(Boolean);
+  const jobs=await employerJobSnapshot(jobIds);
+  return [...sessions.values()].map(checkout=>{
+    const meta=checkout.metadata||{};
+    const product=String(meta.product||'').toLowerCase();
+    const jobId=String(meta.job_id||'').trim()||null;
+    const job=jobId?jobs.get(jobId):null;
+    const subtotal=Number(checkout.amount_subtotal||0);
+    const total=Number(checkout.amount_total||0);
+    const tax=Number(checkout.total_details?.amount_tax||0);
+    const discount=Number(checkout.total_details?.amount_discount||0);
+    return {
+      id:checkout.id,checkout_session_id:checkout.id,
+      payment_intent_id:typeof checkout.payment_intent==='string'?checkout.payment_intent:checkout.payment_intent?.id||null,
+      created:checkout.created?new Date(Number(checkout.created)*1000).toISOString():null,
+      status:'succeeded',currency:String(checkout.currency||'usd').toLowerCase(),
+      description:oneTimePaymentLabel(product,meta),product,
+      subtotal_cents:subtotal,discount_cents:discount,tax_cents:tax,total_cents:total,
+      amount_paid_cents:total,payment_kind:'checkout',
+      job_id:jobId,job_title:job?.title||null,job_status:job?.status||null,
+      boosted_until:job?.boosted_until||null,days:Number.parseInt(meta.days||'0',10)||0
+    };
+  });
+}
+
 async function billingAccountSummary(user,ent,planSub,secondSub){
   const teamSeatCustomerIds=await teamSeatBillingCustomerIds(user?.id);
   const ids=[
@@ -1934,7 +2008,15 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
     return bt-at;
   });
 
-  const oneTimePayments=await employerOneTimePayments(user?.id);
+  const [intentPayments,checkoutPayments]=await Promise.all([
+    employerOneTimePayments(user?.id),
+    employerHostedOneTimeCheckouts(user,uniqueIds)
+  ]);
+  const checkoutIntentIds=new Set(checkoutPayments.map(p=>p.payment_intent_id).filter(Boolean));
+  const oneTimePayments=[
+    ...checkoutPayments,
+    ...intentPayments.filter(p=>!checkoutIntentIds.has(p.id))
+  ].sort((a,b)=>new Date(b.created||0)-new Date(a.created||0));
 
   return {
     billing_email:stripeEmail||user?.email||null,
