@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-alygnn-responsive="candidate">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -2829,6 +2829,11 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 </style>
 
 <link rel="stylesheet" href="app-candidate-loading-unified.css">
+<link rel="stylesheet" href="app-candidate-responsive-v2.css">
+<link rel="stylesheet" href="app-candidate-loading-smart.css">
+<script defer src="app-candidate-loading-smart.js"></script>
+<script defer src="app-candidate-back-v2.js"></script>
+<script defer src="app-candidate-settings-actions.js"></script>
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -3340,7 +3345,7 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
       </button>
     </div>
 
-    <button class="settings-row" type="button" onclick="showSettingsMessage('Privacy settings are coming soon.','info')">
+    <button class="settings-row" type="button" onclick="AlygnnCandidateSettings.open('privacy')">
       <span class="settings-row-copy">
         <strong>Privacy</strong>
         <small>Manage candidate privacy controls</small>
@@ -3352,7 +3357,7 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
   <section class="settings-card">
     <div class="settings-card-title">Support</div>
 
-    <button class="settings-row" type="button" onclick="showSettingsMessage('Help & Support is coming soon.','info')">
+    <button class="settings-row" type="button" onclick="AlygnnCandidateSettings.open('support')">
       <span class="settings-row-copy">
         <strong>Help & Support</strong>
         <small>Get help with your Alygnn account</small>
@@ -3360,7 +3365,7 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
       <span class="settings-arrow">›</span>
     </button>
 
-    <button class="settings-row" type="button" onclick="showSettingsMessage('Alygnn Version 1.0','info')">
+    <button class="settings-row" type="button" onclick="AlygnnCandidateSettings.open('about')">
       <span class="settings-row-copy">
         <strong>About Alygnn</strong>
         <small>Version and product information</small>
@@ -4251,7 +4256,7 @@ function openPreferencesFromSettings(){
     window.location.href='app-resume-preview.html';
     return;
   }
-  window.location.href='app-preferences.html';
+  window.location.href='app-preferences.html?from=settings';
 }
 
 function openDashboardPreferences(){
