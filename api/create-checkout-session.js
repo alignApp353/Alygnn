@@ -1934,6 +1934,34 @@ async function employerHostedOneTimeCheckouts(user,knownCustomerIds=[]){
     }
   }
 
+  // Zero-dollar one-time Checkout often has neither a Stripe Customer nor a
+  // PaymentIntent. Searching only per-customer sessions misses those completed
+  // purchases. Read the most recent account Checkouts as a bounded fallback,
+  // then require the authenticated employer ID in Stripe metadata. This is
+  // strictly billing-history retrieval, never payment fulfillment.
+  try{
+    let cursor='';
+    const cutoff=Math.floor(Date.now()/1000)-90*24*60*60;
+    for(let page=0;page<8;page++){
+      const params={limit:100,'created[gte]':cutoff};
+      if(cursor)params.starting_after=cursor;
+      const result=await manageStripe('GET','checkout/sessions',params);
+      const rows=result?.data||[];
+      for(const checkout of rows){
+        const meta=checkout?.metadata||{};
+        if(String(meta.employer_id||'')!==employerId)continue;
+        if(!['weekly_slot','job_boost'].includes(String(meta.product||'').toLowerCase()))continue;
+        if(checkout.mode!=='payment'||checkout.status!=='complete')continue;
+        if(!['paid','no_payment_required'].includes(String(checkout.payment_status||'')))continue;
+        sessions.set(checkout.id,checkout);
+      }
+      if(!result?.has_more||!rows.length)break;
+      cursor=rows[rows.length-1].id;
+    }
+  }catch(error){
+    console.warn('Could not load uncoupled one-time Checkout history:',error?.message||error);
+  }
+
   const jobIds=[...sessions.values()].map(c=>c.metadata?.job_id).filter(Boolean);
   const jobs=await employerJobSnapshot(jobIds);
   return [...sessions.values()].map(checkout=>{
