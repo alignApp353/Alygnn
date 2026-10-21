@@ -12,6 +12,8 @@
 //   customer.subscription.updated
 //   customer.subscription.deleted
 //   invoice.paid
+//   invoice.payment_failed
+//   invoice.payment_action_required
 //
 // If you ALREADY have a Stripe webhook, merge the fulfillment branches below into
 // your existing verified webhook instead of running two handlers for the same event.
@@ -136,25 +138,77 @@ function stripePeriodEndUnix(subscription){
   return Number.isFinite(value)&&value>0?value:null;
 }
 
-async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscription = null }) {
+// Recheck current Stripe state instead of trusting potentially delayed webhook payloads.
+async function livePlanSubscription(subscriptionId) {
+  return stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}?expand[]=latest_invoice&expand[]=items.data.price`);
+}
+
+// Recent Stripe API versions moved invoice.subscription into invoice.parent.
+function invoiceSubscriptionId(invoice) {
+  const ref = invoice?.subscription ?? invoice?.parent?.subscription_details?.subscription;
+  return typeof ref === 'string' ? ref : ref?.id || null;
+}
+
+function latestInvoiceId(subscription) {
+  const ref = subscription?.latest_invoice;
+  return typeof ref === 'string' ? ref : ref?.id || null;
+}
+
+function livePlanStatus(subscription) {
+  const status = String(subscription?.status || 'incomplete').toLowerCase();
+  const invoice = subscription?.latest_invoice;
+  if (invoice && typeof invoice === 'object') {
+    // If a payment already failed, do not retain benefits during the brief
+    // interval before Stripe updates subscription.status to past_due.
+    if (['active', 'trialing'].includes(status) &&
+        invoice.status === 'open' && Number(invoice.attempt_count || 0) > 0 &&
+        Number(invoice.amount_remaining || 0) > 0) return 'past_due';
+    // A recovered latest invoice can arrive before Stripe finishes updating
+    // the subscription's status; restore the paid plan after payment.
+    if (status === 'past_due' && invoice.status === 'paid') return 'active';
+  }
+  return status;
+}
+
+async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscription = null, allowSubscriptionReplacement = false }) {
   const info = planInfo(plan);
   if (!employerId || !info) return;
 
-  periodEnd=periodEnd||stripePeriodEndUnix(subscription);
+  const actualStatus = String(status || subscription?.status || 'inactive').toLowerCase();
+  const paidAccess = ['active', 'trialing'].includes(actualStatus);
+
+  // An older subscription's late webhooks must never disable or overwrite
+  // a new subscription already attached to the employer. A NEW completed
+  // Checkout may intentionally replace the previous subscription.
+  if (subscription?.id) {
+    const result = await fetch(
+      `${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&select=stripe_plan_subscription_id`,
+      { headers: serviceHeaders() }
+    );
+    if (!result.ok) throw new Error('Could not verify the current employer plan subscription.');
+    const rows = await result.json().catch(() => []);
+    const linkedId = Array.isArray(rows) ? String(rows[0]?.stripe_plan_subscription_id || '') : '';
+    if (linkedId && linkedId !== subscription.id && !allowSubscriptionReplacement) {
+      console.warn('Ignoring a webhook from a replaced employer subscription:', subscription.id);
+      return;
+    }
+  }
+
+  periodEnd = periodEnd || stripePeriodEndUnix(subscription);
 
   // test_plan stores the exact Launch/Growth/Scale/Weekly code for compatibility
   // with Alygnn's existing entitlement schema; test_mode remains false.
   const row = {
     employer_id: employerId,
-    plan: info.legacyPlan,
-    subscription_status: status || 'active',
+    plan: paidAccess ? info.legacyPlan : 'free',
+    subscription_status: actualStatus,
     current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-    slot_limit: info.slots,
+    slot_limit: paidAccess ? info.slots : 1,
     billing_period: billing || null,
     test_mode: false,
-    test_plan: plan,
-    urgently_hiring: info.urgent,
-    alygnn_recommended: String(plan || '').toLowerCase() === 'scale',
+    test_plan: paidAccess ? plan : null,
+    urgently_hiring: paidAccess && info.urgent,
+    alygnn_recommended: paidAccess && String(plan || '').toLowerCase() === 'scale',
     pending_plan: null,
     pending_billing_period: null,
     pending_plan_effective_at: null,
@@ -187,7 +241,7 @@ async function upsertPlan({ employerId, plan, billing, status, periodEnd, subscr
   await fetch(`${supabaseBase()}/rest/v1/jobs?employer_id=eq.${encodeURIComponent(employerId)}&status=eq.active&posting_access_type=eq.plan`, {
     method: 'PATCH',
     headers: serviceHeaders({ Prefer: 'return=minimal' }),
-    body: JSON.stringify({ urgently_hiring: info.urgent })
+    body: JSON.stringify({ urgently_hiring: paidAccess && info.urgent })
   });
 }
 
@@ -235,39 +289,12 @@ async function fulfillWeeklySlotPayment({employerId,reference,amount}){
   }
 }
 
-// Reconcile team-seat subscriptions on checkout, renewals and cancellation.
-// A stable Stripe subscription ID lets the database RPC remain idempotent.
-async function syncTeamSeatSubscription(subscription, paymentReference=null, forceStatus=null){
-  const meta=subscription?.metadata||{};
-  const employerId=String(meta.employer_id||'');
-  if(meta.product!=='team_seat'||!employerId||!subscription?.id)return;
-  const status=String(forceStatus||subscription.status||'').toLowerCase();
-  const firstItem=subscription.items?.data?.[0];
-  const price=firstItem?.price;
-  const cents=Number(price?.unit_amount??meta.unit_amount_cents??0);
-  await rpc('sync_team_seat_subscription',{
-    p_employer_id:employerId,
-    p_stripe_subscription_id:subscription.id,
-    p_status:status,
-    p_expires_at:stripePeriodEndUnix(subscription)?new Date(stripePeriodEndUnix(subscription)*1000).toISOString():null,
-    p_payment_reference:paymentReference,
-    p_amount_cents:Number.isFinite(cents)?cents:0
-  });
-}
-
 async function fulfillCheckout(session) {
   const meta = session.metadata || {};
   const employerId = meta.employer_id;
   const product = String(meta.product || '').toLowerCase();
   if (!employerId || !product) return;
   if (session?.status && session.status !== 'complete') return;
-
-  if(product==='team_seat'){
-    if(session.mode!=='subscription'||!session.subscription)return;
-    const sub=await stripeGet('subscriptions/'+encodeURIComponent(session.subscription)+'?expand[]=items.data.price');
-    await syncTeamSeatSubscription(sub,session.id);
-    return;
-  }
 
   if (product === 'weekly_slot') {
     if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
@@ -369,93 +396,7 @@ async function fulfillCheckout(session) {
     return;
   }
 
-  if (product === 'plan_upgrade' && meta.cross_billing_checkout === 'true') {
-    if(session.mode!=='payment' || session.payment_status!=='paid')return;
-    const plans={launch:1,growth:2,scale:3};
-    const from=String(meta.current_plan||'').toLowerCase();
-    const target=String(meta.target_plan||'').toLowerCase();
-    const currentBilling=String(meta.current_billing||'').toLowerCase();
-    const billing=String(meta.billing||'').toLowerCase();
-    if(!plans[from]||!plans[target]||plans[target]<=plans[from]||
-      !['monthly','quarterly'].includes(currentBilling)||billing!=='quarterly'||currentBilling!=='monthly')
-      throw new Error('Invalid cross-billing upgrade metadata.');
-    const recurringPrices={
-      growth:'price_1UEJJIRvnGY3BeGXPIAyRF2z',
-      scale:'price_1UEJMSRvnGY3BeGXEwCM1bmu'
-    };
-    const upgradePrices={
-      'launch:growth':['price_1UQCiyRvnGY3BeGXwWupW6sf',84100],
-      'launch:scale':['price_1UQCjfRvnGY3BeGX4EY6sA82',140100],
-      'growth:scale':['price_1UQCcwRvnGY3BeGXaZZqsCkb',125100]
-    };
-    const expected=upgradePrices[`${from}:${target}`];
-    if(!expected||meta.upgrade_price_id!==expected[0]||
-      meta.target_price_id!==recurringPrices[target]||
-      Number(meta.fixed_difference_cents)!==expected[1]||
-      Number(session.amount_subtotal)!==expected[1])
-      throw new Error('Cross-billing upgrade Checkout did not match the approved Stripe prices.');
-    // Verify actual purchased price instead of trusting Checkout metadata alone.
-    const lineItems=await stripeGet(`checkout/sessions/${encodeURIComponent(session.id)}/line_items?limit=10`);
-    if(lineItems.data?.length!==1 ||
-       (typeof lineItems.data[0].price==='string'?lineItems.data[0].price:lineItems.data[0].price?.id)!==expected[0])
-      throw new Error('Cross-billing upgrade Checkout line item did not match the approved Stripe price.');
-    let sub=await stripeGet(`subscriptions/${encodeURIComponent(meta.subscription_id)}?expand[]=items.data.price`);
-    const customer=typeof sub.customer==='string'?sub.customer:sub.customer?.id;
-    if(customer!==session.customer)throw new Error('Upgrade Checkout customer does not match the subscription.');
-    if(sub.metadata?.employer_id&&sub.metadata.employer_id!==employerId)
-      throw new Error('Upgrade subscription belongs to a different employer.');
-    const item=sub.items?.data?.find(row=>row.id===meta.subscription_item_id);
-    if(!item)throw new Error('Original subscription item was not found.');
-    const livePrice=typeof item.price==='string'?item.price:item.price?.id;
-    if(livePrice===recurringPrices[target]){
-      await upsertPlan({employerId,plan:target,billing,status:sub.status,
-        periodEnd:stripePeriodEndUnix(sub),subscription:sub});
-      return;
-    }
-    const oldPrices={
-      launch:'price_1UACGoRvnGY3BeGX4Dnlv9ZP',
-      growth:'price_1UEJI7RvnGY3BeGXXDSX5rqM'
-    };
-    if(livePrice!==oldPrices[from]){
-      console.warn('Ignoring obsolete paid cross-billing upgrade',session.id);
-      return;
-    }
-    if(sub.pending_update)throw new Error('An existing subscription change is still pending.');
-    if(Array.isArray(sub.discounts)&&sub.discounts.length)
-      throw new Error('Cannot automatically apply an upgrade to a subscription with existing discounts.');
-    const scheduleId=typeof sub.schedule==='string'?sub.schedule:sub.schedule?.id;
-    if(scheduleId){
-      await stripePost(`subscription_schedules/${encodeURIComponent(scheduleId)}/release`,{});
-    }
-    // Checkout already collected the difference. Make the immediate quarterly
-    // subscription invoice $0 with a once-only 100% coupon. The following
-    // quarterly renewal charges the full subscription price.
-    const coupon=await stripePost('coupons',{
-      percent_off:100,duration:'once',name:'Alygnn paid upgrade offset'
-    });
-    sub=await stripePost(`subscriptions/${encodeURIComponent(sub.id)}`,{
-      cancel_at_period_end:'false',
-      'items[0][id]':item.id,
-      'items[0][price]':recurringPrices[target],
-      'items[0][quantity]':1,
-      proration_behavior:'none',
-      payment_behavior:'error_if_incomplete',
-      'discounts[0][coupon]':coupon.id,
-      'metadata[employer_id]':employerId,
-      'metadata[product]':'job_plan',
-      'metadata[plan]':target,
-      'metadata[billing]':billing,
-      'expand[]':'latest_invoice'
-    });
-    if(Number(sub.latest_invoice?.amount_due||0)!==0)
-      throw new Error('The subscription generated an unexpected invoice amount. Review Stripe billing before continuing.');
-    await upsertPlan({employerId,plan:target,billing,status:sub.status,
-      periodEnd:stripePeriodEndUnix(sub),subscription:sub});
-    return;
-  }
-
   if (product === 'plan_upgrade') {
-    if (!['paid','no_payment_required'].includes(String(session.payment_status||''))) return;
     // An authenticated Checkout event is the only authority to apply an
     // upgrade. For a 100%-off code, Stripe returns no_payment_required.
     const targetPlan=String(meta.target_plan||'').toLowerCase();
@@ -510,7 +451,7 @@ async function fulfillCheckout(session) {
       employerId,
       plan:targetPlan,
       billing,
-      status:String(sub.status||'active').toLowerCase(),
+      status:livePlanStatus(await livePlanSubscription(sub.id)),
       periodEnd:stripePeriodEndUnix(sub),
       subscription:sub
     });
@@ -522,14 +463,15 @@ async function fulfillCheckout(session) {
     const billing = meta.billing;
 
     if (session.mode === 'subscription' && session.subscription) {
-      const subscription = await stripeGet(`subscriptions/${encodeURIComponent(session.subscription)}`);
+      const subscription = await livePlanSubscription(session.subscription);
       await upsertPlan({
         employerId,
         plan,
         billing,
-        status: subscription.status === 'trialing' ? 'trialing' : 'active',
+        status: livePlanStatus(subscription),
         periodEnd: stripePeriodEndUnix(subscription),
-        subscription
+        subscription,
+        allowSubscriptionReplacement: true
       });
       return;
     }
@@ -539,40 +481,10 @@ async function fulfillCheckout(session) {
   }
 }
 
-// Reconcile only the subscription that is still linked to the employer.
-// A delayed cancellation event for an older subscription must not erase a
-// newer paid plan. This updates plan entitlement only, not jobs or payments.
-async function revokeCanceledPlan(subscription) {
-  const employerId=String(subscription?.metadata?.employer_id||'');
-  if(!employerId||!subscription?.id)return;
-  const url=`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&select=stripe_plan_subscription_id`;
-  const read=await fetch(url,{headers:serviceHeaders()});
-  const rows=await read.json().catch(()=>[]);
-  if(!read.ok)throw new Error('Could not verify canceled plan ownership.');
-  if(String(rows?.[0]?.stripe_plan_subscription_id||'')!==String(subscription.id))return;
-  const patch={
-    plan:'free',test_plan:null,test_mode:false,subscription_status:'canceled',
-    billing_period:null,slot_limit:0,plan_amount_cents:0,
-    urgently_hiring:false,alygnn_recommended:false,
-    current_period_end:null,
-    pending_plan:null,pending_billing_period:null,pending_plan_effective_at:null,
-    stripe_plan_schedule_id:null,updated_at:new Date().toISOString()
-  };
-  const updated=await fetch(`${supabaseBase()}/rest/v1/employer_entitlements?employer_id=eq.${encodeURIComponent(employerId)}&stripe_plan_subscription_id=eq.${encodeURIComponent(subscription.id)}`,{
-    method:'PATCH',headers:serviceHeaders({Prefer:'return=minimal'}),body:JSON.stringify(patch)
-  });
-  if(!updated.ok)throw new Error('Could not reconcile canceled plan: '+await updated.text());
-}
-
 async function fulfillSubscription(subscription, forceStatus) {
   const meta = subscription.metadata || {};
   const product = String(meta.product || '').toLowerCase();
   if (!meta.employer_id) return;
-
-  if(product==='team_seat'){
-    await syncTeamSeatSubscription(subscription,null,forceStatus);
-    return;
-  }
 
   if (product === 'weekly_slot') {
     if(!['paid','no_payment_required'].includes(String(session.payment_status)) ||
@@ -598,33 +510,11 @@ async function fulfillSubscription(subscription, forceStatus) {
   }
 
   if (product !== 'job_plan') return;
-  if(String(forceStatus||subscription.status||'').toLowerCase()==='canceled'){
-    await revokeCanceledPlan(subscription);
-    return;
-  }
-  // A paid pending update may change the Price before metadata is refreshed.
-  // Always derive the effective tier from Stripe's actual subscription Price.
-  const activePrice=subscription?.items?.data?.[0]?.price;
-  const priceId=typeof activePrice==='string'?activePrice:activePrice?.id;
-  const catalog={
-    'price_1UACGoRvnGY3BeGX4Dnlv9ZP':['launch','monthly'],
-    'price_1UEJGJRvnGY3BeGX9yK3XL2i':['launch','quarterly'],
-    'price_1UEJI7RvnGY3BeGXXDSX5rqM':['growth','monthly'],
-    'price_1UEJJIRvnGY3BeGXPIAyRF2z':['growth','quarterly'],
-    'price_1UEJK6RvnGY3BeGXKfZEsIIk':['scale','monthly'],
-    'price_1UEJMSRvnGY3BeGXEwCM1bmu':['scale','quarterly']
-  };
-  const resolved=catalog[priceId]||[meta.plan,meta.billing||'monthly'];
-  if(catalog[priceId]&&(meta.plan!==resolved[0]||meta.billing!==resolved[1])&&!subscription.pending_update){
-    await stripePost('subscriptions/'+encodeURIComponent(subscription.id),{
-      'metadata[plan]':resolved[0], 'metadata[billing]':resolved[1]
-    });
-  }
   await upsertPlan({
     employerId: meta.employer_id,
-    plan: resolved[0],
-    billing: resolved[1],
-    status: forceStatus || (subscription.status === 'trialing' ? 'trialing' : 'active'),
+    plan: meta.plan,
+    billing: meta.billing || 'monthly',
+    status: forceStatus || livePlanStatus(subscription),
     periodEnd: stripePeriodEndUnix(subscription),
     subscription
   });
@@ -669,8 +559,9 @@ module.exports = async function handler(req, res) {
         }
         break;
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const subscription=await stripeGet(`subscriptions/${encodeURIComponent(event.data.object.id)}?expand[]=items.data.price`);
+        const subscription = await livePlanSubscription(event.data.object.id);
         await fulfillSubscription(subscription);
         break;
       }
@@ -679,11 +570,25 @@ module.exports = async function handler(req, res) {
         await fulfillSubscription(event.data.object, 'canceled');
         break;
 
-      case 'invoice.paid': {
-        const subscriptionId = event.data.object.subscription;
+      case 'invoice.paid':
+      case 'invoice.payment_failed':
+      case 'invoice.payment_action_required': {
+        const invoice = event.data.object;
+        const subscriptionId = invoiceSubscriptionId(invoice);
         if (subscriptionId) {
-          const subscription = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
-          await fulfillSubscription(subscription);
+          const subscription = await livePlanSubscription(subscriptionId);
+          // Ignore an older invoice from a previous billing period: a late
+          // failure must not revoke access after the latest invoice was paid.
+          const currentInvoiceId = latestInvoiceId(subscription);
+          if (invoice.id && currentInvoiceId && invoice.id !== currentInvoiceId) break;
+
+          let status = livePlanStatus(subscription);
+          if (event.type !== 'invoice.paid') {
+            const latest = subscription.latest_invoice;
+            const latestPaid = latest && typeof latest === 'object' && latest.status === 'paid';
+            if (!latestPaid && ['active', 'trialing'].includes(status)) status = 'past_due';
+          }
+          await fulfillSubscription(subscription, status);
         }
         break;
       }
