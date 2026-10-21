@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-alygnn-responsive="candidate">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -417,6 +417,11 @@ button{cursor:pointer}
   .title{font-size:30px}
 }
 </style>
+<link rel="stylesheet" href="app-candidate-responsive-v2.css">
+<link rel="stylesheet" href="app-candidate-loading-smart.css">
+<script defer src="app-candidate-loading-smart.js"></script>
+<script defer src="app-candidate-back-v2.js"></script>
+<script defer src="app-candidate-settings-actions.js"></script>
 </head>
 <body>
 <div class="screen">
@@ -447,7 +452,7 @@ button{cursor:pointer}
         <span class="row-side"><span id="appearance-value">System</span><span class="chevron">›</span></span>
       </button>
 
-      <button class="row" type="button" onclick="window.location.href='app-preferences.html'">
+      <button class="row" type="button" onclick="window.location.href='app-preferences.html?from=account-settings'">
         <span class="row-icon">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
         </span>
@@ -527,7 +532,7 @@ button{cursor:pointer}
         <span class="row-side"><span class="chevron">›</span></span>
       </button>
 
-      <button class="row" type="button" onclick="alert('Privacy settings coming soon')">
+      <button class="row" type="button" onclick="AlygnnCandidateSettings.open('privacy')">
         <span class="row-icon">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg>
         </span>
@@ -543,7 +548,7 @@ button{cursor:pointer}
   <section class="section">
     <div class="section-label">Support</div>
     <div class="group">
-      <button class="row" type="button" onclick="alert('Help center coming soon')">
+      <button class="row" type="button" onclick="AlygnnCandidateSettings.open('support')">
         <span class="row-icon">?</span>
         <span>
           <div class="row-title">Help & Support</div>
@@ -552,7 +557,7 @@ button{cursor:pointer}
         <span class="row-side"><span class="chevron">›</span></span>
       </button>
 
-      <button class="row" type="button" onclick="alert('Alygnn Version 1.0')">
+      <button class="row" type="button" onclick="AlygnnCandidateSettings.open('about')">
         <span class="row-icon">A</span>
         <span>
           <div class="row-title">About Alygnn</div>
