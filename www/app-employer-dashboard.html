@@ -4966,6 +4966,81 @@
   .about-version span{font-size:11px;color:var(--muted)}
 </style>
 
+
+<style id="alygnn-tablet-theme-surface-fix">
+  /* Keep the page canvas painted to the bottom of taller Android displays.
+     Themed backgrounds follow the existing Alygnn light/dark variables. */
+  html, body {
+    min-height:100%;
+    background-color:var(--bg) !important;
+  }
+  body, body > .shell {
+    min-height:100vh;
+    min-height:100dvh;
+    background-color:var(--bg) !important;
+  }
+  body > .shell > main.page {
+    min-height:calc(100vh - 78px);
+    min-height:calc(100dvh - 78px);
+    background-color:var(--bg) !important;
+  }
+  #dashboard-view, #jobs-view {
+    background-color:var(--bg);
+  }
+
+  /* Team-members sheet: do not leave light-only surfaces inside dark mode. */
+  #team-sheet .sheet-panel {
+    background:var(--card);
+    color:var(--text);
+  }
+  #team-sheet .secondary-btn,
+  #team-sheet .team-mini-btn {
+    background:var(--card);
+    color:var(--text);
+    -webkit-text-fill-color:var(--text);
+    border-color:var(--border);
+  }
+  #team-sheet .team-plan-badge,
+  #team-sheet .team-avatar {
+    background:var(--brand-soft);
+    color:var(--brand-dark);
+  }
+  #team-sheet .team-progress {
+    background:var(--border-soft);
+  }
+  #team-sheet .team-lock-note {
+    background:var(--amber-bg);
+    color:#805C16;
+    border:1px solid var(--border-soft);
+  }
+  #team-sheet .team-mini-btn.danger {
+    background:var(--danger-bg);
+    color:var(--danger);
+    -webkit-text-fill-color:var(--danger);
+  }
+  html[data-theme="dark"] #team-sheet .team-plan-badge,
+  html[data-theme="dark"] #team-sheet .team-avatar {
+    color:#A3C7E8;
+  }
+  html[data-theme="dark"] #team-sheet .team-lock-note {
+    background:#342918;
+    border-color:#55432C;
+    color:#F3D19A;
+    -webkit-text-fill-color:#F3D19A;
+  }
+  html[data-theme="dark"] #team-sheet .secondary-btn,
+  html[data-theme="dark"] #team-sheet .team-mini-btn {
+    background:var(--card);
+    color:var(--text);
+    -webkit-text-fill-color:var(--text);
+  }
+  html[data-theme="dark"] #team-sheet .team-mini-btn.danger {
+    background:var(--danger-bg);
+    color:#EF9A9A;
+    -webkit-text-fill-color:#EF9A9A;
+  }
+</style>
+
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div id="dashboard-boot-loader" role="status" aria-live="polite" aria-label="Loading employer workspace">
