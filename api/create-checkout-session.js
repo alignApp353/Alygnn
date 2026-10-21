@@ -2852,6 +2852,61 @@ async function syncCompletedBoostCheckout({ user, checkoutSessionId }) {
   };
 }
 
+// Restore an existing verified Second Job Slot subscription without a new charge.
+// Both actions are already called by employer-dashboard.html.
+async function reconcileVerifiedSecondSlot(user, checkoutSessionId=null){
+  let subscription=null;
+  let reference=null;
+  if(checkoutSessionId){
+    const id=String(checkoutSessionId).trim();
+    if(!/^cs_[A-Za-z0-9_]+$/.test(id)){
+      const error=new Error('Invalid Stripe Checkout Session ID.');error.status=400;throw error;
+    }
+    const checkout=await manageStripe('GET','checkout/sessions/'+encodeURIComponent(id));
+    const meta=checkout.metadata||{};
+    if(String(meta.employer_id||'')!==String(user.id)){
+      const error=new Error('This checkout belongs to a different employer.');error.status=403;throw error;
+    }
+    if(!['additional_slot','single_job'].includes(String(meta.product||'')) ||
+       checkout.mode!=='subscription' || checkout.status!=='complete' || !checkout.subscription){
+      const error=new Error('This is not a completed Second Job Slot checkout.');error.status=409;throw error;
+    }
+    reference=checkout.id;
+    subscription=await manageStripe('GET','subscriptions/'+encodeURIComponent(checkout.subscription),{'expand[]':'latest_invoice'});
+  }else{
+    subscription=await resolveSecondSlotSubscription(user.id);
+    if(!subscription){
+      const error=new Error('No existing Second Job Slot subscription was found.');error.status=404;throw error;
+    }
+    subscription=await manageStripe('GET','subscriptions/'+encodeURIComponent(subscription.id),{'expand[]':'latest_invoice'});
+  }
+  const status=String(subscription.status||'').toLowerCase();
+  const meta=subscription.metadata||{};
+  const price=subscription.items?.data?.[0]?.price;
+  const actualPriceId=typeof price==='string'?price:price?.id;
+  if(String(meta.employer_id||'')!==String(user.id) ||
+     !['additional_slot','single_job'].includes(String(meta.product||'')) ||
+     actualPriceId!==PRICE_IDS.second_job_slot_monthly){
+    const error=new Error('The Stripe Second Job Slot subscription does not match this account.');error.status=409;throw error;
+  }
+  if(!['active','trialing'].includes(status)){
+    const error=new Error('The Second Job Slot subscription is not active in Stripe.');error.status=409;throw error;
+  }
+  const periodEnd=stripePeriodEndUnix(subscription);
+  const response=await fetch(manageBase()+'/rest/v1/rpc/sync_second_job_slot_subscription',{
+    method:'POST',headers:manageServiceHeaders(),
+    body:JSON.stringify({
+      p_employer_id:user.id,
+      p_status:status,
+      p_expires_at:periodEnd?new Date(periodEnd*1000).toISOString():null,
+      p_payment_reference:reference,
+      p_amount_cents:reference?Number((await manageStripe('GET','checkout/sessions/'+encodeURIComponent(reference))).amount_total??0):Number(subscription.latest_invoice?.amount_paid??price?.unit_amount??15000)
+    })
+  });
+  if(!response.ok)throw new Error('Could not synchronize Second Job Slot: '+await response.text());
+  return {ok:true,synced:true,product:'additional_slot',subscription_status:status};
+}
+
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return send(res, 204, {});
@@ -2867,6 +2922,14 @@ module.exports = async function handler(req, res) {
     // Billing & plan management shares this existing Vercel function so the
     // Hobby deployment stays below the Serverless Function limit.
     const billingAction = String(input.action || '').toLowerCase();
+
+    if (billingAction==='sync_second_slot_checkout' || billingAction==='reconcile_second_slot_checkout') {
+      const result=await reconcileVerifiedSecondSlot(
+        user,
+        billingAction==='sync_second_slot_checkout' ? input.checkout_session_id : null
+      );
+      return send(res,200,result);
+    }
 
     if (billingAction==='sync_team_seat_checkout') {
       const result=await syncCompletedTeamSeatCheckout(user,input.checkout_session_id);
