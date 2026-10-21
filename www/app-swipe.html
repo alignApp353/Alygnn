@@ -3528,9 +3528,89 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
   }
 </style>
 
+<link rel="stylesheet" href="app-candidate-loading-unified.css">
+<script defer src="app-candidate-loading-unified.js"></script>
+<style id="alygnn-tablet-discover-responsive-20261021">
+/* Phones keep the current swipe card unchanged. Tablets scale card + content. */
+@media (min-width:700px) and (min-height:900px){
+  .progress-card{
+    max-width:min(680px,calc(100vw - 64px))!important;
+    min-height:70px!important;
+    padding:12px 20px!important;
+  }
+  .progress-card .stat-val{font-size:22px!important}
+  .progress-card .stat-label{font-size:11px!important}
+  .progress-copy{font-size:12px!important}
+  .swipe-area{
+    height:calc(100dvh - 92px - 86px - 72px)!important;
+    min-height:0!important;
+    padding:18px 24px 18px!important;
+    justify-content:center!important;
+  }
+  .card-stack{
+    width:100%!important;
+    max-width:min(680px,calc(100vw - 64px))!important;
+    height:clamp(510px,54dvh,650px)!important;
+    min-height:510px!important;
+    max-height:650px!important;
+  }
+  .job-card{
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:clamp(25px,3vw,34px)!important;
+    border-radius:30px!important;
+  }
+  .job-card.alygnn-recommended-card:first-child{padding-top:56px!important}
+  .swipe-card-toolbar{margin-bottom:20px!important}
+  .match{font-size:15px!important;padding:10px 16px!important}
+  .card-top{gap:18px!important;margin-bottom:18px!important}
+  .company-logo{width:70px!important;height:70px!important;border-radius:19px!important}
+  .job-title{font-size:clamp(29px,3vw,35px)!important;line-height:1.12!important}
+  .company-name{font-size:16px!important}
+  .mobile-job-tags{gap:9px!important;margin-bottom:17px!important}
+  .mobile-tag{font-size:12px!important;min-height:30px!important;padding:5px 10px!important}
+  .swipe-card-insights{gap:14px!important}
+  .swipe-insight-label,.swipe-compact-label{font-size:11px!important}
+  .swipe-match-metric,.swipe-match-metric strong{font-size:12px!important}
+  .swipe-role-copy{font-size:15px!important;line-height:1.5!important}
+  .swipe-compact-value{font-size:13px!important}
+  .mobile-card-bottom{font-size:13px!important}
+  .mobile-view-details{font-size:13px!important}
+  .old-action-layout{margin-top:20px!important;gap:34px!important}
+  .old-action-layout .btn-undo,.old-action-layout .btn-skip{width:70px!important;height:70px!important}
+  .old-action-layout .btn-apply{width:80px!important;height:80px!important}
+  .action-label{font-size:13px!important}
+}
+/* Landscape / small tablets: enlarge width without making the card too tall. */
+@media (min-width:700px) and (max-height:899px){
+  body{overflow-y:auto!important;overflow-x:hidden!important}
+  .progress-card{max-width:min(600px,calc(100vw - 48px))!important}
+  .swipe-area{
+    height:auto!important;
+    min-height:calc(100dvh - 165px)!important;
+    padding:18px 18px calc(105px + env(safe-area-inset-bottom))!important;
+  }
+  .card-stack{
+    max-width:min(600px,calc(100vw - 48px))!important;
+    height:clamp(365px,55dvh,460px)!important;
+    min-height:365px!important;
+    max-height:460px!important;
+  }
+  .job-card{height:100%!important;min-height:0!important;max-height:none!important}
+}
+</style>
 </head>
 
 <body data-swipe-build="2026-09-27-empty-topbar-job-count">
+<div id="alygnn-shared-candidate-loader" role="status" aria-label="Alygnn is loading" aria-live="polite">
+  <div class="alygnn-boot-inner">
+    <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-boot-copy">Putting your job search in motion.</div>
+    <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
+  </div>
+</div>
+
 <header class="top-header">
   <button class="back-btn" id="back-button" type="button">
     <span aria-hidden="true">←</span>
@@ -5620,6 +5700,7 @@ function enforceCandidateNav(){
   }
 
   await loadJobs();
+  window.AlygnnCandidateBoot?.finish();
 
   enforceCandidateNav();
   setTimeout(enforceCandidateNav,250);
