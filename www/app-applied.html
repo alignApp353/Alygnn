@@ -942,8 +942,18 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 
 </style>
 
+<link rel="stylesheet" href="app-candidate-loading-unified.css">
+<script defer src="app-candidate-loading-unified.js"></script>
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
+<div id="alygnn-shared-candidate-loader" role="status" aria-label="Alygnn is loading" aria-live="polite">
+  <div class="alygnn-boot-inner">
+    <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-boot-copy">Opening your applications.</div>
+    <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
+  </div>
+</div>
+
 <header class="my-jobs-header">
   <div class="my-jobs-header-spacer" aria-hidden="true"></div>
 
@@ -1764,6 +1774,7 @@ window.addEventListener('pageshow',()=>{
   }
 
   await loadMyJobs(currentUserId);
+  window.AlygnnCandidateBoot?.finish();
   startRealtimeSync(currentUserId);
 })();</script>
 
