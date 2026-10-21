@@ -1865,12 +1865,34 @@ function calculateNextPlanCharge(ent,sub){
     Number(ent?.plan_amount_cents||0);
 }
 
+// Billing history must include Stripe customers used for extra team seats.
+// These subscriptions can have a separate customer from the plan/second slot.
+// Read only; never changes subscriptions, invoices, or entitlements.
+async function teamSeatBillingCustomerIds(employerId){
+  const safeEmployer=String(employerId||'').replace(/"/g,'').trim();
+  if(!safeEmployer)return [];
+  try{
+    const result=await manageStripe('GET','subscriptions/search',{
+      query:`metadata["employer_id"]:"${safeEmployer}" AND metadata["product"]:"team_seat"`,
+      limit:100
+    });
+    return [...new Set((result?.data||[])
+      .map(sub=>typeof sub?.customer==='string'?sub.customer:sub?.customer?.id)
+      .filter(Boolean))];
+  }catch(error){
+    console.warn('Could not load team-seat customers for billing history:',error?.message||error);
+    return [];
+  }
+}
+
 async function billingAccountSummary(user,ent,planSub,secondSub){
+  const teamSeatCustomerIds=await teamSeatBillingCustomerIds(user?.id);
   const ids=[
     stripeCustomerId(planSub,ent),
     typeof secondSub?.customer==='string'
       ? secondSub.customer
-      : secondSub?.customer?.id
+      : secondSub?.customer?.id,
+    ...teamSeatCustomerIds
   ].filter(Boolean);
 
   const uniqueIds=[...new Set(ids)];
