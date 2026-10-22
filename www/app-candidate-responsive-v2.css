@@ -117,3 +117,5 @@ html[data-alygnn-responsive="candidate"] :is(.profile-name,.profile-meta,.settin
   html[data-alygnn-responsive="candidate"] .greeting,
   html[data-alygnn-responsive="candidate"] .settings-title {font-size:clamp(40px,4vw,48px)!important;}
 }
+
+.alygnn-unified-back[hidden],.header-back-inline[hidden]{display:none!important}
