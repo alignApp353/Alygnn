@@ -2212,17 +2212,18 @@ window.addEventListener('beforeunload',()=>{
 
 const candidateMessagesLoader = document.getElementById('loading');
 
-let candidateMessagesCameFromCandidatePage = false;
+// When navigating from any Alygnn page, the departing page may already show
+// its own transition loader. Do not show a second loader on Messages.
+// Keep the existing loader for direct visits (no same-origin referrer).
+let candidateMessagesCameFromAlygnnPage = false;
 try {
-  const ref = new URL(document.referrer || '', window.location.href);
-  candidateMessagesCameFromCandidatePage =
-    ref.origin === window.location.origin &&
-    /\/(account|my-jobs|swipe|profile-details|job-details)\.html$/i.test(ref.pathname);
+  if (document.referrer) {
+    const ref = new URL(document.referrer);
+    candidateMessagesCameFromAlygnnPage = ref.origin === window.location.origin;
+  }
 } catch (_) {}
 
-// Avoid a second loading-screen flash when coming from another candidate page.
-// On a direct visit, show the loader immediately rather than after a delayed timer.
-if (candidateMessagesCameFromCandidatePage) {
+if (candidateMessagesCameFromAlygnnPage) {
   candidateMessagesLoader?.classList.remove('loader-visible');
   document.body.classList.add('ready');
 } else if (!document.body.classList.contains('ready')) {
