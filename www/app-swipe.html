@@ -3611,14 +3611,26 @@ body.swipe-initializing .progress-card .stat-val{color:var(--muted,#657586)!impo
 body.swipe-initializing #job-progress-copy{white-space:nowrap;font-size:11px!important}
 body.swipe-initializing .card-stack>*{visibility:hidden!important}
 body.swipe-initializing .card-stack{position:relative!important}
-body.swipe-initializing .card-stack::after{
-  content:'Finding matched jobs…';position:absolute;inset:10% 0;
-  border:1px solid var(--border,#DDE3E8);border-radius:22px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:700;color:var(--muted,#657586);
-  background:var(--card,#F6F8F7);pointer-events:none;
-}
+/* Never paint a placeholder card in a contrasting theme while jobs are loading. */
+body.swipe-initializing .card-stack::after{display:none!important;content:none!important}
 body.swipe-initializing .action-buttons{visibility:hidden!important}
+/* Only reveal the actual job card and counters AFTER all data is ready. */
+html[data-alygnn-responsive="candidate"] body.swipe-initializing #alygnn-shared-candidate-loader,
+html[data-alygnn-responsive="candidate"] body.swipe-initializing #alygnn-shared-candidate-loader.alygnn-boot-complete {
+  display:flex!important;opacity:1!important;visibility:visible!important;
+  pointer-events:auto!important;background:#F6F8F7!important;
+}
+html[data-effective-theme="dark"] body.swipe-initializing #alygnn-shared-candidate-loader,
+html[data-theme="dark"] body.swipe-initializing #alygnn-shared-candidate-loader,
+html[data-effective-theme="dark"] body.swipe-initializing #alygnn-shared-candidate-loader.alygnn-boot-complete,
+html[data-theme="dark"] body.swipe-initializing #alygnn-shared-candidate-loader.alygnn-boot-complete {
+  background:#061821!important;
+}
+body.swipe-load-error .progress-card{visibility:hidden!important}
+#discover-boot-retry[hidden]{display:none!important}
+#discover-boot-retry{display:block;margin:24px auto 0;min-height:48px;
+  border:0;border-radius:12px;background:#416A9B;color:#fff;
+  font:800 14px 'DM Sans',Arial,sans-serif;padding:12px 24px}
 </style>
 </head>
 
@@ -3628,6 +3640,7 @@ body.swipe-initializing .action-buttons{visibility:hidden!important}
     <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
     <div class="alygnn-boot-copy">Putting your job search in motion.</div>
     <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
+    <button type="button" id="discover-boot-retry" hidden onclick="window.location.reload()">Try again</button>
   </div>
 </div>
 
@@ -5322,7 +5335,7 @@ async function undo(){
 }
 
 function updateStats(){
-  document.body.classList.remove('swipe-initializing');
+  // Initialization is cleared only by initialize(), not by a premature render.
   const remaining=Math.max(0,jobs.length-currentIndex);
   const position=jobs.length?Math.min(currentIndex+1,jobs.length):0;
   const completed=jobs.length?Math.min(currentIndex,jobs.length):0;
@@ -5360,10 +5373,7 @@ async function loadJobs(){
 
   if(jobsResult.error){
     console.error('Could not load jobs:',jobsResult.error);
-    showToast('We could not load your matches. Please try again.');
-    jobs=[];
-    renderCards();
-    return;
+    throw jobsResult.error;
   }
 
   if(applicationsResult.error){
@@ -5451,6 +5461,10 @@ function holdTapFeedback(button){
 }
 
 async function retryNoJobs(){
+  if(document.body.classList.contains('swipe-load-error')){
+    window.location.reload();
+    return;
+  }
   const button=document.getElementById('no-jobs-retry');
   if(!button || noJobsRetryBusy)return;
 
@@ -5628,6 +5642,17 @@ function enforceCandidateNav(){
   }
 }
 
+// If the connection stalls, leave data covered and offer recovery instead of
+// releasing the 8-second shared-loader watchdog onto unfinished dash values.
+setTimeout(()=>{
+  if(document.body.classList.contains('swipe-initializing')){
+    const retry=document.getElementById('discover-boot-retry');
+    const copy=document.querySelector('#alygnn-shared-candidate-loader .alygnn-boot-copy');
+    if(copy)copy.textContent='Your jobs are taking longer than expected to load.';
+    if(retry)retry.hidden=false;
+  }
+},25000);
+
 (async function initialize(){
   watchCandidateTheme();
 
@@ -5662,12 +5687,18 @@ function enforceCandidateNav(){
     showToast('Could not load your Alygnn matching profile');
   }
 
-  try{await loadJobs()}catch(error){
+  try{
+    await loadJobs();
+  }catch(error){
     console.error('Could not load candidate jobs',error);
+    document.body.classList.add('swipe-load-error');
     jobs=[];
     currentIndex=0;
+    const title=document.querySelector('#empty-screen .empty-title');
+    const description=document.querySelector('#empty-screen .empty-sub');
+    if(title)title.textContent='We couldn\'t load your jobs';
+    if(description)description.textContent='Please check your connection and try again. Your job history has not been changed.';
     renderCards();
-    showToast('Could not load jobs. Please try again.');
   }
   document.body.classList.remove('swipe-initializing');
   window.AlygnnCandidateBoot?.finish();
