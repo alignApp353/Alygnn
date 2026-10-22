@@ -5769,6 +5769,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function isValidCompanyName(company) {
     const clean = normalizeText(company);
     if (clean.length < 3 || clean.length > 80) return false;
+    // A name already approved on the employer profile must not be rejected
+    // merely because its legal name consists of short words (e.g. ECU LLC).
+    const verifiedCompany = normalizeText(currentProfile?.company_name);
+    const matchesVerifiedCompany = currentProfile?.employer_verified === true &&
+      String(currentProfile?.verification_status || '').toLowerCase() === 'approved' &&
+      !!verifiedCompany && clean.toLowerCase() === verifiedCompany.toLowerCase();
+    if (matchesVerifiedCompany) return true;
     if (containsBlockedJunk(clean) || hasRepeatedJunk(clean)) return false;
     return /^[A-Za-z0-9&.,'’()\-/ ]+$/.test(clean);
   }
