@@ -565,7 +565,10 @@ function renderBilling(){
         Math.max(0,amount-tax)
       );
 
-       const discount=Number(inv.discount_cents||0);
+       // Some subscription invoices lack a separate discount field. Derive the
+       // displayed discount from Stripe's subtotal, tax, and final total.
+       const explicitDiscount=Number(inv.discount_cents||0);
+       const discount=explicitDiscount>0?explicitDiscount:Math.max(0,subtotal+tax-amount);
 
       const jobCopy=inv.job_title
         ? `Job: ${inv.job_title}${inv.days?` · ${inv.days} day${Number(inv.days)===1?'':'s'}`:''}`
@@ -575,9 +578,12 @@ function renderBilling(){
         ? `Boosted until ${dateLabel(inv.boosted_until)}`
         : '';
 
+      const boostedUntilMs=inv.boosted_until?new Date(inv.boosted_until).getTime():NaN;
+      const boostAlreadyActive=Number.isFinite(boostedUntilMs)&&boostedUntilMs>Date.now();
       const canSyncBoost=
         inv.product==='job_boost' &&
         inv.checkout_session_id &&
+        !boostAlreadyActive &&
         String(inv.status||'').toLowerCase()==='succeeded';
 
       return `
@@ -627,8 +633,9 @@ function openReceipt(index){
   if(!inv)return;
   const total=Number(inv.total_cents??inv.amount_paid_cents??inv.amount_due_cents??0);
   const tax=Number(inv.tax_cents||0);
-  const discount=Number(inv.discount_cents||0);
   const subtotal=Number(inv.subtotal_cents??Math.max(0,total-tax));
+  const explicitDiscount=Number(inv.discount_cents||0);
+  const discount=explicitDiscount>0?explicitDiscount:Math.max(0,subtotal+tax-total);
   const currency=inv.currency||'usd';
   const details=[
     ['Product',inv.description||inv.number||'Alygnn payment'],
