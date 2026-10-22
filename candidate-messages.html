@@ -1061,6 +1061,12 @@ body.candidate-role #nav-swipe-link[hidden]{
     visibility:visible !important;
   }
 
+  /* A rapid second document load must not replay an already completed
+     Messages loading animation. Keep the page concealed until data is ready. */
+  html.alygnn-messages-reentry #loading.alygnn-page-loader{
+    display:none !important;
+    visibility:hidden !important;
+  }
   body.ready #loading.alygnn-page-loader{
     display:none !important;
     visibility:hidden !important;
@@ -1068,6 +1074,16 @@ body.candidate-role #nav-swipe-link[hidden]{
   }
 </style>
 
+<script>
+/* Guard against an immediate duplicate navigation to the same Messages page.
+   This does not change authentication or the messages initialization path. */
+try {
+  const lastReady = Number(sessionStorage.getItem('alygnn_messages_last_ready') || 0);
+  if (lastReady > 0 && Date.now() - lastReady < 12000) {
+    document.documentElement.classList.add('alygnn-messages-reentry');
+  }
+} catch (_) {}
+</script>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your messages…||Getting your conversations ready…||Almost there…">
@@ -2356,6 +2372,7 @@ init()
   .finally(() => {
     document.body.classList.add('ready');
     candidateMessagesLoader?.classList.remove('loader-visible');
+    try { sessionStorage.setItem('alygnn_messages_last_ready', String(Date.now())); } catch (_) {}
   });
 </script>
 
