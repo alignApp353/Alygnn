@@ -3682,6 +3682,377 @@ body.swipe-load-error .progress-card{visibility:hidden!important}
   .job-card .swipe-compact-label{font-size:10px!important}
 }
 </style>
+
+<style id="alygnn-swipe-compact-card-v17">
+/* The active card sizes itself to the real information rather than reserving
+   an empty fixed-height panel. The two visual cards behind remain absolute. */
+.card-stack {
+  display:block!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  width:100%!important;
+  max-width:430px!important;
+  flex:0 0 auto!important;
+}
+.card-stack>.job-card:first-child {
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  padding:20px 21px 17px!important;
+  overflow:hidden!important;
+}
+.card-stack>.job-card.alygnn-recommended-card:first-child {
+  padding-top:45px!important;
+}
+.card-stack>.job-card:nth-child(n+2){
+  position:absolute!important;
+  inset:0!important;
+  height:100%!important;
+  min-height:0!important;
+}
+/* Details are now beside the match score, at the top-right. */
+.job-card .swipe-card-toolbar {
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+  gap:10px!important;
+  flex:0 0 auto!important;
+  margin-bottom:11px!important;
+}
+.job-card .swipe-card-details-top {
+  flex:0 0 auto;
+  width:auto!important;
+  min-height:34px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  padding:6px 10px!important;
+  border:1px solid var(--border)!important;
+  border-radius:999px!important;
+  background:rgba(93,127,163,.055)!important;
+  color:var(--brand-dark)!important;
+  font-size:10.8px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+  cursor:pointer;
+}
+.job-card .card-top {margin-bottom:10px!important}
+.job-card .mobile-job-tags {margin-bottom:10px!important}
+.job-card .swipe-card-insights {
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  min-height:0!important;
+  gap:9px!important;
+  margin-top:0!important;
+}
+.job-card .swipe-role-copy {
+  -webkit-line-clamp:3!important;
+  line-height:1.43!important;
+}
+.job-card .swipe-insight-label {margin-bottom:5px!important}
+.job-card .swipe-compact-line {padding-top:7px!important}
+.job-card .swipe-card-date {
+  display:block;
+  flex:0 0 auto;
+  width:100%;
+  margin-top:12px;
+  padding-top:9px;
+  border-top:1px solid var(--border);
+  font-size:10px!important;
+  color:var(--text-muted);
+}
+/* The shorter card leaves breathing space around the swipe actions. */
+.job-card .swipe-benefits-line {display:grid!important}
+@media (max-width:699px){
+  .job-card .swipe-card-insights {gap:8px!important}
+  .job-card .swipe-role-copy {font-size:11.1px!important}
+  .job-card .swipe-compact-line {grid-template-columns:minmax(0,105px) minmax(0,1fr)!important}
+}
+@media (max-width:380px){
+  .card-stack>.job-card:first-child{padding:16px 17px 14px!important}
+  .card-stack>.job-card.alygnn-recommended-card:first-child{padding-top:41px!important}
+  .job-card .swipe-card-details-top{padding:5px 8px!important;font-size:10px!important}
+  .job-card .swipe-role-copy{-webkit-line-clamp:2!important}
+  .job-card .swipe-compact-line{grid-template-columns:minmax(0,90px) minmax(0,1fr)!important}
+}
+@media (max-height:740px) and (max-width:699px){
+  .card-stack>.job-card:first-child{padding:15px 17px 13px!important}
+  .card-stack>.job-card.alygnn-recommended-card:first-child{padding-top:39px!important}
+  .job-card .swipe-card-toolbar{margin-bottom:7px!important}
+  .job-card .card-top{margin-bottom:7px!important}
+  .job-card .mobile-job-tags{margin-bottom:7px!important}
+  .job-card .swipe-card-insights{gap:5px!important}
+  .job-card .swipe-role-copy{-webkit-line-clamp:2!important}
+  .job-card .swipe-compact-line{padding-top:4px!important}
+  .job-card .swipe-benefits-line{display:none!important}
+  .job-card .swipe-card-date{margin-top:7px;padding-top:6px}
+}
+@media (min-width:700px){
+  .card-stack{max-width:min(610px,calc(100vw - 64px))!important}
+  .card-stack>.job-card:first-child{padding:26px 30px 23px!important}
+  .card-stack>.job-card.alygnn-recommended-card:first-child{padding-top:55px!important}
+  .job-card .swipe-card-toolbar{margin-bottom:18px!important}
+  .job-card .swipe-card-details-top{font-size:13px!important;padding:9px 16px!important}
+  .job-card .swipe-card-insights{gap:15px!important}
+  .job-card .swipe-role-copy{font-size:14px!important}
+  .job-card .swipe-card-date{font-size:12px!important}
+}
+/* Keep swipe-button labels comfortably above the fixed bottom navigation. */
+@media (max-width:699px) and (min-height:701px){
+  body:not(.no-jobs-mode) .swipe-area{position:relative!important;top:-18px!important}
+}
+/* Tiny phones must be scrollable instead of hiding the swipe actions behind tabs. */
+@media (max-width:699px) and (max-height:700px){
+  html,body{overflow-y:auto!important;overflow-x:hidden!important}
+  body:not(.no-jobs-mode) .swipe-area{
+    height:auto!important;
+    min-height:0!important;
+    padding-bottom:calc(115px + env(safe-area-inset-bottom))!important;
+    justify-content:flex-start!important;
+  }
+}
+html[data-effective-theme="dark"] .job-card .swipe-card-details-top,
+body[data-theme="dark"] .job-card .swipe-card-details-top{
+  background:rgba(142,180,218,.10)!important;
+  color:#9FC0E4!important;
+}
+</style>
+
+<style id="alygnn-swipe-consistent-cards-v18">
+/* A single, responsive card size per device: no jump when a short or long
+   job replaces the previous job. Complete information stays in View details. */
+.card-stack {
+  display:block!important;
+  position:relative!important;
+  height:clamp(355px,48dvh,418px)!important;
+  min-height:0!important;
+  max-height:none!important;
+  max-width:430px!important;
+  flex:0 0 auto!important;
+}
+.card-stack>.job-card:first-child,
+.card-stack>.job-card.alygnn-recommended-card:first-child {
+  position:absolute!important;
+  inset:0!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:42px 20px 14px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+.card-stack>.job-card:nth-child(n+2){
+  position:absolute!important;
+  inset:0!important;
+  height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+}
+/* All jobs reserve the same banner area; recommended jobs display the ribbon.
+   This prevents the title from moving when a badge appears or disappears. */
+.job-card .swipe-card-toolbar {
+  flex:0 0 34px!important;
+  min-height:34px!important;
+  max-height:34px!important;
+  margin:0 0 9px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:7px!important;
+}
+.job-card .swipe-card-details-top {
+  height:34px!important;
+  min-height:34px!important;
+  flex-shrink:0!important;
+}
+.job-card .card-top {
+  flex:0 0 59px!important;
+  height:59px!important;
+  max-height:59px!important;
+  min-width:0!important;
+  margin:0 0 8px!important;
+  align-items:center!important;
+  overflow:hidden!important;
+}
+.job-card .card-top>div:last-child{min-width:0!important;overflow:hidden!important}
+.job-card .job-title {
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  overflow:hidden!important;
+  overflow-wrap:anywhere!important;
+  line-height:1.1!important;
+  font-size:clamp(20px,5.8vw,25px)!important;
+}
+.job-card .company-line{overflow:hidden!important;min-width:0!important}
+.job-card .company-name {
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+  max-width:100%!important;
+}
+.job-card .mobile-job-tags {
+  flex:0 0 58px!important;
+  min-height:58px!important;
+  max-height:58px!important;
+  margin:0 0 8px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-content:flex-start!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  column-gap:6px!important;
+  row-gap:5px!important;
+}
+.job-card .mobile-tag {
+  min-height:24px!important;
+  height:24px!important;
+  max-width:100%!important;
+  flex:0 1 auto!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:9.5px!important;
+  line-height:1.1!important;
+  padding:0 8px!important;
+}
+.job-card .swipe-card-insights {
+  display:grid!important;
+  grid-template-rows:minmax(46px,auto) minmax(0,1fr) minmax(33px,auto)!important;
+  gap:6px!important;
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:hidden!important;
+  margin:0!important;
+  align-content:stretch!important;
+}
+.job-card .swipe-match-insight{min-height:0!important;overflow:hidden!important;padding-top:6px!important}
+.job-card .swipe-match-metrics{gap:5px!important}
+.job-card .swipe-match-metric{padding:4px 3px!important;max-height:31px!important}
+.job-card .swipe-match-unavailable{font-size:10px;color:var(--text-muted);line-height:1.35}
+.job-card .swipe-insight-label{margin-bottom:5px!important}
+.job-card .swipe-role-insight{min-height:0!important;overflow:hidden!important}
+.job-card .swipe-role-copy{
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:3!important;
+  overflow:hidden!important;
+  font-size:11px!important;
+  line-height:1.38!important;
+  overflow-wrap:anywhere!important;
+}
+.job-card .swipe-requirements-line{
+  min-height:33px!important;
+  max-height:44px!important;
+  overflow:hidden!important;
+  align-items:start!important;
+  padding-top:5px!important;
+}
+.job-card .swipe-requirements-line .swipe-compact-value{
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:2!important;
+  overflow:hidden!important;
+  overflow-wrap:anywhere!important;
+}
+/* Benefits and the full requirements list are available in View details.
+   Hide benefits consistently so jobs with many perks don't resize cards. */
+.job-card .swipe-benefits-line{display:none!important}
+.job-card .swipe-card-date{
+  flex:0 0 19px!important;
+  height:19px!important;
+  min-height:19px!important;
+  max-height:19px!important;
+  margin-top:7px!important;
+  padding-top:5px!important;
+  border-top:1px solid var(--border)!important;
+  font-size:9.5px!important;
+  line-height:1.3!important;
+}
+/* Small phones: compact but stable; page scrolls rather than clipping actions. */
+@media(max-width:380px){
+  .card-stack {height:355px!important}
+  .card-stack>.job-card:first-child,
+  .card-stack>.job-card.alygnn-recommended-card:first-child{padding:39px 15px 11px!important}
+  .job-card .card-top{flex-basis:50px!important;height:50px!important;max-height:50px!important}
+  .job-card .company-logo{width:44px!important;height:44px!important}
+  .job-card .job-title{font-size:19px!important}
+  .job-card .mobile-job-tags{flex-basis:53px!important;height:53px!important;max-height:53px!important}
+  .job-card .mobile-tag{height:23px!important;min-height:23px!important;font-size:8.5px!important;padding:0 6px!important}
+  .job-card .swipe-card-insights{gap:4px!important}
+  .job-card .swipe-role-copy{-webkit-line-clamp:2!important;font-size:10px!important}
+  .job-card .swipe-insight-label{font-size:7.7px!important}
+  .job-card .swipe-compact-label{font-size:7.4px!important}
+  .job-card .swipe-compact-value{font-size:9px!important}
+}
+@media(max-width:699px) and (max-height:740px){
+  .card-stack{height:355px!important}
+  body:not(.no-jobs-mode) .swipe-area{
+    height:auto!important;
+    min-height:0!important;
+    padding-bottom:calc(110px + env(safe-area-inset-bottom))!important;
+    position:relative!important;
+    top:0!important;
+    justify-content:flex-start!important;
+  }
+  html,body{overflow-y:auto!important;overflow-x:hidden!important}
+}
+/* Tablets and foldables: wider and larger, but still ONE size per device. */
+@media(min-width:700px){
+  .card-stack{
+    height:clamp(410px,42dvh,510px)!important;
+    max-width:min(600px,calc(100vw - 56px))!important;
+  }
+  .card-stack>.job-card:first-child,
+  .card-stack>.job-card.alygnn-recommended-card:first-child{padding:53px 28px 22px!important}
+  .job-card .swipe-card-toolbar{flex-basis:40px!important;height:40px!important;max-height:40px!important;margin-bottom:15px!important}
+  .job-card .swipe-card-details-top{min-height:40px!important;height:40px!important}
+  .job-card .card-top{height:77px!important;max-height:77px!important;flex-basis:77px!important;margin-bottom:12px!important}
+  .job-card .job-title{font-size:clamp(27px,3.5vw,33px)!important}
+  .job-card .mobile-job-tags{height:76px!important;max-height:76px!important;flex-basis:76px!important;gap:8px!important;margin-bottom:12px!important}
+  .job-card .mobile-tag{height:32px!important;min-height:32px!important;font-size:11.5px!important;padding:0 10px!important}
+  .job-card .swipe-card-insights{grid-template-rows:minmax(62px,auto) minmax(0,1fr) minmax(38px,auto)!important;gap:10px!important}
+  .job-card .swipe-role-copy{font-size:14px!important;-webkit-line-clamp:3!important}
+  .job-card .swipe-insight-label{font-size:10px!important}
+  .job-card .swipe-card-date{height:23px!important;min-height:23px!important;flex-basis:23px!important;font-size:12px!important}
+  body:not(.no-jobs-mode) .swipe-area{min-height:0!important}
+}
+@media (min-width:700px) and (max-height:780px){
+  .card-stack{height:380px!important}
+  body:not(.no-jobs-mode) .swipe-area{
+    height:auto!important;
+    min-height:0!important;
+    justify-content:flex-start!important;
+    padding-bottom:calc(110px + env(safe-area-inset-bottom))!important;
+  }
+  html,body{overflow-y:auto!important;overflow-x:hidden!important}
+}
+</style>
+<style id="alygnn-swipe-card-only-final-v19">
+/* Card-only refinement. Alygnn's header, messaging navigation, bottom tabs,
+   colors, and other screen components are intentionally left unchanged. */
+@media (min-width:700px) and (min-height:781px){
+  /* Prevent large tablets from creating a tall empty card. All jobs still use
+     exactly the same card height at each viewport size. */
+  .card-stack{height:clamp(410px,42dvh,480px)!important}
+}
+/* If an exceptionally long word appears in a job preview, wrap or clamp it
+   within the job card rather than shifting nearby controls. */
+.job-card .swipe-role-copy,
+.job-card .swipe-compact-value{overflow-wrap:anywhere!important;word-break:normal!important}
+.job-card .swipe-card-details-top:focus-visible{outline:2px solid var(--brand)!important;outline-offset:2px!important}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -4924,7 +5295,12 @@ function renderSwipeMatchHighlights(job){
     .filter(item=>item.value!==null)
     .slice(0,3);
 
-  if(!metrics.length)return '';
+  if(!metrics.length)return `
+    <div class="swipe-insight swipe-match-insight">
+      <div class="swipe-insight-label">Why this matches</div>
+      <div class="swipe-match-unavailable">Match details not available yet</div>
+    </div>
+  `;
 
   return `
     <div class="swipe-insight swipe-match-insight">
@@ -4943,7 +5319,8 @@ function renderSwipeMatchHighlights(job){
 
 function renderSwipeCompactLine(label,items,className=''){
   const clean=swipeCompactItems(items,2);
-  if(!clean.length)return '';
+  if(!clean.length && className !== 'swipe-requirements-line')return '';
+  if(!clean.length)clean.push('See full job ad');
 
   return `
     <div class="swipe-compact-line ${className}">
@@ -5015,6 +5392,14 @@ function buildCard(job,index){
 
     <div class="card-toolbar swipe-card-toolbar">
       <div class="match">★ ${escapeHtml(match)}</div>
+      <button
+        class="view-full-ad mobile-view-details swipe-card-details-top"
+        type="button"
+        aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
+      >
+        <span>View details</span>
+        <span aria-hidden="true">→</span>
+      </button>
     </div>
 
     <div class="card-top">
@@ -5033,24 +5418,14 @@ function buildCard(job,index){
         ?'<span class="mobile-tag urgent"><span class="urgent-dot"></span>Urgently Hiring</span>'
         :''}
       <span class="mobile-tag">${escapeHtml(location)}</span>
+      <span class="mobile-tag pay">${escapeHtml(salaryText(job))}</span>
       <span class="mobile-tag">${escapeHtml(type)}</span>
       ${style?`<span class="mobile-tag">${escapeHtml(style)}</span>`:''}
-      <span class="mobile-tag pay">${escapeHtml(salaryText(job))}</span>
     </div>
 
     ${renderSwipeCardInsights(job)}
 
-    <div class="card-bottom mobile-card-bottom">
-      <div class="posted-time">${escapeHtml(postedText(job.created_at))}</div>
-      <button
-        class="view-full-ad mobile-view-details"
-        type="button"
-        aria-label="View full job ad for ${escapeHtml(job.title||'this job')}"
-      >
-        <span>View details</span>
-        <span aria-hidden="true">→</span>
-      </button>
-    </div>
+    <div class="swipe-card-date posted-time">${escapeHtml(postedText(job.created_at))}</div>
   `;
 
   const viewFullAdButton=card.querySelector('.view-full-ad');
