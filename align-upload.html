@@ -1129,6 +1129,32 @@
     }
   }
 
+  // Reject clearly unrelated documents, without requiring prior job experience.
+  // This is a client-side guard; the parsing API should enforce the same rule.
+  function unrelatedResumeDocument(text, parsed) {
+    const content = String(text || '').replace(/\s+/g, ' ').trim();
+    const strongResumeMarkers = /\b(work experience|employment history|professional experience|career objective|professional summary|technical skills|core competencies|volunteer experience|internships|projects|references|curriculum vitae|resume|résumé)\b/i;
+    const credentialOnly = /\b(certificate of completion|this is to certify|has successfully completed|certificate of attendance|completion certificate|training certificate|course completion)\b/i;
+    const otherDocument = /\b(invoice number|invoice #|billing statement|amount due|payment receipt|bank statement|order confirmation|traffic citation|court summons|insurance policy)\b/i;
+    const hasResumeMarkers = strongResumeMarkers.test(content);
+    if (content && !hasResumeMarkers && (credentialOnly.test(content) || otherDocument.test(content))) return true;
+
+    if (!parsed || typeof parsed !== 'object') return false;
+    const hasItems = value => Array.isArray(value) ? value.length > 0 :
+      (typeof value === 'string' ? value.trim().length > 0 :
+        (value && typeof value === 'object' ? Object.values(value).some(v => typeof v === 'string' && v.trim()) : false));
+    const experience = hasItems(parsed.experience) || hasItems(parsed.experiences) || hasItems(parsed.work_experience);
+    const skills = hasItems(parsed.skills);
+    const projects = hasItems(parsed.projects) || hasItems(parsed.volunteer_experience) || hasItems(parsed.internships);
+    const education = hasItems(parsed.education);
+    const candidateContent = experience || skills || projects ||
+      (education && !credentialOnly.test(content) && !credentialOnly.test(JSON.stringify(parsed.education)));
+    // A person's name alone, or a course certificate misclassified as education,
+    // is not sufficient evidence that the document is a resume.
+    if (!candidateContent && !hasResumeMarkers) return true;
+    return false;
+  }
+
   async function readAndParseResume(file) {
     try {
       setProgress(20, 'Reading your resume...', 'Securely loading your file');
@@ -1166,6 +1192,10 @@
         }
 
         parserPayload = { resumeText: currentResumeText };
+      }
+
+      if (unrelatedResumeDocument(currentResumeText, null)) {
+        throw new Error('This document doesn’t look like a resume. Please upload a resume with your experience, education, skills, or qualifications.');
       }
 
       setProgress(
@@ -1208,12 +1238,22 @@
         );
       }
 
+      if (unrelatedResumeDocument(currentResumeText, result.data)) {
+        throw new Error('This document doesn’t look like a resume. Please upload a resume with your experience, education, skills, or qualifications.');
+      }
+
       setProgress(85, 'Finalizing your profile...', 'Almost there!');
       setProgress(100, 'Done!', 'Your resume has been parsed');
 
       setTimeout(() => showConfirm(result.data), 400);
     } catch (err) {
       console.error('Resume upload/parse error:', err);
+      if (String(err?.message || '').includes('doesn’t look like a resume')) {
+        currentFile = null;
+        currentResumeText = '';
+        fileInput.value = '';
+        await clearPendingResumeFile();
+      }
 
       const message =
         err?.message ||
