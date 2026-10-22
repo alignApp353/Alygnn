@@ -2847,15 +2847,53 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 #settings-back:not([hidden]),#profile-header-spacer:not([hidden]){grid-column:1!important;grid-row:1!important}
 #settings-shortcut:not([hidden]),#settings-header-spacer:not([hidden]){grid-column:3!important;grid-row:1!important}
 </style>
+<style id="alygnn-candidate-data-ready-gate-v7">
+/* Do not reveal the retired onboarding cards or mock account values before real
+   Supabase profile data has been used to select the correct candidate layout. */
+body.candidate-profile-booting #profile-view,
+body.candidate-profile-booting #settings-view,
+body.candidate-profile-booting #candidate-bottom-nav { visibility:hidden!important; }
+html[data-alygnn-responsive="candidate"] body.candidate-profile-booting #loading:not([hidden]) {
+  display:flex!important; opacity:1!important;visibility:visible!important;
+  pointer-events:auto!important;
+  background:#F6F8F7!important;
+}
+html[data-effective-theme="dark"] body.candidate-profile-booting #loading:not([hidden]),
+html[data-theme="dark"] body.candidate-profile-booting #loading:not([hidden]) {
+  background:#061821!important;
+}
+#candidate-profile-boot-error[hidden] {display:none!important}
+#candidate-profile-boot-error {
+  position:fixed;inset:0;z-index:10001;display:flex;
+  align-items:center;justify-content:center;padding:24px;
+  background:#F6F8F7;color:#172333;
+}
+html[data-effective-theme="dark"] #candidate-profile-boot-error,
+html[data-theme="dark"] #candidate-profile-boot-error {
+  background:#061821;color:#F3F7FA;
+}
+#candidate-profile-boot-error .boot-error-card {width:min(420px,100%);text-align:center}
+#candidate-profile-boot-error h2 {font-size:23px;margin-bottom:10px}
+#candidate-profile-boot-error p {font-size:15px;line-height:1.5;margin-bottom:22px}
+#candidate-profile-boot-error button {min-height:48px;padding:12px 24px;border:0;
+  border-radius:14px;background:#416A9B;color:#fff;font-weight:800}
+</style>
 </head>
 
-<body data-candidate-nav-build="2026-08-26-discover-color-sync">
+<body class="candidate-profile-booting" data-candidate-nav-build="2026-08-26-discover-color-sync">
 
 <div class="loading" id="loading" aria-live="polite" aria-label="Loading candidate workspace">
   <div class="loading-inner">
     <div class="loading-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
     <div class="loading-text" id="candidate-loading-message">Finding your fit.</div>
     <div class="loading-progress" aria-hidden="true"></div>
+  </div>
+</div>
+<div id="candidate-profile-boot-error" role="alert" hidden>
+  <div class="boot-error-card">
+    <h2>We couldn't open your profile</h2>
+    <p>Your account information did not finish loading. Please check your connection and try again.</p>
+    <button type="button" onclick="window.location.reload()">Try again</button>
   </div>
 </div>
 
@@ -4457,6 +4495,9 @@ async function countApplications(userId){
 
 async function loadCandidateWorkspace(options={}){
   const loadId=++candidateWorkspaceLoadId;
+  let profileLoadFailed=false;
+  let candidateRedirecting=false;
+  document.getElementById('candidate-profile-boot-error')?.setAttribute('hidden','');
   const restoring=Boolean(options.restoring);
 
   if(restoring && $('loading')){
@@ -4473,6 +4514,7 @@ async function loadCandidateWorkspace(options={}){
       error ||
       !data.session
     ){
+      candidateRedirecting=true;
       window.location.replace(
         'app-login.html'
       );
@@ -4505,7 +4547,9 @@ async function loadCandidateWorkspace(options={}){
     }
 
     if(profileError){
-      console.warn('Candidate profile lookup failed:',profileError);
+      // A failed profile lookup is NOT an empty profile. Don't route an existing
+      // candidate into onboarding or show the old 0%-complete dashboard.
+      throw profileError;
     }
 
     activeCandidateProfileData=profile || {};
@@ -4826,20 +4870,23 @@ async function loadCandidateWorkspace(options={}){
       $('setup-section').hidden=true;
     }
 
-    renderCandidateOnboardingGate({
+    candidateRedirecting=renderCandidateOnboardingGate({
       hasResume:effectiveHasResume,
       previewReviewed:effectivePreviewReviewed,
       preferencesComplete:effectivePreferencesComplete
-    });
+    }) === true;
 
   }catch(error){
-    console.error(
-      'Candidate workspace failed:',
-      error
-    );
+    console.error('Candidate workspace failed:',error);
+    profileLoadFailed=true;
+    if(loadId===candidateWorkspaceLoadId){
+      document.getElementById('candidate-profile-boot-error')?.removeAttribute('hidden');
+    }
   }finally{
-    if(loadId===candidateWorkspaceLoadId && $('loading')){
-      $('loading').hidden=true;
+    if(loadId===candidateWorkspaceLoadId && !candidateRedirecting){
+      if($('loading'))$('loading').hidden=true;
+      document.body.classList.remove('candidate-profile-booting');
+      document.body.classList.toggle('candidate-profile-error',profileLoadFailed);
     }
   }
 }
@@ -5016,6 +5063,12 @@ $('dashboard-resume-input')?.addEventListener('change',event=>{
 syncCandidateView();
 restoreCandidateScreenState();
 loadCandidateWorkspace();
+// Slow/offline connections must not leave a permanent spinner or expose setup placeholders.
+setTimeout(()=>{
+  if(document.body.classList.contains('candidate-profile-booting')){
+    document.getElementById('candidate-profile-boot-error')?.removeAttribute('hidden');
+  }
+},25000);
 configureWorkspaceModeSwitch();
 
 // Preserve the current Candidate screen when Android backgrounds the app or
