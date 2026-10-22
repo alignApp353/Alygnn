@@ -1070,11 +1070,11 @@ body.candidate-role #nav-swipe-link[hidden]{
 
 </head>
 <body>
-<div id="loading" class="alygnn-page-loader" data-loader-messages="Finding jobs that fit you…||Getting your matches ready…||Preparing your profile…||Almost there…">
+<div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your messages…||Getting your conversations ready…||Almost there…">
   <div class="alygnn-loader-inner">
     <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
     <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
-    <div class="alygnn-loader-message">Finding jobs that fit you…</div>
+    <div class="alygnn-loader-message">Loading your messages…</div>
   </div>
 </div>
 
@@ -2112,8 +2112,6 @@ async function init(){
   renderChat();
   subscribeToThreads();
   if(activeThreadId)subscribeToMessages(activeThreadId);
-
-  document.body.classList.add('ready');
 }
 
 
@@ -2214,23 +2212,18 @@ window.addEventListener('beforeunload',()=>{
 
 const candidateMessagesLoader = document.getElementById('loading');
 
-// One unified loading screen covers both the navigation and conversation view.
-// The page becomes visible only after init() finishes rendering everything.
+// Use a single loading cycle. Keep the header and conversations hidden until
+// initial data and the selected thread have finished rendering.
 candidateMessagesLoader?.classList.add('loader-visible');
-
-const candidateMessagesRevealTimer = window.setTimeout(() => {
-  candidateMessagesLoader?.classList.remove('loader-visible');
-  document.body.classList.add('ready');
-}, 12000);
 
 init()
   .catch((error) => {
     console.error('Candidate messages failed to initialize:', error);
+    showSetup('We could not load your messages. Please refresh the page to try again.');
   })
   .finally(() => {
-    window.clearTimeout(candidateMessagesRevealTimer);
-    candidateMessagesLoader?.classList.remove('loader-visible');
     document.body.classList.add('ready');
+    candidateMessagesLoader?.classList.remove('loader-visible');
   });
 </script>
 
