@@ -1039,6 +1039,12 @@ main,
 <link rel="stylesheet" href="app-candidate-loading-smart.css">
 <script defer src="app-candidate-loading-smart.js"></script>
 <script defer src="app-candidate-back-v2.js"></script>
+
+<style id="alygnn-work-style-multi-select-v16">
+  .work-style-hint{margin:0 0 12px;color:var(--muted,var(--text-muted,#64748B));font-size:12px;line-height:1.4}
+  #workStyleOptions .choice{min-width:0;min-height:100px}
+  #workStyleOptions .choice-name,#workStyleOptions .choice-sub{overflow-wrap:break-word}
+</style>
 </head>
 <body class="prefs-hydrating" data-preferences-build="80">
 
@@ -1180,8 +1186,9 @@ main,
         <div class="section-num">04 — Work style</div>
         <div class="section-title">How do you want to work?</div>
       </div>
-      <div class="choice-grid" id="workStyleOptions">
-        <button class="choice active" type="button" data-value="Remote">
+      <p class="work-style-hint" id="workStyleHint">Optional · Select any that apply</p>
+      <div class="choice-grid" id="workStyleOptions" aria-label="Preferred work styles (optional, select multiple)">
+        <button class="choice" type="button" data-value="Remote">
           <div class="choice-icon">⌂</div>
           <div class="choice-name">Remote</div>
           <div class="choice-sub">Work from anywhere</div>
@@ -2103,21 +2110,12 @@ $('salaryMax').addEventListener('input',()=>{
 });
 
 
-/* Single-select work style */
+/* Optional multi-select: no selected styles means no work-style restriction. */
 document.querySelectorAll('#workStyleOptions .choice').forEach(button=>{
-  button.setAttribute(
-    'aria-pressed',
-    String(button.classList.contains('active'))
-  );
-
+  button.setAttribute('aria-pressed',String(button.classList.contains('active')));
   button.onclick=()=>{
-    document.querySelectorAll('#workStyleOptions .choice').forEach(choice=>{
-      choice.classList.remove('active');
-      choice.setAttribute('aria-pressed','false');
-    });
-
-    button.classList.add('active');
-    button.setAttribute('aria-pressed','true');
+    const active=button.classList.toggle('active');
+    button.setAttribute('aria-pressed',String(active));
     updateProgress();
   };
 });
@@ -2265,8 +2263,13 @@ document.addEventListener('click',event=>{
   }
 });
 
+function selectedWorkStyles(){
+  return [...document.querySelectorAll('#workStyleOptions .choice.active')]
+    .map(button=>button.dataset.value);
+}
 function selectedWorkStyle(){
-  return document.querySelector('#workStyleOptions .choice.active')?.dataset.value||'';
+  // Legacy single-value field for older Alygnn pages.
+  return selectedWorkStyles()[0]||'';
 }
 function selectedJobTypes(){
   return [...document.querySelectorAll('#jobTypeOptions .job-type.active')].map(b=>b.dataset.value);
@@ -2278,7 +2281,7 @@ function selectedBenefits(){
 function updateProgress(){
   const roleOkay=!$('roleInput').value.trim() || Boolean(selectedRole);
   const locationOkay=Boolean(selectedLocation || normalizeCustomLocation($('locationInput').value));
-  const workOkay=Boolean(selectedWorkStyle());
+  const workOkay=true; // Work style is optional, including selecting none.
   const jobTypesOkay=selectedJobTypes().length>0;
   const industriesOkay=allSelectedIndustries().length>0;
   const salaryOkay=true;
@@ -2370,7 +2373,8 @@ function collectPreferences(){
         compensationType
       )
     ),
-    workStyle:selectedWorkStyle(),
+    workStyle:selectedWorkStyle(), // Backward-compatible field
+    workStyles:selectedWorkStyles(), // All selected styles, or [] when unrestricted
     jobType:jobTypes[0]||'',
     jobTypes,
     benefits:selectedBenefits(),
@@ -2479,13 +2483,15 @@ function prefill(saved){
     Number($('salaryMax').value)
   );
 
-  if(saved.workStyle){
-    document.querySelectorAll('#workStyleOptions .choice').forEach(button=>{
-      const active=button.dataset.value===saved.workStyle;
-      button.classList.toggle('active',active);
-      button.setAttribute('aria-pressed',String(active));
-    });
-  }
+  // New multi-select array takes priority. Existing single-style profiles still work.
+  const savedWorkStyles=Array.isArray(saved.workStyles)
+    ?saved.workStyles
+    :(saved.workStyle?[saved.workStyle]:[]);
+  document.querySelectorAll('#workStyleOptions .choice').forEach(button=>{
+    const active=savedWorkStyles.includes(button.dataset.value);
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-pressed',String(active));
+  });
 
   if(Array.isArray(saved.jobTypes)){
     document.querySelectorAll('#jobTypeOptions .job-type').forEach(button=>{
