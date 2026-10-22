@@ -1056,7 +1056,7 @@ body.candidate-role #nav-swipe-link[hidden]{
   }
 
 
-  body:not(.ready) #loading.alygnn-page-loader.loader-visible{
+  body:not(.ready) #loading.alygnn-page-loader{
     display:flex !important;
     visibility:visible !important;
   }
@@ -1762,6 +1762,7 @@ async function openThread(threadId){
   renderConversationList();
   renderChat();
   subscribeToMessages(threadId);
+  await refreshCandidatePageNotifications();
 }
 
 async function loadMessages(threadId){
@@ -1977,6 +1978,7 @@ function subscribeToMessages(threadId){
       if(d){d.lastMessage=m;d.unread=0}
       renderConversationList();
       renderChat();
+      refreshCandidatePageNotifications();
     })
     .subscribe();
 }
@@ -2002,6 +2004,7 @@ function subscribeToThreads(){
 async function refreshAll(chooseFirst=true){
   await loadThreads();
   await loadThreadDetails();
+  refreshCandidatePageNotifications();
 
   if(activeThreadId&&!threads.some(t=>t.id===activeThreadId))activeThreadId=null;
   if(!activeThreadId&&chooseFirst&&threads.length)activeThreadId=threads[0].id;
@@ -2110,10 +2113,158 @@ async function init(){
   }
 
   renderChat();
+  await refreshCandidatePageNotifications();
   subscribeToThreads();
   if(activeThreadId)subscribeToMessages(activeThreadId);
 }
 
+
+
+// Candidate-wide notification sources and read state are intentionally identical
+// to Account and My Jobs, not limited to the currently opened conversation.
+const CANDIDATE_NOTIFICATION_READ_KEY='alygnn_candidate_notification_reads_v1';
+let candidatePageNotifications=[];
+let candidateNotificationRefreshBusy=false;
+function getCandidateNotificationReads(){
+  try{
+    const value=JSON.parse(localStorage.getItem(CANDIDATE_NOTIFICATION_READ_KEY)||'[]');
+    return new Set(Array.isArray(value)?value:[]);
+  }catch(_){return new Set();}
+}
+function saveCandidateNotificationReads(reads){
+  localStorage.setItem(CANDIDATE_NOTIFICATION_READ_KEY,JSON.stringify([...reads]));
+}
+function candidateStatusNotification(app, job){
+  const raw = String(app?.status || 'applied').trim().toLowerCase();
+  const title = job?.title || 'your application';
+  const company = job?.company || 'the employer';
+  const detailsUrl =
+    `job-details.html?job=${encodeURIComponent(app.job_id)}&app=${encodeURIComponent(app.id)}`;
+
+  if(raw === 'reviewed' || raw === 'under_review' || raw === 'under review'){
+    return {
+      id:`application-${app.id}-reviewed`,
+      icon:'✓',
+      iconClass:'',
+      title:'Your application was reviewed',
+      copy:`${company} reviewed your application for ${title}.`,
+      time:'Update',
+      action:detailsUrl
+    };
+  }
+
+  if(raw === 'hired' || raw === 'hire' || raw === 'accepted'){
+    return {
+      id:`application-${app.id}-${raw}`,
+      icon:'✓',
+      iconClass:'green',
+      title:raw === 'accepted' ? 'Application accepted' : 'You were marked hired',
+      copy:`There’s a new positive update from ${company} for ${title}.`,
+      time:'New',
+      action:detailsUrl
+    };
+  }
+
+  if(raw === 'rejected' || raw === 'declined' || raw === 'not_selected'){
+    return {
+      id:`application-${app.id}-rejected`,
+      icon:'–',
+      iconClass:'rose',
+      title:'Application update',
+      copy:`${company} updated your ${title} application to “Not selected.”`,
+      time:'Update',
+      action:detailsUrl
+    };
+  }
+
+  return null;
+}
+
+async function refreshCandidatePageNotifications(){
+  if(!currentUser || candidateNotificationRefreshBusy)return;
+  candidateNotificationRefreshBusy=true;
+  try{
+    const items=[];
+    // Match Account/My Jobs: notifications are individual unread message rows.
+    const {data:conversationRows,error:conversationError}=await sb
+      .from('application_conversations')
+      .select('id,job_id,company_name,job_title,candidate_hidden_at')
+      .eq('candidate_id',currentUser.id).is('candidate_hidden_at',null);
+    if(conversationError)throw conversationError;
+    const rows=conversationRows||[];
+    const ids=rows.map(x=>x.id).filter(Boolean);
+    const jobIds=[...new Set(rows.map(x=>x.job_id).filter(Boolean))];
+    let jobs=[];
+    if(jobIds.length){
+      const result=await sb.from('jobs').select('id,title,company').in('id',jobIds);
+      if(result.error)throw result.error;
+      jobs=result.data||[];
+    }
+    const jobsById=new Map(jobs.map(j=>[String(j.id),j]));
+    if(ids.length){
+      const result=await sb.from('application_messages')
+        .select('id,conversation_id,sender_id,body,created_at,read_at')
+        .in('conversation_id',ids).neq('sender_id',currentUser.id)
+        .is('read_at',null).order('created_at',{ascending:false}).limit(20);
+      if(result.error)throw result.error;
+      const byId=new Map(rows.map(t=>[String(t.id),t]));
+      for(const m of result.data||[]){
+        const t=byId.get(String(m.conversation_id))||{};
+        const job=jobsById.get(String(t.job_id))||{};
+        const company=String(t.company_name||job.company||'Employer').trim();
+        const jobTitle=String(t.job_title||job.title||'your application').trim();
+        const preview=String(m.body||'').trim().replace(/\s+/g,' ');
+        items.push({id:'message-'+m.id,icon:'✉',title:'New message from '+company,
+          copy:jobTitle+': '+(preview.length>90?preview.slice(0,87)+'…':preview),
+          time:'New',action:'candidate-messages.html?thread='+encodeURIComponent(m.conversation_id)});
+      }
+    }
+    const {data:apps,error:appsError}=await sb.from('applications')
+      .select('id,job_id,status,applied_at').eq('candidate_id',currentUser.id)
+      .order('applied_at',{ascending:false});
+    if(appsError)throw appsError;
+    const additionalIds=[...new Set((apps||[]).map(x=>x.job_id).filter(Boolean))]
+      .filter(id=>!jobsById.has(String(id)));
+    if(additionalIds.length){
+      const result=await sb.from('jobs').select('id,title,company').in('id',additionalIds);
+      if(result.error)throw result.error;
+      for(const j of result.data||[])jobsById.set(String(j.id),j);
+    }
+    for(const app of apps||[]){
+      const item=candidateStatusNotification(app,jobsById.get(String(app.job_id))||null);
+      if(item)items.push(item);
+    }
+    if(!(currentProfile?.resume_file_path||currentProfile?.resume_data))items.push({
+      id:'profile-resume-missing',icon:'▤',title:'Add your resume',
+      copy:'Upload a resume or build one with Alygnn to complete your candidate profile.',
+      time:'Profile',action:'align-upload.html'});
+    if(!currentProfile?.preferences)items.push({
+      id:'profile-preferences-missing',icon:'◎',title:'Complete your job preferences',
+      copy:'Add your target role, salary, location, and work style so Alygnn can match you better.',
+      time:'Profile',action:'preferences.html'});
+    candidatePageNotifications=items;
+    updateCandidateNotificationBadge();
+    const overlay=document.getElementById('candidate-notification-overlay');
+    if(overlay?.classList.contains('open'))renderCandidateNotifications();
+  }catch(error){
+    console.warn('Could not refresh candidate notifications:',error);
+  }finally{candidateNotificationRefreshBusy=false;}
+}
+function openCandidateNotificationItem(id,action){
+  const reads=getCandidateNotificationReads();
+  reads.add(id);
+  saveCandidateNotificationReads(reads);
+  updateCandidateNotificationBadge();
+  if(action)location.href=action;
+  else renderCandidateNotifications();
+}
+function markAllCandidateNotificationsRead(){
+  const reads=getCandidateNotificationReads();
+  candidatePageNotifications.forEach(x=>reads.add(x.id));
+  saveCandidateNotificationReads(reads);
+  updateCandidateNotificationBadge();
+  renderCandidateNotifications();
+}
 
 function candidateNotificationTime(iso){
   if(!iso) return '';
@@ -2127,56 +2278,33 @@ function candidateNotificationTime(iso){
 
 function updateCandidateNotificationBadge(){
   const badge=document.getElementById('candidate-notification-badge');
-  if(!badge) return;
-
-  let unread=0;
-  for(const t of threads){
-    const d=threadDetails.get(t.id);
-    unread += Number(d?.unread||0);
-  }
-
+  if(!badge)return;
+  const reads=getCandidateNotificationReads();
+  const unread=candidatePageNotifications.filter(x=>!reads.has(x.id)).length;
   badge.textContent=unread>99?'99+':String(unread);
   badge.hidden=unread===0;
 }
-
 function renderCandidateNotifications(){
   const list=document.getElementById('candidate-notification-list');
   const label=document.getElementById('candidate-notification-count-label');
-  if(!list||!label) return;
-
-  const unreadThreads=threads
-    .map(t=>({thread:t,details:threadDetails.get(t.id)}))
-    .filter(x=>Number(x.details?.unread||0)>0);
-
-  const unreadCount=unreadThreads.reduce((sum,x)=>sum+Number(x.details?.unread||0),0);
-
-  if(!unreadThreads.length){
-    label.textContent='You’re all caught up';
-    list.innerHTML=`
-      <div class="notification-empty">
-        <div class="notification-empty-icon">✓</div>
-        <strong>You’re all caught up</strong>
-        <span>No new notifications right now.</span>
-      </div>`;
+  if(!list||!label)return;
+  const reads=getCandidateNotificationReads();
+  const unread=candidatePageNotifications.filter(x=>!reads.has(x.id));
+  label.textContent=unread.length?`${unread.length} unread notification${unread.length===1?'':'s'}`:'You’re all caught up';
+  if(!candidatePageNotifications.length){
+    list.innerHTML='<div class="notification-empty"><div class="notification-empty-icon">✓</div><strong>You’re all caught up</strong><span>No new notifications right now.</span></div>';
     return;
   }
-
-  label.textContent=`${unreadCount} unread message${unreadCount===1?'':'s'}`;
-
-  list.innerHTML=unreadThreads.slice(0,10).map(({thread,details})=>{
-    const last=details?.lastMessage||{};
-    const name=details?.name||'Employer';
-    const job=details?.job?.title||'your application';
-    return `
-      <button class="notification-item" type="button" onclick="openCandidateNotificationThread('${thread.id}')">
-        <span class="notification-icon">✉</span>
-        <span class="notification-copy">
-          <strong>${escapeHtml(name)}</strong>
-          <span>${escapeHtml(last.body||('New message about '+job))}</span>
-        </span>
-        <span class="notification-time">${escapeHtml(candidateNotificationTime(last.created_at||thread.last_message_at))}</span>
-      </button>`;
-  }).join('');
+  list.innerHTML=candidatePageNotifications.slice(0,10).map(item=>`
+    <button class="notification-item ${reads.has(item.id)?'':'unread'}" type="button"
+      data-notification-id="${escapeHtml(item.id)}" data-notification-action="${escapeHtml(item.action||'')}">
+      <span class="notification-icon">${escapeHtml(item.icon)}</span>
+      <span class="notification-copy"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.copy)}</span></span>
+      <span class="notification-time">${escapeHtml(item.time)}</span>
+    </button>`).join('');
+  list.querySelectorAll('[data-notification-id]').forEach(button=>{
+    button.addEventListener('click',()=>openCandidateNotificationItem(button.dataset.notificationId,button.dataset.notificationAction));
+  });
 }
 
 function openCandidateNotifications(){
@@ -2204,6 +2332,10 @@ async function openCandidateNotificationThread(threadId){
   updateCandidateNotificationBadge();
 }
 
+window.setInterval(()=>{
+  if(document.visibilityState==='visible' && currentUser)refreshCandidatePageNotifications();
+},5000);
+window.addEventListener('focus',()=>{if(currentUser)refreshCandidatePageNotifications();});
 window.addEventListener('beforeunload',()=>{
   if(messageChannel)sb.removeChannel(messageChannel);
   if(threadChannel)sb.removeChannel(threadChannel);
