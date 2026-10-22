@@ -173,6 +173,21 @@ html[data-effective-theme="dark"] .pdf-page,html[data-effective-theme="dark"] .p
 @media(max-width:520px){.page{padding:14px 12px 24px}.preview-shell{border-radius:22px}.preview-head{min-height:62px;padding:13px 15px}.pdf-preview{padding:12px 8px 18px;min-height:520px}.footer{padding-left:10px;padding-right:10px}.footer-inner{gap:8px}.secondary,.primary{min-height:54px;font-size:14px}}
 </style>
 
+<style id="alygnn-extracted-resume-preview">
+.resume-extracted{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:18px;margin-bottom:16px;color:var(--text);box-shadow:var(--shadow)}
+.resume-extracted h2{font-size:18px;margin:0 0 6px;font-weight:800}
+.resume-extracted .extracted-explain{font-size:13px;line-height:1.5;color:var(--muted);margin-bottom:14px}
+.resume-extracted .extracted-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.resume-extracted .extracted-item{min-width:0;border-radius:12px;background:var(--soft);padding:12px}
+.resume-extracted .extracted-label{display:block;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800;font-size:10px;margin-bottom:6px}
+.resume-extracted .extracted-value{color:var(--text);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.resume-extracted .extracted-item-wide{grid-column:1/-1}
+.resume-extracted .extracted-summary-note{font-size:12px;margin-top:12px;line-height:1.5;color:var(--muted)}
+html[data-effective-theme="dark"] .resume-extracted,html[data-theme="dark"] .resume-extracted{background:#15202B;border-color:#2B3946;color:#F4F7F9}
+html[data-effective-theme="dark"] .resume-extracted .extracted-item,html[data-theme="dark"] .resume-extracted .extracted-item{background:#223241}
+html[data-effective-theme="dark"] .resume-extracted .extracted-value,html[data-theme="dark"] .resume-extracted .extracted-value{color:#F4F7F9}
+@media(max-width:360px){.resume-extracted .extracted-grid{grid-template-columns:1fr}}
+</style>
 <style id="alygnn-resume-template-preview">
 .template-filters{display:flex;gap:8px;overflow:auto;margin:18px -2px 0;padding:2px 2px 8px;scrollbar-width:none}.template-filters::-webkit-scrollbar{display:none}.filter-chip{flex:0 0 auto;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--muted);padding:9px 12px;font-size:10px;font-weight:900}.filter-chip.active{background:var(--brand-dark);border-color:var(--brand-dark);color:#fff}
 .template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}.template-card{position:relative;border:1px solid var(--border);border-radius:18px;background:#fff;padding:10px;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(23,35,51,.035)}.template-card.selected{border:2px solid var(--brand-dark);padding:9px;box-shadow:0 0 0 3px rgba(53,103,154,.08)}.template-card-name{margin-top:9px;font-size:11px;font-weight:900;color:var(--text)}.template-card-copy{margin-top:3px;color:var(--muted);font-size:8px;line-height:1.35;min-height:22px}.template-tag{position:absolute;right:8px;top:8px;padding:4px 6px;border-radius:999px;background:#EEF4F8;color:var(--brand-dark);font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.4px}
@@ -387,6 +402,7 @@ html[data-effective-theme="dark"] .color-swatch.active{
   </div>
 
   <div id="content" hidden>
+    <section id="extractedResumePanel" class="resume-extracted" hidden aria-label="Information read from your resume"></section>
     <section class="preview-shell">
       <div class="preview-head">
         <div class="preview-title">Resume preview</div>
@@ -868,7 +884,28 @@ async function renderPdfWithPdfJs(url){
   }
 }
 
+// Show what Alygnn has actually extracted, rather than calling the PDF alone a "read" resume.
+function renderExtractedResumeSummary(){
+  const el=$('extractedResumePanel');
+  const data=parseObject(profile?.resume_data);
+  const str=x=>String(x||'').trim();
+  const roles=(Array.isArray(data.experience)?data.experience:[]).slice(0,3).map(x=>[str(x.title),str(x.company)].filter(Boolean).join(' — ')).filter(Boolean);
+  const schools=(Array.isArray(data.education)?data.education:[]).slice(0,3).map(x=>[str(x.degree),str(x.school)].filter(Boolean).join(' — ')).filter(Boolean);
+  const skills=(Array.isArray(data.skills)?data.skills:[]).map(str).filter(Boolean).slice(0,10);
+  const entries=[['Name',str(data.name)],['Recent job title',str(data.title)],['Location',str(data.location)],['Experience',roles.join('; ')],['Education',schools.join('; ')],['Skills',skills.join(', ')]];
+  const found=entries.filter(([,value])=>value);
+  if(!found.length){
+    el.hidden=false;
+    el.innerHTML='<h2>Resume needs review</h2><p class="extracted-explain">Alygnn could not confirm readable career information from this file. Choose Change Resume to upload a readable resume before continuing.</p>';
+    if($('continueBtn'))$('continueBtn').disabled=true;
+    return;
+  }
+  el.innerHTML='<h2>What Alygnn read from your resume</h2><p class="extracted-explain">Check these details before continuing. They can be used to suggest job preferences. You can change your preferences on the next screen.</p><div class="extracted-grid">'+found.map(([label,value])=>'<div class="extracted-item'+(value.length>80?' extracted-item-wide':'')+'"><span class="extracted-label">'+esc(label)+'</span><div class="extracted-value">'+esc(value)+'</div></div>').join('')+'</div><p class="extracted-summary-note">Missing information is left blank—not guessed. The original document is shown below.</p>';
+  el.hidden=false;
+}
+
 async function renderUploadedResume(){
+  renderExtractedResumeSummary();
   const path=profile?.resume_file_path;
   if(!path){
     showError('The uploaded resume file could not be found.');
@@ -1042,6 +1079,12 @@ async function continueToPreferences(){
     return;
   }
 
+  const source=currentSource();
+  if(source==='upload'){
+    const data=parseObject(profile?.resume_data);
+    const substantial=(Array.isArray(data.skills)&&data.skills.length)||(Array.isArray(data.experience)&&data.experience.length)||(Array.isArray(data.education)&&data.education.length);
+    if(!substantial){showError('We could not read useful resume information. Please change your resume and try again.');return;}
+  }
   const preferencesComplete=preferencesAreComplete();
   const button=$('continueBtn');
   button.disabled=true;
