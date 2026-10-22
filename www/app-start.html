@@ -149,10 +149,6 @@ html[data-theme="dark"] .transition-icon.employer{background:#103327;color:#6FD8
       <div class="arrow" aria-hidden="true">→</div>
     </button>
   </section>
-  <footer class="footer">
-    Already have an account? <button class="sign-in-link" id="sign-in-link" type="button">Sign in</button>
-    <div class="small-note">You can switch between candidate and employer experiences at any time.</div>
-  </footer>
 </main>
 <div class="transition-screen" id="transition-screen">
   <div class="transition-icon" id="transition-icon"></div>
@@ -205,7 +201,6 @@ function chooseExperience(type){
 }
 candidateChoice.addEventListener('click',()=>chooseExperience('candidate'));
 employerChoice.addEventListener('click',()=>chooseExperience('employer'));
-document.getElementById('sign-in-link').addEventListener('click',()=>{const savedType=localStorage.getItem('alygnn_account_type');chooseExperience(savedType==='employer'?'employer':'candidate')});
 window.addEventListener('pageshow',resetStartScreen);
 document.addEventListener('DOMContentLoaded',resetStartScreen);
 </script>
