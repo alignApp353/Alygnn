@@ -1921,7 +1921,7 @@ async function employerHostedOneTimeCheckouts(user,knownCustomerIds=[]){
         for(const checkout of rows){
           const meta=checkout?.metadata||{};
           if(String(meta.employer_id||'')!==employerId)continue;
-          if(!['weekly_slot','job_boost'].includes(String(meta.product||'').toLowerCase()))continue;
+          if(!['weekly_slot','job_boost','plan_upgrade'].includes(String(meta.product||'').toLowerCase()))continue;
           if(checkout.mode!=='payment'||checkout.status!=='complete')continue;
           if(!['paid','no_payment_required'].includes(String(checkout.payment_status||'')))continue;
           sessions.set(checkout.id,checkout);
@@ -1950,7 +1950,7 @@ async function employerHostedOneTimeCheckouts(user,knownCustomerIds=[]){
       for(const checkout of rows){
         const meta=checkout?.metadata||{};
         if(String(meta.employer_id||'')!==employerId)continue;
-        if(!['weekly_slot','job_boost'].includes(String(meta.product||'').toLowerCase()))continue;
+        if(!['weekly_slot','job_boost','plan_upgrade'].includes(String(meta.product||'').toLowerCase()))continue;
         if(checkout.mode!=='payment'||checkout.status!=='complete')continue;
         if(!['paid','no_payment_required'].includes(String(checkout.payment_status||'')))continue;
         sessions.set(checkout.id,checkout);
