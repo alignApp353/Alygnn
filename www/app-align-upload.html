@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn — Resume</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -541,7 +543,7 @@
   </div>
 </div>
 </div>
-<div id="uploadPanel" class="card upload-panel"><div class="status-title">Upload your resume</div><div class="status-sub">Accepted formats: PDF, DOC, and DOCX. Maximum size: 10MB.</div><input id="fileInput" class="hidden-input" type="file" accept=".pdf,.doc,.docx"><div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()"><div class="drop-title">Tap to choose a file</div><div class="drop-sub">You can also drag and drop a file here.</div><div id="fileName" class="file-name"></div></div><button id="uploadBtn" class="primary-btn" onclick="uploadResume()" disabled>Upload Resume</button><button class="secondary-btn" onclick="closeUploadPanel()">Cancel</button></div>
+<div id="uploadPanel" class="card upload-panel"><div class="status-title">Upload your resume</div><div class="status-sub">Accepted formats: PDF and DOCX. Maximum size: 10MB. We verify that the file contains readable resume information.</div><input id="fileInput" class="hidden-input" type="file" accept=".pdf,.docx"><div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()"><div class="drop-title">Tap to choose a file</div><div class="drop-sub">You can also drag and drop a file here.</div><div id="fileName" class="file-name"></div></div><button id="uploadBtn" class="primary-btn" onclick="uploadResume()" disabled>Upload Resume</button><button class="secondary-btn" onclick="closeUploadPanel()">Cancel</button></div>
 </div>
 
 
@@ -658,12 +660,127 @@ async function initializePage(){
 async function loadResumeStatus(){const userId=currentSession.user.id;const{data,error}=await sb.from('profiles').select('resume_file_path,resume_data,resume_source,updated_at').eq('id',userId).maybeSingle();if(error){console.error(error);return;}const resumeExists=Boolean(data?.resume_file_path||hasStructuredResume(data?.resume_data));if(!resumeExists)return;currentResumePath=data?.resume_file_path||null;currentResumeSource=data?.resume_source||null;document.getElementById('statusIcon').textContent='✓';document.getElementById('statusIcon').style.color='var(--mint)';document.getElementById('statusIcon').style.background='rgba(111,191,143,.14)';document.getElementById('statusTitle').textContent='Resume ready';document.getElementById('statusSub').textContent=currentResumeSource==='builder'?'Created with Alygnn and saved to your profile.':'Your uploaded resume is saved to your profile.';document.getElementById('currentActions').classList.add('show');writeSetupCache(userId,{hasResume:true});}
 function openUploadPanel(){clearMessage();document.getElementById('uploadPanel').classList.add('open');document.getElementById('uploadPanel').scrollIntoView({behavior:'smooth',block:'center'});}
 function closeUploadPanel(){document.getElementById('uploadPanel').classList.remove('open');selectedFile=null;fileInput.value='';document.getElementById('fileName').textContent='';uploadButton.disabled=true;}
-function validateFile(file){const allowedExtensions=['pdf','doc','docx'];const extension=(file.name.split('.').pop()||'').toLowerCase();if(!allowedExtensions.includes(extension)){showMessage('Please choose a PDF, DOC, or DOCX file.','error');return false;}if(file.size<=0||file.size>10*1024*1024){showMessage(file.size<=0?'That file appears to be empty.':'Your file must be 10MB or smaller.','error');return false;}return true;}
+function validateFile(file){
+  const extension=(file.name.split('.').pop()||'').toLowerCase();
+  if(extension==='doc'){
+    showMessage('Older DOC files cannot be reliably read here. Please save the resume as PDF or DOCX and try again.','error');
+    return false;
+  }
+  if(!['pdf','docx'].includes(extension)){
+    showMessage('Please choose a PDF or DOCX resume.','error');
+    return false;
+  }
+  if(file.size<=0||file.size>10*1024*1024){
+    showMessage(file.size<=0?'That file appears to be empty.':'Your file must be 10MB or smaller.','error');
+    return false;
+  }
+  return true;
+}
 function selectFile(file){clearMessage();if(!validateFile(file)){selectedFile=null;uploadButton.disabled=true;return;}selectedFile=file;document.getElementById('fileName').textContent=file.name;uploadButton.disabled=false;}
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])selectFile(fileInput.files[0]);});
 dropZone.addEventListener('dragover',event=>{event.preventDefault();dropZone.classList.add('drag');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
 dropZone.addEventListener('drop',event=>{event.preventDefault();dropZone.classList.remove('drag');if(event.dataTransfer.files[0])selectFile(event.dataTransfer.files[0]);});
+// Use Alygnn's existing /api/parse-resume function; no new API route is created.
+const RESUME_PARSER_URL='https://alygnn.com/api/parse-resume';
+const NOT_RESUME_MESSAGE='This document doesn’t look like a resume. Please upload a resume with your experience, education, skills, or qualifications.';
+
+function fileToBase64(bytes){
+  let binary='';
+  const chunk=16384;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  }
+  return btoa(binary);
+}
+
+async function readResumeContent(file){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  const arrayBuffer=await file.arrayBuffer();
+  const bytes=new Uint8Array(arrayBuffer);
+  if(ext==='pdf'){
+    if(new TextDecoder('ascii').decode(bytes.subarray(0,5))!=='%PDF-'){
+      throw new Error('This file is not a valid PDF. Please choose an actual PDF resume.');
+    }
+    if(!window.pdfjsLib)throw new Error('PDF reading is unavailable. Check your connection and try again.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    let pdf;
+    try{pdf=await pdfjsLib.getDocument({data:bytes}).promise;}
+    catch(_error){throw new Error('We could not read this PDF. Please upload a readable resume.');}
+    const parts=[];
+    for(let p=1;p<=Math.min(pdf.numPages,15);p++){
+      const page=await pdf.getPage(p);
+      const content=await page.getTextContent();
+      parts.push(content.items.map(item=>(item.str||'')+(item.hasEOL?'\n':' ')).join(''));
+      if(parts.join('').length>15000)break;
+    }
+    const text=parts.join('\n').trim().slice(0,12000);
+    if(text.length>=80)return {resumeText:text};
+    // Scanned/image PDFs: use existing parser's PDF document input for smaller files.
+    // Keep base64 JSON well below serverless request body limits.
+    if(bytes.length<=2.5*1024*1024){
+      return {resumeBase64:fileToBase64(bytes),resumeType:'application/pdf'};
+    }
+    throw new Error('This scanned PDF is too large to read. Please upload a searchable PDF or DOCX resume.');
+  }
+  if(ext==='docx'){
+    if(bytes[0]!==0x50||bytes[1]!==0x4b){
+      throw new Error('This file is not a valid DOCX document. Please save your resume again and retry.');
+    }
+    if(!window.mammoth?.extractRawText){
+      throw new Error('Word document reading is unavailable. Try again or save your resume as PDF.');
+    }
+    let result;
+    try{result=await mammoth.extractRawText({arrayBuffer});}
+    catch(_error){throw new Error('We could not read this DOCX file. Save it as PDF and try again.');}
+    const text=String(result?.value||'').trim();
+    if(text.length<80)throw new Error(NOT_RESUME_MESSAGE);
+    return {resumeText:text.slice(0,12000)};
+  }
+  throw new Error('Please choose a PDF or DOCX resume.');
+}
+
+// Reject non-resume training handbooks/manuals and require evidence of an actual
+// person's skills, education or employment before making a profile "Resume ready".
+// This is a second check after the server parser, not a substitute for it.
+function resumeLooksValid(parsed,sourceText=''){
+  if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||parsed.is_resume===false||parsed.isResume===false)return false;
+  const text=String(sourceText||'').slice(0,12000);
+  const exp=Array.isArray(parsed.experience)?parsed.experience.filter(x=>x&&typeof x==='object'&&String(x.title||x.job_title||'').trim()&&String(x.company||'').trim()):[];
+  const edu=Array.isArray(parsed.education)?parsed.education.filter(x=>x&&typeof x==='object'&&String(x.degree||x.school||'').trim()):[];
+  const skills=Array.isArray(parsed.skills)?parsed.skills.filter(x=>String(x||'').trim()):[];
+  const name=String(parsed.name||'').trim();
+  const person=name.length>3&&name.length<75&&!/^(resume|curriculum|table of contents|client representative|professional|untitled)$/i.test(name);
+  const contact=Boolean(String(parsed.email||'').trim()||String(parsed.phone||'').trim()||/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(text));
+  const sections=[/\b(work experience|professional experience|employment history|work history|internships?)\b/i,/\b(education|academic background|qualifications)\b/i,/\b(technical skills|skills|competencies)\b/i,/\b(projects|certifications|licenses|volunteering|professional summary|career objective)\b/i].filter(re=>re.test(text)).length;
+  if(/\b(table of contents|training manual|course handbook|chapter\s+\d+|lesson\s+\d+)\b/i.test(text)&&exp.length===0)return false;
+  if(exp.length>=1&&(person||contact||sections>=2))return true;
+  if(edu.length>=1&&skills.length>=2&&(person||contact))return true;
+  if((person||contact)&&sections>=2&&(skills.length>=2||edu.length>=1||String(parsed.summary||'').trim().length>=40))return true;
+  if(exp.length>=1&&edu.length>=1&&skills.length>=1)return true;
+  return false;
+}
+
+async function validateAndParseResume(file){
+  const input=await readResumeContent(file);
+  const response=await fetch(RESUME_PARSER_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(input)
+  });
+  let payload={};
+  try{payload=await response.json();}catch(_error){
+    throw new Error('Unable to analyze your resume right now. Please try again.');
+  }
+  if(!response.ok||!payload?.success||!payload?.data){
+    throw new Error(response.status===413?'The resume is too large to analyze. Try a smaller PDF.':
+      'Resume analysis is temporarily unavailable. Please try again.');
+  }
+  const parsed=payload.data;
+  if(!resumeLooksValid(parsed,input.resumeText||''))throw new Error(NOT_RESUME_MESSAGE);
+  return parsed;
+}
+
 async function uploadResume(){
   if(!selectedFile||!currentSession){
     showMessage('Choose a resume before uploading.','error');
@@ -671,10 +788,12 @@ async function uploadResume(){
   }
 
   uploadButton.disabled=true;
-  uploadButton.textContent='Uploading...';
-  showAlygnnLoader('Uploading your resume.');
+  uploadButton.textContent='Checking resume...';
+  showAlygnnLoader('Reading and checking your resume.');
 
   try{
+    const parsedResume=await validateAndParseResume(selectedFile);
+    if(alygnnLoaderText)alygnnLoaderText.textContent='Saving your resume and extracted details.';
     const userId=currentSession.user.id;
     const extension=(selectedFile.name.split('.').pop()||'').toLowerCase();
     const filePath=`${userId}/resume-${Date.now()}.${extension}`;
@@ -702,8 +821,9 @@ async function uploadResume(){
 
     if(uploadError)throw uploadError;
 
-    const resumeData=parseObject(profile?.resume_data);
-    const onboarding=parseObject(resumeData._alygnn_onboarding);
+    // Replace stale resume facts with the data from the newly validated file.
+    const resumeData={...parsedResume};
+    const onboarding=parseObject(parseObject(profile?.resume_data)._alygnn_onboarding);
 
     resumeData._alygnn_onboarding={
       ...onboarding,
