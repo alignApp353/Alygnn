@@ -2220,15 +2220,13 @@ try {
     /\/(account|my-jobs|swipe|profile-details|job-details)\.html$/i.test(ref.pathname);
 } catch (_) {}
 
-const candidateMessagesLoaderTimer = window.setTimeout(() => {
-  if (!candidateMessagesCameFromCandidatePage && !document.body.classList.contains('ready')) {
-    candidateMessagesLoader?.classList.add('loader-visible');
-  }
-}, 180);
-
+// Avoid a second loading-screen flash when coming from another candidate page.
+// On a direct visit, show the loader immediately rather than after a delayed timer.
 if (candidateMessagesCameFromCandidatePage) {
   candidateMessagesLoader?.classList.remove('loader-visible');
   document.body.classList.add('ready');
+} else if (!document.body.classList.contains('ready')) {
+  candidateMessagesLoader?.classList.add('loader-visible');
 }
 
 const candidateMessagesRevealTimer = window.setTimeout(() => {
@@ -2241,7 +2239,6 @@ init()
     console.error('Candidate messages failed to initialize:', error);
   })
   .finally(() => {
-    window.clearTimeout(candidateMessagesLoaderTimer);
     window.clearTimeout(candidateMessagesRevealTimer);
     candidateMessagesLoader?.classList.remove('loader-visible');
     document.body.classList.add('ready');
