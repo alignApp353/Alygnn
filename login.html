@@ -776,26 +776,81 @@
     return true;
   }
 
-  async function handleGoogle() {
-    recordOAuthLegalConsent('google');
-    const oauthDestination = currentRole === 'employer'
-      ? '/employer-onboarding.html'
-      : '/account.html';
-    await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + oauthDestination }
+  // Social sign-in must return to this page before entering any Alygnn dashboard.
+  // Supabase OAuth can create a new auth user automatically; a recent creation
+  // during this specific login attempt is not an existing Alygnn account.
+  async function startSocialAuth(provider) {
+    const isSignup = document.getElementById('signup-form').style.display !== 'none';
+    recordOAuthLegalConsent(provider);
+    if (!isSignup) {
+      sessionStorage.setItem('alygnn_oauth_login_check', JSON.stringify({
+        provider, role: currentRole, started_at: Date.now()
+      }));
+    } else {
+      sessionStorage.removeItem('alygnn_oauth_login_check');
+    }
+    const destination = isSignup
+      ? (currentRole === 'employer' ? '/employer-onboarding.html' : '/account.html')
+      : '/login.html?oauth_login_return=1' + (currentRole === 'employer' ? '&role=employer' : '');
+    const { error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + destination }
     });
+    if (error) {
+      sessionStorage.removeItem('alygnn_oauth_login_check');
+      showMsg(error.message || 'Could not sign in with this provider.');
+    }
   }
 
-  async function handleApple() {
-    recordOAuthLegalConsent('apple');
-    const oauthDestination = currentRole === 'employer'
-      ? '/employer-onboarding.html'
-      : '/account.html';
-    await sb.auth.signInWithOAuth({
-      provider: 'apple',
-      options: { redirectTo: window.location.origin + oauthDestination }
-    });
+  async function handleGoogle() { await startSocialAuth('google'); }
+  async function handleApple() { await startSocialAuth('apple'); }
+
+  async function finishSocialLogin() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('oauth_login_return') !== '1') return;
+    const stored = sessionStorage.getItem('alygnn_oauth_login_check');
+    sessionStorage.removeItem('alygnn_oauth_login_check');
+    // Clear the callback marker without discarding the selected account role.
+    params.delete('oauth_login_return');
+    history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+    if (!stored) {
+      showMsg('We could not verify your sign-in attempt. Please try again.');
+      return;
+    }
+    try {
+      const attempt = JSON.parse(stored);
+      if (!attempt.started_at || Date.now() - attempt.started_at > 15 * 60 * 1000) {
+        showMsg('Your sign-in attempt expired. Please try again.');
+        return;
+      }
+      const { data, error } = await sb.auth.getUser();
+      const user = data?.user;
+      if (error || !user) {
+        showMsg('Google or Apple sign-in could not be completed. Please try again.');
+        return;
+      }
+      const createdAt = Date.parse(user.created_at || '');
+      // Allow for a small clock difference between Supabase and this device.
+      const createdDuringLogin = Number.isFinite(createdAt) &&
+        createdAt >= attempt.started_at - 120000;
+      if (!Number.isFinite(createdAt) || createdDuringLogin) {
+        await sb.auth.signOut({ scope: 'local' });
+        showMsg("You don't have an Alygnn account yet. Please choose Create account to continue.", 'info');
+        return;
+      }
+      const destination = await redirectForUser(user, attempt.role || currentRole);
+      const wrongSide = (attempt.role === 'seeker' && /\/employer-(?:onboarding|dashboard)\.html/.test(destination)) ||
+        (attempt.role === 'employer' && /\/account\.html/.test(destination));
+      if (wrongSide) {
+        await sb.auth.signOut({ scope: 'local' });
+        showMsg('This Alygnn account belongs to the other account type. Please select the correct sign-in option.', 'info');
+        return;
+      }
+      window.location.replace(destination);
+    } catch (error) {
+      console.error('Social sign-in verification failed:', error);
+      showMsg('Could not verify your Alygnn account. Please try again.');
+    }
   }
 
   async function doForgot() {
@@ -856,6 +911,7 @@
   // Initialize the correct side once, without automatic page redirects.
   // Successful login/signup handlers perform their own destination routing.
   switchRole(currentRole);
+  finishSocialLogin();
 </script>
 </body>
 </html>
