@@ -85,6 +85,18 @@ html[data-theme="dark"] .notice.success{background:#133126;color:#7DD5A7;border-
 html[data-theme="dark"] .notice.error{background:#351B1E;color:#FF9999;border-color:#5A2A30}
 html[data-theme="dark"] .btn.danger{background:#2C1B1D;border-color:#573036;color:#FF8D8D}
 </style>
+<script id="alygnn-workspace-route-guard">
+(function(){
+  if(new URLSearchParams(location.search).get('after_login')==='1')
+    document.documentElement.classList.add('alygnn-workspace-pending');
+})();
+</script>
+<style>
+html.alygnn-workspace-pending .shell>:not(.brand):not(#loading){display:none!important}
+html.alygnn-workspace-pending .shell{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:18px!important}
+html.alygnn-workspace-pending .shell .eyebrow,html.alygnn-workspace-pending .shell h1,html.alygnn-workspace-pending .shell .lead{display:none!important}
+html.alygnn-workspace-pending #loading{padding:0!important}
+</style>
 </head>
 <body>
 <main class="shell">
@@ -93,7 +105,7 @@ html[data-theme="dark"] .btn.danger{background:#2C1B1D;border-color:#573036;colo
 <h1>Choose your workspace</h1>
 <p class="lead">One login can keep your candidate profile separate from the company workspace you are allowed to use.</p>
 <div class="notice" id="message"></div>
-<div class="loading" id="loading">Checking your workspaces…</div>
+<div class="loading" id="loading">Opening Alygnn…</div>
 <section id="content" hidden>
   <div id="invites-wrap" hidden><div class="section-title">Invitations</div><div id="invites"></div></div>
   <div id="workspaces-wrap" hidden><div class="section-title">Workspaces</div><div id="workspaces"></div></div>
@@ -213,6 +225,7 @@ async function refreshContext(autoRoute=false){
     if(context.has_candidate!==true&&employers.length===0&&context.account_type==='employer'){location.replace('app-employer-onboarding.html');return}
   }
 
+  document.documentElement.classList.remove('alygnn-workspace-pending');
   renderInvites();renderWorkspaces();
   if(!invites.length&&context.has_candidate!==true&&employers.length===0){
     $('workspaces-wrap').hidden=false;
@@ -252,6 +265,7 @@ $('sign-out').onclick=async()=>{await sb.auth.signOut();location.replace('app-lo
     currentUser=data.session.user;
     await refreshContext(true);
   }catch(e){
+    document.documentElement.classList.remove('alygnn-workspace-pending');
     $('loading').hidden=true;
     $('content').hidden=false;
     showMessage(e?.message||'Could not load your Alygnn workspaces.','error');
