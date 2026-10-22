@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-alygnn-responsive="candidate">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1035,13 +1035,17 @@ main,
   }
 </style>
 
+<link rel="stylesheet" href="app-candidate-responsive-v2.css">
+<link rel="stylesheet" href="app-candidate-loading-smart.css">
+<script defer src="app-candidate-loading-smart.js"></script>
+<script defer src="app-candidate-back-v2.js"></script>
 </head>
 <body class="prefs-hydrating" data-preferences-build="80">
 
 <div class="prefs-hydration" id="prefsHydration" aria-live="polite">
   <div class="prefs-hydration-inner">
     <div class="prefs-hydration-logo">Alygnn<span>.</span></div>
-    <div class="prefs-hydration-text">Loading your preferences…</div>
+    <div class="prefs-hydration-text">Opening your preferences.</div>
     <div class="prefs-hydration-track"><div class="prefs-hydration-bar"></div></div>
   </div>
 </div>
@@ -2633,11 +2637,17 @@ async function initialize(){
 }
 
 function goBack(){
-  window.location.replace(
-    onboardingMode
-      ?'app-resume-preview.html'
-      :'app-account.html'
-  );
+  // Return to the Settings entry point when editing preferences from Settings.
+  const from=new URLSearchParams(location.search).get('from');
+  if(from==='settings'){
+    window.location.replace('app-account.html#settings');
+    return;
+  }
+  if(from==='account-settings'){
+    window.location.replace('app-account-settings.html');
+    return;
+  }
+  window.location.replace(onboardingMode?'app-resume-preview.html':'app-account.html');
 }
 
 $('saveBtn').addEventListener('click',savePreferences);
