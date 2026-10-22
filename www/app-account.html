@@ -2834,6 +2834,19 @@ html[data-effective-theme="dark"] .settings-card-compact .settings-row-first{
 <script defer src="app-candidate-loading-smart.js"></script>
 <script defer src="app-candidate-back-v2.js"></script>
 <script defer src="app-candidate-settings-actions.js"></script>
+<style id="alygnn-profile-header-no-phantom-back">
+.app-header .header-back-inline[hidden],
+.app-header #settings-back[hidden],
+.app-header .header-spacer[hidden],
+.alygnn-unified-back[hidden]{display:none!important}
+.app-header.top-header{width:100%!important;display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;align-items:center!important}
+.app-header.top-header .logo{grid-column:2!important;justify-self:center!important;
+  text-align:center!important;min-width:0!important;white-space:nowrap!important;
+  overflow:visible!important;max-width:100%!important}
+#settings-back:not([hidden]),#profile-header-spacer:not([hidden]){grid-column:1!important;grid-row:1!important}
+#settings-shortcut:not([hidden]),#settings-header-spacer:not([hidden]){grid-column:3!important;grid-row:1!important}
+</style>
 </head>
 
 <body data-candidate-nav-build="2026-08-26-discover-color-sync">
