@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<script id="alygnn-candidate-route-before-paint">
+(function(){
+  if(new URLSearchParams(location.search).get('role')==='candidate')
+    document.documentElement.classList.add('alygnn-candidate-messages-route');
+})();
+</script>
 <title>Alygnn — Messages</title>
 <script id="alygnn-candidate-theme-critical">
 (function(){
@@ -1370,6 +1376,12 @@ body.candidate-mode .shell{min-height:100dvh!important}
 <link rel="stylesheet" href="app-candidate-responsive-v2.css">
 <link rel="stylesheet" href="app-candidate-loading-smart.css">
 <script defer src="app-candidate-loading-smart.js"></script>
+<style id="alygnn-messages-no-flash-initial">
+html.alygnn-candidate-messages-route body.messages-booting>.shell,
+html.alygnn-candidate-messages-route body.messages-booting>.bottom-nav{visibility:visible!important}
+html.alygnn-candidate-messages-route body.messages-booting .messages-boot-loader{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+</style>
 </head>
 
 <body class="messages-booting">
@@ -1600,7 +1612,7 @@ function navButton(name,label,url,active=false){
   return `
     <button
       class="nav ${active?'active':''}"
-      onclick="location.href='${url}'">
+      onclick="${active?'return false;':`location.href='${url}'`}">
       <svg viewBox="0 0 24 24">${icon[name]}</svg>
       <span>${label}</span>
       ${messageBadge}
