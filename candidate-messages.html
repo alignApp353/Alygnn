@@ -2102,6 +2102,8 @@ async function init(){
 
   if(activeThreadId){
     await markThreadRead(activeThreadId);
+    const selectedThreadDetails=threadDetails.get(activeThreadId);
+    if(selectedThreadDetails) selectedThreadDetails.unread=0;
     await loadMessages(activeThreadId);
   }else{
     activeMessages=[];
@@ -2212,25 +2214,9 @@ window.addEventListener('beforeunload',()=>{
 
 const candidateMessagesLoader = document.getElementById('loading');
 
-// When navigating from any Alygnn page, the departing page may already show
-// its own transition loader. Do not show a second loader on Messages.
-// Keep the existing loader for direct visits (no same-origin referrer).
-let candidateMessagesCameFromAlygnnPage = false;
-try {
-  if (document.referrer) {
-    const ref = new URL(document.referrer);
-    candidateMessagesCameFromAlygnnPage = ref.origin === window.location.origin;
-  }
-} catch (_) {}
-
-// Keep the page hidden until init() finishes loading both conversations and
-// messages. For internal navigation, avoid a second loading overlay; for direct
-// visits, retain the existing unified loading screen.
-if (candidateMessagesCameFromAlygnnPage) {
-  candidateMessagesLoader?.classList.remove('loader-visible');
-} else if (!document.body.classList.contains('ready')) {
-  candidateMessagesLoader?.classList.add('loader-visible');
-}
+// One unified loading screen covers both the navigation and conversation view.
+// The page becomes visible only after init() finishes rendering everything.
+candidateMessagesLoader?.classList.add('loader-visible');
 
 const candidateMessagesRevealTimer = window.setTimeout(() => {
   candidateMessagesLoader?.classList.remove('loader-visible');
