@@ -290,6 +290,17 @@
 
 <script src="app-candidate-theme.js"></script>
 <link rel="stylesheet" href="app-candidate-theme.css">
+<link rel="stylesheet" href="app-candidate-loading-unified.css">
+
+<style id="alygnn-resume-shared-loader-adjustments">
+/* The existing candidate Messages loader is the single source of truth for all resume loading. */
+#loading.alygnn-loader{background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),#F6F8F7!important}
+html[data-effective-theme="dark"] #loading.alygnn-loader,
+html[data-theme="dark"] #loading.alygnn-loader{background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important}
+#loading .loading-text{min-height:0!important;display:block!important;margin:18px 0 0!important;font-weight:700!important}
+#loading .loading-progress{margin:25px auto 0!important}
+@media(prefers-reduced-motion:reduce){#loading .loading-progress::after{animation:none!important}}
+</style>
 
 <style id="alygnn-candidate-resume-flow-v1">
   .resume-flow-topbar{
@@ -469,11 +480,11 @@
 <script defer src="app-candidate-back-v2.js"></script>
 </head>
 <body>
-<div class="alygnn-loader" id="alygnn-loader" aria-live="polite" aria-label="Loading resume">
-  <div class="alygnn-loader-inner">
-    <div class="alygnn-loader-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
-    <div class="alygnn-loader-text" id="alygnn-loader-text">Getting your resume ready.</div>
-    <div class="alygnn-loader-progress" aria-hidden="true"></div>
+<div class="alygnn-loader" id="loading" aria-live="polite" aria-label="Loading resume">
+  <div class="alygnn-loader-inner loading-inner">
+    <div class="alygnn-loader-logo loading-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
+    <div class="alygnn-loader-text loading-text" id="alygnn-loader-text">Getting your resume ready.</div>
+    <div class="alygnn-loader-progress loading-progress" aria-hidden="true"></div>
   </div>
 </div>
 <div class="screen">
@@ -625,7 +636,7 @@ const SUPABASE_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 let currentSession=null,selectedFile=null,currentResumePath=null,currentResumeSource=null;
 const fileInput=document.getElementById('fileInput'),dropZone=document.getElementById('dropZone'),uploadButton=document.getElementById('uploadBtn');
-const alygnnLoader=document.getElementById('alygnn-loader');
+const alygnnLoader=document.getElementById('loading');
 const alygnnLoaderText=document.getElementById('alygnn-loader-text');
 function showAlygnnLoader(message='Getting your resume ready.'){
   if(alygnnLoaderText)alygnnLoaderText.textContent=message;
@@ -705,7 +716,7 @@ async function readResumeContent(file){
     if(!window.pdfjsLib)throw new Error('PDF reading is unavailable. Check your connection and try again.');
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     let pdf;
-    try{pdf=await pdfjsLib.getDocument({data:bytes}).promise;}
+    try{pdf=await pdfjsLib.getDocument({data:new Uint8Array(bytes)}).promise;}
     catch(_error){throw new Error('We could not read this PDF. Please upload a readable resume.');}
     const parts=[];
     for(let p=1;p<=Math.min(pdf.numPages,15);p++){
@@ -715,7 +726,13 @@ async function readResumeContent(file){
       if(parts.join('').length>15000)break;
     }
     const text=parts.join('\n').trim().slice(0,12000);
-    if(text.length>=80)return {resumeText:text};
+    if(text.length>=80){
+      const evidence=documentEvidence(text,pdf.numPages);
+      if(evidence.looksLikeManual || !evidence.isLikelyResume)throw new Error(NOT_RESUME_MESSAGE);
+      return {resumeText:text};
+    }
+    // Avoid accepting large scanned training binders on guessed AI data.
+    if(pdf.numPages>5)throw new Error('This PDF cannot be verified as a resume. Please upload a short, readable resume PDF.');
     // Scanned/image PDFs: use existing parser's PDF document input for smaller files.
     // Keep base64 JSON well below serverless request body limits.
     if(bytes.length<=2.5*1024*1024){
@@ -734,10 +751,26 @@ async function readResumeContent(file){
     try{result=await mammoth.extractRawText({arrayBuffer});}
     catch(_error){throw new Error('We could not read this DOCX file. Save it as PDF and try again.');}
     const text=String(result?.value||'').trim();
-    if(text.length<80)throw new Error(NOT_RESUME_MESSAGE);
+    if(text.length<80||!documentEvidence(text).isLikelyResume)throw new Error(NOT_RESUME_MESSAGE);
     return {resumeText:text.slice(0,12000)};
   }
   throw new Error('Please choose a PDF or DOCX resume.');
+}
+
+// Identify obvious handbooks, training packs and course materials *before* AI or storage.
+// Never use the filename alone. Readable PDF/DOCX text is the primary evidence.
+function documentEvidence(text,pageCount=1){
+  const body=String(text||'').replace(/\s+/g,' ').trim();
+  const lower=body.toLowerCase();
+  const email=/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i.test(body);
+  const phone=/(?:\+?\d[\d ().-]{8,}\d)/.test(body);
+  const linkedin=/linkedin\.com\/in\//i.test(body);
+  const sectionHits=[/\b(professional (?:summary|profile)|career objective|personal statement)\b/i,/\b(work experience|professional experience|employment history|relevant experience|work history|internships?)\b/i,/\b(education|academic background|qualifications|coursework)\b/i,/\b(skills|competencies|technical skills|core strengths)\b/i,/\b(projects|certifications|licenses|volunteer(?:ing)? experience|achievements)\b/i].filter(r=>r.test(body)).length;
+  const manualSigns=[/\btable of contents\b/i,/\btraining (?:manual|guide|course|program|materials|pack)\b/i,/\b(?:chapter|lesson|module)\s+\d+\b/i,/\b(?:instructor|participant|student) handbook\b/i,/\btraining objectives\b/i,/\b(?:exercise|quiz|knowledge check)\s*\d+\b/i,/\bcourse curriculum\b/i].filter(r=>r.test(body)).length;
+  const hasIdentity=email||phone||linkedin;
+  const looksLikeManual=(manualSigns>=2&&(!hasIdentity||pageCount>=5))||(pageCount>=8&&manualSigns>=1)||(pageCount>=12&&!hasIdentity);
+  const isLikelyResume=hasIdentity&&sectionHits>=2&&!looksLikeManual;
+  return {hasIdentity,sectionHits,manualSigns,looksLikeManual,isLikelyResume,pageCount,hasText:body.length>=80};
 }
 
 // Reject non-resume training handbooks/manuals and require evidence of an actual
@@ -746,21 +779,32 @@ async function readResumeContent(file){
 function resumeLooksValid(parsed,sourceText=''){
   if(!parsed||typeof parsed!=='object'||Array.isArray(parsed)||parsed.is_resume===false||parsed.isResume===false)return false;
   const text=String(sourceText||'').slice(0,12000);
-  const exp=Array.isArray(parsed.experience)?parsed.experience.filter(x=>x&&typeof x==='object'&&String(x.title||x.job_title||'').trim()&&String(x.company||'').trim()):[];
+  const exp=Array.isArray(parsed.experience)?parsed.experience.filter(x=>x&&typeof x==='object'&&String(x.title||x.job_title||'').trim()):[];
   const edu=Array.isArray(parsed.education)?parsed.education.filter(x=>x&&typeof x==='object'&&String(x.degree||x.school||'').trim()):[];
   const skills=Array.isArray(parsed.skills)?parsed.skills.filter(x=>String(x||'').trim()):[];
+  const email=String(parsed.email||'').trim();
+  const phone=String(parsed.phone||'').trim();
   const name=String(parsed.name||'').trim();
-  const person=name.length>3&&name.length<75&&!/^(resume|curriculum|table of contents|client representative|professional|untitled)$/i.test(name);
-  const contact=Boolean(String(parsed.email||'').trim()||String(parsed.phone||'').trim()||/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(text));
-  const sections=[/\b(work experience|professional experience|employment history|work history|internships?)\b/i,/\b(education|academic background|qualifications)\b/i,/\b(technical skills|skills|competencies)\b/i,/\b(projects|certifications|licenses|volunteering|professional summary|career objective)\b/i].filter(re=>re.test(text)).length;
-  if(/\b(table of contents|training manual|course handbook|chapter\s+\d+|lesson\s+\d+)\b/i.test(text)&&exp.length===0)return false;
-  if(exp.length>=1&&(person||contact||sections>=2))return true;
-  if(edu.length>=1&&skills.length>=2&&(person||contact))return true;
-  if((person||contact)&&sections>=2&&(skills.length>=2||edu.length>=1||String(parsed.summary||'').trim().length>=40))return true;
-  if(exp.length>=1&&edu.length>=1&&skills.length>=1)return true;
-  return false;
+  if(/^(resume|curriculum|table of contents|client representative|professional|untitled|your name)$/i.test(name))return false;
+  if(!exp.length&&!edu.length&&skills.length<3)return false;
+  if(text){
+    const evidence=documentEvidence(text);
+    if(!evidence.isLikelyResume)return false;
+    // Don't accept model-invented identity details as if verified on the document.
+    if(email && !text.toLowerCase().includes(email.toLowerCase()))return false;
+    const normalizedDigits=x=>String(x||'').replace(/\D/g,'');
+    if(phone && normalizedDigits(phone).length>=7 && !normalizedDigits(text).includes(normalizedDigits(phone))) {
+      // Phone formatting/spacing varies; only trust the original document text.
+      // An extracted email can still establish identity if the phone differs.
+      if(!email)return false;
+    }
+    return true;
+  }
+  // Scanned/image PDF: the existing document parser must recover a contact
+  // and actual experience/education/skills before we accept an image-only file.
+  // Avoid pretending an unrelated scanned workbook is a valid resume.
+  return Boolean((email||phone)&&name.length>=4&&(exp.length||edu.length)&&(skills.length>=2||exp.length>=2));
 }
-
 async function validateAndParseResume(file){
   const input=await readResumeContent(file);
   const response=await fetch(RESUME_PARSER_URL,{
@@ -788,8 +832,8 @@ async function uploadResume(){
   }
 
   uploadButton.disabled=true;
-  uploadButton.textContent='Checking resume...';
-  showAlygnnLoader('Reading and checking your resume.');
+  uploadButton.textContent='Reading resume...';
+  showAlygnnLoader('Reading and verifying your resume.');
 
   try{
     const parsedResume=await validateAndParseResume(selectedFile);
@@ -823,6 +867,7 @@ async function uploadResume(){
 
     // Replace stale resume facts with the data from the newly validated file.
     const resumeData={...parsedResume};
+    resumeData._alygnn_verified_upload={validated_at:new Date().toISOString(),parser:'existing-api',review_required:true};
     const onboarding=parseObject(parseObject(profile?.resume_data)._alygnn_onboarding);
 
     resumeData._alygnn_onboarding={
