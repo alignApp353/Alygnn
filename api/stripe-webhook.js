@@ -20,15 +20,24 @@
 
 const crypto = require('crypto');
 
-// Stripe signs the exact incoming bytes. Read the request stream directly.
-// Important: DO NOT inspect req.body here. On Vercel Node Functions, req.body
-// is a lazy parsing getter: accessing it can turn Stripe's JSON into an object.
+// Stripe signs the exact incoming bytes. Never re-serialize parsed JSON:
+// whitespace and byte changes invalidate the Stripe-Signature header.
 async function rawBody(req) {
+  // Some hosting adapters expose the untouched payload here. Prefer it when
+  // available, before consuming the Node request stream.
+  if (Buffer.isBuffer(req.rawBody)) return req.rawBody;
+  if (req.rawBody instanceof Uint8Array) return Buffer.from(req.rawBody);
+  if (typeof req.rawBody === 'string') return Buffer.from(req.rawBody, 'utf8');
+
+  // On Vercel's Node runtime, req.body is a parsing getter. Do not access it.
+  // Read the request stream itself; never JSON.stringify(req.body).
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  if (!chunks.length) throw new Error('Empty raw Stripe webhook request body.');
+  if (!chunks.length) {
+    throw new Error('Raw Stripe webhook request body is unavailable; verify that this route disables body parsing.');
+  }
   return Buffer.concat(chunks);
 }
 
