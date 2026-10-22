@@ -2223,9 +2223,11 @@ try {
   }
 } catch (_) {}
 
+// Keep the page hidden until init() finishes loading both conversations and
+// messages. For internal navigation, avoid a second loading overlay; for direct
+// visits, retain the existing unified loading screen.
 if (candidateMessagesCameFromAlygnnPage) {
   candidateMessagesLoader?.classList.remove('loader-visible');
-  document.body.classList.add('ready');
 } else if (!document.body.classList.contains('ready')) {
   candidateMessagesLoader?.classList.add('loader-visible');
 }
