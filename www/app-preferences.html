@@ -1083,6 +1083,7 @@ main,
       <div class="eyebrow">Job preferences</div>
       <h1>Set your criteria</h1>
       <p>Tell Alygnn what matters to you. We’ll use these preferences to narrow your job matches.</p>
+      <p id="resumePrefillHint" hidden style="margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:13px;line-height:1.55;"> </p>
     </section>
 
     <section class="section" id="roleSection">
@@ -2523,6 +2524,46 @@ function prefill(saved){
   updateProgress();
 }
 
+// Use extracted resume details as suggestions, never as compulsory preferences.
+// The candidate chooses salary, schedule, work style, and desired job types.
+function suggestPreferencesFromResume(resumeData,saved={}){
+  if(!resumeData||typeof resumeData!=='object'||!Object.keys(resumeData).length)return;
+  const suggestions=[];
+  const firstJob=Array.isArray(resumeData.experience)?resumeData.experience[0]:null;
+  const role=String(resumeData.title||firstJob?.title||'').trim().slice(0,90);
+  if(!String(saved.query||'').trim()&&role&&!$('roleInput').value.trim()){
+    const matched=JOB_TITLES.find(item=>normalize(item)===normalize(role));
+    selectedRole=matched||role;
+    $('roleInput').value=selectedRole;
+    suggestions.push('job title');
+  }
+  const location=String(resumeData.location||'').trim();
+  const validLocation=normalizeCustomLocation(location);
+  if(!String(saved.location||'').trim()&&validLocation&&!$('locationInput').value.trim()){
+    selectedLocation=validLocation;
+    $('locationInput').value=validLocation;
+    $('locationInput').dataset.lastLocation=validLocation;
+    suggestions.push('location');
+  }
+  const savedIndustries=Array.isArray(saved.industries)?saved.industries:[];
+  if(!savedIndustries.length&&Array.isArray(resumeData.industries)){
+    let industryCount=0;
+    for(const raw of resumeData.industries){
+      if(industryCount>=3)break;
+      if(canonicalIndustry(raw)&&addExtraIndustry(raw))industryCount++;
+    }
+    if(industryCount)suggestions.push('industries');
+  }
+  if(suggestions.length){
+    const hint=$('resumePrefillHint');
+    if(hint){
+      hint.textContent='Suggested from your uploaded resume: '+suggestions.join(', ')+'. Review and change anything before saving.';
+      hint.hidden=false;
+    }
+  }
+  updateProgress();
+}
+
 async function savePreferences(){
   if(!validate())return;
 
@@ -2625,7 +2666,8 @@ async function initialize(){
       }
     
       if(profile?.preferences)prefill(profile.preferences);
-    
+      if(!EDIT_MODE)suggestPreferencesFromResume(resumeData,saved);
+
       updateProgress();
   }finally{
     // Reveal only after the saved preference data has been resolved.
