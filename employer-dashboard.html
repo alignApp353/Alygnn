@@ -5504,14 +5504,18 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     const weeklyPurchaseId = job.weekly_slot_purchase_id ? String(job.weekly_slot_purchase_id) : '';
     const isWeeklyJob = Boolean(weeklyPurchaseId);
-    const closedAction = isWeeklyJob || closeReason === 'weekly_slot_expired'
-      ? `<button class="btn-view" onclick="redirectToPricing('weekly-expired')">Get a job slot</button>`
-      : closeReason === 'free_candidate_cap'
-        ? `<button class="btn-view" onclick="redirectToPricing('free-candidate-cap')">Add a job slot</button>`
-        : `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`;
     const weeklyExpiresAt = isWeeklyJob
       ? weeklySlotExpiryByPurchaseId[weeklyPurchaseId] || null
       : null;
+    const weeklyHasTimeRemaining = Boolean(weeklyExpiresAt) &&
+      new Date(weeklyExpiresAt).getTime() > Date.now();
+    const closedAction = isWeeklyJob || closeReason === 'weekly_slot_expired'
+      ? (isWeeklyJob && closeReason !== 'weekly_slot_expired' && weeklyHasTimeRemaining
+          ? `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`
+          : `<button class="btn-view" onclick="redirectToPricing('weekly-expired')">Get a job slot</button>`)
+      : closeReason === 'free_candidate_cap'
+        ? `<button class="btn-view" onclick="redirectToPricing('free-candidate-cap')">Add a job slot</button>`
+        : `<button class="btn-view" onclick="reopenJob('${job.id}')">Reopen</button>`;
     const weeklyBadge = isWeeklyJob
       ? `<span class="weekly-job-pill">Weekly Job</span>${weeklyExpiresAt ? `<span class="weekly-job-until">closes ${escapeHtml(formatWeeklyJobUntil(weeklyExpiresAt))}</span>` : ''}`
       : '';
@@ -6129,20 +6133,40 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
-    if (job.weekly_slot_purchase_id || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired') {
-      showToast('This closed Weekly Job needs a new job slot.');
-      redirectToPricing('weekly-expired');
-      return;
-    }
-
-    // Reopening occupies a job slot, just like posting a new job.
-    // Refresh capacity before changing this closed job's status.
-    await loadBillingEntitlement();
-    const reopenAccess = getPostingAccess();
-    if (!reopenAccess.allowed) {
-      showToast('No available job slots. Close another active job or add a job slot to reopen this one.');
-      updatePostingAccessUI();
-      return;
+    const isWeeklyJob = Boolean(job.weekly_slot_purchase_id);
+    if (isWeeklyJob || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired') {
+      // Always check the original purchase expiry again before reopening.
+      // Closing and reopening must never restart the seven-day period.
+      let weeklyExpiry = null;
+      if (isWeeklyJob) {
+        const { data: purchase, error: purchaseError } = await sb
+          .from('employer_weekly_slot_purchases')
+          .select('activated_at, expires_at')
+          .eq('id', job.weekly_slot_purchase_id)
+          .maybeSingle();
+        if (purchaseError) {
+          console.error('Could not verify Weekly Job expiration:', purchaseError);
+          showToast('Could not verify the Weekly Job expiration. Please try again.');
+          return;
+        }
+        weeklyExpiry = purchase?.activated_at && purchase?.expires_at
+          ? new Date(purchase.expires_at).getTime() : null;
+      }
+      if (!isWeeklyJob || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired' ||
+          !Number.isFinite(weeklyExpiry) || weeklyExpiry <= Date.now()) {
+        showToast('The 7-day Weekly Job Slot has expired. Get a new job slot to post again.');
+        redirectToPricing('weekly-expired');
+        return;
+      }
+    } else {
+      // Only standard jobs need a newly available slot to reopen.
+      await loadBillingEntitlement();
+      const reopenAccess = getPostingAccess();
+      if (!reopenAccess.allowed) {
+        showToast('No available job slots. Close another active job or add a job slot to reopen this one.');
+        updatePostingAccessUI();
+        return;
+      }
     }
 
     const closeReason = String(job.closed_reason || '').toLowerCase();
@@ -6198,7 +6222,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
 
-    if (!confirm(`Close "${job.title}"? Candidates will no longer be able to apply, and this will free the job slot. You can reopen the job later from Closed jobs.`)) return;
+    const closeMessage = job.weekly_slot_purchase_id
+      ? `Close "${job.title}"? Candidates will no longer be able to apply. You can reopen this Weekly Job until its original 7-day expiration; closing does not pause or reset the countdown.`
+      : `Close "${job.title}"? Candidates will no longer be able to apply, and this will free the job slot. You can reopen the job later from Closed jobs.`;
+    if (!confirm(closeMessage)) return;
 
     const closedAt = new Date().toISOString();
 
@@ -6225,7 +6252,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     await loadBillingEntitlement();
     updatePostingAccessUI();
 
-    showToast('Job closed. Your job slot is available again.');
+    showToast(job.weekly_slot_purchase_id ? 'Weekly Job closed. You can reopen it before its original expiration.' : 'Job closed. Your job slot is available again.');
   }
 
   async function logout() {
