@@ -33,3 +33,13 @@ html[data-alygnn-responsive="candidate"] .prefs-hydration-logo{font-family:'DM S
 html[data-alygnn-responsive="candidate"] .prefs-hydration-text{font-size:14px!important;color:#647282!important}
 html[data-alygnn-responsive="candidate"] .prefs-hydration-track{width:116px!important;height:3px!important;margin:25px auto 0!important;background:#DDE3E8!important}
 html[data-alygnn-responsive="candidate"] .prefs-hydration-bar{width:48%!important;animation:alygnn-unified-candidate-loading 1.15s cubic-bezier(.4,0,.2,1) infinite!important;background:linear-gradient(90deg,#5D7FA3,#8CB69B)!important}
+
+/* Explicit early paint rule for Messages, including before deferred smart loader runs. */
+html.alygnn-candidate-messages-route body.messages-booting>.shell,
+html.alygnn-candidate-messages-route body.messages-booting>.bottom-nav{visibility:visible!important}
+html.alygnn-candidate-messages-route body.messages-booting .messages-boot-loader{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+/* A true loading screen is opaque; don't show half-light/half-dark layers. */
+html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{background:#F6F8F7!important}
+html[data-theme="dark"].alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader,
+html[data-effective-theme="dark"].alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{background:#061821!important}
