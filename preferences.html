@@ -1392,12 +1392,14 @@
       markDone('sc-salary');
     }
 
-    if (saved.workStyle) {
+    if (Array.isArray(saved.workStyles) || saved.workStyle) {
+      const selectedStyles = Array.isArray(saved.workStyles) ? saved.workStyles : [saved.workStyle];
       document.querySelectorAll('.toggle-card').forEach(c => {
-        const isMatch = c.querySelector('.tc-title')?.textContent === saved.workStyle;
-        c.classList.toggle('active', isMatch);
+        const title = c.querySelector('.tc-title')?.textContent.trim();
+        c.classList.toggle('active', selectedStyles.includes(title));
       });
-      markDone('sc-workstyle');
+      if (document.querySelector('.toggle-card.active')) markDone('sc-workstyle');
+      else clearDone('sc-workstyle');
     }
 
     if (Array.isArray(saved.jobTypes)) {
@@ -1441,9 +1443,9 @@
   }
 
   function selectWorkStyle(el) {
-    document.querySelectorAll('.toggle-card').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    markDone('sc-workstyle');
+    el.classList.toggle('active');
+    if (document.querySelector('.toggle-card.active')) markDone('sc-workstyle');
+    else clearDone('sc-workstyle');
     updateProgress();
   }
 
@@ -1645,8 +1647,9 @@
     const salaryMin = parseInt(document.getElementById('salary-min').value, 10);
     const salaryMax = parseInt(document.getElementById('salary-max').value, 10);
 
-    const workStyleEl = document.querySelector('.toggle-card.active .tc-title');
-    const workStyle = workStyleEl ? workStyleEl.textContent.trim() : '';
+    const workStyles = [...document.querySelectorAll('.toggle-card.active .tc-title')]
+      .map(el => el.textContent.trim());
+    const workStyle = workStyles[0] || '';
 
     const activeJobTypes = [...document.querySelectorAll('.jt-card.active')]
       .map(el => el.dataset.value)
@@ -1678,6 +1681,7 @@
             ? 'month'
             : 'year',
       workStyle: workStyle,
+      workStyles: workStyles,
       jobType: activeJobTypes[0] || '',
       jobTypes: activeJobTypes,
       industries: industries,
