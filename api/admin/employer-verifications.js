@@ -245,6 +245,41 @@ module.exports = async function handler(req, res) {
     const supabase = serviceClient();
     const admin = await requireAdmin(req, supabase);
 
+    // Admin-only short Account ID lookup and preserved company update history.
+    // Does not modify verification, account deletion or request review behavior.
+    if (req.method === 'GET' && String(req.query.account_lookup||'').trim()) {
+      const q=String(req.query.account_lookup).trim();
+      if(!/^ALY-[A-Z0-9]{3,20}$/i.test(q) && !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(q))
+        return sendJson(res,400,{success:false,error:'Enter a valid Alygnn Account ID.'});
+      let lookup=supabase.from('companies').select('id,account_number,company_name');
+      lookup=/^ALY-/i.test(q)?lookup.ilike('account_number',q):lookup.eq('id',q);
+      const {data:company,error:companyError}=await lookup.maybeSingle();
+      if(companyError)throw companyError;
+      if(!company)return sendJson(res,404,{success:false,error:'No company found for that Account ID.'});
+      const {data:history,error:historyError}=await supabase.from('employer_profile_update_requests')
+        .select('id,company_id,company_name_snapshot,field_key,current_value,requested_value,reason,status,created_at,reviewed_at,admin_note')
+        .eq('company_id',company.id).order('created_at',{ascending:false}).limit(1000);
+      if(historyError)throw historyError;
+      return sendJson(res,200,{success:true,company_id:company.id,account_number:company.account_number,
+        company_name:company.company_name,history:history||[]});
+    }
+    if (req.method === 'GET' && req.query.update_history === '1') {
+      const {data,error}=await supabase.from('employer_profile_update_requests')
+        .select('id,employer_id,company_id,company_name_snapshot,field_key,current_value,requested_value,reason,supporting_document_path,status,created_at,reviewed_at,admin_note')
+        .order('created_at',{ascending:false}).limit(1000);
+      if(error)throw error;
+      const ids=[...new Set((data||[]).map(r=>r.company_id).filter(Boolean))];
+      let companies=[];
+      if(ids.length){
+        const found=await supabase.from('companies').select('id,account_number,company_name').in('id',ids);
+        if(found.error)throw found.error;
+        companies=found.data||[];
+      }
+      return sendJson(res,200,{success:true,requests:data||[],companies});
+    }
+
+
+
     if (req.method === 'GET') {
       const requestedStatus = String(req.query.status || 'pending_review').trim();
       const allowedStatuses = new Set(['pending_review','approved','rejected','deactivated']);
