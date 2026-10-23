@@ -149,6 +149,13 @@
   .stamp-apply { right: 28px; color: var(--mint); border-color: var(--mint); transform: rotate(12deg); }
   .stamp-skip  { left: 28px;  color: var(--rose); border-color: var(--rose); transform: rotate(-12deg); }
 
+  /* Saved Jobs: heart does not affect swipe actions. */
+  .save-job-heart{width:36px;height:36px;border:1px solid var(--border);border-radius:50%;background:#fff;color:#8393A2;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;touch-action:manipulation;position:relative;z-index:6}
+  .save-job-heart svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .save-job-heart.is-saved{color:#D79A9A;border-color:#D79A9A;background:#FFF5F5}
+  .save-job-heart.is-saved svg{fill:currentColor}
+  .save-job-heart:disabled{opacity:.55;cursor:wait}
+
   /* CARD CONTENT */
   .card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
   .company-logo {
@@ -615,6 +622,37 @@
   let skipped = 0;
   let history = [];
   let currentUserId = null;
+  const savedJobIds = new Set();
+  async function loadSavedJobIds(){
+    if(!currentUserId) return;
+    const {data,error} = await sb.from('saved_jobs').select('job_id').eq('candidate_id',currentUserId);
+    if(error){console.error('Could not load saved jobs:',error);return;}
+    savedJobIds.clear();
+    (data||[]).forEach(row=>savedJobIds.add(String(row.job_id)));
+  }
+  async function toggleSavedJob(jobId,button){
+    if(!currentUserId){showToast('Sign in to save jobs');return;}
+    if(!jobId||button.disabled)return;
+    button.disabled=true;
+    const wasSaved=savedJobIds.has(String(jobId));
+    const query=wasSaved
+      ? sb.from('saved_jobs').delete().eq('candidate_id',currentUserId).eq('job_id',jobId)
+      : sb.from('saved_jobs').upsert({candidate_id:currentUserId,job_id:jobId},{onConflict:'candidate_id,job_id'});
+    const {error}=await query;
+    button.disabled=false;
+    if(error){console.error('Could not update saved jobs:',error);showToast('Could not save job. Please try again.');return;}
+    if(wasSaved)savedJobIds.delete(String(jobId));else savedJobIds.add(String(jobId));
+    document.querySelectorAll('.save-job-heart').forEach(el=>{
+      if(el.dataset.jobId===String(jobId)){
+        el.classList.toggle('is-saved',!wasSaved);
+        el.setAttribute('aria-label',wasSaved?'Save job':'Remove saved job');
+        el.setAttribute('aria-pressed',String(!wasSaved));
+      }
+    });
+    showToast(wasSaved?'Removed from saved jobs':'Job saved');
+  }
+  function stopSaveHeartSwipe(e){e.stopPropagation();}
+
 
   // Keep the visible swipe-session counters when the candidate temporarily
   // leaves swipe.html (for example: View details -> Keep swiping).
@@ -794,6 +832,7 @@
 
     const { data: { session } } = await sb.auth.getSession();
     currentUserId = session?.user?.id || null;
+    if(currentUserId) await loadSavedJobIds();
 
     // FIX: this used to only ever read sessionStorage.getItem('preferences').
     // That works during the very first onboarding pass (upload → preferences
@@ -1070,6 +1109,7 @@
           <div class="job-title">${escapeHtml(job.title || 'Untitled Role')}</div>
           <div class="company-name">${escapeHtml(job.company || '')}</div>
         </div>
+        <button type="button" class="save-job-heart ${savedJobIds.has(String(job.id))?'is-saved':''}" data-job-id="${escapeHtml(job.id)}" aria-label="${savedJobIds.has(String(job.id))?'Remove saved job':'Save job'}" aria-pressed="${savedJobIds.has(String(job.id))}" title="Save job" onpointerdown="stopSaveHeartSwipe(event)" onclick="event.stopPropagation();toggleSavedJob(this.dataset.jobId,this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
       </div>
       ${matchBadgeHTML}
       <div class="card-pills">${pillsHTML}</div>
@@ -1208,7 +1248,7 @@
 
   function dragStart(e) {
     if (swipeLocked || isDragging) return;
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a, .save-job-heart')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
     // A previous short drag may still have a snap-back timer pending.
