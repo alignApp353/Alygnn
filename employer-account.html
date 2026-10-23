@@ -1697,6 +1697,28 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       if(error) throw error;
 
       showProfileUpdateMessage('success','Request submitted. Your current verified information will stay unchanged while Alygnn reviews it.');
+      // Email notification is best-effort. The saved request remains authoritative.
+      try {
+        const {data:noticeSession}=await sb.auth.getSession();
+        let latest=null;
+        if(isTeamMember){
+          const {data:mine}=await sb.rpc('get_my_company_profile_update_requests');
+          latest=(Array.isArray(mine)?mine:[])
+            .filter(row=>row.field_key===fieldKey&&row.status==='pending')
+            .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]||null;
+        }else{
+          const {data:found}=await sb.from('employer_profile_update_requests')
+            .select('id,created_at').eq('employer_id',currentUserId).eq('field_key',fieldKey)
+            .eq('status','pending').order('created_at',{ascending:false}).limit(1).maybeSingle();
+          latest=found;
+        }
+        if(latest?.id&&noticeSession?.session?.access_token){
+          fetch('/api/admin/employer-verifications',{
+            method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+noticeSession.session.access_token},
+            body:JSON.stringify({action:'company_update_notification',request_id:latest.id,event:'submitted'})
+          }).catch(error=>console.warn('Company update email notification unavailable:',error));
+        }
+      }catch(notificationError){console.warn('Company update notification lookup unavailable:',notificationError);}
       await loadProfileUpdateRequests();
       handleProfileUpdateFieldChange();
 
