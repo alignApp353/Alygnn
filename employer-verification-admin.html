@@ -209,10 +209,10 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
     <div class="update-tools" id="update-tools">
       <input id="update-search" type="search" placeholder="Search company or Account ID" aria-label="Search update requests">
       <select id="update-status-filter" aria-label="Filter update request status">
+        <option value="all">All requests</option>
         <option value="pending">Pending</option>
         <option value="approved">Approved</option>
         <option value="declined">Declined</option>
-        <option value="all">All requests</option>
       </select>
       <select id="update-date-filter" aria-label="Filter update requests by date">
         <option value="all">All dates</option>
@@ -264,7 +264,7 @@ let rows=[];
 let verificationCache=new Map();
 let companyCache=new Map();
 let profileUpdateRequests=[];
-let profileUpdateStatusFilter='pending';
+let profileUpdateStatusFilter='all';
 let accountRows=[];
 let selectedDeleteAccount=null;
 
@@ -464,7 +464,7 @@ function renderProfileUpdateRequests(){
       <div class="card-head">
         <div>
           <div class="company-name">${esc(row.company_name_snapshot||company.company_name||'Company')}</div>
-          <div class="company-sub">${esc(profileUpdateFieldLabel(row.field_key))} · Submitted ${esc(formatDate(row.created_at))}</div>
+          <div class="company-sub">${esc(profileUpdateFieldLabel(row.field_key))} · Submitted ${esc(formatDate(row.created_at))}${row.reviewed_at?' · Reviewed '+esc(formatDate(row.reviewed_at)):''}</div>
         </div>
         <span class="badge ${badge}">${esc(status==='pending'?'Pending update':status==='approved'?'Approved':status==='declined'?'Declined':status)}</span>
       </div>
@@ -482,7 +482,7 @@ function renderProfileUpdateRequests(){
             <div class="update-change-value">${esc(row.requested_value||'')}</div>
           </div>
         </div>
-        <div class="update-reason"><strong style="color:var(--text)">Employer reason:</strong> ${esc(row.reason||'No reason provided')}</div>
+        <div class="update-reason"><strong style="color:var(--text)">Employer reason:</strong> ${esc(row.reason||'No reason provided')}</div>${row.admin_note?`<div class="update-reason"><strong>Admin note:</strong> ${esc(row.admin_note)}</div>`:''}
         ${row.supporting_document_path?`
           <div class="update-doc-row"><div><div class="doc-title">Supporting document attached</div>
           <div class="update-doc-copy">Private document. Open a short-lived signed link to review it.</div></div>
@@ -502,18 +502,11 @@ async function loadProfileUpdateRequests(){
   $('update-tools').classList.add('show');
   $('queue').classList.add('loading');
   try{
-    // Admin-only query: include reviewed requests for searchable history.
-    let request=sb.from('employer_profile_update_requests')
-      .select('id,employer_id,company_id,company_name_snapshot,field_key,current_value,requested_value,reason,supporting_document_path,status,created_at')
-      .order('created_at',{ascending:false})
-      .limit(1000);
+    // Read review history through the existing authenticated admin API.
+    const result=await api('?update_history=1');
     const filter=profileUpdateStatusFilter;
-    if(filter!=='all')request=request.eq('status',filter);
-    const {data,error}=await request;
-    if(error)throw error;
-    profileUpdateRequests=data||[];
-    // Company cache is already used elsewhere in the admin page.
-    if(!companyCache.size)await loadCompanyCache();
+    profileUpdateRequests=(result.requests||[]).filter(r=>filter==='all'||String(r.status||'').toLowerCase()===filter);
+    (result.companies||[]).forEach(c=>companyCache.set(c.id,{...(companyCache.get(c.id)||{}),...c}));
     renderProfileUpdateRequests();
   }catch(error){
     console.error('Failed to load profile update requests:',error);
@@ -661,12 +654,12 @@ function renderAccountManagement(){
   queue.innerHTML=`<div class="account-tools">
     <div class="account-search-card">
       <div class="account-search-row">
-        <input id="account-search" type="search" placeholder="Paste company ID" autocomplete="off" spellcheck="false">
+        <input id="account-search" type="search" placeholder="Enter Account ID (ALY-XXXXXX)" autocomplete="off" spellcheck="false">
         <button class="refresh" id="account-search-btn" type="button">Look up company</button>
       </div>
-      <div class="account-help">No Alygnn accounts are loaded automatically. When a company contacts support, paste its Company ID here. Alygnn will show only the owner and team accounts connected to that company so you can work on the specific request.</div>
+      <div class="account-help">No Alygnn accounts are loaded automatically. When a company contacts support, enter its short Account ID here. Alygnn will show only the owner and team accounts connected to that company so you can work on the specific request.</div>
     </div>
-    <div class="account-list" id="account-list"><div class="account-empty">Enter a Company ID to look up that company’s accounts.</div></div>
+    <div class="account-list" id="account-list"><div class="account-empty">Enter an Account ID to look up the company and its update history.</div></div>
   </div>`;
   $('account-search-btn').addEventListener('click',()=>loadAccounts($('account-search').value));
   $('account-search').addEventListener('keydown',event=>{if(event.key==='Enter')loadAccounts(event.currentTarget.value)});
@@ -680,35 +673,53 @@ function looksLikeCompanyId(value){
 async function loadAccounts(query=''){
   currentStatus='accounts';
   if(!$('account-list'))renderAccountManagement();
-
   const list=$('account-list');
   const input=$('account-search');
-  const companyId=String(query||'').trim();
-  if(input&&companyId!==input.value)input.value=companyId;
-
+  const accountId=String(query||'').trim();
+  if(input&&accountId!==input.value)input.value=accountId;
   accountRows=[];
-
-  if(!companyId){
-    list.innerHTML='<div class="account-empty">Enter a Company ID to look up that company’s accounts.</div>';
+  if(!accountId){
+    list.innerHTML='<div class="account-empty">Enter an Account ID to look up the company and its update history.</div>';
     return;
   }
-
-  if(!looksLikeCompanyId(companyId)){
-    list.innerHTML='<div class="account-empty">Enter the full Company ID exactly as provided by the company.</div>';
+  if(!/^ALY-[A-Z0-9]{3,20}$/i.test(accountId) && !looksLikeCompanyId(accountId)){
+    list.innerHTML='<div class="account-empty">Enter the short Account ID shown on the employer account page (ALY-XXXXXX).</div>';
     return;
   }
-
   list.innerHTML='<div class="loading-state">Looking up company…</div>';
-
   try{
-    const result=await accountApi('?scope=admin&q='+encodeURIComponent(companyId));
+    // Admin-only server lookup resolves the public Account ID to the internal company UUID.
+    const lookup=await api('?account_lookup='+encodeURIComponent(accountId));
+    const result=await accountApi('?scope=admin&q='+encodeURIComponent(lookup.company_id));
     accountRows=result.accounts||[];
-    list.innerHTML=accountRows.length
-      ? accountRows.map(renderAccountRow).join('')
-      : '<div class="account-empty">No company was found for that Company ID, or no Alygnn accounts are currently connected to it.</div>';
+    const companyName=esc(lookup.company_name||'Company');
+    const shortId=esc(lookup.account_number||accountId);
+    const history=lookup.history||[];
+    let historyHtml=`<div class="account-search-card" style="margin-top:14px">
+      <div class="account-name">Company update history — ${companyName}</div>
+      <div class="account-help">Account ID: ${shortId} · ${history.length} recorded request${history.length===1?'':'s'} · Newest first</div>
+      <div style="display:grid;gap:10px;margin-top:14px">`;
+    historyHtml+=history.length?history.map(r=>{
+      const status=String(r.status||'pending').toLowerCase();
+      const date=r.reviewed_at?` · Reviewed ${esc(formatDate(r.reviewed_at))}`:'';
+      return `<div class="card" style="padding:15px">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+          <strong style="font-size:13px">${esc(profileUpdateFieldLabel(r.field_key))}</strong>
+          <span class="badge ${status==='approved'?'approved':status==='declined'?'rejected':'pending'}">${esc(status)}</span>
+        </div>
+        <div class="company-sub">Submitted ${esc(formatDate(r.created_at))}${date}</div>
+        <div class="update-change-grid"><div class="update-change-box"><div class="fact-label">Previous</div><div class="update-change-value">${esc(r.current_value||'Not provided')}</div></div>
+        <div class="update-change-box requested"><div class="fact-label">Requested</div><div class="update-change-value">${esc(r.requested_value||'')}</div></div></div>
+        ${r.reason?`<div class="update-reason"><strong>Employer reason:</strong> ${esc(r.reason)}</div>`:''}
+        ${r.admin_note?`<div class="update-reason"><strong>Admin note:</strong> ${esc(r.admin_note)}</div>`:''}
+      </div>`;
+    }).join(''):'<div class="account-help">No saved company update requests for this account.</div>';
+    historyHtml+='</div></div>';
+    list.innerHTML=(accountRows.length?accountRows.map(renderAccountRow).join(''):
+      '<div class="account-empty">No linked user accounts were returned for this company.</div>')+historyHtml;
   }catch(error){
     accountRows=[];
-    list.innerHTML='<div class="account-empty">'+esc(error.message||'Could not look up this company.')+'</div>';
+    list.innerHTML='<div class="account-empty">'+esc(error.message||'Could not look up this account.')+'</div>';
   }
 }
 
