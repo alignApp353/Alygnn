@@ -153,6 +153,16 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
 }
 
 @media(max-width:850px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding-left:18px;padding-right:18px}}@media(max-width:480px){.summary{grid-template-columns:minmax(0,1fr)}.stat{padding:14px}nav{padding:0 16px;gap:8px}.admin-pill{font-size:10px;padding:6px 9px}}
+
+/* Update requests only: search and review history */
+.update-tools{display:none;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+.update-tools.show{display:flex}
+.update-tools input,.update-tools select{min-height:40px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);font:13px 'DM Sans',sans-serif;padding:0 12px}
+.update-tools input{flex:1;min-width:190px}
+.update-tools select{min-width:145px}
+.update-results-count{font-size:11px;color:var(--text-muted);margin-bottom:12px}
+.update-identity{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.update-identity span{border:1px solid var(--border);border-radius:8px;padding:6px 9px;font-size:11px;color:var(--text-muted);overflow-wrap:anywhere}
 </style>
 </head>
 
@@ -196,6 +206,21 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
       <button class="refresh" id="refresh">Refresh</button>
     </div>
 
+    <div class="update-tools" id="update-tools">
+      <input id="update-search" type="search" placeholder="Search company, company ID, account or request ID" aria-label="Search update requests">
+      <select id="update-status-filter" aria-label="Filter update request status">
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="declined">Declined</option>
+        <option value="all">All requests</option>
+      </select>
+      <select id="update-date-filter" aria-label="Filter update requests by date">
+        <option value="all">All dates</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </div>
     <div class="status-message" id="message"></div>
     <div class="queue" id="queue"><div class="loading-state">Loading…</div></div>
   </div>
@@ -239,6 +264,7 @@ let rows=[];
 let verificationCache=new Map();
 let companyCache=new Map();
 let profileUpdateRequests=[];
+let profileUpdateStatusFilter='pending';
 let accountRows=[];
 let selectedDeleteAccount=null;
 
@@ -412,21 +438,41 @@ function profileUpdateFieldLabel(fieldKey){
 
 function renderProfileUpdateRequests(){
   const queue=$('queue');
-  if(!profileUpdateRequests.length){
-    queue.innerHTML='<div class="empty">No pending company profile update requests.</div>';
+  const search=String($('update-search')?.value||'').toLowerCase().trim();
+  const days=String($('update-date-filter')?.value||'all');
+  const minTime=days==='all'?0:Date.now()-Number(days)*86400000;
+  const filtered=profileUpdateRequests.filter(row=>{
+    if(minTime&&new Date(row.created_at).getTime()<minTime)return false;
+    const company=companyCache.get(row.company_id)||{};
+    const searchable=[row.company_name_snapshot,row.company_id,company.account_number,
+      row.employer_id,row.id,row.field_key,row.requested_value].join(' ').toLowerCase();
+    return !search||searchable.includes(search);
+  });
+  const isPending=row=>String(row.status||'').toLowerCase()==='pending';
+  if(!filtered.length){
+    queue.innerHTML='<div class="empty">No matching company profile update requests.</div>';
     return;
   }
-
-  queue.innerHTML=profileUpdateRequests.map(row=>`
+  queue.innerHTML=`<div class="update-results-count">Showing ${filtered.length} request${filtered.length===1?'':'s'} · Newest first</div>`+filtered.map(row=>{
+    const company=companyCache.get(row.company_id)||{};
+    const pending=isPending(row);
+    const status=String(row.status||'pending').toLowerCase();
+    const badge=status==='approved'?'approved':status==='declined'?'rejected':'pending';
+    return `
     <article class="card">
       <div class="card-head">
         <div>
-          <div class="company-name">${esc(row.company_name_snapshot||'Company')}</div>
+          <div class="company-name">${esc(row.company_name_snapshot||company.company_name||'Company')}</div>
           <div class="company-sub">${esc(profileUpdateFieldLabel(row.field_key))} · Submitted ${esc(formatDate(row.created_at))}</div>
         </div>
-        <span class="badge pending">Pending update</span>
+        <span class="badge ${badge}">${esc(status==='pending'?'Pending update':status==='approved'?'Approved':status==='declined'?'Declined':status)}</span>
       </div>
       <div class="card-body">
+        <div class="update-identity">
+          <span><strong>Company ID:</strong> ${esc(company.account_number||row.company_id||'Unavailable')}</span>
+          <span><strong>Account ID:</strong> ${esc(row.employer_id||'Unavailable')}</span>
+          <span><strong>Request ID:</strong> ${esc(row.id)}</span>
+        </div>
         <div class="update-change-grid">
           <div class="update-change-box">
             <div class="fact-label">Current</div>
@@ -437,42 +483,38 @@ function renderProfileUpdateRequests(){
             <div class="update-change-value">${esc(row.requested_value||'')}</div>
           </div>
         </div>
-
-        <div class="update-reason">
-          <strong style="color:var(--text)">Employer reason:</strong>
-          ${esc(row.reason||'No reason provided')}
-        </div>
-
+        <div class="update-reason"><strong style="color:var(--text)">Employer reason:</strong> ${esc(row.reason||'No reason provided')}</div>
         ${row.supporting_document_path?`
-          <div class="update-doc-row">
-            <div>
-              <div class="doc-title">Supporting document attached</div>
-              <div class="update-doc-copy">Private document. Open a short-lived signed link to review it.</div>
-            </div>
-            <button class="doc-link" type="button" onclick="openProfileUpdateDocument('${esc(row.supporting_document_path)}',this)">View document</button>
-          </div>`:''}
-
-        <div class="actions">
+          <div class="update-doc-row"><div><div class="doc-title">Supporting document attached</div>
+          <div class="update-doc-copy">Private document. Open a short-lived signed link to review it.</div></div>
+          <button class="doc-link" type="button" onclick="openProfileUpdateDocument('${esc(row.supporting_document_path)}',this)">View document</button></div>`:''}
+        ${pending?`<div class="actions">
           <button class="btn approve" type="button" onclick="reviewProfileUpdateRequest('${esc(row.id)}','approved',this)">Approve update</button>
           <button class="btn reject" type="button" onclick="reviewProfileUpdateRequest('${esc(row.id)}','declined',this)">Decline</button>
-        </div>
+        </div>`:''}
       </div>
-    </article>
-  `).join('');
+    </article>`;
+  }).join('');
 }
 
 async function loadProfileUpdateRequests(){
   clearMessage();
   currentStatus='profile_updates';
+  $('update-tools').classList.add('show');
   $('queue').classList.add('loading');
   try{
-    const {data,error}=await sb
-      .from('employer_profile_update_requests')
+    // Admin-only query: include reviewed requests for searchable history.
+    let request=sb.from('employer_profile_update_requests')
       .select('id,employer_id,company_id,company_name_snapshot,field_key,current_value,requested_value,reason,supporting_document_path,status,created_at')
-      .eq('status','pending')
-      .order('created_at',{ascending:false});
-    if(error) throw error;
+      .order('created_at',{ascending:false})
+      .limit(1000);
+    const filter=profileUpdateStatusFilter;
+    if(filter!=='all')request=request.eq('status',filter);
+    const {data,error}=await request;
+    if(error)throw error;
     profileUpdateRequests=data||[];
+    // Company cache is already used elsewhere in the admin page.
+    if(!companyCache.size)await loadCompanyCache();
     renderProfileUpdateRequests();
   }catch(error){
     console.error('Failed to load profile update requests:',error);
@@ -972,6 +1014,7 @@ document.querySelectorAll('.tab').forEach(button=>{
   button.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(item=>item.classList.remove('active'));
     button.classList.add('active');
+    $('update-tools').classList.toggle('show',button.dataset.status==='profile_updates');
     if(button.dataset.status==='profile_updates'){
       loadProfileUpdateRequests();
     }else if(button.dataset.status==='accounts'){
@@ -981,6 +1024,13 @@ document.querySelectorAll('.tab').forEach(button=>{
       loadStatus(button.dataset.status);
     }
   });
+});
+
+$('update-search').addEventListener('input',()=>{if(currentStatus==='profile_updates')renderProfileUpdateRequests();});
+$('update-date-filter').addEventListener('change',()=>{if(currentStatus==='profile_updates')renderProfileUpdateRequests();});
+$('update-status-filter').addEventListener('change',()=>{
+  profileUpdateStatusFilter=$('update-status-filter').value;
+  if(currentStatus==='profile_updates')loadProfileUpdateRequests();
 });
 
 $('refresh').addEventListener('click',()=>{
