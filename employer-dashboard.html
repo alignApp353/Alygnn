@@ -4590,7 +4590,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     weeklySlotExpiryByPurchaseId = Object.fromEntries(
       (data || []).map(row => [
         String(row.id),
-        row.activated_at && row.expires_at && String(row.expires_at).toLowerCase() !== 'infinity'
+        row.expires_at && String(row.expires_at).toLowerCase() !== 'infinity'
           ? row.expires_at
           : null
       ])
@@ -6149,7 +6149,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           showToast('Could not verify the Weekly Job expiration. Please try again.');
           return;
         }
-        weeklyExpiry = purchase?.activated_at && purchase?.expires_at
+        weeklyExpiry = purchase?.expires_at
           ? new Date(purchase.expires_at).getTime() : null;
       }
       if (!isWeeklyJob || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired' ||
