@@ -207,7 +207,7 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
     </div>
 
     <div class="update-tools" id="update-tools">
-      <input id="update-search" type="search" placeholder="Search company, company ID, account or request ID" aria-label="Search update requests">
+      <input id="update-search" type="search" placeholder="Search company or Account ID" aria-label="Search update requests">
       <select id="update-status-filter" aria-label="Filter update request status">
         <option value="pending">Pending</option>
         <option value="approved">Approved</option>
@@ -444,8 +444,8 @@ function renderProfileUpdateRequests(){
   const filtered=profileUpdateRequests.filter(row=>{
     if(minTime&&new Date(row.created_at).getTime()<minTime)return false;
     const company=companyCache.get(row.company_id)||{};
-    const searchable=[row.company_name_snapshot,row.company_id,company.account_number,
-      row.employer_id,row.id,row.field_key,row.requested_value].join(' ').toLowerCase();
+    const searchable=[row.company_name_snapshot,company.company_name,company.account_number,
+      row.field_key,row.requested_value].join(' ').toLowerCase();
     return !search||searchable.includes(search);
   });
   const isPending=row=>String(row.status||'').toLowerCase()==='pending';
@@ -469,9 +469,7 @@ function renderProfileUpdateRequests(){
       </div>
       <div class="card-body">
         <div class="update-identity">
-          <span><strong>Company ID:</strong> ${esc(company.account_number||row.company_id||'Unavailable')}</span>
-          <span><strong>Account ID:</strong> ${esc(row.employer_id||'Unavailable')}</span>
-          <span><strong>Request ID:</strong> ${esc(row.id)}</span>
+          <span><strong>Account ID:</strong> ${esc(company.account_number||'Unavailable')}</span>
         </div>
         <div class="update-change-grid">
           <div class="update-change-box">
@@ -828,8 +826,7 @@ function renderRow(row){
         <div>
           <div class="company-name">${esc(row.company_name||'Unnamed company')}</div>
           <div class="company-sub">
-            Company ID: ${esc(row.company_id||'Not connected')}
-            · Account: ${esc(row.account_number||'Not provided')}
+            Account ID: ${esc(row.account_number||'Not provided')}
           </div>
         </div>
         <span class="badge ${cardStatus==='pending_review'?'pending':esc(cardStatus)}">${esc(fmtStatus(cardStatus))}</span>
