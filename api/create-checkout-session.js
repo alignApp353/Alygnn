@@ -1361,7 +1361,9 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'false',
     billing_address_collection:'auto',
-    'payment_intent_data[setup_future_usage]':'off_session'
+    'payment_intent_data[setup_future_usage]':'off_session',
+    // Explain the quarterly switch on Checkout without changing the fixed charge.
+    'custom_text[submit][message]':`One-time upgrade from ${currentPlan.charAt(0).toUpperCase()+currentPlan.slice(1)} ${currentBilling} to ${targetPlan.charAt(0).toUpperCase()+targetPlan.slice(1)} ${billing}. Your existing subscription changes only after payment is confirmed.`
   };
   Object.entries(metadata).forEach(([key,value])=>{
     if(value===undefined||value===null||value==='')return;
