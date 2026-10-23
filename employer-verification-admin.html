@@ -455,6 +455,7 @@ function renderProfileUpdateRequests(){
   }
   queue.innerHTML=`<div class="update-results-count">Showing ${filtered.length} request${filtered.length===1?'':'s'} · Newest first</div>`+filtered.map(row=>{
     const company=companyCache.get(row.company_id)||{};
+    const shortAccountId=String(company.account_number||verificationCache.get(row.company_id)?.account_number||'').trim();
     const pending=isPending(row);
     const status=String(row.status||'pending').toLowerCase();
     const badge=status==='approved'?'approved':status==='declined'?'rejected':'pending';
@@ -469,7 +470,7 @@ function renderProfileUpdateRequests(){
       </div>
       <div class="card-body">
         <div class="update-identity">
-          <span><strong>Account ID:</strong> ${esc(company.account_number||'Unavailable')}</span>
+          <span><strong>Account ID:</strong> ${esc(shortAccountId||'Unavailable')}</span>
         </div>
         <div class="update-change-grid">
           <div class="update-change-box">
