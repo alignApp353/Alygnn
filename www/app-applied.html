@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-alygnn-responsive="candidate">
+<html lang="en" data-alygnn-responsive="candidate" data-alygnn-myjobs-state="loading">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -948,6 +948,25 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 <link rel="stylesheet" href="app-candidate-loading-smart.css">
 <script defer src="app-candidate-loading-smart.js"></script>
 <script defer src="app-candidate-back-v2.js"></script>
+<style id="alygnn-myjobs-first-load-only">
+/* My Jobs only: do not expose placeholder counters during the first fetch.
+   Keep the existing shared loader; don't change loaders on other tabs. */
+html[data-alygnn-responsive="candidate"][data-alygnn-myjobs-state="loading"]
+  #alygnn-shared-candidate-loader {
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+}
+/* Finish explicitly even if the shared boot helper is unavailable. */
+html[data-alygnn-myjobs-state="ready"] #alygnn-shared-candidate-loader,
+html[data-alygnn-myjobs-state="error"] #alygnn-shared-candidate-loader {
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+/* If the initial request fails, show an honest retry state, not fake zeros. */
+html[data-alygnn-myjobs-state="error"] .stat-number {visibility:hidden!important;}
+</style>
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
 <div id="alygnn-shared-candidate-loader" role="status" aria-label="Alygnn is loading" aria-live="polite">
@@ -977,10 +996,10 @@ html[data-effective-theme='light'] .bottom-nav.candidate .nav.active::before{
 <div class="title">My Jobs</div>
 <div class="subtitle">Track applications and revisit jobs you passed on.</div>
 <div class="stats">
-  <div class="stat"><div id="appliedCount" class="stat-number">0</div><div class="stat-label">Applied</div></div>
-  <div class="stat"><div id="acceptedCount" class="stat-number">0</div><div class="stat-label">Accepted</div></div>
-  <div class="stat"><div id="notSelectedCount" class="stat-number">0</div><div class="stat-label">Not Selected</div></div>
-  <div class="stat"><div id="skipCount" class="stat-number">0</div><div class="stat-label">Skipped</div></div>
+  <div class="stat"><div id="appliedCount" class="stat-number">—</div><div class="stat-label">Applied</div></div>
+  <div class="stat"><div id="acceptedCount" class="stat-number">—</div><div class="stat-label">Accepted</div></div>
+  <div class="stat"><div id="notSelectedCount" class="stat-number">—</div><div class="stat-label">Not Selected</div></div>
+  <div class="stat"><div id="skipCount" class="stat-number">—</div><div class="stat-label">Skipped</div></div>
 </div>
 <div class="tabs">
   <button class="tab active" id="appliedTab" onclick="filterApps('applied',this)">Applied</button>
@@ -1068,6 +1087,29 @@ let messagesChannel=null;
 let reloadTimer=null;
 let startedConversations=new Map();
 let messagingAvailable=false;
+let myJobsFirstLoadPending=true;
+let myJobsFirstLoadTimer=null;
+function finishMyJobsFirstLoad(success){
+  // A late successful response after a network timeout can still restore real data.
+  if(!myJobsFirstLoadPending){
+    if(success)document.documentElement.dataset.alygnnMyjobsState='ready';
+    return;
+  }
+  myJobsFirstLoadPending=false;
+  if(myJobsFirstLoadTimer)clearTimeout(myJobsFirstLoadTimer);
+  document.documentElement.dataset.alygnnMyjobsState=success?'ready':'error';
+  window.AlygnnCandidateBoot?.finish();
+}
+function showMyJobsLoadError(){
+  document.getElementById('message').textContent='';
+  document.getElementById('message').className='message';
+  document.getElementById('content').innerHTML=`
+    <div class="empty">
+      <div class="empty-title">Could not load your jobs</div>
+      <div class="empty-copy">Please try again to see your applications.</div>
+      <button class="btn primary" type="button" onclick="location.reload()">Try again</button>
+    </div>`;
+}
 
 const esc=value=>String(value??'').replace(
   /[&<>"']/g,
@@ -1630,15 +1672,18 @@ async function loadMyJobs(userId){
     document.getElementById('message').className='message';
 
     render();
+    finishMyJobsFirstLoad(true);
 
   }catch(error){
     console.error(error);
-
-    document.getElementById('message').textContent=
-      'Your jobs could not be loaded right now.';
-
-    document.getElementById('message').className=
-      'message error';
+    if(myJobsFirstLoadPending){
+      showMyJobsLoadError();
+      finishMyJobsFirstLoad(false);
+    }else{
+      document.getElementById('message').textContent=
+        'Your jobs could not be loaded right now.';
+      document.getElementById('message').className='message error';
+    }
   }
 }
 
@@ -1736,27 +1781,38 @@ function startRealtimeSync(userId){
 document.addEventListener('visibilitychange',()=>{
   if(
     document.visibilityState==='visible' &&
-    currentUserId
+    currentUserId &&
+    !myJobsFirstLoadPending
   ){
     loadMyJobs(currentUserId);
   }
 });
 
 window.addEventListener('pageshow',()=>{
-  if(currentUserId){
+  if(currentUserId && !myJobsFirstLoadPending){
     loadMyJobs(currentUserId);
   }
 });
 
 (async()=>{
-  const {data,error}=await sb.auth.getSession();
+  // Only the first visit waits behind the shared Alygnn loading screen.
+  // If Supabase hangs, show a retry instead of displaying incorrect zeros.
+  myJobsFirstLoadTimer=setTimeout(()=>{
+    if(myJobsFirstLoadPending){
+      showMyJobsLoadError();
+      finishMyJobsFirstLoad(false);
+    }
+  },15000);
+  try{
+    const {data,error}=await sb.auth.getSession();
 
-  if(error || !data.session){
-    location.replace('app-login.html');
-    return;
-  }
+    if(error || !data.session){
+      if(myJobsFirstLoadTimer)clearTimeout(myJobsFirstLoadTimer);
+      location.replace('app-login.html');
+      return;
+    }
 
-  currentUserId=data.session.user.id;
+    currentUserId=data.session.user.id;
 
   const requestedTab=
     new URLSearchParams(window.location.search)
@@ -1777,9 +1833,13 @@ window.addEventListener('pageshow',()=>{
       ?.classList.add('active');
   }
 
-  await loadMyJobs(currentUserId);
-  window.AlygnnCandidateBoot?.finish();
-  startRealtimeSync(currentUserId);
+    await loadMyJobs(currentUserId);
+    startRealtimeSync(currentUserId);
+  }catch(error){
+    console.error('Could not initialize My Jobs:',error);
+    showMyJobsLoadError();
+    finishMyJobsFirstLoad(false);
+  }
 })();</script>
 
 <script id="alygnn-candidate-message-badge-persistence">
