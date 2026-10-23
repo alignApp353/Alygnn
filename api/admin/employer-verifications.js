@@ -21,7 +21,7 @@ function applyCors(req, res) {
   }
 
   res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   res.setHeader('Access-Control-Max-Age', '86400');
 }
@@ -163,10 +163,68 @@ async function addSignedUrls(supabase, rows) {
   );
 }
 
+
+// Company profile update emails only. Existing admin GET/PATCH actions are unchanged.
+const companyUpdateEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const companyUpdateFieldNames={company_name:'Company name',company_headline:'About the company',company_website:'Website',company_phone:'Business phone',business_email:'Business email',business_address:'Business address'};
+async function handleCompanyUpdateNotification(req,res){
+  try{
+    const token=bearerToken(req);
+    const body=typeof req.body==='string'?JSON.parse(req.body):req.body||{};
+    const requestId=String(body.request_id||'');
+    const event=String(body.event||'');
+    if(!/^[0-9a-f-]{36}$/i.test(requestId)||!['submitted','approved','declined'].includes(event))return res.status(400).json({error:'Invalid notification request'});
+    if(!process.env.SUPABASE_URL||!process.env.SUPABASE_SERVICE_ROLE_KEY||!process.env.RESEND_API_KEY)return res.status(503).json({error:'Notifications are not configured'});
+    const db=serviceClient();
+    const {data:{user},error:authError}=await db.auth.getUser(token);
+    if(authError||!user)return res.status(401).json({error:'Sign in required'});
+    const {data:r,error:requestError}=await db.from('employer_profile_update_requests').select('id,company_id,employer_id,company_name_snapshot,field_key,current_value,requested_value,reason,status,admin_note,created_at,reviewed_at').eq('id',requestId).maybeSingle();
+    if(requestError||!r)return res.status(404).json({error:'Request not found'});
+    if(event==='submitted'){
+      if(r.status!=='pending')return res.status(409).json({error:'Request is no longer pending'});
+      const {data:ver}=await db.from('employer_verifications').select('user_id').eq('company_id',r.company_id).maybeSingle();
+      let allowed=user.id===r.employer_id||user.id===ver?.user_id;
+      if(!allowed){const {data:m}=await db.from('company_members').select('user_id').eq('company_id',r.company_id).eq('user_id',user.id).eq('membership_status','active').maybeSingle();allowed=!!m;}
+      if(!allowed)return res.status(403).json({error:'Not your company'});
+      // Submission notification may only be requested immediately after submission.
+      if(Math.abs(Date.now()-new Date(r.created_at).getTime())>10*60*1000)return res.status(409).json({error:'Notification window expired'});
+    }else{
+      const admins=new Set(String(process.env.ALYGNN_ADMIN_EMAILS||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean));
+      if(!admins.has(String(user.email||'').toLowerCase()))return res.status(403).json({error:'Admin authorization required'});
+      if(r.status!==event||!r.reviewed_at)return res.status(409).json({error:'Decision has not been recorded'});
+    }
+    const {data:company,error:companyError}=await db.from('companies').select('account_number').eq('id',r.company_id).maybeSingle();
+    if(companyError)throw companyError;
+    const account=String(company?.account_number||'Unavailable');
+    const label=companyUpdateFieldNames[r.field_key]||'Company information';
+    let recipient,subject,html;
+    if(event==='submitted'){
+      recipient='admin@alygnn.com';subject='Alygnn — New company update request';
+      html=`<h2>New company update request</h2><p><strong>${companyUpdateEsc(r.company_name_snapshot)}</strong> · Account ID: ${companyUpdateEsc(account)}</p><p>Field: ${companyUpdateEsc(label)}</p><p>Current: ${companyUpdateEsc(r.current_value)}</p><p>Requested: ${companyUpdateEsc(r.requested_value)}</p><p>Reason: ${companyUpdateEsc(r.reason)}</p><p><a href="https://alygnn.com/employer-verification-admin.html">Review in Alygnn Admin</a></p>`;
+    }else{
+      // Address is resolved from Supabase Auth; never trust a client-supplied recipient.
+      const {data:auth}=await db.auth.admin.getUserById(r.employer_id);
+      recipient=auth?.user?.email;
+      if(!recipient)return res.status(422).json({error:'Employer email is unavailable'});
+      subject=event==='approved'?'Alygnn — Company update approved':'Alygnn — Company update declined';
+      html=`<h2>Company update ${companyUpdateEsc(event)}</h2><p>Your request to update <strong>${companyUpdateEsc(label)}</strong> for ${companyUpdateEsc(r.company_name_snapshot)} (Account ID: ${companyUpdateEsc(account)}) was ${companyUpdateEsc(event)}.</p>${event==='declined'&&r.admin_note?`<p>Reason: ${companyUpdateEsc(r.admin_note)}</p>`:''}<p><a href="https://alygnn.com/employer-account.html">View your Alygnn account</a></p>`;
+    }
+    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+process.env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':'alygnn-company-update-'+r.id+'-'+event},body:JSON.stringify({from:'Alygnn <admin@alygnn.com>',to:[recipient],subject,html,reply_to:'contact@alygnn.com'})});
+    if(!response.ok){console.error('Company update Resend error',response.status,await response.text());return res.status(502).json({error:'Email could not be sent'});}
+    return res.status(200).json({success:true});
+  }catch(error){console.error('Company update notification error',error);return res.status(500).json({error:'Notification failed'});}
+}
+
 module.exports = async function handler(req, res) {
   applyCors(req, res);
 
   if (req.method === 'OPTIONS') return res.status(204).end();
+
+  if (req.method === 'POST') {
+    const body=typeof req.body==='string' ? (()=>{try{return JSON.parse(req.body)}catch(_){return {}}})() : (req.body||{});
+    if(body.action==='company_update_notification') return handleCompanyUpdateNotification(req,res);
+    return sendJson(res,405,{success:false,error:'Method not allowed.'});
+  }
 
   try {
     const supabase = serviceClient();
@@ -359,7 +417,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    res.setHeader('Allow','GET, PATCH, OPTIONS');
+    res.setHeader('Allow','GET, PATCH, POST, OPTIONS');
     return sendJson(res,405,{success:false,error:'Method not allowed.'});
   } catch (error) {
     console.error('Employer verification admin error:',error);
