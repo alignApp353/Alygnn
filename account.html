@@ -3388,10 +3388,8 @@ async function initAccountPage(){
   nameEl.textContent = fullName;
   initialsEl.textContent = getInitials(fullName);
 
-  if(needsPassword){
-    const addPasswordCard = document.getElementById('add-password-card');
-    if(addPasswordCard) addPasswordCard.style.display = '';
-  }
+  // Google/Apple sign-in does not require a separate password.
+  // The optional Add a password card stays hidden.
 
   renderResumeCardFast(profile?.resume_file_path, profile?.resume_data, profile?.resume_source);
 
