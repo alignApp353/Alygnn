@@ -501,6 +501,7 @@
     document.getElementById('switch-prompt').innerHTML = isLogin
       ? `No account? <a href="#" onclick="switchTab('signup'); return false;">Sign up free</a>`
       : `Already have an account? <a href="#" onclick="switchTab('login'); return false;">Sign in</a>`;
+    document.getElementById('switch-prompt').style.display = (!isLogin && isEmp) ? 'none' : '';
   }
 
   function switchTab(mode) {
