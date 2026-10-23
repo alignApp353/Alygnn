@@ -179,7 +179,7 @@
   </div>
 
   <!-- Password -->
-  <div class="section">
+  <div class="section" id="password-section">
     <h2>Password</h2>
     <div class="desc">Change your password for signing in with email. We'll email you a code to confirm it's really you.</div>
     <div class="field">
@@ -452,6 +452,14 @@
       .eq('id', currentUserId)
       .single();
     userHasPassword = !!profile?.has_password;
+
+    // OAuth-only accounts can keep signing in with Google/Apple without a password.
+    // Preserve password settings for email/password users and OAuth users who already set one.
+    const identityProviders = (session.user.identities || []).map(identity => String(identity.provider || '').toLowerCase());
+    const socialOnly = identityProviders.some(provider => provider === 'google' || provider === 'apple') &&
+      !identityProviders.includes('email') && !userHasPassword;
+    const passwordSection = document.getElementById('password-section');
+    if (passwordSection && socialOnly) passwordSection.style.display = 'none';
 
     // Team members use this page only for THEIR OWN login/security. Workspace
     // permissions still come from the company owner and are not expanded here.
