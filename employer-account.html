@@ -1156,7 +1156,7 @@
           <span class="field-icon">#</span>
           <div class="company-id-stack">
             <div class="field-stack">
-              <span class="field-label">Company ID</span>
+              <span class="field-label">Account ID</span>
               <div class="company-id-value" id="company-id-value">Loading…</div>
             </div>
             <button type="button" class="company-id-copy" id="company-id-copy" onclick="copyCompanyId()" disabled>Copy</button>
@@ -3263,7 +3263,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
 
-  let currentCompanyId = '';
+  let currentAccountNumber = '';
 
   async function loadCompanyId(){
     const valueEl = document.getElementById('company-id-value');
@@ -3271,50 +3271,40 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(!currentUserId || !valueEl) return;
 
     try{
-      let companyId = isTeamMember ? String(teamAccountState?.company_id||'') : '';
-
-      if(!companyId){
-        const { data: company, error: companyError } = await sb
-          .from('companies')
-          .select('id')
+      let company = null;
+      if(isTeamMember && teamAccountState?.company_id){
+        const result = await sb.from('companies')
+          .select('account_number')
+          .eq('id', teamAccountState.company_id)
+          .maybeSingle();
+        if(result.error) throw result.error;
+        company = result.data;
+      }else{
+        const result = await sb.from('companies')
+          .select('account_number')
           .eq('owner_user_id', currentUserId)
           .maybeSingle();
-
-        if(!companyError && company?.id){
-          companyId = company.id;
-        }else{
-          const { data: verification } = await sb
-            .from('employer_verifications')
-            .select('company_id')
-            .eq('user_id', currentUserId)
-            .maybeSingle();
-
-          companyId = verification?.company_id || '';
-        }
+        if(result.error) throw result.error;
+        company = result.data;
       }
-
-      currentCompanyId = companyId;
-
-      if(companyId){
-        valueEl.textContent = companyId;
-        valueEl.title = companyId;
-        if(copyBtn) copyBtn.disabled = false;
-      }else{
-        valueEl.textContent = 'Not available';
-        if(copyBtn) copyBtn.disabled = true;
-      }
+      const accountNumber = String(company?.account_number || '').trim();
+      currentAccountNumber = accountNumber;
+      valueEl.textContent = accountNumber || 'Not available';
+      valueEl.title = accountNumber;
+      if(copyBtn) copyBtn.disabled = !accountNumber;
     }catch(error){
-      console.warn('Could not load company ID:', error);
+      console.warn('Could not load account ID:', error);
+      currentAccountNumber = '';
       valueEl.textContent = 'Not available';
       if(copyBtn) copyBtn.disabled = true;
     }
   }
 
   async function copyCompanyId(){
-    if(!currentCompanyId) return;
+    if(!currentAccountNumber) return;
 
     try{
-      await navigator.clipboard.writeText(currentCompanyId);
+      await navigator.clipboard.writeText(currentAccountNumber);
       const button = document.getElementById('company-id-copy');
       if(button){
         const original = button.textContent;
@@ -3322,7 +3312,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         setTimeout(() => { button.textContent = original; }, 1200);
       }
     }catch(error){
-      console.warn('Could not copy company ID:', error);
+      console.warn('Could not copy account ID:', error);
     }
   }
 
@@ -3508,7 +3498,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       await loadCandidates();
     }
 
-    // Company-ID / update-request work can finish in parallel with jobs and
+    // Account-ID / update-request work can finish in parallel with jobs and
     // candidates, but make sure any visible company controls are settled before
     // the loading screen disappears.
     if(companyTasks.length){
