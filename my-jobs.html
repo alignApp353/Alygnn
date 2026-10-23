@@ -418,6 +418,7 @@ body.auth-ready #auth-loading { display: none; }
     <button class="tab" data-tab="accepted">Accepted</button>
     <button class="tab" data-tab="rejected">Not selected</button>
     <button class="tab" data-tab="skipped">Skipped</button>
+    <button class="tab" data-tab="saved">Saved</button>
   </div>
 
   <input type="text" class="search-input" id="search-input" placeholder="Search by title or company…" autocomplete="off">
@@ -517,6 +518,7 @@ let currentUserId = null;
 let currentTab = 'applied';
 let applications = [];
 let skips = [];
+let savedJobs = [];
 let jobMap = {};
 
 function escapeHtml(value){
@@ -975,7 +977,15 @@ async function loadData(){
   if(skipsError) console.error('Failed to load skipped jobs:', skipsError);
   skips = skipRows || [];
 
-  const jobIds = [...new Set([...applications.map(a => a.job_id), ...skips.map(s => s.job_id)])];
+  const { data: savedRows, error: savedError } = await sb
+    .from('saved_jobs')
+    .select('job_id, saved_at')
+    .eq('candidate_id', currentUserId)
+    .order('saved_at', { ascending: false });
+  if(savedError) console.error('Failed to load saved jobs:',savedError);
+  savedJobs = savedRows || [];
+
+  const jobIds = [...new Set([...applications.map(a => a.job_id), ...skips.map(s => s.job_id), ...savedJobs.map(s => s.job_id)])];
   if(jobIds.length === 0){ jobMap = {}; return; }
 
   const { data: jobsData, error: jobsError } = await sb
@@ -1044,13 +1054,32 @@ function renderSkippedRow(job){
   `;
 }
 
+function renderSavedRow(job){
+  const metaParts=[job.company,job.job_type,job.location].filter(Boolean).join(' · ');
+  const jobIdAttr=escapeHtml(job.id);
+  const detailsUrl=`job-details.html?job=${encodeURIComponent(job.id)}`;
+  return `<div class="job-row-item" role="button" tabindex="0" onclick="window.location.href='${detailsUrl}'" onkeydown="if(event.key==='Enter')window.location.href='${detailsUrl}'">
+    <div style="flex:1;min-width:0"><div class="job-row-title">${escapeHtml(job.title||'Untitled role')}</div><div class="job-row-meta">${escapeHtml(metaParts)}</div></div>
+    <div class="job-row-actions job-row-actions-inline"><button type="button" class="job-action-btn restore" onclick="event.stopPropagation();removeSavedJob('${jobIdAttr}')">Remove saved</button></div>
+  </div>`;
+}
+async function removeSavedJob(jobId){
+  if(!currentUserId||!jobId)return;
+  const {error}=await sb.from('saved_jobs').delete().eq('candidate_id',currentUserId).eq('job_id',jobId);
+  if(error){console.error('Failed to remove saved job:',error);alert('Could not remove saved job. Please try again.');return;}
+  savedJobs=savedJobs.filter(row=>String(row.job_id)!==String(jobId));
+  render();
+}
+
 function render(){
   const listEl = document.getElementById('job-list');
   const query = document.getElementById('search-input').value.trim().toLowerCase();
 
   let rows = [];
 
-  if(currentTab === 'skipped'){
+  if(currentTab === 'saved'){
+    rows = savedJobs.map(saved => ({ saved, job: jobMap[saved.job_id] })).filter(r => r.job);
+  } else if(currentTab === 'skipped'){
     rows = skips
       .map(skip => ({ skip, job: jobMap[skip.job_id] }))
       .filter(r => r.job);
@@ -1069,7 +1098,7 @@ function render(){
   }
 
   if(rows.length === 0){
-    const emptyLabel = currentTab === 'skipped' ? 'skipped'
+    const emptyLabel = currentTab === 'saved' ? 'saved' : currentTab === 'skipped' ? 'skipped'
       : currentTab === 'accepted' ? 'accepted'
       : currentTab === 'rejected' ? 'not selected'
       : 'applied';
@@ -1078,7 +1107,7 @@ function render(){
   }
 
   listEl.innerHTML = rows.map(r =>
-    currentTab === 'skipped' ? renderSkippedRow(r.job) : renderAppliedRow(r.app, r.job)
+    currentTab === 'saved' ? renderSavedRow(r.job) : currentTab === 'skipped' ? renderSkippedRow(r.job) : renderAppliedRow(r.app, r.job)
   ).join('');
 }
 
