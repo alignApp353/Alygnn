@@ -167,6 +167,21 @@ async function addSignedUrls(supabase, rows) {
 // Company profile update emails only. Existing admin GET/PATCH actions are unchanged.
 const companyUpdateEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const companyUpdateFieldNames={company_name:'Company name',company_headline:'About the company',company_website:'Website',company_phone:'Business phone',business_email:'Business email',business_address:'Business address'};
+// Alygnn branded layout for company update notices only. Email-safe table HTML.
+function companyUpdateMailLayout({heading,intro,details,actionUrl,actionText,note=''}){
+  const line=(label,value)=>`<tr><td style="padding:11px 14px;border-bottom:1px solid #E6EBEF;color:#607080;font-size:12px;width:34%;vertical-align:top">${companyUpdateEsc(label)}</td><td style="padding:11px 14px;border-bottom:1px solid #E6EBEF;color:#1A2530;font-size:13px;line-height:1.5;overflow-wrap:anywhere;word-break:break-word">${companyUpdateEsc(value)}</td></tr>`;
+  const rows=details.map(d=>line(d[0],d[1])).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F6F8F7;font-family:Arial,Helvetica,sans-serif;color:#1A2530">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F6F8F7"><tr><td align="center" style="padding:38px 16px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background:#FFFFFF;border:1px solid #DDE3E8;border-radius:18px">
+<tr><td style="padding:28px 32px 22px;border-bottom:1px solid #E7ECEF"><span style="font-family:Georgia,serif;font-weight:bold;letter-spacing:-1px;font-size:27px;color:#5D7FA3">Alygnn<span style="color:#8CB69B">.</span></span></td></tr>
+<tr><td style="padding:32px 32px 18px"><div style="font-size:11px;font-weight:bold;letter-spacing:1.6px;color:#5D7FA3;margin-bottom:12px">COMPANY PROFILE</div><h1 style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:25px;line-height:1.3;color:#1A2530">${companyUpdateEsc(heading)}</h1><p style="margin:0;color:#4A5968;font-size:14px;line-height:1.7">${intro}</p></td></tr>
+<tr><td style="padding:4px 32px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DDE3E8;border-radius:12px;border-collapse:separate;border-spacing:0;background:#FCFCFA">${rows}</table>${note?`<p style="margin:16px 0 0;color:#4A5968;font-size:13px;line-height:1.7">${note}</p>`:''}</td></tr>
+<tr><td style="padding:0 32px 34px"><a href="${actionUrl}" style="display:inline-block;background:#5D7FA3;color:#FFFFFF;text-decoration:none;border-radius:10px;padding:13px 22px;font-size:13px;font-weight:bold">${companyUpdateEsc(actionText)}</a></td></tr>
+<tr><td style="border-top:1px solid #E7ECEF;padding:20px 32px 26px;color:#8895A2;font-size:11px;line-height:1.8">This is an automated message from Alygnn.<br>Need help? <a href="mailto:contact@alygnn.com" style="color:#5D7FA3">Contact Alygnn</a> &nbsp;·&nbsp; <a href="https://alygnn.com/privacy.html" style="color:#5D7FA3">Privacy</a> &nbsp;·&nbsp; <a href="https://alygnn.com/terms.html" style="color:#5D7FA3">Terms</a><br>© 2026 Alygnn. All rights reserved.</td></tr>
+</table></td></tr></table></body></html>`;
+}
 async function handleCompanyUpdateNotification(req,res){
   try{
     const token=bearerToken(req);
@@ -200,14 +215,14 @@ async function handleCompanyUpdateNotification(req,res){
     let recipient,subject,html;
     if(event==='submitted'){
       recipient='admin@alygnn.com';subject='Alygnn — New company update request';
-      html=`<h2>New company update request</h2><p><strong>${companyUpdateEsc(r.company_name_snapshot)}</strong> · Account ID: ${companyUpdateEsc(account)}</p><p>Field: ${companyUpdateEsc(label)}</p><p>Current: ${companyUpdateEsc(r.current_value)}</p><p>Requested: ${companyUpdateEsc(r.requested_value)}</p><p>Reason: ${companyUpdateEsc(r.reason)}</p><p><a href="https://alygnn.com/employer-verification-admin.html">Review in Alygnn Admin</a></p>`;
+      html=companyUpdateMailLayout({heading:'New company update request',intro:'An employer has submitted a company profile update for your review.',details:[['Company',r.company_name_snapshot],['Account ID',account],['Field',label],['Current',r.current_value],['Requested',r.requested_value],['Reason',r.reason]],actionUrl:'https://alygnn.com/employer-verification-admin.html',actionText:'Review request'});
     }else{
       // Address is resolved from Supabase Auth; never trust a client-supplied recipient.
       const {data:auth}=await db.auth.admin.getUserById(r.employer_id);
       recipient=auth?.user?.email;
       if(!recipient)return res.status(422).json({error:'Employer email is unavailable'});
       subject=event==='approved'?'Alygnn — Company update approved':'Alygnn — Company update declined';
-      html=`<h2>Company update ${companyUpdateEsc(event)}</h2><p>Your request to update <strong>${companyUpdateEsc(label)}</strong> for ${companyUpdateEsc(r.company_name_snapshot)} (Account ID: ${companyUpdateEsc(account)}) was ${companyUpdateEsc(event)}.</p>${event==='declined'&&r.admin_note?`<p>Reason: ${companyUpdateEsc(r.admin_note)}</p>`:''}<p><a href="https://alygnn.com/employer-account.html">View your Alygnn account</a></p>`;
+      html=companyUpdateMailLayout({heading:event==='approved'?'Company update approved':'Company update declined',intro:event==='approved'?'Your company profile update has been approved. Your verified company information now reflects the change.':'Your company profile update request was declined. Your existing company information remains unchanged.',details:[['Company',r.company_name_snapshot],['Account ID',account],['Field',label],['Status',event==='approved'?'Approved':'Declined']],note:event==='declined'&&r.admin_note?`<strong>Reason:</strong> ${companyUpdateEsc(r.admin_note)}`:'',actionUrl:'https://alygnn.com/employer-account.html',actionText:'View your Alygnn account'});
     }
     const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+process.env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':'alygnn-company-update-'+r.id+'-'+event},body:JSON.stringify({from:'Alygnn <admin@alygnn.com>',to:[recipient],subject,html,reply_to:'contact@alygnn.com'})});
     if(!response.ok){console.error('Company update Resend error',response.status,await response.text());return res.status(502).json({error:'Email could not be sent'});}
