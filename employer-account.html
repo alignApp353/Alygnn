@@ -3271,23 +3271,32 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(!currentUserId || !valueEl) return;
 
     try{
-      let company = null;
-      if(isTeamMember && teamAccountState?.company_id){
-        const result = await sb.from('companies')
-          .select('account_number')
-          .eq('id', teamAccountState.company_id)
+      // Keep the existing company-ID discovery fallback. Only display its
+      // short, stored account_number; never show the internal UUID.
+      let companyId = isTeamMember ? String(teamAccountState?.company_id||'') : '';
+      let accountNumber = '';
+      if(!companyId){
+        const {data: owned} = await sb.from('companies')
+          .select('id,account_number')
+          .eq('owner_user_id', workspaceOwnerId || currentUserId)
           .maybeSingle();
-        if(result.error) throw result.error;
-        company = result.data;
-      }else{
-        const result = await sb.from('companies')
-          .select('account_number')
-          .eq('owner_user_id', currentUserId)
-          .maybeSingle();
-        if(result.error) throw result.error;
-        company = result.data;
+        companyId = owned?.id || '';
+        accountNumber = String(owned?.account_number || '').trim();
       }
-      const accountNumber = String(company?.account_number || '').trim();
+      if(!companyId || !accountNumber){
+        const {data: verification} = await sb.from('employer_verifications')
+          .select('company_id')
+          .eq('user_id', workspaceOwnerId || currentUserId)
+          .maybeSingle();
+        companyId = companyId || verification?.company_id || '';
+      }
+      if(companyId && !accountNumber){
+        const {data: company} = await sb.from('companies')
+          .select('account_number')
+          .eq('id', companyId)
+          .maybeSingle();
+        accountNumber = String(company?.account_number || '').trim();
+      }
       currentAccountNumber = accountNumber;
       valueEl.textContent = accountNumber || 'Not available';
       valueEl.title = accountNumber;
