@@ -581,12 +581,20 @@ async function reviewProfileUpdateRequest(requestId,decision,button){
     });
     if(error) throw error;
 
-    showMessage(
-      decision==='approved'
-        ? 'Company profile update approved and applied.'
-        : 'Company profile update declined. The employer was notified.',
-      'success'
-    );
+    showMessage(decision==='approved'
+      ? 'Company profile update approved and applied.'
+      : 'Company profile update declined.', 'success');
+    // Only notify after the existing Supabase review function succeeds.
+    try{
+      const response=await fetch('/api/admin/employer-verifications',{
+        method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+        body:JSON.stringify({action:'company_update_notification',request_id:requestId,event:decision})
+      });
+      if(!response.ok)showMessage('The update decision was saved, but the employer email could not be confirmed.','error');
+    }catch(notificationError){
+      console.warn('Company update decision email failed:',notificationError);
+      showMessage('The update decision was saved, but the employer email could not be confirmed.','error');
+    }
 
     await Promise.all([loadProfileUpdateRequests(),loadProfileUpdateCount()]);
   }catch(error){
