@@ -3297,6 +3297,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           .maybeSingle();
         accountNumber = String(company?.account_number || '').trim();
       }
+      // Owner-only read-only lookup. Company rows may be hidden from browser
+      // queries by RLS even though the admin verification API can see them.
+      if(!accountNumber && !isTeamMember){
+        const {data: result, error: lookupError} = await sb.rpc('get_my_alygnn_account_number');
+        if(!lookupError && typeof result === 'string') accountNumber = result.trim();
+        else if(lookupError) console.warn('Account ID lookup unavailable:', lookupError);
+      }
       currentAccountNumber = accountNumber;
       valueEl.textContent = accountNumber || 'Not available';
       valueEl.title = accountNumber;
