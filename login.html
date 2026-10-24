@@ -783,16 +783,12 @@
   async function startSocialAuth(provider) {
     const isSignup = document.getElementById('signup-form').style.display !== 'none';
     recordOAuthLegalConsent(provider);
-    if (!isSignup) {
-      sessionStorage.setItem('alygnn_oauth_login_check', JSON.stringify({
-        provider, role: currentRole, started_at: Date.now()
-      }));
-    } else {
-      sessionStorage.removeItem('alygnn_oauth_login_check');
-    }
-    const destination = isSignup
-      ? (currentRole === 'employer' ? '/employer-onboarding.html' : '/account.html')
-      : '/login.html?oauth_login_return=1' + (currentRole === 'employer' ? '&role=employer' : '');
+    sessionStorage.setItem('alygnn_oauth_login_check', JSON.stringify({
+      provider, role: currentRole, mode: isSignup ? 'signup' : 'login', started_at: Date.now()
+    }));
+    // Return to Alygnn first for both actions; signup must not log in an existing user.
+    const destination = '/login.html?oauth_login_return=1' +
+      (currentRole === 'employer' ? '&role=employer' : '');
     const { error } = await sb.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin + destination }
@@ -834,6 +830,20 @@
       // Allow for a small clock difference between Supabase and this device.
       const createdDuringLogin = Number.isFinite(createdAt) &&
         createdAt >= attempt.started_at - 120000;
+      if (attempt.mode === 'signup') {
+        // A signup attempt must not silently sign in an account that existed beforehand.
+        // A short clock allowance accommodates the timestamp returned by Supabase.
+        const createdDuringSignup = Number.isFinite(createdAt) &&
+          createdAt >= attempt.started_at - 10000;
+        if (!createdDuringSignup) {
+          await sb.auth.signOut({ scope: 'local' });
+          showMsg('You already have an Alygnn account. Please sign in.', 'info');
+          return;
+        }
+        const signupDestination = await redirectForUser(user, attempt.role || currentRole);
+        window.location.replace(signupDestination);
+        return;
+      }
       if (!Number.isFinite(createdAt) || createdDuringLogin) {
         await sb.auth.signOut({ scope: 'local' });
         showMsg("You don't have an Alygnn account yet. Please choose Create account to continue.", 'info');
