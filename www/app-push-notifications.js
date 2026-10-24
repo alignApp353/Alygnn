@@ -8,6 +8,7 @@
   window.__alygnnPushBridgeV2 = true;
 
   const STORAGE_KEY = 'alygnn_android_fcm_token_v1';
+  const CHOICE_PREFIX = 'alygnn_push_choice_v1_';
   const CHANNEL_ID = 'alygnn_updates';
   let plugin = null;
   let db = null;
@@ -57,6 +58,7 @@
   function getDb() {
     try { if (typeof sb !== 'undefined' && sb?.auth?.getSession) return sb; } catch (_) {}
     try { if (window.sb?.auth?.getSession) return window.sb; } catch (_) {}
+    try { if (typeof workspaceSb !== 'undefined' && workspaceSb?.auth?.getSession) return workspaceSb; } catch (_) {}
     return null;
   }
   function rememberToken(token) {
@@ -214,9 +216,9 @@
           visibility: 1, vibration: true });
       } catch (_) { /* Optional channel settings must not block registration. */ }
       let permission = await plugin.checkPermissions();
-      if (permission.receive !== 'granted') permission = await plugin.requestPermissions();
+      if (permission.receive !== 'granted' && force) permission = await plugin.requestPermissions();
       if (permission.receive !== 'granted') {
-        report('error', 'Allow Alygnn notifications in Android Settings', 'PERMISSION_DENIED');
+        report('waiting', 'Push notifications are off. Enable them from notification settings.', 'PERMISSION_DENIED');
         return { ...status };
       }
       report('registering', 'Requesting a Firebase device token', 'REGISTERING');
@@ -232,9 +234,60 @@
 
   window.AlygnnPush = {
     check: () => attemptRegistration(true),
+    enable: () => attemptRegistration(true),
     status: () => ({ ...status })
   };
-  function refresh() { attemptRegistration(false).catch(() => {}); }
+  const promptEligiblePages = new Set(['app-swipe.html', 'app-employer-dashboard.html', 'app-account.html']);
+  let promptBusy = false;
+  async function maybeOfferPermission() {
+    if (promptBusy || !promptEligiblePages.has(location.pathname.split('/').pop())) return;
+    if (!getCapacitor()?.isNativePlatform?.()) return;
+    const p = getPlugin(); const client = getDb();
+    if (!p || !client) return;
+    let userId = '';
+    try { userId = (await client.auth.getSession())?.data?.session?.user?.id || ''; }
+    catch (_) { return; }
+    if (!userId || localStorage.getItem(CHOICE_PREFIX + userId)) return;
+    let perm;
+    try { perm = await p.checkPermissions(); } catch (_) { return; }
+    if (perm?.receive === 'granted') {
+      localStorage.setItem(CHOICE_PREFIX + userId, 'allowed');
+      attemptRegistration(false).catch(()=>{});
+      return;
+    }
+    if (perm?.receive === 'denied') {
+      localStorage.setItem(CHOICE_PREFIX + userId, 'declined');
+      return;
+    }
+    if (document.getElementById('alygnn-permission-modal')) return;
+    promptBusy = true;
+    const overlay = document.createElement('div');
+    overlay.id = 'alygnn-permission-modal';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Enable Alygnn notifications');
+    overlay.innerHTML = `<div class="alygnn-permission-card"><div class="alygnn-permission-icon" aria-hidden="true"><svg width="37" height="37" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></div><h2>Stay Updated with Alygnn</h2><p>Get alerts for new messages, application updates, hiring activity and important account information.</p><button type="button" data-action="allow">Allow Notifications</button><button type="button" class="alygnn-not-now" data-action="later">Not Now</button></div>`;
+    const style = document.createElement('style');
+    style.id = 'alygnn-permission-styles';
+    style.textContent = `#alygnn-permission-modal{position:fixed;inset:0;z-index:2147483646;background:rgba(10,20,30,.58);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'DM Sans',sans-serif}#alygnn-permission-modal .alygnn-permission-card{box-sizing:border-box;width:min(100%,380px);padding:30px 24px 22px;border-radius:20px;background:#FCFCFA;color:#1A2530;text-align:center;box-shadow:0 12px 45px #0003}#alygnn-permission-modal h2{font-size:21px;line-height:1.25;margin:12px 0}#alygnn-permission-modal p{font-size:14px;line-height:1.6;color:#4A5968;margin:0 0 25px}#alygnn-permission-modal .alygnn-permission-icon{font-size:34px;color:#5D7FA3}#alygnn-permission-modal button{display:block;width:100%;border:0;border-radius:11px;background:#5D7FA3;color:white;font:600 15px 'DM Sans',sans-serif;padding:15px;cursor:pointer}#alygnn-permission-modal button.alygnn-not-now{margin-top:8px;background:transparent;color:#4A5968}`;
+    document.head.append(style);
+    document.body.append(overlay);
+    const close = choice => {
+      localStorage.setItem(CHOICE_PREFIX + userId, choice);
+      overlay.remove(); style.remove(); promptBusy = false;
+    };
+    overlay.querySelector('[data-action="later"]').addEventListener('click', () => close('declined'));
+    overlay.querySelector('[data-action="allow"]').addEventListener('click', async event => {
+      event.currentTarget.disabled = true;
+      try { await attemptRegistration(true); close('allowed'); }
+      catch (_) { close('allowed'); }
+    });
+  }
+  function refresh() {
+    attemptRegistration(false).catch(() => {});
+    // Give authenticated pages time to initialize without blocking navigation.
+    setTimeout(() => { maybeOfferPermission().catch(()=>{}); }, 1300);
+  }
   // Wait for the Capacitor bridge and page-specific authenticated Supabase client.
   // Unlike v1, a missing dependency on the first tick does not permanently disable push.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh, { once: true });
