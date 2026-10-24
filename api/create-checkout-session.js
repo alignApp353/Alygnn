@@ -1367,11 +1367,8 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
     if(value===undefined||value===null||value==='')return;
     params[`metadata[${key}]`]=String(value);
   });
-  // Show the same Stripe promotion-code entry as the monthly upgrade,
-  // but ONLY for Growth Monthly -> Scale Quarterly.
-  if(currentPlan==='growth' && currentBilling==='monthly' && targetPlan==='scale' && billing==='quarterly'){
-    params.allow_promotion_codes='true';
-  }
+  // Show the Stripe promotion-code entry for every cross-billing upgrade.
+  params.allow_promotion_codes='true';
   const checkout=await stripeCreateCheckout(params);
   return {
     change:'upgrade_payment_required',effective:'after_payment',
