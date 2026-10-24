@@ -3340,6 +3340,16 @@ html[data-theme="dark"] #candidate-profile-boot-error {
       </span>
       <span class="settings-toggle" data-setting-state>On</span>
     </button>
+
+    <!-- Push registration check: shows a safe diagnostic, never the device token. -->
+    <button class="settings-row" type="button" id="alygnn-push-check"
+      onclick="window.alygnnCheckPushRegistration?.()">
+      <span class="settings-row-copy">
+        <strong>Check Push Notifications</strong>
+        <small id="alygnn-push-check-result" aria-live="polite">Verify this device is registered</small>
+      </span>
+      <span class="settings-arrow">›</span>
+    </button>
   </section>
 
   <section class="settings-card" id="candidate-workspace-mode-card" hidden>
@@ -5342,6 +5352,27 @@ setInterval(()=>{
 
 <script defer src="app-candidate-notifications.js"></script>
 
+<script>
+(function () {
+  function showPushStatus(state) {
+    const label=document.getElementById('alygnn-push-check-result');
+    if(!label || !state) return;
+    label.textContent = state.message + (state.code && state.state === 'error' ? ' [' + state.code + ']' : '');
+  }
+  window.addEventListener('alygnn-push-status', event=>showPushStatus(event.detail));
+  window.alygnnCheckPushRegistration=async function () {
+    const label=document.getElementById('alygnn-push-check-result');
+    if(label) label.textContent='Checking device registration…';
+    if(!window.AlygnnPush?.check) {
+      if(label) label.textContent='Push registration script has not loaded';
+      return;
+    }
+    try { showPushStatus(await window.AlygnnPush.check()); }
+    catch(_) { if(label) label.textContent='Could not run push diagnostic'; }
+  };
+  window.addEventListener('load',()=>showPushStatus(window.AlygnnPush?.status?.()));
+})();
+</script>
 <script defer src="app-push-notifications.js"></script>
 </body>
 </html>
