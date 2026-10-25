@@ -65,6 +65,7 @@
   function getDb() {
     try { if (typeof sb !== 'undefined' && sb?.auth?.getSession) return sb; } catch (_) {}
     try { if (window.sb?.auth?.getSession) return window.sb; } catch (_) {}
+    try { if (window.Alygnn?.sb?.auth?.getSession) return window.Alygnn.sb; } catch (_) {}
     try { if (typeof workspaceSb !== 'undefined' && workspaceSb?.auth?.getSession) return workspaceSb; } catch (_) {}
     return null;
   }
@@ -156,6 +157,10 @@
       return 'app-messages.html?role=' + role;
     }
     if (data?.kind === 'job') return 'app-swipe.html';
+    if (data?.kind === 'application') return 'app-applied.html';
+    if (data?.kind === 'applicant') return 'app-employer-dashboard.html';
+    if (data?.kind === 'security') return data.role === 'employer'
+      ? 'app-employer-account-security.html' : 'app-account.html';
     return null;
   }
   async function ensureListeners() {
