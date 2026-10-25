@@ -3341,12 +3341,12 @@ html[data-theme="dark"] #candidate-profile-boot-error {
       <span class="settings-toggle" data-setting-state>On</span>
     </button>
 
-    <!-- Push registration check: shows a safe diagnostic, never the device token. -->
+    <!-- User-facing push setting; registration diagnostics remain internal. -->
     <button class="settings-row" type="button" id="alygnn-push-check"
       onclick="window.alygnnCheckPushRegistration?.()">
       <span class="settings-row-copy">
-        <strong>Check Push Notifications</strong>
-        <small id="alygnn-push-check-result" aria-live="polite">Verify this device is registered</small>
+        <strong>Push Notifications</strong>
+        <small id="alygnn-push-check-result" aria-live="polite">Manage alerts on this device</small>
       </span>
       <span class="settings-arrow">›</span>
     </button>
@@ -5354,23 +5354,27 @@ setInterval(()=>{
 
 <script>
 (function () {
-  function showPushStatus(state) {
-    const label=document.getElementById('alygnn-push-check-result');
-    if(!label || !state) return;
-    label.textContent = state.message + (state.code && state.state === 'error' ? ' [' + state.code + ']' : '');
-  }
-  window.addEventListener('alygnn-push-status', event=>showPushStatus(event.detail));
-  window.alygnnCheckPushRegistration=async function () {
-    const label=document.getElementById('alygnn-push-check-result');
-    if(label) label.textContent='Checking device registration…';
-    if(!window.AlygnnPush?.check) {
-      if(label) label.textContent='Push registration script has not loaded';
-      return;
-    }
-    try { showPushStatus(await window.AlygnnPush.check()); }
-    catch(_) { if(label) label.textContent='Could not run push diagnostic'; }
+  const label=()=>document.getElementById('alygnn-push-check-result');
+  const update=async()=>{
+    const el=label();if(!el)return;
+    const push=window.AlygnnPush;
+    if(!push?.check){el.textContent='Manage alerts on this device';return;}
+    try{
+      const result=await push.check();
+      el.textContent=result?.state==='success'?'Notifications enabled':
+        result?.state==='denied'?'Notifications are off — enable in device settings':
+        'Tap to manage notification permissions';
+    }catch(_){el.textContent='Tap to manage notification permissions';}
   };
-  window.addEventListener('load',()=>showPushStatus(window.AlygnnPush?.status?.()));
+  window.alygnnCheckPushRegistration=async()=>{
+    const el=label();if(el)el.textContent='Checking notification permissions…';
+    try{ if(window.AlygnnPush?.requestPermission) await window.AlygnnPush.requestPermission();
+         else if(window.AlygnnPush?.enable) await window.AlygnnPush.enable(); }
+    catch(_){ /* Device settings may be required if Android previously denied permission. */ }
+    await update();
+  };
+  window.addEventListener('alygnn-push-status',update);
+  window.addEventListener('load',update);
 })();
 </script>
 <script defer src="app-push-notifications.js"></script>
