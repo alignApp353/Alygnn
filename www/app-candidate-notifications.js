@@ -14,6 +14,33 @@
   const existingMessageBell = document.getElementById('employer-header-notification');
   if (existingMessageBell && urlRole !== 'employer') existingMessageBell.style.display='none';
 
+  const shellCSS = document.createElement('style');
+  shellCSS.id = 'alygnn-unified-candidate-header';
+  shellCSS.textContent = `
+    /* My Profile's centered wordmark and right-hand bell across candidate tabs. */
+    header.app-header, header.top-header, header.my-jobs-header, header.topbar, .shell > .top {
+      position:relative!important; min-height:64px!important;
+      display:flex!important;align-items:center!important;justify-content:center!important;
+      box-sizing:border-box!important;
+    }
+    header.app-header .logo, header.top-header .logo, header.my-jobs-header .my-jobs-wordmark,
+    header.topbar .logo, .shell > .top .logo {
+      position:absolute!important;left:50%!important;top:50%!important;
+      transform:translate(-50%,-50%)!important;margin:0!important;
+      text-align:center!important;white-space:nowrap!important;
+    }
+    header.top-header .brand-block{position:static!important;display:contents!important;}
+    header.top-header .brand-block .tagline{display:none!important;}
+    header.top-header .profile-chip,header.my-jobs-header .my-jobs-profile-button{display:none!important;}
+    header.app-header #settings-back,header.topbar .back{position:absolute!important;left:16px!important;z-index:8!important;}
+    .alygnn-notify-anchor{right:16px!important;top:50%!important;transform:translateY(-50%)!important;}
+    #settings-shortcut{position:absolute!important;right:16px!important;top:50%!important;
+      transform:translateY(-50%)!important;width:38px!important;height:38px!important;z-index:8!important;}
+    .alygnn-notify-trigger{width:38px!important;height:38px!important;min-width:38px!important;}
+    .my-jobs-wordmark-wrap{position:static!important;transform:none!important;}
+  `;
+  document.head.appendChild(shellCSS);
+
   const css = `
     .alygnn-notify-trigger{appearance:none;box-sizing:border-box;border:1px solid var(--border,#DDE3E8);border-radius:50%;
       background:var(--card,#fff);color:var(--text,#172333);width:38px;height:38px;min-width:38px;display:grid;
