@@ -751,6 +751,40 @@ body.ready #loading.alygnn-page-loader{
 }
 @media (min-width:1101px) { body.employer-role .employer-menu-toggle, body.employer-role .employer-sidebar-scrim { display:none !important; } }
 </style>
+<style id="alygnn-messages-chat-bubble-sizing">
+/* Compact, content-sized bubbles; preserve chat colors and message ordering. */
+body.employer-role .msg-row{align-items:flex-start!important;min-height:0!important;}
+body.employer-role .bubble{display:block!important;flex:0 1 auto!important;width:fit-content!important;height:auto!important;min-height:0!important;max-width:min(78%,440px)!important;padding:10px 13px!important;overflow-wrap:anywhere!important;word-break:break-word!important;white-space:pre-wrap!important;text-align:left!important;font-size:13px!important;line-height:1.5!important;}
+body.employer-role .mine .bubble{margin-left:auto!important;}
+body.employer-role .bubble-time{margin-top:4px!important;font-size:10px!important;}
+@media(max-width:680px){body.employer-role .bubble{max-width:88%!important;}}
+</style>
+<style id="alygnn-matched-myjobs-drawer">
+/* Match My Jobs mobile navigation: presentation only. */
+@media(max-width:860px){
+  .alygnn-drawer-toggle{display:inline-flex!important;width:40px;height:40px;flex:0 0 40px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:12px;background:#FCFCFA;color:#4A5968;cursor:pointer;margin:0!important;}
+  .alygnn-drawer-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
+  .alygnn-drawer-close{display:flex!important;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#F6F8F7;color:#4A5968;cursor:pointer;margin:0 0 16px auto;font-size:22px;line-height:1;}
+  .alygnn-drawer-scrim{display:block!important;position:fixed;inset:64px 0 0;z-index:1150;background:rgba(26,37,48,.34);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;}
+  .alygnn-drawer-scrim.show{opacity:1;visibility:visible;pointer-events:auto;}
+  body.alygnn-drawer-open{overflow:hidden;}
+  .alygnn-drawer-sidebar{display:block!important;position:fixed!important;top:64px!important;left:0!important;bottom:auto!important;z-index:1200!important;width:min(84vw,320px)!important;height:calc(100dvh - 64px)!important;padding:20px 16px calc(24px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;background:#FCFCFA!important;border-right:1px solid var(--border);box-shadow:16px 0 40px rgba(26,37,48,.14);transform:translateX(-105%);transition:transform .24s ease;visibility:visible!important;pointer-events:none!important;overscroll-behavior:contain;}
+  .alygnn-drawer-sidebar.mobile-open{transform:translateX(0)!important;pointer-events:auto!important;}
+  .alygnn-drawer-sidebar .side-link{min-height:46px;padding:12px!important;border-radius:12px;font-size:15px!important;}
+  .alygnn-drawer-signout{display:flex!important;margin-top:14px!important;color:#a05858!important;align-items:center;gap:10px;width:100%;min-height:46px;border:none;background:none;font:500 15px 'DM Sans',sans-serif;text-align:left;padding:12px;border-radius:12px;cursor:pointer;}
+}
+@media(min-width:861px){.alygnn-drawer-toggle,.alygnn-drawer-close,.alygnn-drawer-signout,.alygnn-drawer-scrim{display:none!important;}}
+
+@media(min-width:861px) and (max-width:1100px){.employer-menu-toggle,.candidates-menu-toggle{display:none!important;}body.employer-role .sidebar,.layout>.sidebar{visibility:visible!important;transform:none!important;pointer-events:auto!important;position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:auto!important;box-shadow:none!important;}body.employer-role .layout,.layout{display:grid!important;grid-template-columns:220px minmax(0,1fr)!important;}.layout>main{max-width:1420px!important;}}
+
+
+@media(max-width:860px){
+body.employer-role .sidebar.alygnn-drawer-sidebar, .layout>.sidebar.alygnn-drawer-sidebar{display:block!important;position:fixed!important;top:64px!important;left:0!important;bottom:auto!important;width:min(84vw,320px)!important;height:calc(100dvh - 64px)!important;z-index:1200!important;visibility:visible!important;pointer-events:none!important;transform:translateX(-105%)!important;}
+body.employer-role .sidebar.alygnn-drawer-sidebar.mobile-open,.layout>.sidebar.alygnn-drawer-sidebar.mobile-open{pointer-events:auto!important;transform:translateX(0)!important;}
+body.employer-role .layout,.layout{display:block!important;}
+body.employer-role .layout>main,.layout>main{margin-left:0!important;width:100%!important;max-width:100%!important;}
+}
+</style>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
@@ -761,7 +795,7 @@ body.ready #loading.alygnn-page-loader{
 
 <nav>
   <a href="index.html" class="logo">Alygnn<span>.</span></a>
-  <button id="employer-menu-toggle" class="employer-menu-toggle" type="button" aria-label="Open employer navigation" aria-controls="sidebar" aria-expanded="false" title="Menu">&#8942;</button>
+  
   <div class="nav-right" id="employer-nav-right">
     <div class="notif-wrap" id="notif-wrap">
       <button class="notif-bell" id="notif-bell" type="button" aria-label="Notifications">
@@ -778,14 +812,15 @@ body.ready #loading.alygnn-page-loader{
     </div>
     <span class="nav-user" id="nav-name"></span>
     <button class="btn-logout" type="button" onclick="candidateSignOut()">Sign out</button>
+    <button id="alygnn-drawer-toggle" class="employer-menu-toggle alygnn-drawer-toggle" type="button" aria-label="Open employer navigation" aria-controls="sidebar" aria-expanded="false" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
 </nav>
 
 
 
-<div class="employer-sidebar-scrim" id="employer-sidebar-scrim" aria-hidden="true"></div>
+<div class="alygnn-drawer-scrim" id="alygnn-drawer-scrim" aria-hidden="true"></div>
 <div class="layout">
-  <aside class="sidebar" id="sidebar"></aside>
+  <aside class="sidebar alygnn-drawer-sidebar" id="sidebar"></aside>
 
   <main>
     <div class="page-kicker">Alygnn messages</div>
@@ -2156,27 +2191,23 @@ init()
 </script>
 
 
-<script id="alygnn-employer-sidebar-menu-script">
-(() => {
-  const toggle = document.getElementById('employer-menu-toggle');
-  const sidebar = document.getElementById('sidebar');
-  const scrim = document.getElementById('employer-sidebar-scrim');
-  if (!toggle || !sidebar || !scrim) return;
-  function closeMenu() {
-    document.body.classList.remove('sidebar-menu-open');
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Open employer navigation');
-  }
-  toggle.addEventListener('click', () => {
-    const opening = !document.body.classList.contains('sidebar-menu-open');
-    document.body.classList.toggle('sidebar-menu-open', opening);
-    toggle.setAttribute('aria-expanded', String(opening));
-    toggle.setAttribute('aria-label', opening ? 'Close employer navigation' : 'Open employer navigation');
-  });
-  scrim.addEventListener('click', closeMenu);
-  sidebar.addEventListener('click', event => { if (event.target.closest('a')) closeMenu(); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
-  window.addEventListener('resize', () => { if (window.innerWidth > 1100) closeMenu(); });
+
+<script id="alygnn-dashboard-style-drawer-script">
+(function(){
+ const menu=document.getElementById('alygnn-drawer-toggle');
+ const drawer=document.querySelector('.alygnn-drawer-sidebar');
+ const backdrop=document.getElementById('alygnn-drawer-scrim');
+ if(!menu||!drawer||!backdrop)return;
+ function close(){drawer.classList.remove('mobile-open');backdrop.classList.remove('show');document.body.classList.remove('alygnn-drawer-open');menu.setAttribute('aria-expanded','false');}
+ function toggle(){if(innerWidth>860)return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
+ function ensureControls(){
+   if(!drawer.querySelector('.alygnn-drawer-close'))drawer.insertAdjacentHTML('afterbegin','<button type="button" class="alygnn-drawer-close" aria-label="Close navigation">×</button>');
+   if(!drawer.querySelector('.alygnn-drawer-signout'))drawer.insertAdjacentHTML('beforeend','<button type="button" class="alygnn-drawer-signout">Sign out</button>');
+   drawer.querySelector('.alygnn-drawer-signout').onclick=()=>{close();candidateSignOut();};
+ }
+ new MutationObserver(()=>{if(!drawer.querySelector('.alygnn-drawer-close'))ensureControls();}).observe(drawer,{childList:true});ensureControls();
+ menu.addEventListener('click',toggle);backdrop.addEventListener('click',close);drawer.querySelector('.alygnn-drawer-close')?.addEventListener('click',close);drawer.addEventListener('click',e=>{if(e.target.closest('a,button:not(.alygnn-drawer-close)'))close();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>860)close();});
 })();
 </script>
 </body>
