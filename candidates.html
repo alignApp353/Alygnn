@@ -574,6 +574,20 @@
 @media (max-width:620px){.toolbar{grid-template-columns:minmax(0,1fr);}.candidate-card{min-width:0;}}
 
 </style>
+
+<style id="alygnn-candidates-compact-sidebar">
+/* Candidates only: navigation drawer on smaller viewports; desktop unchanged. */
+.candidates-menu-toggle{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--brand);font-size:22px;line-height:1;cursor:pointer;padding:0}
+.candidates-sidebar-scrim{display:none}
+@media(max-width:1100px){
+  .candidates-menu-toggle{display:inline-flex;margin-left:10px;margin-right:auto;flex-shrink:0}
+  .layout{display:block!important;min-height:calc(100vh - 64px)}
+  .layout > main{margin-left:0!important;width:100%!important;max-width:100%!important;min-width:0!important}
+  .layout > .sidebar{display:block!important;position:fixed!important;top:64px!important;left:0!important;bottom:0!important;width:min(260px,85vw)!important;height:calc(100dvh - 64px)!important;overflow-y:auto!important;z-index:1101!important;transform:translateX(-105%);transition:transform .2s ease;visibility:hidden;pointer-events:none;background:var(--card);box-shadow:12px 12px 30px rgba(26,37,48,.12)}
+  body.candidates-sidebar-open .layout > .sidebar{transform:translateX(0);visibility:visible;pointer-events:auto}
+  body.candidates-sidebar-open .candidates-sidebar-scrim{display:block;position:fixed;inset:64px 0 0;background:rgba(26,37,48,.3);z-index:1100}
+}
+</style>
 </head>
 <body>
 <div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
@@ -584,6 +598,7 @@
 
 <nav>
   <a href="employers.html" class="logo">Alygnn<span>.</span></a>
+  <button id="candidates-menu-toggle" class="candidates-menu-toggle" type="button" aria-label="Open employer navigation" aria-controls="candidates-sidebar" aria-expanded="false" title="Menu">&#8942;</button>
   <div class="nav-right">
     <div class="notif-wrap" id="notif-wrap">
       <button class="notif-bell" id="notif-bell" type="button" aria-label="Notifications">
@@ -603,8 +618,9 @@
   </div>
 </nav>
 
+<div class="candidates-sidebar-scrim" id="candidates-sidebar-scrim" aria-hidden="true"></div>
 <div class="layout">
-  <aside class="sidebar">
+  <aside class="sidebar" id="candidates-sidebar">
     <div class="sidebar-label" id="candidate-sidebar-role-label">Employer</div>
     <a href="employer-dashboard.html" class="side-link"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M3 11h18"/><path d="M10 11v2h4v-2"/></svg></span>My Jobs</a>
     <a href="candidates.html" class="side-link active"><span class="side-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg></span>Candidates</a>
@@ -2240,5 +2256,29 @@ loadData();
 })();
 </script>
 
+
+<script id="alygnn-candidates-sidebar-menu-script">
+(() => {
+  const toggle=document.getElementById('candidates-menu-toggle');
+  const sidebar=document.getElementById('candidates-sidebar');
+  const scrim=document.getElementById('candidates-sidebar-scrim');
+  if(!toggle||!sidebar||!scrim)return;
+  function closeMenu(){
+    document.body.classList.remove('candidates-sidebar-open');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.setAttribute('aria-label','Open employer navigation');
+  }
+  toggle.addEventListener('click',()=>{
+    const opening=!document.body.classList.contains('candidates-sidebar-open');
+    document.body.classList.toggle('candidates-sidebar-open',opening);
+    toggle.setAttribute('aria-expanded',String(opening));
+    toggle.setAttribute('aria-label',opening?'Close employer navigation':'Open employer navigation');
+  });
+  scrim.addEventListener('click',closeMenu);
+  sidebar.addEventListener('click',e=>{if(e.target.closest('a'))closeMenu();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
+  window.addEventListener('resize',()=>{if(innerWidth>1100)closeMenu();});
+})();
+</script>
 </body>
 </html>
