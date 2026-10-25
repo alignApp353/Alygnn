@@ -14,30 +14,51 @@
   const existingMessageBell = document.getElementById('employer-header-notification');
   if (existingMessageBell && urlRole !== 'employer') existingMessageBell.style.display='none';
 
+  // Reuse My Profile's real header geometry. Never force all five different
+  // headers to flex: that breaks safe-area spacing and their grid positioning.
   const shellCSS = document.createElement('style');
-  shellCSS.id = 'alygnn-unified-candidate-header';
+  shellCSS.id = 'alygnn-candidate-header-alignment-v2';
   shellCSS.textContent = `
-    /* My Profile's centered wordmark and right-hand bell across candidate tabs. */
-    header.app-header, header.top-header, header.my-jobs-header, header.topbar, .shell > .top {
-      position:relative!important; min-height:64px!important;
-      display:flex!important;align-items:center!important;justify-content:center!important;
+    /* The profile header is the reference; leave its original layout alone. */
+    header.top-header:not(.app-header), header.my-jobs-header,
+    body.candidate-mode .shell > .top {
+      position:relative!important;
+      min-height:86px!important;
       box-sizing:border-box!important;
+      display:grid!important;
+      grid-template-columns:46px minmax(0,1fr) 46px!important;
+      align-items:center!important;
+      padding:calc(12px + env(safe-area-inset-top)) 18px 12px!important;
+      border-bottom:1px solid #29404c!important;
     }
-    header.app-header .logo, header.top-header .logo, header.my-jobs-header .my-jobs-wordmark,
-    header.topbar .logo, .shell > .top .logo {
-      position:absolute!important;left:50%!important;top:50%!important;
-      transform:translate(-50%,-50%)!important;margin:0!important;
+    header.top-header:not(.app-header){margin:0!important;}
+    header.my-jobs-header{margin:0!important;width:100%!important;}
+    body.candidate-mode .shell > .top{margin:0 -18px!important;width:auto!important;}
+    header.top-header:not(.app-header) .brand-block {grid-column:2!important;grid-row:1!important;display:block!important;min-width:0!important;}
+    header.top-header:not(.app-header) .brand-block .tagline{display:none!important;}
+    header.top-header:not(.app-header) .brand-block .logo,
+    header.my-jobs-header .my-jobs-wordmark,
+    body.candidate-mode .shell > .top .logo{
+      position:static!important;transform:none!important;margin:0!important;
+      font-family:'DM Serif Display',Georgia,serif!important;font-size:31px!important;
+      font-weight:400!important;line-height:1!important;letter-spacing:-.7px!important;
       text-align:center!important;white-space:nowrap!important;
     }
-    header.top-header .brand-block{position:static!important;display:contents!important;}
-    header.top-header .brand-block .tagline{display:none!important;}
-    header.top-header .profile-chip,header.my-jobs-header .my-jobs-profile-button{display:none!important;}
-    header.app-header #settings-back,header.topbar .back{position:absolute!important;left:16px!important;z-index:8!important;}
-    .alygnn-notify-anchor{right:16px!important;top:50%!important;transform:translateY(-50%)!important;}
-    #settings-shortcut{position:absolute!important;right:16px!important;top:50%!important;
-      transform:translateY(-50%)!important;width:38px!important;height:38px!important;z-index:8!important;}
+    header.my-jobs-header .my-jobs-wordmark-wrap{grid-column:2!important;grid-row:1!important;display:flex!important;justify-content:center!important;min-width:0!important;}
+    header.my-jobs-header .my-jobs-profile-button,
+    header.top-header:not(.app-header) .profile-chip {display:none!important;}
+    body.candidate-mode .shell > .top .back{visibility:hidden!important;pointer-events:none!important;}
+    body.candidate-mode .shell > .top .logo{grid-column:2!important;grid-row:1!important;}
+    header.topbar .logo{position:static!important;transform:none!important;}
+    .alygnn-notify-anchor{
+      position:absolute!important;right:18px!important;
+      top:calc(50% + env(safe-area-inset-top) / 2)!important;
+      transform:translateY(-50%)!important;z-index:8!important;
+    }
+    /* No second bell: My Profile already reserves a third header column. */
+    header.app-header #settings-shortcut{position:static!important;transform:none!important;grid-column:3!important;grid-row:1!important;
+      display:grid!important;place-items:center!important;justify-self:center!important;}
     .alygnn-notify-trigger{width:38px!important;height:38px!important;min-width:38px!important;}
-    .my-jobs-wordmark-wrap{position:static!important;transform:none!important;}
   `;
   document.head.appendChild(shellCSS);
 
