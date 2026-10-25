@@ -1107,6 +1107,51 @@ body.candidate-role #nav-swipe-link[hidden]{
   }
 </style>
 
+<style id="candidate-messages-compact-header-fix">
+/* Header-only narrow-window navigation. Full desktop layout is untouched. */
+.candidate-nav-more{display:none;}
+@media (max-width: 900px){
+  body.candidate-role nav{padding:0 18px !important;gap:12px !important;}
+  body.candidate-role .logo{flex:0 0 auto !important;}
+  body.candidate-role .candidate-nav-actions{display:flex !important;align-items:center !important;gap:9px !important;margin-left:auto !important;min-width:0;}
+  body.candidate-role .candidate-nav-more{
+    display:grid !important;place-items:center !important;flex:0 0 40px !important;
+    width:40px !important;height:40px !important;border:1px solid var(--border) !important;
+    border-radius:12px !important;background:#fff !important;color:var(--muted) !important;
+    font:700 21px 'DM Sans',sans-serif !important;line-height:1 !important;cursor:pointer;
+  }
+  body.candidate-role .candidate-nav-more[aria-expanded="true"]{color:var(--brand) !important;border-color:var(--brand) !important;}
+  body.candidate-role .candidate-nav-links,
+  body.candidate-role .candidate-nav-links:not(.nav-readiness-pending){
+    display:none !important;position:absolute !important;top:calc(100% + 8px) !important;
+    right:18px !important;left:auto !important;transform:none !important;
+    width:min(260px,calc(100vw - 36px)) !important;height:auto !important;
+    max-height:calc(100dvh - 90px) !important;overflow-y:auto !important;
+    padding:9px !important;gap:3px !important;
+    grid-template-columns:1fr !important;background:#fff !important;
+    border:1px solid var(--border) !important;border-radius:14px !important;
+    box-shadow:0 14px 36px rgba(26,37,48,.16) !important;z-index:1100 !important;
+  }
+  body.candidate-role .candidate-nav-links.compact-open:not(.nav-readiness-pending){display:grid !important;visibility:visible !important;}
+  body.candidate-role .candidate-nav-links a{
+    display:flex !important;align-items:center !important;justify-content:flex-start !important;
+    width:100% !important;height:auto !important;min-height:42px !important;
+    padding:10px 12px !important;white-space:nowrap !important;
+    font-size:13px !important;border:0 !important;border-radius:9px !important;
+  }
+  body.candidate-role .candidate-nav-links a.active{background:var(--brand-light) !important;color:var(--brand) !important;}
+  body.candidate-role .candidate-nav-links a.active::after{display:none !important;}
+  body.candidate-role .candidate-nav-signout{white-space:nowrap !important;}
+}
+@media (max-width: 400px){
+  body.candidate-role nav{padding:0 12px !important;gap:6px !important;}
+  body.candidate-role .candidate-nav-actions{gap:6px !important;}
+  body.candidate-role .candidate-nav-more{width:36px !important;height:36px !important;flex-basis:36px !important;}
+  body.candidate-role .candidate-nav-signout{padding:7px 10px !important;}
+  body.candidate-role .notification-btn{width:36px !important;height:36px !important;}
+  body.candidate-role .candidate-nav-links{right:12px !important;}
+}
+</style>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your messages…||Getting your conversations ready…||Almost there…">
@@ -1128,6 +1173,8 @@ body.candidate-role #nav-swipe-link[hidden]{
   </div>
 
   <div class="candidate-nav-actions nav-actions" id="candidate-nav-actions">
+    <button class="candidate-nav-more" id="candidate-nav-more" type="button" aria-label="Open navigation menu" aria-controls="candidate-nav-links" aria-expanded="false" title="Navigation">&#8942;</button>
+
     <button
       class="notification-btn"
       id="candidate-notification-btn"
@@ -2440,5 +2487,23 @@ init()
 })();
 </script>
 
+<script id="candidate-messages-compact-header-behavior">
+(function(){
+  const menu=document.getElementById('candidate-nav-links');
+  const button=document.getElementById('candidate-nav-more');
+  if(!menu||!button)return;
+  function close(){menu.classList.remove('compact-open');button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Open navigation menu');}
+  button.addEventListener('click',function(event){
+    event.stopPropagation();
+    const opening=!menu.classList.contains('compact-open');
+    if(opening){menu.classList.add('compact-open');button.setAttribute('aria-expanded','true');button.setAttribute('aria-label','Close navigation menu');}
+    else close();
+  });
+  document.addEventListener('click',function(event){if(!menu.contains(event.target)&&!button.contains(event.target))close();});
+  menu.addEventListener('click',function(event){if(event.target.closest('a'))close();});
+  document.addEventListener('keydown',function(event){if(event.key==='Escape')close();});
+  window.addEventListener('resize',function(){if(window.innerWidth>900)close();});
+})();
+</script>
 </body>
 </html>
