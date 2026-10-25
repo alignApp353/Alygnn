@@ -97,6 +97,7 @@ html.alygnn-workspace-pending .shell{display:flex!important;flex-direction:colum
 html.alygnn-workspace-pending .shell .eyebrow,html.alygnn-workspace-pending .shell h1,html.alygnn-workspace-pending .shell .lead{display:none!important}
 html.alygnn-workspace-pending #loading{padding:0!important}
 </style>
+<link rel="stylesheet" href="app-myjobs-loader-exact.css?v=20261024-2143">
 </head>
 <body>
 <main class="shell">
@@ -105,7 +106,13 @@ html.alygnn-workspace-pending #loading{padding:0!important}
 <h1>Choose your workspace</h1>
 <p class="lead">One login can keep your candidate profile separate from the company workspace you are allowed to use.</p>
 <div class="notice" id="message"></div>
-<div class="loading" id="loading">Opening Alygnn…</div>
+<div class="loading alygnn-myjobs-exact" id="loading" role="status" aria-label="Alygnn is loading" aria-live="polite">
+  <div class="alygnn-boot-inner">
+    <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-boot-copy">Opening Alygnn.</div>
+    <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
+  </div>
+</div>
 <section id="content" hidden>
   <div id="invites-wrap" hidden><div class="section-title">Invitations</div><div id="invites"></div></div>
   <div id="workspaces-wrap" hidden><div class="section-title">Workspaces</div><div id="workspaces"></div></div>

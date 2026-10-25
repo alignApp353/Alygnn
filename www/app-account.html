@@ -2878,16 +2878,16 @@ html[data-theme="dark"] #candidate-profile-boot-error {
 #candidate-profile-boot-error button {min-height:48px;padding:12px 24px;border:0;
   border-radius:14px;background:#416A9B;color:#fff;font-weight:800}
 </style>
-<link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
+<link rel="stylesheet" href="app-myjobs-loader-exact.css?v=20261024-2143">
 </head>
 
 <body class="candidate-profile-booting" data-candidate-nav-build="2026-08-26-discover-color-sync">
 
-<div class="loading alygnn-standard-loader" id="loading" aria-live="polite" aria-label="Loading candidate workspace">
-  <div class="loading-inner">
-    <div class="loading-logo" aria-label="Alygnn">Alygnn<span>.</span></div>
-    <div class="loading-text" id="candidate-loading-message">Finding your fit.</div>
-    <div class="loading-progress" aria-hidden="true"></div>
+<div class="loading alygnn-myjobs-exact" id="loading" role="status" aria-label="Alygnn is loading" aria-live="polite">
+  <div class="alygnn-boot-inner">
+    <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
+    <div class="alygnn-boot-copy">Opening your profile.</div>
+    <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
   </div>
 </div>
 <div id="candidate-profile-boot-error" role="alert" hidden>
@@ -2897,55 +2897,6 @@ html[data-theme="dark"] #candidate-profile-boot-error {
     <button type="button" onclick="window.location.reload()">Try again</button>
   </div>
 </div>
-
-<script id="alygnn-candidate-loading-messages">
-(function(){
-  const messages=[
-    'Finding roles that fit you.',
-    'Preparing your candidate workspace.',
-    'Getting your profile ready.',
-    'Bringing your best matches closer.',
-    'Checking your latest opportunities.',
-    'Setting up your job search.',
-    'Getting your applications in order.',
-    'Loading your career dashboard.',
-    'Matching your goals with opportunities.',
-    'Getting your resume ready.',
-    'Preparing your next move.',
-    'Looking for roles worth your time.',
-    'Organizing your saved opportunities.',
-    'Getting your preferences lined up.',
-    'Putting your job search in motion.',
-    'Checking what’s new for you.',
-    'Opening your personal workspace.',
-    'Getting your career tools ready.',
-    'Preparing your next opportunity.',
-    'Finding the right fit.'
-  ];
-
-  let lastIndex=-1;
-  function nextMessage(){
-    const el=document.getElementById('candidate-loading-message');
-    if(!el) return;
-    let index=Math.floor(Math.random()*messages.length);
-    if(messages.length>1 && index===lastIndex){
-      index=(index+1)%messages.length;
-    }
-    lastIndex=index;
-    el.textContent=messages[index];
-  }
-
-  window.__alygnnCandidateLoadingMessage=nextMessage;
-  nextMessage();
-
-  const loading=document.getElementById('loading');
-  if(loading && window.MutationObserver){
-    new MutationObserver(()=>{
-      if(!loading.hidden) nextMessage();
-    }).observe(loading,{attributes:true,attributeFilter:['hidden']});
-  }
-})();
-</script>
 
 <header class="app-header top-header">
   <button

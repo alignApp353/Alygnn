@@ -1,0 +1,137 @@
+/* Exact My Jobs loader markup/visuals copied to Profile, Settings and sign-in routes.
+   Source: app-applied.html + app-candidate-loading-unified.css.
+   No changes to My Jobs, Discover, or other page content. */
+
+#loading.alygnn-myjobs-exact[hidden],
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact[hidden]{display:none!important}
+#loading.alygnn-myjobs-exact,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact{
+  position:fixed!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100dvh!important;
+  box-sizing:border-box!important;
+  z-index:9999!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))!important;
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),#F6F8F7!important;
+  color:#172333!important;
+  transform:none!important;
+  text-align:center!important;
+  transition:opacity .18s ease,visibility .18s ease!important;
+}
+html[data-effective-theme="dark"] #loading.alygnn-myjobs-exact,
+html[data-theme="dark"] #loading.alygnn-myjobs-exact,
+html[data-effective-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact,
+html[data-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact{
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important;
+  color:#F3F7FA!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-inner,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-inner{
+  width:min(360px,88vw)!important;
+  max-width:100%!important;
+  text-align:center!important;
+  transform:translateY(-3vh)!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-logo,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-logo{
+  display:inline-block!important;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  font-size:clamp(54px,15vw,72px)!important;
+  font-weight:400!important;
+  line-height:.95!important;
+  letter-spacing:-2px!important;
+  color:#5D7FA3!important;
+  margin:0!important;
+  padding:0!important;
+  text-rendering:optimizeLegibility!important;
+  -webkit-font-smoothing:antialiased!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-logo span,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-logo span{
+  color:#8CB69B!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-copy,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-copy{
+  display:block!important;
+  min-height:0!important;
+  margin:18px 0 0!important;
+  padding:0!important;
+  color:#647282!important;
+  font-size:14px!important;
+  line-height:1.45!important;
+  font-weight:700!important;
+  letter-spacing:.01em!important;
+}
+html[data-effective-theme="dark"] #loading.alygnn-myjobs-exact .alygnn-boot-copy,
+html[data-theme="dark"] #loading.alygnn-myjobs-exact .alygnn-boot-copy,
+html[data-effective-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-copy,
+html[data-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-copy{
+  color:#A9B5C2!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-track,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-track{
+  position:relative!important;
+  display:block!important;
+  width:116px!important;
+  height:3px!important;
+  max-height:3px!important;
+  margin:25px auto 0!important;
+  overflow:hidden!important;
+  border-radius:999px!important;
+  background:#DDE3E8!important;
+}
+html[data-effective-theme="dark"] #loading.alygnn-myjobs-exact .alygnn-boot-track,
+html[data-theme="dark"] #loading.alygnn-myjobs-exact .alygnn-boot-track,
+html[data-effective-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-track,
+html[data-theme="dark"] #alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-track{
+  background:#293545!important;
+}
+#loading.alygnn-myjobs-exact .alygnn-boot-bar,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-bar{
+  content:'';
+  position:absolute!important;
+  top:0!important;
+  bottom:0!important;
+  left:-48%!important;
+  width:48%!important;
+  height:100%!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#5D7FA3,#8CB69B)!important;
+  animation:alygnn-unified-candidate-loading 1.15s cubic-bezier(.4,0,.2,1) infinite!important;
+}
+@keyframes alygnn-unified-candidate-loading{
+  0%{transform:translateX(0);opacity:.45}
+  45%{opacity:1}
+  100%{transform:translateX(310%);opacity:.55}
+}
+@media(prefers-reduced-motion:reduce){
+  #loading.alygnn-myjobs-exact .alygnn-boot-bar,
+  #alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-bar{
+    left:0!important;width:100%!important;animation:none!important;opacity:.8!important;
+  }
+}
+/* Respect existing transition out of app-home before redirect. */
+body.is-leaving #alygnn-shared-candidate-loader.alygnn-myjobs-exact{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+/* Profile's old data-readiness gate had more-specific FLAT backgrounds. Keep the
+   gate's visibility/loading behavior but make its background match My Jobs. */
+html[data-alygnn-responsive="candidate"] body.candidate-profile-booting #loading.alygnn-myjobs-exact:not([hidden]){
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),#F6F8F7!important;
+}
+html[data-alygnn-responsive="candidate"][data-effective-theme="dark"] body.candidate-profile-booting #loading.alygnn-myjobs-exact:not([hidden]),
+html[data-alygnn-responsive="candidate"][data-theme="dark"] body.candidate-profile-booting #loading.alygnn-myjobs-exact:not([hidden]){
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important;
+}
+/* My Jobs' green dot inherits DM Sans, not the serif logo font. Match that exact width. */
+#loading.alygnn-myjobs-exact .alygnn-boot-logo span,
+#alygnn-shared-candidate-loader.alygnn-myjobs-exact .alygnn-boot-logo span{
+  font-family:'DM Sans',Arial,sans-serif!important;
+}
