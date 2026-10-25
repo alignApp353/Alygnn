@@ -955,7 +955,7 @@
 
 /* Mobile account navigation only. Desktop layout is unchanged. */
   .account-mobile-menu-button,.account-mobile-menu{display:none;}
-  @media(max-width:700px){
+  @media(max-width:1100px){
     nav{padding:0 16px;gap:12px;justify-content:space-between;}
     nav .logo{flex:0 0 auto;white-space:nowrap;}
     nav .nav-links{display:none;}
@@ -963,7 +963,7 @@
     nav .nav-right > :not(.notif-wrap){display:none!important;}
     nav .notif-bell{width:40px;height:40px;flex:0 0 40px;}
     .account-mobile-menu-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text);cursor:pointer;}
-    .account-mobile-menu-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
+    .account-mobile-menu-button svg{width:21px;height:21px;fill:currentColor;stroke:none;}
     .account-mobile-menu{display:flex;position:fixed;top:64px;right:12px;left:12px;z-index:1001;flex-direction:column;gap:3px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:9px;box-shadow:0 14px 36px rgba(26,37,48,.14);}
     .account-mobile-menu[hidden]{display:none!important;}
     .account-mobile-menu a,.account-mobile-menu button{display:block;width:100%;padding:12px 14px;text-align:left;border:0;border-radius:9px;background:transparent;text-decoration:none;color:var(--text);font:500 14px 'DM Sans',sans-serif;cursor:pointer;}
@@ -975,7 +975,7 @@
   }
 
 /* Compact browser layout only; leave full-size desktop untouched. */
-@media (min-width:701px) and (max-width:1100px){
+@media (min-width:1101px) and (max-width:1250px){
  nav{gap:8px;padding-left:2%;padding-right:2%;}
  nav .logo{flex:0 0 auto;}
  nav .nav-links{gap:10px;min-width:0;}
@@ -1031,8 +1031,8 @@
     <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
-  <button type="button" class="account-mobile-menu-button" id="account-mobile-menu-button" aria-label="Open account menu" aria-expanded="false" aria-controls="account-mobile-menu" onclick="toggleAccountMobileMenu()">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  <button type="button" class="account-mobile-menu-button" id="account-mobile-menu-button" aria-label="More navigation options" aria-expanded="false" aria-controls="account-mobile-menu" onclick="toggleAccountMobileMenu()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
   </button>
 </nav>
 <div class="account-mobile-menu" id="account-mobile-menu" hidden>
@@ -1069,7 +1069,7 @@
     const menu=document.getElementById('account-mobile-menu');
     if(menu&&!menu.hidden&&!menu.contains(e.target)&&!document.getElementById('account-mobile-menu-button').contains(e.target))closeAccountMobileMenu();
   });
-  window.addEventListener('resize',()=>{if(window.innerWidth>700)closeAccountMobileMenu();});
+  window.addEventListener('resize',()=>{if(window.innerWidth>1100)closeAccountMobileMenu();});
 </script>
 
 <div class="page">
