@@ -9,6 +9,13 @@
 
   const STORAGE_KEY = 'alygnn_android_fcm_token_v1';
   const CHOICE_PREFIX = 'alygnn_push_choice_v1_';
+  const DEVICE_CHOICE_PREFIX = 'alygnn_push_delivery_enabled_v1_';
+  function wantsNotifications(userId) {
+    try { return localStorage.getItem(DEVICE_CHOICE_PREFIX + userId) !== 'false'; } catch (_) { return true; }
+  }
+  function storeDeliveryChoice(userId, enabled) {
+    try { localStorage.setItem(DEVICE_CHOICE_PREFIX + userId, String(Boolean(enabled))); } catch (_) {}
+  }
   const CHANNEL_ID = 'alygnn_updates';
   let plugin = null;
   let db = null;
@@ -82,9 +89,10 @@
       report('waiting', 'Sign in to Alygnn to register this device', 'NO_SESSION');
       return;
     }
-    const fingerprint = userId + ':' + token;
+    const allowed = wantsNotifications(userId);
+    const fingerprint = userId + ':' + token + ':' + String(allowed);
     if (fingerprint === lastRegisteredKey) {
-      report('success', 'This Android device is registered in Supabase', 'REGISTERED');
+      report(allowed ? 'success' : 'disabled', allowed ? 'Push notifications enabled for this device' : 'Push notifications are off for this device', allowed ? 'REGISTERED' : 'USER_DISABLED');
       return;
     }
     report('saving', 'Saving device registration in Supabase', 'SAVING');
@@ -92,7 +100,7 @@
       token,
       user_id: userId,
       platform: 'android',
-      enabled: true,
+      enabled: allowed,
       last_seen_at: new Date().toISOString()
     }, { onConflict: 'token' });
     if (error) {
@@ -102,7 +110,7 @@
     }
     lastRegisteredKey = fingerprint;
     rememberToken(token);
-    report('success', 'This Android device is registered in Supabase', 'REGISTERED');
+    report(allowed ? 'success' : 'disabled', allowed ? 'Push notifications enabled for this device' : 'Push notifications are off for this device', allowed ? 'REGISTERED' : 'USER_DISABLED');
   }
   async function onRegistration(event) {
     const token = String(event?.value || '');
@@ -209,6 +217,11 @@
         report('waiting', 'Sign in to Alygnn to register this device', 'NO_SESSION');
         return { ...status };
       }
+      // A saved opt-out must win over automatic registration on every page.
+      if (!wantsNotifications(userId)) {
+        report('disabled', 'Push notifications are off for this device', 'USER_DISABLED');
+        return { ...status };
+      }
       await ensureListeners();
       try {
         await plugin.createChannel({ id: CHANNEL_ID, name: 'Alygnn updates',
@@ -232,9 +245,61 @@
     } finally { registering = false; }
   }
 
+  async function devicePreferences() {
+    const native = Boolean(getCapacitor()?.isNativePlatform?.());
+    if (!native) return { native: false, enabled: false, permission: 'unavailable' };
+    const p = getPlugin();
+    let permission = 'unknown';
+    try { permission = (await p?.checkPermissions?.())?.receive || 'unknown'; } catch (_) {}
+    const client = getDb();
+    let userId = '';
+    try { userId = (await client?.auth?.getSession?.())?.data?.session?.user?.id || ''; } catch (_) {}
+    const enabled = Boolean(userId) && wantsNotifications(userId);
+    return { native, enabled, permission, ready: permission === 'granted' && enabled, signedIn: Boolean(userId) };
+  }
+  async function setDeliveryEnabled(enabled) {
+    if (!getCapacitor()?.isNativePlatform?.()) throw new Error('Open the installed Alygnn app to manage device notifications.');
+    db = db || getDb();
+    if (!db) throw new Error('Your account is not ready. Sign in and try again.');
+    const userId = await currentUserId();
+    if (!userId) throw new Error('Sign in to Alygnn first.');
+    if (!enabled) {
+      // Server-side enabled=false is authoritative when a sender respects this flag.
+      // Persist it BEFORE storing the local preference so a failed write never looks saved.
+      const token = currentToken || rememberedToken();
+      if (token) {
+        const { error } = await db.from('push_device_tokens').upsert({
+          token, user_id: userId, platform: 'android', enabled: false,
+          last_seen_at: new Date().toISOString()
+        }, { onConflict: 'token' });
+        if (error) throw new Error('Could not turn off push notifications. Please try again.');
+        lastRegisteredKey = userId + ':' + token + ':false';
+      }
+      storeDeliveryChoice(userId, false);
+      report('disabled', 'Push notifications are off for this device', 'USER_DISABLED');
+      return devicePreferences();
+    }
+    const p = getPlugin();
+    if (!p) throw new Error('Push notifications are unavailable in this app build.');
+    let perm = await p.checkPermissions();
+    if (perm?.receive !== 'granted') perm = await p.requestPermissions();
+    if (perm?.receive !== 'granted') {
+      report('waiting', 'Allow notifications in Android settings to turn on push alerts', 'PERMISSION_DENIED');
+      return devicePreferences();
+    }
+    storeDeliveryChoice(userId, true);
+    lastRegisteredKey = '';
+    lastAttempt = 0;
+    // The actual registration and database write run through the existing listeners.
+    await attemptRegistration(true);
+    return devicePreferences();
+  }
   window.AlygnnPush = {
-    check: () => attemptRegistration(true),
-    enable: () => attemptRegistration(true),
+    check: () => attemptRegistration(false),
+    enable: () => setDeliveryEnabled(true),
+    disable: () => setDeliveryEnabled(false),
+    setEnabled: setDeliveryEnabled,
+    getSettings: devicePreferences,
     status: () => ({ ...status })
   };
   const promptEligiblePages = new Set(['app-swipe.html', 'app-employer-dashboard.html', 'app-account.html']);
