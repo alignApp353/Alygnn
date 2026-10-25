@@ -139,7 +139,8 @@ body.test-mode .paid-only{display:none}
       <div class="feature" id="boost-date-feature">Starts immediately and runs for 1 day</div>
       <div class="feature">Boost changes visibility only — it does not change your job-slot access</div>
       <div class="feature">$15 for each selected day</div>
-      <div class="total"><span>Due today</span><span id="due-total">$15.00 + tax</span></div>
+      <div class="total"><span>Due today</span><span id="due-total">$15.00</span></div>
+      <div class="boost-date-note" id="checkout-tax-disclosure">Applicable taxes are calculated at checkout.</div>
     </aside>
   </div>
 </main>
@@ -270,7 +271,7 @@ function updateBoostSelection(){
     document.getElementById('secure-copy').textContent=`No payment provider will be contacted. This will activate ${boostDays} test boost ${dayLabel} on the selected job.`;
     document.getElementById('authorization-copy').textContent=`By continuing, you confirm this is a developer test activation for ${boostDays} ${dayLabel}. No payment will be processed.`;
   }else{
-    document.getElementById('due-total').textContent=`${totalLabel}.00 + tax`;
+    document.getElementById('due-total').textContent=`${totalLabel}.00`;
     document.getElementById('secure-copy').textContent=`You’ll be redirected to the secure payment provider to complete a ${totalLabel} Job Boost purchase for ${boostDays} ${dayLabel}.`;
     document.getElementById('authorization-copy').textContent=`By continuing, you authorize ${totalLabel} plus applicable tax for ${boostDays} ${dayLabel} of Job Boost visibility.`;
   }
