@@ -754,7 +754,7 @@ body.ready #loading.alygnn-page-loader{
 <style id="alygnn-messages-chat-bubble-sizing">
 /* Compact, content-sized bubbles; preserve chat colors and message ordering. */
 body.employer-role .msg-row{align-items:flex-start!important;min-height:0!important;}
-body.employer-role .bubble{display:block!important;flex:0 1 auto!important;width:fit-content!important;height:auto!important;min-height:0!important;max-width:min(78%,440px)!important;padding:10px 13px!important;overflow-wrap:anywhere!important;word-break:break-word!important;white-space:pre-wrap!important;text-align:left!important;font-size:13px!important;line-height:1.5!important;}
+body.employer-role .bubble{display:block!important;flex:0 1 auto!important;width:fit-content!important;height:auto!important;min-height:0!important;max-width:min(78%,440px)!important;padding:10px 13px!important;overflow-wrap:anywhere!important;word-break:break-word!important;white-space:normal!important;text-align:left!important;font-size:13px!important;line-height:1.5!important;}
 body.employer-role .mine .bubble{margin-left:auto!important;}
 body.employer-role .bubble-time{margin-top:4px!important;font-size:10px!important;}
 @media(max-width:680px){body.employer-role .bubble{max-width:88%!important;}}
@@ -1538,7 +1538,7 @@ function renderChat(){
            ${activeMessages.map(m=>`
              <div class="msg-row ${m.sender_id===currentUser.id?'mine':''}">
                <div class="bubble">
-                 ${escapeHtml(m.body)}
+                 <span style="white-space:pre-wrap">${escapeHtml(m.body)}</span>
                  <div class="bubble-time">${escapeHtml(fullTime(m.created_at))}</div>
                </div>
              </div>`).join('')}`
