@@ -645,8 +645,7 @@ function openReceipt(index){
     ['Subtotal',money(subtotal,currency)],
     ['Discount',discount?'-'+money(discount,currency):money(0,currency)],
     ['Tax',money(tax,currency)],
-    ['Total',money(total,currency)],
-    ['Transaction reference',inv.checkout_session_id||inv.payment_intent_id||inv.invoice_id||inv.id||'Unavailable']
+    ['Total',money(total,currency)]
   ];
   if(inv.job_title)details.splice(1,0,['Job',inv.job_title]);
   document.getElementById('receipt-content').innerHTML=details.map(([k,v])=>
