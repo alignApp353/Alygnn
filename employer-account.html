@@ -973,6 +973,21 @@
     .account-mobile-menu .account-mobile-signout{border-top:1px solid var(--border);border-radius:0;margin-top:4px;}
     .notif-dropdown{position:fixed;top:70px;left:12px;right:12px;width:auto;max-width:none;max-height:min(70vh,420px);}
   }
+
+/* Compact browser layout only; leave full-size desktop untouched. */
+@media (min-width:701px) and (max-width:1100px){
+ nav{gap:8px;padding-left:2%;padding-right:2%;}
+ nav .logo{flex:0 0 auto;}
+ nav .nav-links{gap:10px;min-width:0;}
+ nav .nav-links a{font-size:12px;white-space:nowrap;}
+ nav .nav-right{gap:7px;min-width:0;}
+ nav .nav-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ nav .nav-post-job{padding:7px 10px;font-size:12px;}
+ nav .nav-cta{padding:8px 11px;font-size:12px;}
+ nav .nav-signout{padding:7px 10px;font-size:12px;}
+ .page{max-width:100%;min-width:0;}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
   window.addEventListener('hashchange',()=>{
