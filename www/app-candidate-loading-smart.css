@@ -24,15 +24,19 @@ html.alygnn-candidate-messages-route body.messages-booting>.bottom-nav{
 /* Preferences formerly used its own logo, dimensions and animation. Align with Messages. */
 html[data-alygnn-responsive="candidate"] .prefs-hydration,
 html.alygnn-candidate-messages-route .messages-boot-loader{
-  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),#F6F8F7!important;
+  background:#F6F8F7!important;
 }
 html[data-effective-theme="dark"] .prefs-hydration,
-html[data-theme="dark"] .prefs-hydration{background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important}
+html[data-theme="dark"] .prefs-hydration{background:#061821!important}
+/* Preferences shares the exact logo, copy and progress geometry used by the five main tabs. */
 html[data-alygnn-responsive="candidate"] .prefs-hydration-inner{width:min(360px,88vw)!important;transform:translateY(-3vh)!important}
-html[data-alygnn-responsive="candidate"] .prefs-hydration-logo{font-family:'DM Serif Display',Georgia,serif!important;font-size:clamp(54px,15vw,72px)!important;line-height:1!important;margin-bottom:17px!important;color:#5D7FA3!important}
-html[data-alygnn-responsive="candidate"] .prefs-hydration-text{font-size:14px!important;color:#647282!important}
-html[data-alygnn-responsive="candidate"] .prefs-hydration-track{width:116px!important;height:3px!important;margin:25px auto 0!important;background:#DDE3E8!important}
-html[data-alygnn-responsive="candidate"] .prefs-hydration-bar{width:48%!important;animation:alygnn-unified-candidate-loading 1.15s cubic-bezier(.4,0,.2,1) infinite!important;background:linear-gradient(90deg,#5D7FA3,#8CB69B)!important}
+html[data-alygnn-responsive="candidate"] .prefs-hydration-logo{display:inline-block!important;font-family:'DM Serif Display',Georgia,serif!important;font-size:clamp(54px,15vw,72px)!important;font-weight:400!important;line-height:.95!important;letter-spacing:-2px!important;margin:0!important;color:#5D7FA3!important}
+html[data-alygnn-responsive="candidate"] .prefs-hydration-text{display:block!important;margin:18px 0 0!important;font-size:14px!important;font-weight:700!important;line-height:1.45!important;letter-spacing:.01em!important;color:#647282!important}
+html[data-effective-theme="dark"] .prefs-hydration-text,html[data-theme="dark"] .prefs-hydration-text{color:#A9B5C2!important}
+html[data-alygnn-responsive="candidate"] .prefs-hydration-track{position:relative!important;width:116px!important;height:3px!important;margin:25px auto 0!important;overflow:hidden!important;background:#DDE3E8!important}
+html[data-effective-theme="dark"] .prefs-hydration-track,html[data-theme="dark"] .prefs-hydration-track{background:#293545!important}
+html[data-alygnn-responsive="candidate"] .prefs-hydration-bar{position:absolute!important;top:0!important;bottom:0!important;left:-48%!important;width:48%!important;height:100%!important;animation:alygnn-unified-candidate-loading 1.15s cubic-bezier(.4,0,.2,1) infinite!important;background:linear-gradient(90deg,#5D7FA3,#8CB69B)!important}
+@media(prefers-reduced-motion:reduce){html[data-alygnn-responsive="candidate"] .prefs-hydration-bar{left:0!important;width:100%!important;animation:none!important;opacity:.8!important}}
 
 /* Explicit early paint rule for Messages, including before deferred smart loader runs. */
 html.alygnn-candidate-messages-route body.messages-booting>.shell,
@@ -42,4 +46,4 @@ html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .mes
 /* A true loading screen is opaque; don't show half-light/half-dark layers. */
 html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{background:#F6F8F7!important}
 html[data-theme="dark"].alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader,
-html[data-effective-theme="dark"].alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important}
+html[data-effective-theme="dark"].alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{background:#061821!important}
