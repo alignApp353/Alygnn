@@ -509,6 +509,16 @@
 }
 
 @media(max-width:640px){nav{padding-left:14px;padding-right:14px;gap:8px}.nav-stats{gap:8px}.stat-val{font-size:15px}.stat-label{font-size:9px;letter-spacing:0}.nav-back{font-size:12px}.job-card{max-width:100%;min-width:0}.action-buttons{max-width:100%;gap:8px}.action-buttons>*{min-width:0!important;flex:1 1 0;padding-left:7px;padding-right:7px}}@media(max-width:360px){.nav-stats{gap:5px}.stat-val{font-size:13px}}
+
+/* Keep swipe actions accessible in short or narrow browser windows. */
+@media (max-height:760px), (max-width:720px){
+ body{overflow-y:auto;overflow-x:hidden;}
+ .swipe-area{flex:1 0 auto;justify-content:flex-start;min-height:0;padding:12px 12px 22px;}
+ .card-stack{height:clamp(330px,58dvh,520px);min-height:330px;}
+ .job-card{padding:18px;min-width:0;}
+ .action-buttons{position:relative;max-width:100%;margin-top:12px;flex-shrink:0;}
+}
+
 </style>
 </head>
 <body>
