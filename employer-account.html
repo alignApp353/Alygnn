@@ -963,7 +963,7 @@
     nav .nav-right > :not(.notif-wrap){display:none!important;}
     nav .notif-bell{width:40px;height:40px;flex:0 0 40px;}
     .account-mobile-menu-button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 40px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--text);cursor:pointer;}
-    .account-mobile-menu-button svg{width:21px;height:21px;fill:currentColor;stroke:none;}
+    .account-mobile-menu-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
     .account-mobile-menu{display:flex;position:fixed;top:64px;right:12px;left:12px;z-index:1001;flex-direction:column;gap:3px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:9px;box-shadow:0 14px 36px rgba(26,37,48,.14);}
     .account-mobile-menu[hidden]{display:none!important;}
     .account-mobile-menu a,.account-mobile-menu button{display:block;width:100%;padding:12px 14px;text-align:left;border:0;border-radius:9px;background:transparent;text-decoration:none;color:var(--text);font:500 14px 'DM Sans',sans-serif;cursor:pointer;}
@@ -996,6 +996,29 @@
   if(location.hash==='#billing-section')setTimeout(()=>toggleBillingPanel(true),0);
 
 </script>
+<style id="alygnn-matched-myjobs-drawer">
+/* Match My Jobs mobile navigation: presentation only. */
+@media(max-width:1100px){
+  .alygnn-drawer-toggle{display:inline-flex!important;width:40px;height:40px;flex:0 0 40px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:12px;background:#FCFCFA;color:#4A5968;cursor:pointer;margin:0!important;}
+  .alygnn-drawer-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
+  .alygnn-drawer-close{display:flex!important;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#F6F8F7;color:#4A5968;cursor:pointer;margin:0 0 16px auto;font-size:22px;line-height:1;}
+  .alygnn-drawer-scrim{display:block!important;position:fixed;inset:64px 0 0;z-index:1150;background:rgba(26,37,48,.34);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;}
+  .alygnn-drawer-scrim.show{opacity:1;visibility:visible;pointer-events:auto;}
+  body.alygnn-drawer-open{overflow:hidden;}
+  .alygnn-drawer-sidebar{display:block!important;position:fixed!important;top:64px!important;left:0!important;bottom:auto!important;z-index:1200!important;width:min(84vw,320px)!important;height:calc(100dvh - 64px)!important;padding:20px 16px calc(24px + env(safe-area-inset-bottom))!important;overflow-y:auto!important;background:#FCFCFA!important;border-right:1px solid var(--border);box-shadow:16px 0 40px rgba(26,37,48,.14);transform:translateX(-105%);transition:transform .24s ease;visibility:visible!important;pointer-events:none!important;overscroll-behavior:contain;}
+  .alygnn-drawer-sidebar.mobile-open{transform:translateX(0)!important;pointer-events:auto!important;}
+  .alygnn-drawer-sidebar .side-link{min-height:46px;padding:12px!important;border-radius:12px;font-size:15px!important;}
+  .alygnn-drawer-signout{display:flex!important;margin-top:14px!important;color:#a05858!important;align-items:center;gap:10px;width:100%;min-height:46px;border:none;background:none;font:500 15px 'DM Sans',sans-serif;text-align:left;padding:12px;border-radius:12px;cursor:pointer;}
+}
+@media(min-width:1101px){.alygnn-drawer-toggle,.alygnn-drawer-close,.alygnn-drawer-signout,.alygnn-drawer-scrim{display:none!important;}}
+
+@media(min-width:1101px) and (max-width:1100px){.employer-menu-toggle,.candidates-menu-toggle{display:none!important;}body.employer-role .sidebar,.layout>.sidebar{visibility:visible!important;transform:none!important;pointer-events:auto!important;position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:auto!important;box-shadow:none!important;}body.employer-role .layout,.layout{display:grid!important;grid-template-columns:220px minmax(0,1fr)!important;}.layout>main{max-width:1420px!important;}}
+
+@media(min-width:1101px) and (max-width:1100px){.employer-menu-toggle,.candidates-menu-toggle{display:none!important;}body.employer-role .sidebar,.layout>.sidebar{visibility:visible!important;transform:none!important;pointer-events:auto!important;position:relative!important;top:auto!important;left:auto!important;height:auto!important;width:auto!important;box-shadow:none!important;}body.employer-role .layout,.layout{display:grid!important;grid-template-columns:220px minmax(0,1fr)!important;}.layout>main{max-width:1420px!important;}}
+
+
+@media(max-width:1100px){nav .nav-right{margin-left:auto;}nav .account-mobile-menu-button{display:inline-flex!important;}nav .nav-links{display:none!important;}nav .nav-right>:not(.notif-wrap){display:none!important;} .account-mobile-menu.alygnn-drawer-sidebar{display:flex!important;flex-direction:column;gap:4px;right:auto!important;border-radius:0!important;padding:20px 16px!important;max-height:none!important;} .account-mobile-menu .alygnn-drawer-close{align-self:flex-end!important;} .account-mobile-menu .account-mobile-signout{color:#a05858!important;} .account-mobile-menu [hidden]{display:none!important;} }
+</style>
 </head>
 <body>
 
@@ -1031,46 +1054,20 @@
     <button class="nav-cta" id="dashboard-btn" onclick="goToDashboard()">Dashboard</button>
     <button class="nav-signout" onclick="signOut()">Sign out</button>
   </div>
-  <button type="button" class="account-mobile-menu-button" id="account-mobile-menu-button" aria-label="More navigation options" aria-expanded="false" aria-controls="account-mobile-menu" onclick="toggleAccountMobileMenu()">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+  <button type="button" class="account-mobile-menu-button alygnn-drawer-toggle" id="alygnn-drawer-toggle" aria-label="More navigation options" aria-expanded="false" aria-controls="account-mobile-menu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   </button>
 </nav>
-<div class="account-mobile-menu" id="account-mobile-menu" hidden>
+<div class="alygnn-drawer-scrim" id="alygnn-drawer-scrim"></div>
+<div class="account-mobile-menu alygnn-drawer-sidebar" id="account-mobile-menu">
+  <button type="button" class="alygnn-drawer-close" aria-label="Close navigation">×</button>
   <a href="employers.html">Home</a>
   <a href="employer-account.html" aria-current="page">Account</a>
-  <button type="button" id="account-mobile-post-job" onclick="closeAccountMobileMenu();document.getElementById('account-post-job-btn').click()">Post a job</button>
-  <button type="button" id="account-mobile-dashboard" onclick="closeAccountMobileMenu();document.getElementById('dashboard-btn').click()">Dashboard</button>
-  <button type="button" class="account-mobile-signout" onclick="closeAccountMobileMenu();signOut()">Sign out</button>
+  <button type="button" id="account-mobile-post-job" onclick="document.getElementById('account-post-job-btn').click()">Post a job</button>
+  <button type="button" id="account-mobile-dashboard" onclick="document.getElementById('dashboard-btn').click()">Dashboard</button>
+  <button type="button" class="account-mobile-signout" onclick="signOut()">Sign out</button>
 </div>
-<script>
-  function closeAccountMobileMenu(){
-    const menu=document.getElementById('account-mobile-menu');
-    const button=document.getElementById('account-mobile-menu-button');
-    if(menu)menu.hidden=true;
-    if(button)button.setAttribute('aria-expanded','false');
-  }
-  function toggleAccountMobileMenu(){
-    const menu=document.getElementById('account-mobile-menu');
-    const button=document.getElementById('account-mobile-menu-button');
-    if(!menu||!button)return;
-    if(menu.hidden){
-      const originalPost=document.getElementById('account-post-job-btn');
-      const originalDashboard=document.getElementById('dashboard-btn');
-      // Respect existing JS permissions: the menu only mirrors the original controls.
-      document.getElementById('account-mobile-post-job').hidden=!originalPost||originalPost.style.display==='none'||originalPost.hidden;
-      document.getElementById('account-mobile-dashboard').hidden=!originalDashboard||originalDashboard.style.display==='none'||originalDashboard.hidden;
-      if(originalPost)document.getElementById('account-mobile-post-job').textContent=originalPost.textContent.trim();
-    }
-    menu.hidden=!menu.hidden;
-    button.setAttribute('aria-expanded',String(!menu.hidden));
-  }
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccountMobileMenu();});
-  document.addEventListener('click',e=>{
-    const menu=document.getElementById('account-mobile-menu');
-    if(menu&&!menu.hidden&&!menu.contains(e.target)&&!document.getElementById('account-mobile-menu-button').contains(e.target))closeAccountMobileMenu();
-  });
-  window.addEventListener('resize',()=>{if(window.innerWidth>1100)closeAccountMobileMenu();});
-</script>
+
 
 <div class="page">
 
@@ -3679,5 +3676,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 })();
 </script>
 
+<script id="alygnn-dashboard-style-drawer-script">
+(function(){
+ const menu=document.getElementById('alygnn-drawer-toggle');
+ const drawer=document.querySelector('.alygnn-drawer-sidebar');
+ const backdrop=document.getElementById('alygnn-drawer-scrim');
+ if(!menu||!drawer||!backdrop)return;
+ function close(){drawer.classList.remove('mobile-open');backdrop.classList.remove('show');document.body.classList.remove('alygnn-drawer-open');menu.setAttribute('aria-expanded','false');}
+ function toggle(){if(innerWidth>860)return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
+ menu.addEventListener('click',()=>{
+ const originalPost=document.getElementById('account-post-job-btn');const originalDash=document.getElementById('dashboard-btn');
+ const post=document.getElementById('account-mobile-post-job');const dash=document.getElementById('account-mobile-dashboard');
+ if(post&&originalPost){post.hidden=originalPost.hidden||originalPost.style.display==='none';post.textContent=originalPost.textContent.trim();}
+ if(dash&&originalDash)dash.hidden=originalDash.hidden||originalDash.style.display==='none';
+ toggle();
+});backdrop.addEventListener('click',close);drawer.querySelector('.alygnn-drawer-close')?.addEventListener('click',close);drawer.addEventListener('click',e=>{if(e.target.closest('a,button:not(.alygnn-drawer-close)'))close();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>860)close();});
+})();
+</script>
 </body>
 </html>
