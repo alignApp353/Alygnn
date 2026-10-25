@@ -1001,7 +1001,7 @@
 @media(max-width:1100px){
   .alygnn-drawer-toggle{display:inline-flex!important;width:40px;height:40px;flex:0 0 40px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:12px;background:#FCFCFA;color:#4A5968;cursor:pointer;margin:0!important;}
   .alygnn-drawer-toggle svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;}
-  .alygnn-drawer-close{display:flex!important;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#F6F8F7;color:#4A5968;cursor:pointer;margin:0 0 16px auto;font-size:22px;line-height:1;}
+  .alygnn-drawer-close{display:flex!important;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#F6F8F7;color:#4A5968;cursor:pointer;margin:0 0 16px auto;font-size:22px;line-height:1;flex:0 0 36px;}
   .alygnn-drawer-scrim{display:block!important;position:fixed;inset:64px 0 0;z-index:1150;background:rgba(26,37,48,.34);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease;}
   .alygnn-drawer-scrim.show{opacity:1;visibility:visible;pointer-events:auto;}
   body.alygnn-drawer-open{overflow:hidden;}
@@ -1060,7 +1060,7 @@
 </nav>
 <div class="alygnn-drawer-scrim" id="alygnn-drawer-scrim"></div>
 <div class="account-mobile-menu alygnn-drawer-sidebar" id="account-mobile-menu">
-  <button type="button" class="alygnn-drawer-close" aria-label="Close navigation">×</button>
+  <button type="button" class="alygnn-drawer-close" aria-label="Close navigation" title="Close navigation"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg></button>
   <a href="employers.html">Home</a>
   <a href="employer-account.html" aria-current="page">Account</a>
   <button type="button" id="account-mobile-post-job" onclick="document.getElementById('account-post-job-btn').click()">Post a job</button>
@@ -3683,7 +3683,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
  const backdrop=document.getElementById('alygnn-drawer-scrim');
  if(!menu||!drawer||!backdrop)return;
  function close(){drawer.classList.remove('mobile-open');backdrop.classList.remove('show');document.body.classList.remove('alygnn-drawer-open');menu.setAttribute('aria-expanded','false');}
- function toggle(){if(innerWidth>860)return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
+ function toggle(){if(innerWidth>1100)return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
  menu.addEventListener('click',()=>{
  const originalPost=document.getElementById('account-post-job-btn');const originalDash=document.getElementById('dashboard-btn');
  const post=document.getElementById('account-mobile-post-job');const dash=document.getElementById('account-mobile-dashboard');
@@ -3691,7 +3691,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
  if(dash&&originalDash)dash.hidden=originalDash.hidden||originalDash.style.display==='none';
  toggle();
 });backdrop.addEventListener('click',close);drawer.querySelector('.alygnn-drawer-close')?.addEventListener('click',close);drawer.addEventListener('click',e=>{if(e.target.closest('a,button:not(.alygnn-drawer-close)'))close();});
- document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>860)close();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>1100)close();});
 })();
 </script>
 </body>
