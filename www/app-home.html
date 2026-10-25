@@ -92,7 +92,7 @@
 }
 
 html[data-theme="dark"]{
-  --bg:#061821;
+  --bg:#0B111A;
   --text:#F6F8FA;
   --muted:#9EACB9;
   --track:#213342;
@@ -117,7 +117,7 @@ body{
     calc(24px + env(safe-area-inset-top))
     24px
     calc(24px + env(safe-area-inset-bottom));
-  background:var(--bg);
+  background:radial-gradient(circle at 50% 38%,var(--glow),transparent 34%),var(--bg);
   color:var(--text);
   font-family:'DM Sans',Arial,sans-serif;
   transition:background-color .2s ease,color .2s ease;
