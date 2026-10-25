@@ -9,8 +9,10 @@
   const urlRole = new URLSearchParams(location.search).get('role');
   if (urlRole === 'employer' || document.body?.classList.contains('employer-mode')) return;
   const bellSlot = document.getElementById('settings-shortcut');
-  const header = document.querySelector('.my-jobs-header, header.top-header, header.app-header');
+  const header = document.querySelector('.my-jobs-header, header.top-header, header.app-header, header.topbar, .shell > .top, .topbar');
   if (!bellSlot && !header) return;
+  const existingMessageBell = document.getElementById('employer-header-notification');
+  if (existingMessageBell && urlRole !== 'employer') existingMessageBell.style.display='none';
 
   const css = `
     .alygnn-notify-trigger{appearance:none;box-sizing:border-box;border:1px solid var(--border,#DDE3E8);border-radius:50%;
