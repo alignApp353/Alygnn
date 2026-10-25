@@ -5353,28 +5353,47 @@ setInterval(()=>{
 <script defer src="app-candidate-notifications.js"></script>
 
 <script>
-(function () {
+(function(){
   const label=()=>document.getElementById('alygnn-push-check-result');
-  const update=async()=>{
-    const el=label();if(!el)return;
-    const push=window.AlygnnPush;
-    if(!push?.check){el.textContent='Manage alerts on this device';return;}
-    try{
-      const result=await push.check();
-      el.textContent=result?.state==='success'?'Notifications enabled':
-        result?.state==='denied'?'Notifications are off — enable in device settings':
-        'Tap to manage notification permissions';
-    }catch(_){el.textContent='Tap to manage notification permissions';}
-  };
-  window.alygnnCheckPushRegistration=async()=>{
-    const el=label();if(el)el.textContent='Checking notification permissions…';
-    try{ if(window.AlygnnPush?.requestPermission) await window.AlygnnPush.requestPermission();
-         else if(window.AlygnnPush?.enable) await window.AlygnnPush.enable(); }
-    catch(_){ /* Device settings may be required if Android previously denied permission. */ }
-    await update();
-  };
-  window.addEventListener('alygnn-push-status',update);
-  window.addEventListener('load',update);
+  function ensureDialog(){
+    let overlay=document.getElementById('alygnn-push-permissions-dialog');
+    if(overlay)return overlay;
+    overlay=document.createElement('div');overlay.id='alygnn-push-permissions-dialog';overlay.hidden=true;
+    overlay.style.cssText='position:fixed;inset:0;z-index:50000;background:rgba(0,12,20,.76);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+    overlay.innerHTML='<section role="dialog" aria-modal="true" aria-label="Push notification settings" style="background:var(--card,#102937);color:var(--text,#f3f7fb);border:1px solid var(--border,#3c5668);border-radius:18px;width:min(100%,420px);padding:22px;box-sizing:border-box;box-shadow:0 18px 50px #0007"><h2 style="margin:0 0 12px;font-size:21px">Push Notifications</h2><p id="alygnn-push-permission-description" style="font-size:14px;line-height:1.6;margin:0 0 18px">Checking your device…</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" id="alygnn-push-dialog-enable" style="background:#5D7FA3;color:white;border:0;border-radius:9px;padding:12px 16px;font-weight:700">Enable Notifications</button><button type="button" id="alygnn-push-dialog-close" style="background:transparent;color:inherit;border:1px solid currentColor;border-radius:9px;padding:12px 16px">Close</button></div></section>';
+    document.body.appendChild(overlay);
+    const hideStyle=document.createElement('style');hideStyle.textContent='#alygnn-push-permissions-dialog[hidden]{display:none!important}';document.head.appendChild(hideStyle);
+    overlay.querySelector('#alygnn-push-dialog-close').onclick=()=>{overlay.hidden=true;};
+    overlay.querySelector('#alygnn-push-dialog-enable').onclick=async()=>{
+      const info=overlay.querySelector('#alygnn-push-permission-description');
+      info.textContent='Requesting notification permission…';
+      try{await window.AlygnnPush?.enable?.();}catch(e){console.warn('Notification permission request:',e);}
+      await render(true);
+    };
+    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.hidden=true;});
+    return overlay;
+  }
+  async function render(open){
+    const overlay=ensureDialog();
+    const info=overlay.querySelector('#alygnn-push-permission-description');
+    const button=overlay.querySelector('#alygnn-push-dialog-enable');
+    let result;
+    try{result=window.AlygnnPush?.status?.();}catch(e){result={state:'error'};}
+    if(!window.Capacitor?.isNativePlatform?.()){
+      info.textContent='Push notifications are available in the installed Android app. Open Alygnn on your phone to manage them.';button.hidden=true;
+    }else if(result?.state==='success'){
+      info.textContent='Notifications are enabled on this device. New-message alerts still require Alygnn’s server to send push notifications.';button.hidden=true;
+    }else if(result?.state==='denied'){
+      info.textContent='Android has blocked notification permission. Open Android Settings → Apps → Alygnn → Notifications and turn notifications on, then return here.';button.hidden=false;button.textContent='Try Again';
+    }else{
+      info.textContent='To get alerts while Alygnn is closed, allow notifications for this device. If no permission prompt appears, open Android Settings → Apps → Alygnn → Notifications.';button.hidden=false;button.textContent='Enable Notifications';
+    }
+    if(label())label().textContent=result?.state==='success'?'Notifications enabled':result?.state==='denied'?'Notifications disabled — tap to manage':'Tap to manage notifications';
+    if(open)overlay.hidden=false;
+  }
+  window.alygnnCheckPushRegistration=()=>render(true);
+  window.addEventListener('alygnn-push-status',()=>{if(!document.getElementById('alygnn-push-permissions-dialog')?.hidden)render(false);});
+  window.addEventListener('load',()=>render(false));
 })();
 </script>
 <script defer src="app-push-notifications.js"></script>
