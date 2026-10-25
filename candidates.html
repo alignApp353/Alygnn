@@ -245,7 +245,7 @@
   .empty-title{font-family:'DM Serif Display',serif;color:var(--text);font-size:19px;margin-bottom:5px}
 
   .modal-overlay{
-    display:none;position:fixed;inset:0;background:rgba(26,37,48,.45);z-index:300;
+    display:none;position:fixed;inset:0;background:rgba(26,37,48,.45);z-index:1300;
     align-items:center;justify-content:center;padding:24px
   }
   .modal-overlay.show{display:flex}
@@ -2219,6 +2219,14 @@ function openProfile(applicationId){
       <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected'); closeProfile();">Pass</button>
     </div>
   `;
+  // Keep the applicant profile above the responsive employer navigation.
+  const drawer=document.querySelector('.alygnn-drawer-sidebar');
+  const drawerBackdrop=document.getElementById('alygnn-drawer-scrim');
+  const drawerToggle=document.getElementById('alygnn-drawer-toggle');
+  drawer?.classList.remove('mobile-open');
+  drawerBackdrop?.classList.remove('show');
+  document.body.classList.remove('alygnn-drawer-open','candidates-sidebar-open');
+  drawerToggle?.setAttribute('aria-expanded','false');
   document.getElementById('profile-overlay').classList.add('show');
 }
 
@@ -2295,7 +2303,7 @@ loadData();
  const backdrop=document.getElementById('alygnn-drawer-scrim');
  if(!menu||!drawer||!backdrop)return;
  function close(){drawer.classList.remove('mobile-open');backdrop.classList.remove('show');document.body.classList.remove('alygnn-drawer-open');menu.setAttribute('aria-expanded','false');}
- function toggle(){if(innerWidth>860)return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
+ function toggle(){if(innerWidth>860||document.getElementById('profile-overlay')?.classList.contains('show'))return;const opening=!drawer.classList.contains('mobile-open');drawer.classList.toggle('mobile-open',opening);backdrop.classList.toggle('show',opening);document.body.classList.toggle('alygnn-drawer-open',opening);menu.setAttribute('aria-expanded',String(opening));}
  menu.addEventListener('click',toggle);backdrop.addEventListener('click',close);drawer.querySelector('.alygnn-drawer-close')?.addEventListener('click',close);drawer.addEventListener('click',e=>{if(e.target.closest('a,button:not(.alygnn-drawer-close)'))close();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>860)close();});
 })();
