@@ -966,6 +966,9 @@
   .alygnn-slot-purchase{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--border)}
   .alygnn-slot-purchase strong{color:var(--text)}
   .alygnn-slot-pill{font-size:11px;color:#2c7e50;font-weight:600}
+  .alygnn-slot-use{border:1px solid var(--brand);border-radius:999px;background:var(--brand);color:white;padding:8px 15px;font:500 12px 'DM Sans',sans-serif;cursor:pointer}
+  .alygnn-slot-use:hover{opacity:.87}
+  .alygnn-weekly-selected{padding:12px 14px;margin:0 0 18px;border:1px solid rgba(93,127,163,.3);border-radius:12px;background:var(--brand-light);font-size:13px;color:var(--text);display:none}
   @media(max-width:560px){.alygnn-slot-breakdown-grid{grid-template-columns:1fr}}
 
 </style>
@@ -1119,6 +1122,7 @@
         <div class="page-title" id="post-form-title">Post a Job</div>
         <div class="page-sub">Fill in the details and start finding candidates</div>
       </div>
+      <div class="alygnn-weekly-selected" id="alygnn-weekly-selected" role="status"></div>
       <div class="verification-lock" id="verification-lock" style="display:none;">
         You can create a job now. It will stay pending and hidden from candidates until your business is approved.
       </div>
@@ -1582,6 +1586,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let weeklySlotExpiryByPurchaseId = {};
   let weeklySlotPurchasesForDisplay = null;
   let weeklySlotDisplayError = false;
+  let selectedWeeklySlotPurchaseId = null;
 
   // ---- Search-to-add picker state ----
   const REQUIREMENT_PRESETS = [
@@ -3583,6 +3588,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
+    clearSelectedWeeklySlot();
     // Clicking the main "Post a Job" action always starts a NEW listing.
     if (editingJobId) cancelEdit();
     activeJobDraftId = null;
@@ -4634,6 +4640,45 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       row.expires_at && new Date(row.expires_at).getTime() > Date.now());
   }
 
+  function clearSelectedWeeklySlot(){
+    selectedWeeklySlotPurchaseId=null;
+    const hint=document.getElementById('alygnn-weekly-selected');
+    if(hint){hint.style.display='none';hint.textContent='';}
+  }
+
+  async function useWeeklyJobSlot(purchaseId){
+    if(isTeamMember && !teamCan('jobs_manage')){
+      showToast('Your team role does not include job posting access.');return;
+    }
+    const ownerId=workspaceOwnerId||currentUser?.id;
+    if(!ownerId || !purchaseId) return;
+    // Re-read the purchase immediately so a previously displayed status cannot authorize posting.
+    const {data:p,error}=await sb.from('employer_weekly_slot_purchases')
+      .select('id,expires_at').eq('id',purchaseId).eq('employer_id',ownerId).maybeSingle();
+    if(error || !p || !p.expires_at || new Date(p.expires_at).getTime()<=Date.now()){
+      showToast('This Weekly Job Slot has expired or is no longer available.');await loadJobs();return;
+    }
+    const {data:using,error:usingError}=await sb.from('jobs')
+      .select('id').eq('employer_id',ownerId).eq('weekly_slot_purchase_id',purchaseId)
+      .in('status',['active','pending']).limit(1);
+    if(usingError || (using||[]).length){
+      showToast(usingError?'Could not verify weekly slot availability.':'This Weekly Job Slot is already in use.');return;
+    }
+    if(!billingReady)await loadBillingEntitlement();
+    if(!canCreateNewJob()){
+      showToast('A new job cannot be posted with your current account access.');return;
+    }
+    if(editingJobId)cancelEdit();
+    activeJobDraftId=null;
+    clearJobForm();
+    selectedWeeklySlotPurchaseId=String(p.id);
+    const hint=document.getElementById('alygnn-weekly-selected');
+    if(hint){hint.style.display='block';hint.textContent='Weekly Job Slot selected — expires '+formatWeeklyJobUntil(p.expires_at)+'. Posting will use this purchased slot if accepted by Alygnn’s database.';}
+    document.getElementById('post-form-title').textContent='Post a Weekly Job';
+    document.getElementById('cancel-edit-btn').style.display='none';
+    showPanel('post');
+  }
+
   function renderJobSlotBreakdown(){
     const el = document.getElementById('job-slot-breakdown');
     if (!el) return;
@@ -4653,7 +4698,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const weeklyRows=purchases.map((p,i)=>{
       const job=activeJobs.find(j=>String(j.weekly_slot_purchase_id||'')===String(p.id));
       const until=formatWeeklyJobUntil(p.expires_at);
-      return `<div class="alygnn-slot-purchase"><div><strong>Weekly Job Slot ${i+1}</strong><div>Expires ${escapeHtml(until||'at the end of the purchased period')}</div></div><span class="alygnn-slot-pill">${job?'In use · '+escapeHtml(job.title||'Job'):'Available to reuse'}</span></div>`;
+      return `<div class="alygnn-slot-purchase"><div><strong>Weekly Job Slot ${i+1}</strong><div>Expires ${escapeHtml(until||'at the end of the purchased period')}</div></div>${job?`<span class="alygnn-slot-pill">In use · ${escapeHtml(job.title||'Job')}</span>`:`<button type="button" class="alygnn-slot-use" data-weekly-purchase="${escapeHtml(p.id)}" onclick="useWeeklyJobSlot(this.dataset.weeklyPurchase)">Use this slot →</button>`}</div>`;
     }).join('');
     el.innerHTML=`<div class="alygnn-slot-breakdown-header"><strong>Job slot availability</strong><span>Based on your purchased weekly slots</span></div>
       <div class="alygnn-slot-breakdown-grid">
@@ -5385,6 +5430,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return;
     }
 
+    clearSelectedWeeklySlot();
     editingJobId = null;
     activeJobDraftId = draft.id;
     fillJobForm(draft.draft_data || {});
@@ -6085,13 +6131,23 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       showToast('Job updated successfully!');
       cancelEdit(false);
     } else {
-      const { error } = await sb
+      // An explicitly chosen weekly purchase must be supplied to the database.
+      // The entitlement trigger remains responsible for final authorization.
+      if(selectedWeeklySlotPurchaseId){
+        const chosen=weeklySlotPurchasesForDisplay?.find(p=>String(p.id)===selectedWeeklySlotPurchaseId);
+        const stillFree=chosen && new Date(chosen.expires_at).getTime()>Date.now() &&
+          !jobs.some(j=>String(j.weekly_slot_purchase_id||'')===selectedWeeklySlotPurchaseId &&
+            ['active','pending'].includes(String(j.status||'').toLowerCase()));
+        if(!stillFree){showToast('This Weekly Job Slot is no longer available. Refresh My Jobs and select another.');return;}
+      }
+      const { data: insertedJob, error } = await sb
         .from('jobs')
         .insert({
           employer_id: workspaceOwnerId,
           ...job,
+          ...(selectedWeeklySlotPurchaseId ? {weekly_slot_purchase_id:selectedWeeklySlotPurchaseId} : {}),
           status: employerVerified ? 'active' : 'pending'
-        });
+        }).select('id,weekly_slot_purchase_id').single();
 
       if (error) {
         console.error('Failed to post job:', error);
@@ -6134,7 +6190,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return;
       }
 
-      showToast(employerVerified
+      if(selectedWeeklySlotPurchaseId && String(insertedJob?.weekly_slot_purchase_id||'')!==selectedWeeklySlotPurchaseId){
+        showToast('Job was created, but the database assigned a different slot. Check My Jobs before posting again.');
+        console.warn('Weekly slot selection differed from database assignment.',insertedJob?.id);
+      } else showToast(employerVerified
         ? 'Job posted successfully!'
         : 'Job saved as pending. It will go live automatically after your business is approved.');
 
@@ -6154,6 +6213,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
 
       clearJobForm();
+      clearSelectedWeeklySlot();
     }
 
     await loadJobs();
@@ -6164,6 +6224,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function editJob(jobId) {
+    clearSelectedWeeklySlot();
     if (isTeamMember && !teamCan('jobs_manage')) {
       showToast('Your team role does not include job editing access.');
       return;
@@ -6183,6 +6244,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function cancelEdit(clearForm = true) {
+    clearSelectedWeeklySlot();
     editingJobId = null;
     activeJobDraftId = null;
 
