@@ -5379,9 +5379,18 @@ setInterval(()=>{
         const settings=await window.AlygnnPush?.getSettings?.();
         if(!settings)throw Error('Notification settings are still loading.');
         const next=!settings.enabled;
-        await window.AlygnnPush.setEnabled(next);
+        const saved=await window.AlygnnPush.setEnabled(next);
+        // Only dismiss after Alygnn and Android report the intended state.
+        // If permission is denied, keep the dialog open and explain the problem.
+        const current=saved?.native ? saved : await window.AlygnnPush.getSettings();
+        if(current.enabled!==next || (next && current.permission!=='granted')) {
+          throw Error(next
+            ? 'Allow notifications in Android settings, then try again.'
+            : 'Could not confirm the notification change. Please try again.');
+        }
+        overlay.hidden=true;
       }catch(e){error.textContent=e?.message||'Could not update notifications. Please try again.';error.style.display='block';}
-      finally{action.disabled=false;busy=false;await render(true);}
+      finally{action.disabled=false;busy=false;await render(false);}
     };
     overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.hidden=true;});
     return overlay;
@@ -5416,5 +5425,6 @@ setInterval(()=>{
 })();
 </script>
 <script defer src="app-push-notifications.js"></script>
+<script defer src="app-sheet-swipe.js"></script>
 </body>
 </html>

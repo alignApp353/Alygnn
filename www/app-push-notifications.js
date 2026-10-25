@@ -287,12 +287,55 @@
       report('waiting', 'Allow notifications in Android settings to turn on push alerts', 'PERMISSION_DENIED');
       return devicePreferences();
     }
+    // A previously registered device already has its Firebase token. Save the
+    // enabled=true record before resolving so the screen never reports success
+    // while the server still holds an off preference.
+    const token = currentToken || rememberedToken();
+    if (token) {
+      const { error } = await db.from('push_device_tokens').upsert({
+        token, user_id: userId, platform: 'android', enabled: true,
+        last_seen_at: new Date().toISOString()
+      }, { onConflict: 'token' });
+      if (error) throw new Error('Could not turn on push notifications. Please try again.');
+      storeDeliveryChoice(userId, true);
+      lastRegisteredKey = userId + ':' + token + ':true';
+      report('success', 'Push notifications enabled for this device', 'REGISTERED');
+      return devicePreferences();
+    }
+    // First-time setup has no saved token yet. Wait until Firebase returns one
+    // AND saveToken confirms the server write before completing the action.
     storeDeliveryChoice(userId, true);
     lastRegisteredKey = '';
     lastAttempt = 0;
-    // The actual registration and database write run through the existing listeners.
-    await attemptRegistration(true);
-    return devicePreferences();
+    try {
+      await new Promise(async (resolve, reject) => {
+        let done = false;
+        const complete = (error) => {
+          if (done) return;
+          done = true;
+          window.removeEventListener('alygnn-push-status', onStatus);
+          clearTimeout(timer);
+          if (error) reject(error); else resolve();
+        };
+        const onStatus = event => {
+          const detail = event.detail || {};
+          if (detail.code === 'REGISTERED' && detail.state === 'success') complete();
+          else if (detail.state === 'error') complete(new Error('Could not register notifications. Please try again.'));
+        };
+        const timer = setTimeout(() => complete(new Error('Notification setup did not finish. Please try again.')), 12000);
+        window.addEventListener('alygnn-push-status', onStatus);
+        try {
+          const result = await attemptRegistration(true);
+          if (result?.state === 'error') complete(new Error('Could not register notifications. Please try again.'));
+        } catch (_) { complete(new Error('Could not register notifications. Please try again.')); }
+      });
+      return devicePreferences();
+    } catch (error) {
+      storeDeliveryChoice(userId, false);
+      lastRegisteredKey = '';
+      report('disabled', 'Push notifications are off for this device', 'USER_DISABLED');
+      throw error;
+    }
   }
   window.AlygnnPush = {
     check: () => attemptRegistration(false),
