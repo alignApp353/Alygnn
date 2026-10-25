@@ -563,6 +563,16 @@
 }
 
 @media(max-width:900px){.layout,.main,.sidebar,.candidate-card{min-width:0}}@media(max-width:620px){nav{padding:0 14px;gap:8px}.nav-right{gap:8px}.nav-user{max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nav-link{padding:8px 10px;font-size:12px}}
+
+/* Narrow browser layout adjustments only. */
+@media (min-width:621px) and (max-width:900px){
+ .layout{grid-template-columns:minmax(0,1fr);}
+ main{width:100%;min-width:0;padding:28px 4% 65px;}
+ .toolbar{grid-template-columns:minmax(0,1fr) minmax(150px,190px);}
+ .candidate-card{min-width:0;max-width:100%;}
+}
+@media (max-width:620px){.toolbar{grid-template-columns:minmax(0,1fr);}.candidate-card{min-width:0;}}
+
 </style>
 </head>
 <body>
