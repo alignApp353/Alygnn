@@ -955,6 +955,19 @@
 }
 
 @media(max-width:860px){.main,.job-row,.job-info,.job-actions,.section-header{min-width:0}.job-title-text,.job-meta{overflow-wrap:anywhere}.modal-box{max-width:100%}}@media(max-width:440px){.main{padding-left:14px;padding-right:14px}.job-row{padding:15px}.job-actions{gap:6px}.job-actions button{overflow-wrap:anywhere}}
+
+  /* My Jobs: read-only purchased-slot breakdown; does not change entitlement rules. */
+  .alygnn-slot-breakdown{margin:-2px 0 18px;padding:15px 18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg);font-size:12px;color:var(--text-muted)}
+  .alygnn-slot-breakdown-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:9px}
+  .alygnn-slot-breakdown-header strong{font-size:14px;color:var(--text)}
+  .alygnn-slot-breakdown-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
+  .alygnn-slot-breakdown-stat{padding:11px 13px;border:1px solid var(--border);border-radius:11px;background:var(--bg)}
+  .alygnn-slot-breakdown-stat strong{display:block;font-size:19px;color:var(--text);margin-bottom:2px}
+  .alygnn-slot-purchase{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--border)}
+  .alygnn-slot-purchase strong{color:var(--text)}
+  .alygnn-slot-pill{font-size:11px;color:#2c7e50;font-weight:600}
+  @media(max-width:560px){.alygnn-slot-breakdown-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1056,6 +1069,8 @@
         <div class="section-title">Job listings <span id="job-slot-usage" style="font-size:12px; font-weight:400; color:var(--text-muted); margin-left:8px;"></span></div>
         <button class="btn-primary" id="post-new-job-btn" onclick="openPostJob()">+ Post new job</button>
       </div>
+
+      <div id="job-slot-breakdown" class="alygnn-slot-breakdown" aria-live="polite" style="display:none"></div>
 
       <div style="display:flex;gap:8px;margin-bottom:14px;">
         <button type="button" id="jobs-view-active" class="btn-view" onclick="switchJobsView('active')" style="background:var(--brand);color:white;border-color:var(--brand);">Active jobs</button>
@@ -1565,6 +1580,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let jobDrafts = [];
   let activeJobDraftId = null;
   let weeklySlotExpiryByPurchaseId = {};
+  let weeklySlotPurchasesForDisplay = null;
+  let weeklySlotDisplayError = false;
 
   // ---- Search-to-add picker state ----
   const REQUIREMENT_PRESETS = [
@@ -3514,6 +3531,8 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         : `· ${displayedUsed} of ${access.limit} ${access.limit === 1 ? 'slot' : 'slots'} used`;
     }
 
+    if (Array.isArray(weeklySlotPurchasesForDisplay)) renderJobSlotBreakdown();
+
     if (testBanner) {
       testBanner.classList.remove('show');
       testBanner.textContent = '';
@@ -4597,6 +4616,53 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     );
   }
 
+  async function loadWeeklySlotBreakdown() {
+    weeklySlotPurchasesForDisplay = null;
+    weeklySlotDisplayError = false;
+    const ownerId = workspaceOwnerId || currentUser?.id;
+    if (!ownerId) return;
+    const { data, error } = await sb.from('employer_weekly_slot_purchases')
+      .select('id,expires_at,activated_at')
+      .eq('employer_id',ownerId)
+      .order('expires_at',{ascending:true});
+    if (error) {
+      console.warn('Could not load purchased weekly slot breakdown:',error);
+      weeklySlotDisplayError = true;
+      return;
+    }
+    weeklySlotPurchasesForDisplay = (data||[]).filter(row =>
+      row.expires_at && new Date(row.expires_at).getTime() > Date.now());
+  }
+
+  function renderJobSlotBreakdown(){
+    const el = document.getElementById('job-slot-breakdown');
+    if (!el) return;
+    el.style.display = 'block';
+    if (weeklySlotDisplayError || !Array.isArray(weeklySlotPurchasesForDisplay)) {
+      el.textContent = 'Job slot breakdown is unavailable right now. Your posting permissions have not changed.';
+      return;
+    }
+    const activeJobs = jobs.filter(j=>['active','pending'].includes(String(j.status||'').toLowerCase()));
+    const purchases = weeklySlotPurchasesForDisplay;
+    const occupied = purchases.filter(p=>activeJobs.some(j=>String(j.weekly_slot_purchase_id||'')===String(p.id))).length;
+    const availableWeekly = Math.max(0,purchases.length-occupied);
+    const access = getPostingAccess();
+    const totalAvailable = Number.isFinite(access.limit)
+      ? Math.max(0,access.limit-activeJobCount()) : null;
+    const planAndOtherAvailable = totalAvailable === null ? null : Math.max(0,totalAvailable-availableWeekly);
+    const weeklyRows=purchases.map((p,i)=>{
+      const job=activeJobs.find(j=>String(j.weekly_slot_purchase_id||'')===String(p.id));
+      const until=formatWeeklyJobUntil(p.expires_at);
+      return `<div class="alygnn-slot-purchase"><div><strong>Weekly Job Slot ${i+1}</strong><div>Expires ${escapeHtml(until||'at the end of the purchased period')}</div></div><span class="alygnn-slot-pill">${job?'In use · '+escapeHtml(job.title||'Job'):'Available to reuse'}</span></div>`;
+    }).join('');
+    el.innerHTML=`<div class="alygnn-slot-breakdown-header"><strong>Job slot availability</strong><span>Based on your purchased weekly slots</span></div>
+      <div class="alygnn-slot-breakdown-grid">
+        <div class="alygnn-slot-breakdown-stat"><strong>${planAndOtherAvailable===null?'—':planAndOtherAvailable}</strong>Other slots available (estimate)</div>
+        <div class="alygnn-slot-breakdown-stat"><strong>${availableWeekly}</strong>Available Weekly Job Slots</div>
+      </div>${weeklyRows || '<div>No unexpired Weekly Job Slots found.</div>'}
+      <div style="margin-top:8px;font-size:11px">A Weekly Job Slot can be reused until its original expiration, but can support only one active or pending job at a time. Slot assignment is controlled by Alygnn's database.</div>`;
+  }
+
   async function loadJobs() {
     if (!currentUser) return;
 
@@ -4625,9 +4691,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     await Promise.all([
       loadAppliedCounts(),
       loadJobDrafts(),
-      loadWeeklyJobExpirations(jobs)
+      loadWeeklyJobExpirations(jobs),
+      loadWeeklySlotBreakdown()
     ]);
     renderJobs();
+    if (billingReady) renderJobSlotBreakdown();
     if (billingReady) updatePostingAccessUI();
   }
 
