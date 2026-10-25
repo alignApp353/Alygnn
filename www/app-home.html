@@ -50,11 +50,11 @@
     const root=document.documentElement;
     root.dataset.theme=theme;
     root.style.colorScheme=theme;
-    root.style.backgroundColor=theme==='dark'?'#071722':'#F6F8F7';
+    root.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
 
     const meta=document.querySelector('meta[name="theme-color"]');
     if(meta){
-      meta.setAttribute('content',theme==='dark'?'#071722':'#F6F8F7');
+      meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
     }
   }
 
@@ -92,7 +92,7 @@
 }
 
 html[data-theme="dark"]{
-  --bg:#071722;
+  --bg:#061821;
   --text:#F6F8FA;
   --muted:#9EACB9;
   --track:#213342;
@@ -117,9 +117,7 @@ body{
     calc(24px + env(safe-area-inset-top))
     24px
     calc(24px + env(safe-area-inset-bottom));
-  background:
-    radial-gradient(circle at 50% 38%,var(--glow),transparent 34%),
-    var(--bg);
+  background:var(--bg);
   color:var(--text);
   font-family:'DM Sans',Arial,sans-serif;
   transition:background-color .2s ease,color .2s ease;
