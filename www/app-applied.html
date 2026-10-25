@@ -967,9 +967,10 @@ html[data-alygnn-myjobs-state="error"] #alygnn-shared-candidate-loader {
 /* If the initial request fails, show an honest retry state, not fake zeros. */
 html[data-alygnn-myjobs-state="error"] .stat-number {visibility:hidden!important;}
 </style>
+<link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
 </head>
 <body data-candidate-nav-build="2026-09-15-full-width-header">
-<div id="alygnn-shared-candidate-loader" role="status" aria-label="Alygnn is loading" aria-live="polite">
+<div id="alygnn-shared-candidate-loader" class="alygnn-standard-loader" role="status" aria-label="Alygnn is loading" aria-live="polite">
   <div class="alygnn-boot-inner">
     <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
     <div class="alygnn-boot-copy">Opening your applications.</div>
