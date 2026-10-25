@@ -1,0 +1,112 @@
+/* Employer-only full-screen loading visual. Exact geometry, colors, type and animation
+ * copied from the final My Jobs reference: app-myjobs-loader-exact.css.
+ * This applies only to employer routes that explicitly opt into this class.
+ * It does not style candidate screens or any modal, dropdown, or inline loading UI.
+ */
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader[hidden]{display:none!important}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader{
+  position:fixed!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100dvh!important;
+  box-sizing:border-box!important;
+  z-index:9999!important;
+  display:flex;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))!important;
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.12),transparent 34%),#F6F8F7!important;
+  color:#172333!important;
+  transform:none!important;
+  text-align:center!important;
+  transition:opacity .18s ease,visibility .18s ease!important;
+}
+html[data-effective-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader,
+html[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader,
+body[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader{
+  background:radial-gradient(circle at 50% 38%,rgba(93,127,163,.18),transparent 34%),#0B111A!important;
+  color:#F3F7FA!important;
+}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-inner{
+  width:min(360px,88vw)!important;
+  max-width:100%!important;
+  text-align:center!important;
+  transform:translateY(-3vh)!important;
+  margin:0 auto!important;
+  padding:0!important;
+  display:block!important;
+}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-logo{
+  display:inline-block!important;
+  font-family:'DM Serif Display',Georgia,serif!important;
+  font-size:clamp(54px,15vw,72px)!important;
+  font-weight:400!important;
+  line-height:.95!important;
+  letter-spacing:-2px!important;
+  color:#5D7FA3!important;
+  margin:0!important;
+  padding:0!important;
+  text-rendering:optimizeLegibility!important;
+  -webkit-font-smoothing:antialiased!important;
+}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-logo span{color:#8CB69B!important;font-family:'DM Sans',Arial,sans-serif!important}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-copy{
+  display:block!important;
+  min-height:0!important;
+  margin:18px 0 0!important;
+  padding:0!important;
+  color:#647282!important;
+  font-size:14px!important;
+  line-height:1.45!important;
+  font-weight:700!important;
+  letter-spacing:.01em!important;
+  text-align:center!important;
+}
+html[data-effective-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-copy,
+html[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-copy,
+body[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-copy{color:#A9B5C2!important}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-track{
+  position:relative!important;
+  display:block!important;
+  width:116px!important;
+  height:3px!important;
+  max-height:3px!important;
+  margin:25px auto 0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:#DDE3E8!important;
+}
+html[data-effective-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-track,
+html[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-track,
+body[data-theme="dark"] :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-track{background:#293545!important}
+:is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-bar{
+  content:'';
+  position:absolute!important;
+  top:0!important;
+  bottom:0!important;
+  left:-48%!important;
+  width:48%!important;
+  height:100%!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#5D7FA3,#8CB69B)!important;
+  animation:alygnn-employer-exact-progress 1.15s cubic-bezier(.4,0,.2,1) infinite!important;
+}
+@keyframes alygnn-employer-exact-progress{
+  0%{transform:translateX(0);opacity:.45}
+  45%{opacity:1}
+  100%{transform:translateX(310%);opacity:.55}
+}
+@media(prefers-reduced-motion:reduce){
+ :is(#loading,#dashboard-boot-loader).alygnn-employer-myjobs-loader .alygnn-boot-bar{
+   left:0!important;width:100%!important;animation:none!important;opacity:.8!important;
+ }
+}
+/* Payment keeps its secondary text for compatibility but presents only one message. */
+#loading.alygnn-employer-myjobs-loader .loading-title + .loading-copy:not(.alygnn-boot-copy){display:none!important}
+/* Respect employer dashboard ready state and do not hold the screen open. */
+body[data-dashboard-booting="false"] #dashboard-boot-loader.alygnn-employer-myjobs-loader{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
