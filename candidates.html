@@ -1567,7 +1567,7 @@ function statusLabel(status){
   if(s==='hired')return ['Hired','accepted'];
   if(s==='shortlisted')return ['Shortlisted','reviewed'];
   if(['reviewed','under_review','under review'].includes(s))return ['Under review','reviewed'];
-  if(s==='pending')return ['Pending review','pending'];
+  if(['pending','applied'].includes(s))return ['Pending review','pending'];
   return ['Submitted',''];
 }
 
