@@ -1007,13 +1007,13 @@ function renderAppliedRow(app, job){
   const statusClass = ['accepted','hired'].includes(status) ? 'status-accepted'
     : ['rejected','not_selected','declined'].includes(status) ? 'status-rejected'
     : ['reviewed','under_review','under review','shortlisted'].includes(status) ? 'status-review'
-    : status === 'pending' ? 'status-pending' : '';
+    : ['pending','applied'].includes(status) ? 'status-pending' : '';
   const statusLabel = status === 'hired' ? 'Hired'
     : status === 'accepted' ? 'Accepted'
     : ['rejected','not_selected','declined'].includes(status) ? 'Not selected'
     : status === 'shortlisted' ? 'Shortlisted'
     : ['reviewed','under_review','under review'].includes(status) ? 'Under review'
-    : status === 'pending' ? 'Pending review' : 'Submitted';
+    : ['pending','applied'].includes(status) ? 'Pending review' : 'Submitted';
 
   const metaParts = [job.company, job.job_type, job.location].filter(Boolean).join(' · ');
   const detailsUrl = `job-details.html?job=${encodeURIComponent(job.id)}&app=${encodeURIComponent(app.id)}`;
