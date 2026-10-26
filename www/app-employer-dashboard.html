@@ -8466,8 +8466,8 @@
           ? fresh + ' waiting for review'
           : 'No new activity';
       }
-      els.notificationCount.textContent = fresh;
-      els.notificationCount.hidden = fresh === 0;
+      // The bell is based on unread persisted notifications, not new-applicant metrics.
+      refreshEmployerNotificationBadge();
     }
 
     function statusClass(status){
@@ -11605,65 +11605,104 @@
       }
     }
 
-    function notificationItems(){
-      const limitJob=(state.jobs||[]).find(job=>
-        postingAccessType(job)==='free' &&
-        freeApplicantCount(job)>=25 &&
-        !jobBoostIsActive(job)
-      );
-
-      const freshApps = state.applications.filter(application =>
-        applicationPipelineStatus(application)==='new'
-      );
-      const items = freshApps.slice(0,6).map(application => {
-        const data = candidateData(application);
-        const job = jobFor(application);
-        return {
-          icon:'A',
-          title:`${data.name} applied`,
-          body:`New application for ${job?.title || application.job_title || 'your open position'}.`,
-          time:timeAgo(application.applied_at || application.created_at)
-        };
-      });
-
-      if(limitJob){
-        items.unshift({
-          icon:'!',
-          title:'Free job applicant limit reached',
-          body:dashboardBasePaidPlanActive()
-            ? `${limitJob.title || 'Your free-slot job'} reached 25 applicants and was automatically paused. Use Job Boost to reopen it.`
-            : `${limitJob.title || 'Your free job'} reached 25 applicants and was automatically paused. Free accounts cannot boost jobs. Close it and post a different role, or choose paid hiring access.`,
-          time:'Now'
-        });
-      }
-
-      const highScore = state.applications
-        .map(application => ({application,score:provisionalScore(application).score}))
-        .filter(item => item.score >= 85)
-        .sort((a,b) => b.score-a.score)[0];
-      if(highScore){
-        const data = candidateData(highScore.application);
-        items.unshift({icon:'★',title:'Strong match identified',body:`${data.name} has an Alygnn Score of ${highScore.score}%.`,time:'New'});
-      }
-      if(state.jobs.length){
-        const bestJob = [...state.jobs].sort((a,b) => Number(b.views || b.view_count || 0)-Number(a.views || a.view_count || 0))[0];
-        items.push({icon:'J',title:'Job performance update',body:`${bestJob.title || 'A job'} has ${Number(bestJob.views || bestJob.view_count || 0)} views.`,time:'Today'});
-      }
-      items.push({icon:'C',title:'Strengthen your employer brand',body:'Complete your company profile to give candidates more confidence.',time:'Tip'});
-      return items;
+    // Alygnn Unified Notifications. Read real notifications from Supabase;
+    // do not fabricate notification history from dashboard tips/applicant counts.
+    let employerNotificationRows=[];
+    let employerNotificationRefreshing=false;
+    const employerNotificationUser=()=>state.currentUser?.id||state.session?.user?.id||'';
+    const safeNotificationDestination=(row)=>{
+      const kind=String(row.type||'').toLowerCase();
+      const fallback=kind.includes('message')?'app-messages.html?role=employer':
+        kind.includes('billing')||kind.includes('invoice')||kind.includes('payment')||kind.includes('subscription')?'app-employer-billing.html':
+        kind.includes('security')||kind.includes('password')?'app-employer-account-security.html':
+        'app-employer-dashboard.html';
+      const raw=String(row.link||'').trim();
+      if(!raw)return fallback;
+      try {
+        const url=new URL(raw,location.href);
+        // Never navigate to another origin through a database notification.
+        if(url.origin!==location.origin)return fallback;
+        if(!/\.html$/i.test(url.pathname))return fallback;
+        return url.pathname+url.search+url.hash;
+      }catch(_){return fallback;}
+    };
+    async function refreshEmployerNotificationBadge(){
+      const id=employerNotificationUser();
+      if(!id)return;
+      try{
+        const {count,error}=await sb.from('notifications')
+          .select('id',{head:true,count:'exact'})
+          .eq('recipient_id',id).is('read_at',null);
+        if(error)throw error;
+        const unread=Number(count)||0;
+        els.notificationCount.textContent=unread>99?'99+':String(unread);
+        els.notificationCount.hidden=unread===0;
+      }catch(error){console.warn('Employer notification badge unavailable:',error);}
     }
-
-    function renderNotifications(){
-      const items = notificationItems();
-      $('notifications-list').innerHTML = items.map(item => `
-        <button class="notification-item" type="button">
-          <span class="notification-dot">${escapeHtml(item.icon)}</span>
-          <span class="notification-copy"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.body)}</span></span>
-          <span class="notification-time">${escapeHtml(item.time)}</span>
-        </button>
-      `).join('');
+    async function renderNotifications(){
+      const list=$('notifications-list');
+      if(!list||employerNotificationRefreshing)return;
+      const id=employerNotificationUser();
+      if(!id)return;
+      employerNotificationRefreshing=true;
+      list.replaceChildren();
+      const loading=document.createElement('div');
+      loading.className='notification-item';loading.textContent='Checking your notifications…';
+      list.append(loading);
+      try{
+        const {data,error}=await sb.from('notifications')
+          .select('id,type,title,body,link,created_at,read_at')
+          .eq('recipient_id',id).order('created_at',{ascending:false}).limit(60);
+        if(error)throw error;
+        employerNotificationRows=data||[];
+        list.replaceChildren();
+        if(!employerNotificationRows.length){
+          const empty=document.createElement('div');
+          empty.className='notification-item';
+          empty.textContent='No notifications yet. Messages, applicants, and account updates will appear here.';
+          list.append(empty);
+        }
+        for(const row of employerNotificationRows){
+          const button=document.createElement('button');
+          button.className='notification-item';button.type='button';
+          button.setAttribute('aria-label',String(row.title||'View notification'));
+          const marker=document.createElement('span');marker.className='notification-dot';
+          marker.textContent=row.read_at?'':'•';
+          const copy=document.createElement('span');copy.className='notification-copy';
+          const title=document.createElement('strong');title.textContent=String(row.title||'Alygnn update');
+          const detail=document.createElement('span');detail.textContent=String(row.body||'');
+          copy.append(title,detail);
+          const time=document.createElement('span');time.className='notification-time';
+          const date=new Date(row.created_at);
+          time.textContent=Number.isFinite(date.getTime())?date.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
+          button.append(marker,copy,time);
+          button.addEventListener('click',async()=>{
+            if(!row.read_at){
+              try{
+                const {error:readError}=await sb.from('notifications')
+                  .update({read_at:new Date().toISOString()})
+                  .eq('id',row.id).eq('recipient_id',id);
+                if(readError)throw readError;
+              }catch(error){console.warn('Unable to mark notification read:',error);}
+            }
+            const target=safeNotificationDestination(row);
+            if(target==='app-employer-dashboard.html' || target===location.pathname.replace(/^.*\//,'')){
+              $('notifications-sheet').hidden=true;
+              await renderNotifications();
+            }else location.href=target;
+            refreshEmployerNotificationBadge();
+          });
+          list.append(button);
+        }
+        await refreshEmployerNotificationBadge();
+      }catch(error){
+        console.warn('Could not load real employer notifications:',error);
+        list.replaceChildren();
+        const message=document.createElement('div');message.className='notification-item';
+        message.textContent='Notifications are temporarily unavailable. Try opening them again.';
+        list.append(message);
+      }finally{employerNotificationRefreshing=false;}
     }
-
 
     const TEAM_PERMISSION_DEFS=[
       {
@@ -16619,6 +16658,7 @@
       $('about-sheet').hidden=true;
       $('support-settings').click();
     };
+    window.addEventListener('focus',refreshEmployerNotificationBadge);
     $('notifications-btn').onclick = () => {
       renderNotifications();
       $('notifications-sheet').hidden = false;

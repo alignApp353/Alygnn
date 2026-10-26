@@ -1,5 +1,5 @@
-/* Alygnn candidate message notifications — v23.
-   Tap the header bell for recent employer conversations; select one to open its chat.
+/* Alygnn candidate notifications — v24.
+   Existing message conversations plus the candidate's Supabase notifications.
    In-app only. This does not register device push notifications. */
 (function () {
   'use strict';
@@ -172,8 +172,8 @@
   sheet.hidden = true;
   sheet.setAttribute('role','dialog');
   sheet.setAttribute('aria-modal','true');
-  sheet.setAttribute('aria-label','Message notifications');
-  sheet.innerHTML = '<div class="alygnn-notify-head"><div><strong>Notifications</strong><span class="alygnn-notify-subtitle">Recent employer messages</span></div><button class="alygnn-notify-close" type="button" aria-label="Close notifications">×</button></div><div class="alygnn-notify-list" aria-live="polite"></div><div class="alygnn-notify-foot"><button class="alygnn-notify-all" type="button">Open Messages</button></div>';
+  sheet.setAttribute('aria-label','Notifications');
+  sheet.innerHTML = '<div class="alygnn-notify-head"><div><strong>Notifications</strong><span class="alygnn-notify-subtitle">Recent messages and application updates</span></div><button class="alygnn-notify-close" type="button" aria-label="Close notifications">×</button></div><div class="alygnn-notify-list" aria-live="polite"></div><div class="alygnn-notify-foot"><button class="alygnn-notify-all" type="button">Open Messages</button></div>';
   document.body.append(backdrop, sheet);
   const list = sheet.querySelector('.alygnn-notify-list');
   const subtitle = sheet.querySelector('.alygnn-notify-subtitle');
@@ -220,6 +220,7 @@
   let userId = '';
   let knownMessageIds = null;
   let recentMessages = [];
+  let recentStatusNotifications = [];
   let lastCount = 0;
   let fetching = false;
   let needsRefresh = false;
@@ -259,23 +260,72 @@
     block.append(icon,heading,sub);
     list.append(block);
   }
-  function paint(count,threads) {
-    lastCount=count;
-    bellCount.hidden = count<=0;
-    bellCount.textContent = count>99 ? '99+' : String(count);
-    const nav = messageBadge();
+  // Keep the existing Messages badge message-only. The bell includes unread
+  // database notifications as well as unread employer messages.
+  function paint(count,threads,notices=[]) {
+    const statusUnread=notices.filter(n=>!n.read_at).length;
+    const totalUnread=count+statusUnread;
+    lastCount=totalUnread;
+    bellCount.hidden=totalUnread<=0;
+    bellCount.textContent=totalUnread>99?'99+':String(totalUnread);
+    const nav=messageBadge();
     try {
       localStorage.setItem('alygnn_candidate_unread_messages_last',String(count));
-      if(userId) localStorage.setItem('alygnn_candidate_unread_messages:'+userId,String(count));
-    } catch (_) {}
-    if (nav) {nav.textContent = count>99 ? '99+' : String(count);nav.hidden=count<=0;}
-    subtitle.textContent=count ? `${count} unread message${count===1?'':'s'} · Recent employer conversations` : 'Recent employer messages';
-    if (!threads.length) {
-      empty('No messages yet','When an employer sends you a message, it will appear here.');
+      if(userId)localStorage.setItem('alygnn_candidate_unread_messages:'+userId,String(count));
+    }catch(_){ }
+    if(nav){nav.textContent=count>99?'99+':String(count);nav.hidden=count<=0;}
+    subtitle.textContent=totalUnread
+      ? `${totalUnread} unread notification${totalUnread===1?'':'s'} · Messages and application updates`
+      : 'Recent messages and application updates';
+
+    const rows=[
+      ...threads.map(thread=>({kind:'message',value:thread,created_at:thread.message.created_at})),
+      ...notices.map(notice=>({kind:'status',value:notice,created_at:notice.created_at}))
+    ].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,50);
+    if(!rows.length){
+      empty('No notifications yet','Employer messages and application updates will appear here.');
       return;
     }
     list.replaceChildren();
-    for (const thread of threads) {
+    for(const item of rows){
+      if(item.kind==='status'){
+        const notice=item.value;
+        const unread=!notice.read_at;
+        const row=document.createElement('button');
+        row.type='button';
+        row.className='alygnn-notify-row'+(unread?' alygnn-notify-unread':'');
+        const heading=text(notice.title)||'Application update';
+        row.setAttribute('aria-label',`View ${heading}`);
+        const avatar=document.createElement('div');
+        avatar.className='alygnn-notify-avatar';avatar.textContent='A';
+        const body=document.createElement('span');body.className='alygnn-notify-body';
+        const title=document.createElement('span');title.className='alygnn-notify-title';title.textContent=heading;
+        const context=document.createElement('span');context.className='alygnn-notify-context';
+        context.textContent=String(notice.type||'').includes('application')?'Application update':'Account update';
+        const preview=document.createElement('span');preview.className='alygnn-notify-preview';
+        preview.textContent=short(notice.body)||'Check your latest update in Alygnn.';
+        body.append(title,context,preview);
+        const meta=document.createElement('span');meta.className='alygnn-notify-meta';
+        const time=document.createElement('span');time.textContent=stamp(notice.created_at);meta.append(time);
+        if(unread){const dot=document.createElement('span');dot.className='alygnn-notify-dot';meta.append(dot);}
+        row.append(avatar,body,meta);
+        row.addEventListener('click',async()=>{
+          // Respect RLS. Do not alter other users' rows; status page remains reachable
+          // even if marking this notification read fails.
+          try{
+            if(!notice.read_at){
+              const {error}=await sb.from('notifications')
+                .update({read_at:new Date().toISOString()})
+                .eq('id',notice.id).eq('recipient_id',userId);
+              if(error)console.warn('Could not mark candidate notification read:',error);
+            }
+          }catch(error){console.warn('Could not mark candidate notification read:',error);}
+          location.href='app-applied.html';
+        });
+        list.append(row);
+        continue;
+      }
+      const thread=item.value;
       const conversation=thread.conversation;
       const message=thread.message;
       const unread=thread.unreadCount>0;
@@ -318,14 +368,29 @@
       const {data,error}=await sb.auth.getSession();
       if(error)throw error;
       const id=data?.session?.user?.id||'';
-      if(id!==userId){knownMessageIds=null;userId=id;}
-      if(!id){recentMessages=[];paint(0,[]);return;}
+      if(id!==userId){knownMessageIds=null;recentStatusNotifications=[];userId=id;}
+      if(!id){recentMessages=[];recentStatusNotifications=[];paint(0,[],[]);return;}
+      let notices=recentStatusNotifications;
+      try{
+        const {data:rows,error:noticeError}=await sb.from('notifications')
+          .select('id,type,title,body,created_at,read_at')
+          .eq('recipient_id',id).order('created_at',{ascending:false}).limit(40);
+        if(noticeError)throw noticeError;
+        // Message rows are already represented by conversation threads.
+        // Filter them here to prevent a duplicate message notification.
+        notices=(rows||[]).filter(n=>!String(n.type||'').toLowerCase().includes('message'));
+        recentStatusNotifications=notices;
+      }catch(noticeError){
+        // Never break the working message bell if candidate notification RLS
+        // is not yet configured. Retain last successfully read notification rows.
+        console.warn('Could not load candidate application notifications:',noticeError);
+      }
       const conversationResult=await sb.from('application_conversations').select('*')
         .eq('candidate_id',id).is('candidate_hidden_at',null);
       if(conversationResult.error)throw conversationResult.error;
       const conversations=conversationResult.data||[];
       const ids=conversations.map(c=>c.id).filter(Boolean);
-      if(!ids.length){recentMessages=[];knownMessageIds=new Set();paint(0,[]);return;}
+      if(!ids.length){recentMessages=[];knownMessageIds=new Set();paint(0,[],notices);return;}
       const [unreadResult,recentResult]=await Promise.all([
         sb.from('application_messages').select('id,conversation_id',{count:'exact'})
           .in('conversation_id',ids).neq('sender_id',id).is('read_at',null).limit(1000),
@@ -357,10 +422,10 @@
       }
       knownMessageIds=newestIds;
       recentMessages=threads;
-      paint(unreadCount,threads);
+      paint(unreadCount,threads,notices);
     }catch(error){
       console.warn('Alygnn candidate notifications could not refresh:',error);
-      if(!sheet.hidden && !recentMessages.length){empty('Messages unavailable','Open Messages to try again.');}
+      if(!sheet.hidden && !recentMessages.length && !recentStatusNotifications.length){empty('Notifications unavailable','Open Messages to try again.');}
       // Keep last known count; never display a false zero on a connection error.
     }finally{
       fetching=false;
@@ -377,10 +442,11 @@
       channel=sb.channel('alygnn-candidate-notifications-v23-'+id+'-'+Math.random().toString(36).slice(2))
         .on('postgres_changes',{event:'*',schema:'public',table:'application_messages'},refresh)
         .on('postgres_changes',{event:'*',schema:'public',table:'application_conversations'},refresh)
+        .on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'recipient_id=eq.'+id},refresh)
         .subscribe();
     }catch(error){console.warn('Candidate realtime notifications unavailable, using refresh fallback.',error);}
   }
-  empty('Checking messages','Looking for your recent employer conversations.');
+  empty('Checking notifications','Looking for recent messages and application updates.');
   refresh();connectRealtime();
   pollTimer=setInterval(()=>{if(document.visibilityState==='visible')refresh();},15000);
   window.addEventListener('focus',refresh);
