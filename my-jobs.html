@@ -173,6 +173,8 @@ h1{ font-family:'DM Serif Display', serif; font-size:2rem; letter-spacing:-.5px;
 }
 .job-row-status.status-accepted{ border-color:var(--sage); color:#2d8a57; background:rgba(140,182,155,.12); }
 .job-row-status.status-rejected{ border-color:#D79A9A; color:#a05858; background:rgba(215,154,154,.12); }
+.job-row-status.status-review{ border-color:rgba(93,127,163,.35); color:var(--brand); background:rgba(93,127,163,.08); }
+.job-row-status.status-pending{ border-color:rgba(190,151,88,.35); color:#8a6d2f; background:rgba(231,184,109,.12); }
 
 .job-row-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
 .job-row-buttons{ display:flex; gap:6px; }
@@ -1001,10 +1003,17 @@ async function loadData(){
 }
 
 function renderAppliedRow(app, job){
-  const statusClass = app.status === 'accepted' ? 'status-accepted'
-    : app.status === 'rejected' ? 'status-rejected' : '';
-  const statusLabel = app.status === 'accepted' ? 'Accepted'
-    : app.status === 'rejected' ? 'Not selected' : 'Applied';
+  const status = String(app.status || 'applied').trim().toLowerCase();
+  const statusClass = ['accepted','hired'].includes(status) ? 'status-accepted'
+    : ['rejected','not_selected','declined'].includes(status) ? 'status-rejected'
+    : ['reviewed','under_review','under review','shortlisted'].includes(status) ? 'status-review'
+    : status === 'pending' ? 'status-pending' : '';
+  const statusLabel = status === 'hired' ? 'Hired'
+    : status === 'accepted' ? 'Accepted'
+    : ['rejected','not_selected','declined'].includes(status) ? 'Not selected'
+    : status === 'shortlisted' ? 'Shortlisted'
+    : ['reviewed','under_review','under review'].includes(status) ? 'Under review'
+    : status === 'pending' ? 'Pending review' : 'Submitted';
 
   const metaParts = [job.company, job.job_type, job.location].filter(Boolean).join(' · ');
   const detailsUrl = `job-details.html?job=${encodeURIComponent(job.id)}&app=${encodeURIComponent(app.id)}`;
@@ -1086,7 +1095,14 @@ function render(){
       .filter(r => r.job);
   } else {
     rows = applications
-      .filter(app => (app.status || 'applied') === currentTab)
+      .filter(app => {
+        const status = String(app.status || 'applied').trim().toLowerCase();
+        const accepted = ['accepted','hired'].includes(status);
+        const rejected = ['rejected','not_selected','declined'].includes(status);
+        return currentTab === 'applied' ? !accepted && !rejected
+          : currentTab === 'accepted' ? accepted
+          : currentTab === 'rejected' ? rejected : status === currentTab;
+      })
       .map(app => ({ app, job: jobMap[app.job_id] }))
       .filter(r => r.job);
   }
