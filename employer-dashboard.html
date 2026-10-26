@@ -4683,11 +4683,12 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   function renderJobSlotBreakdown(){
     const el = document.getElementById('job-slot-breakdown');
     if (!el) return;
-    el.style.display = 'block';
-    if (weeklySlotDisplayError || !Array.isArray(weeklySlotPurchasesForDisplay)) {
-      el.textContent = 'Job slot breakdown is unavailable right now. Your posting permissions have not changed.';
+    if (weeklySlotDisplayError || !Array.isArray(weeklySlotPurchasesForDisplay) || weeklySlotPurchasesForDisplay.length === 0) {
+      el.style.display = 'none';
+      el.textContent = '';
       return;
     }
+    el.style.display = 'block';
     const activeJobs = jobs.filter(j=>['active','pending'].includes(String(j.status||'').toLowerCase()));
     const purchases = weeklySlotPurchasesForDisplay;
     const occupied = purchases.filter(p=>activeJobs.some(j=>String(j.weekly_slot_purchase_id||'')===String(p.id))).length;
@@ -6257,6 +6258,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const job = jobs.find(j => j.id === jobId);
     if (!job) return;
     const isWeeklyJob = Boolean(job.weekly_slot_purchase_id);
+    let weeklyReopenPurchaseId = isWeeklyJob ? String(job.weekly_slot_purchase_id) : null;
     if (isWeeklyJob || String(job.closed_reason || '').toLowerCase() === 'weekly_slot_expired') {
       // Always check the original purchase expiry again before reopening.
       // Closing and reopening must never restart the seven-day period.
@@ -6280,6 +6282,36 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         showToast('The 7-day Weekly Job Slot has expired. Get a new job slot to post again.');
         redirectToPricing('weekly-expired');
         return;
+      }
+      // If another active job occupies the original purchase, reuse a DIFFERENT
+      // unexpired, unoccupied weekly purchase from the same employer.
+      // Supabase's entitlement trigger remains the final, concurrency-safe check.
+      const ownerId = workspaceOwnerId || currentUser?.id;
+      const { data: purchases, error: purchasesError } = await sb
+        .from('employer_weekly_slot_purchases')
+        .select('id,expires_at')
+        .eq('employer_id', ownerId)
+        .gt('expires_at', new Date().toISOString())
+        .order('expires_at', { ascending: true });
+      const { data: occupying, error: occupyingError } = await sb
+        .from('jobs')
+        .select('id,weekly_slot_purchase_id')
+        .eq('employer_id', ownerId)
+        .in('status',['active','pending','pending_review','pending_verification'])
+        .not('weekly_slot_purchase_id','is',null);
+      if (purchasesError || occupyingError) {
+        showToast('Could not verify available Weekly Job Slots. Please try again.');
+        return;
+      }
+      const occupiedIds = new Set((occupying || []).filter(j=>String(j.id)!==String(jobId))
+        .map(j=>String(j.weekly_slot_purchase_id)));
+      if (occupiedIds.has(weeklyReopenPurchaseId)) {
+        const alternate = (purchases || []).find(p=>!occupiedIds.has(String(p.id)));
+        if (!alternate) {
+          showToast('All purchased Weekly Job Slots are currently in use. Close another weekly job first.');
+          return;
+        }
+        weeklyReopenPurchaseId = String(alternate.id);
       }
     } else {
       // Only standard jobs need a newly available slot to reopen.
@@ -6310,6 +6342,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       .from('jobs')
       .update({
         status: employerVerified ? 'active' : 'pending',
+        ...(isWeeklyJob ? {weekly_slot_purchase_id:weeklyReopenPurchaseId, posting_access_type:'weekly'} : {}),
         closed_reason: null,
         closed_at: null,
         updated_at: new Date().toISOString()
