@@ -957,9 +957,10 @@
 @media(max-width:860px){.main,.job-row,.job-info,.job-actions,.section-header{min-width:0}.job-title-text,.job-meta{overflow-wrap:anywhere}.modal-box{max-width:100%}}@media(max-width:440px){.main{padding-left:14px;padding-right:14px}.job-row{padding:15px}.job-actions{gap:6px}.job-actions button{overflow-wrap:anywhere}}
 
   /* My Jobs: read-only purchased-slot breakdown; does not change entitlement rules. */
-  .alygnn-slot-breakdown{margin:-2px 0 18px;padding:15px 18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg);font-size:12px;color:var(--text-muted)}
+  .alygnn-slot-breakdown{margin:-2px 0 18px;padding:12px 18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg);font-size:12px;color:var(--text-muted)}
   .alygnn-slot-breakdown-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:9px}
   .alygnn-slot-breakdown-header strong{font-size:14px;color:var(--text)}
+  .alygnn-slot-breakdown-header span{font-size:12px;color:#2c7e50;font-weight:600}
   .alygnn-slot-breakdown-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
   .alygnn-slot-breakdown-stat{padding:11px 13px;border:1px solid var(--border);border-radius:11px;background:var(--bg)}
   .alygnn-slot-breakdown-stat strong{display:block;font-size:19px;color:var(--text);margin-bottom:2px}
@@ -4691,21 +4692,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const purchases = weeklySlotPurchasesForDisplay;
     const occupied = purchases.filter(p=>activeJobs.some(j=>String(j.weekly_slot_purchase_id||'')===String(p.id))).length;
     const availableWeekly = Math.max(0,purchases.length-occupied);
-    const access = getPostingAccess();
-    const totalAvailable = Number.isFinite(access.limit)
-      ? Math.max(0,access.limit-activeJobCount()) : null;
-    const planAndOtherAvailable = totalAvailable === null ? null : Math.max(0,totalAvailable-availableWeekly);
     const weeklyRows=purchases.map((p,i)=>{
       const job=activeJobs.find(j=>String(j.weekly_slot_purchase_id||'')===String(p.id));
       const until=formatWeeklyJobUntil(p.expires_at);
-      return `<div class="alygnn-slot-purchase"><div><strong>Weekly Job Slot ${i+1}</strong><div>Expires ${escapeHtml(until||'at the end of the purchased period')}</div></div>${job?`<span class="alygnn-slot-pill">In use · ${escapeHtml(job.title||'Job')}</span>`:`<button type="button" class="alygnn-slot-use" data-weekly-purchase="${escapeHtml(p.id)}" onclick="useWeeklyJobSlot(this.dataset.weeklyPurchase)">Use this slot →</button>`}</div>`;
+      return `<div class="alygnn-slot-purchase"><div><strong>Weekly Slot ${i+1}</strong><div>Expires ${escapeHtml(until||'when the purchased period ends')}</div></div>${job?`<span class="alygnn-slot-pill">In use</span>`:`<button type="button" class="alygnn-slot-use" data-weekly-purchase="${escapeHtml(p.id)}" onclick="useWeeklyJobSlot(this.dataset.weeklyPurchase)">Post job →</button>`}</div>`;
     }).join('');
-    el.innerHTML=`<div class="alygnn-slot-breakdown-header"><strong>Job slot availability</strong><span>Based on your purchased weekly slots</span></div>
-      <div class="alygnn-slot-breakdown-grid">
-        <div class="alygnn-slot-breakdown-stat"><strong>${planAndOtherAvailable===null?'—':planAndOtherAvailable}</strong>Other slots available (estimate)</div>
-        <div class="alygnn-slot-breakdown-stat"><strong>${availableWeekly}</strong>Available Weekly Job Slots</div>
-      </div>${weeklyRows || '<div>No unexpired Weekly Job Slots found.</div>'}
-      <div style="margin-top:8px;font-size:11px">A Weekly Job Slot can be reused until its original expiration, but can support only one active or pending job at a time. Slot assignment is controlled by Alygnn's database.</div>`;
+    el.innerHTML=`<div class="alygnn-slot-breakdown-header"><strong>Weekly job slots</strong><span>${availableWeekly} available</span></div>
+      ${weeklyRows || '<div class="alygnn-slot-empty">No active weekly slots.</div>'}`;
   }
 
   async function loadJobs() {
