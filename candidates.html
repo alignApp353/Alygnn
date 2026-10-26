@@ -208,6 +208,8 @@
   }
   .candidate-status.accepted{color:#2c7e50;background:var(--mint-light);border-color:rgba(111,191,143,.3)}
   .candidate-status.rejected{color:#995858;background:var(--rose-light);border-color:rgba(215,154,154,.3)}
+  .candidate-status.reviewed{color:var(--brand);background:var(--brand-light);border-color:rgba(93,127,163,.3)}
+  .candidate-status.pending{color:#8a6d2f;background:rgba(231,184,109,.12);border-color:rgba(231,184,109,.3)}
   .new-label{
     display:inline-flex;padding:3px 8px;border-radius:999px;background:var(--brand-light);
     color:var(--brand);font-size:9px;font-weight:700;text-transform:uppercase
@@ -280,7 +282,7 @@
     display:inline-flex;border:0;border-radius:10px;background:var(--brand);color:white;
     padding:10px 14px;font:600 12px 'DM Sans',sans-serif;cursor:pointer
   }
-  .profile-actions{display:flex;gap:8px;margin-top:22px}
+  .profile-actions{display:flex;gap:8px;margin-top:22px;flex-wrap:wrap}
   .profile-actions .btn{flex:1;padding:10px 12px}
   .contact{font-size:11.5px;color:var(--muted);margin-top:5px}
 
@@ -1559,10 +1561,14 @@ function scoreBand(score){
 }
 
 function statusLabel(status){
-  const s=String(status||'applied').toLowerCase();
+  const s=String(status||'applied').trim().toLowerCase();
   if(s==='accepted')return ['Accepted','accepted'];
   if(s==='rejected')return ['Passed','rejected'];
-  return ['New applicant',''];
+  if(s==='hired')return ['Hired','accepted'];
+  if(s==='shortlisted')return ['Shortlisted','reviewed'];
+  if(['reviewed','under_review','under review'].includes(s))return ['Under review','reviewed'];
+  if(s==='pending')return ['Pending review','pending'];
+  return ['Submitted',''];
 }
 
 async function loadData(){
@@ -1966,7 +1972,7 @@ function renderGroups(){
     box.innerHTML=filteredJobs.map(job=>{
       const rawStatus=String(job.status||'active').toLowerCase();
       const jobCandidates=candidates.filter(c=>c.job.id===job.id);
-      const newCount=jobCandidates.filter(c=>!['accepted','rejected'].includes(String(c.status||'').toLowerCase())).length;
+      const newCount=jobCandidates.filter(c=>['applied','submitted','pending'].includes(String(c.status||'applied').toLowerCase())).length;
       const strongCount=jobCandidates.filter(c=>c.match.score>=80).length;
 
       return `
@@ -2122,6 +2128,7 @@ function renderCandidate(c,showJobContext=false){
       <div class="candidate-actions">
         <button class="btn" onclick="openProfile('${c.applicationId}')">View profile</button>
         ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
+        ${['applied','submitted','pending'].includes(String(c.status||'applied').toLowerCase())?`<button class="btn" onclick="updateStatus('${c.applicationId}','reviewed')">Mark under review</button>`:''}
         <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted')">Accept</button>
         <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected')">Pass</button>
       </div>
@@ -2215,6 +2222,7 @@ function openProfile(applicationId){
 
     <div class="profile-actions">
       ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
+      ${['applied','submitted','pending'].includes(String(c.status||'applied').toLowerCase())?`<button class="btn" onclick="updateStatus('${c.applicationId}','reviewed'); closeProfile();">Mark under review</button>`:''}
       <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted'); closeProfile();">Accept</button>
       <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected'); closeProfile();">Pass</button>
     </div>
@@ -2259,7 +2267,7 @@ async function updateStatus(applicationId,status){
   }
   const c=candidates.find(x=>x.applicationId===applicationId);
   if(c)c.status=status;
-  showToast(status==='accepted'?'Candidate accepted.':'Candidate passed.');
+  showToast(status==='accepted'?'Candidate accepted.':status==='rejected'?'Candidate passed.':'Application marked under review.');
   renderGroups();
 }
 
