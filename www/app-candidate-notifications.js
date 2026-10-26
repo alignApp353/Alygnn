@@ -1,10 +1,10 @@
-/* Alygnn candidate notification center — v25.
+/* Alygnn candidate notification center — v26.
    Existing message conversations plus the candidate's Supabase notifications.
    In-app only. This does not register device push notifications. */
 (function () {
   'use strict';
-  if (window.__alygnnCandidateNotifyV25 || window.__alygnnCandidateNotifyV23 || window.__alygnnCandidateNotifyV22) return;
-  window.__alygnnCandidateNotifyV25 = true;
+  if (window.__alygnnCandidateNotifyV26 || window.__alygnnCandidateNotifyV25 || window.__alygnnCandidateNotifyV23 || window.__alygnnCandidateNotifyV22) return;
+  window.__alygnnCandidateNotifyV26 = true;
 
   const urlRole = new URLSearchParams(location.search).get('role');
   if (urlRole === 'employer' || document.body?.classList.contains('employer-mode')) return;
@@ -124,6 +124,13 @@
     .alygnn-notify-meta{align-self:flex-start;display:flex;flex-direction:column;align-items:flex-end;gap:9px;
       flex-shrink:0;color:#8797A2;font-size:10px;white-space:nowrap;padding-top:3px;}
     .alygnn-notify-dot{height:8px;width:8px;border-radius:50%;background:#5D7FA3;}
+    .alygnn-notify-loadmore-wrap{display:grid;place-items:center;gap:7px;padding:18px 16px 23px;}
+    .alygnn-notify-loadmore{appearance:none;border:1px solid #C9D7E0;background:#EFF4F7;color:#315B7A;
+      border-radius:11px;padding:12px 22px;min-height:42px;font-family:inherit;font-size:13px;font-weight:750;
+      cursor:pointer;max-width:100%;}
+    .alygnn-notify-loadmore:disabled{opacity:.65;cursor:wait;}
+    .alygnn-notify-loadmore-note{font-size:11px;color:#8094A0;text-align:center;}
+    .alygnn-notify-loadmore:focus-visible{outline:2px solid #7CA6CF;outline-offset:2px;}
     .alygnn-notify-empty{padding:52px 28px;text-align:center;color:#6B7D89;font-size:13px;line-height:1.6;}
     .alygnn-notify-empty-icon{margin:0 auto 13px;display:grid;place-items:center;width:49px;height:49px;border-radius:15px;
       background:#EFF3F6;color:#587B9D;font-size:18px;font-weight:800;}
@@ -175,6 +182,8 @@
     body[data-theme="dark"] .alygnn-notify-subtitle,body[data-theme="dark"] .alygnn-notify-empty{color:#B2C4D0;}
     html[data-effective-theme="dark"] .alygnn-notify-empty strong,body[data-theme="dark"] .alygnn-notify-empty strong{color:#EDF5F9;}
     html[data-effective-theme="dark"] .alygnn-notify-foot,body[data-theme="dark"] .alygnn-notify-foot{background:#102631;}
+    html[data-effective-theme="dark"] .alygnn-notify-loadmore,body[data-theme="dark"] .alygnn-notify-loadmore{
+      background:#193D50;border-color:#476476;color:#DCECF6;}
     html[data-effective-theme="dark"] .alygnn-notify-footlink,body[data-theme="dark"] .alygnn-notify-footlink{
       background:#1F4053;border-color:#476476;color:#DCECF6;}
     @media(max-width:350px){.alygnn-notify-sheet{width:calc(100vw - 8px);}.alygnn-notify-head{padding:15px 14px;}
@@ -184,7 +193,7 @@
     @media(prefers-reduced-motion:reduce){.alygnn-notify-sheet,.alygnn-notify-row{scroll-behavior:auto;}}
   `;
   const style = document.createElement('style');
-  style.id = 'alygnn-candidate-notifications-v25-style';
+  style.id = 'alygnn-candidate-notifications-v26-style';
   style.textContent = css;
   document.head.append(style);
 
@@ -267,11 +276,25 @@
 
   let userId = '';
   let knownMessageIds = null;
+  let newestMessageTimestamp = 0;
   let recentMessages = [];
   let recentStatusNotifications = [];
   let allConversationIds = [];
   let lastCount = 0;
   let lastMessageUnread = 0;
+  let fullStatusUnread = 0;
+  let noticeOffset = 0;
+  let noticeExhausted = false;
+  let messageOffset = 0;
+  let messageExhausted = false;
+  let messageRecords = [];
+  let messageUnreadByConversation = new Map();
+  let conversationById = new Map();
+  let shownCount = 20;
+  let loadingOlder = false;
+  const DISPLAY_BATCH = 20;
+  const NOTICE_BATCH = 40;
+  const MESSAGE_BATCH = 100;
   let activeFilter = 'all';
   let fetching = false;
   let needsRefresh = false;
@@ -332,6 +355,7 @@
   }
   function setFilter(value){
     activeFilter=value==='unread'?'unread':'all';
+    list.scrollTop=0;
     filterButtons.forEach(button=>button.setAttribute('aria-selected',String(button.dataset.filter===activeFilter)));
     paint(lastMessageUnread,recentMessages,recentStatusNotifications);
   }
@@ -342,19 +366,21 @@
     const readAt=new Date().toISOString();
     let failed=false;
     try{
-      const updates=[];
-      if(recentStatusNotifications.some(n=>!n.read_at)) {
-        updates.push(sb.from('notifications').update({read_at:readAt})
-          .eq('recipient_id',userId).is('read_at',null));
+      // This deliberately updates the ENTIRE recipient history, including rows
+      // that have not yet been fetched by the paginated notification center.
+      const statusResult=await sb.from('notifications').update({read_at:readAt})
+        .eq('recipient_id',userId).is('read_at',null).lte('created_at',readAt);
+      if(statusResult.error){failed=true;console.warn('Could not mark app notifications read:',statusResult.error);}
+      // A bounded IN clause avoids URL length limits for accounts with many threads.
+      if(allConversationIds.length){
+        for(let start=0;start<allConversationIds.length;start+=100){
+          const chunk=allConversationIds.slice(start,start+100);
+          const result=await sb.from('application_messages').update({read_at:readAt})
+            .in('conversation_id',chunk).neq('sender_id',userId)
+            .is('read_at',null).lte('created_at',readAt);
+          if(result.error){failed=true;console.warn('Could not mark messages read:',result.error);}
+        }
       }
-      const ids=allConversationIds;
-      if(lastMessageUnread && ids.length){
-        updates.push(sb.from('application_messages').update({read_at:readAt})
-          .in('conversation_id',ids).neq('sender_id',userId).is('read_at',null));
-      }
-      const results=await Promise.all(updates);
-      failed=results.some(result=>Boolean(result.error));
-      if(failed){console.warn('Some notification read updates failed:',results.filter(x=>x.error).map(x=>x.error));}
     }catch(error){failed=true;console.warn('Could not mark all candidate notifications read:',error);}
     await refresh();
     markButton.disabled=false;
@@ -366,11 +392,90 @@
       toastTimer=setTimeout(()=>{toast.hidden=true;toast.querySelector('button').hidden=false;},5000);
     }
   });
+  function availableRows(){
+    return [
+      ...recentMessages.map(thread=>({kind:'message',value:thread,created_at:thread.message.created_at,
+        unread:thread.unreadCount>0})),
+      ...recentStatusNotifications.map(notice=>({kind:'status',value:notice,created_at:notice.created_at,
+        unread:!notice.read_at}))
+    ].filter(item=>activeFilter==='all'||item.unread)
+      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  }
+  function buildThreads(){
+    const threadMap=new Map();
+    for(const message of messageRecords){
+      const key=String(message.conversation_id);
+      if(threadMap.has(key)||!conversationById.has(key))continue;
+      threadMap.set(key,{message,conversation:conversationById.get(key),
+        unreadCount:messageUnreadByConversation.get(key)||0});
+    }
+    return Array.from(threadMap.values()).sort((a,b)=>
+      new Date(b.message.created_at)-new Date(a.message.created_at));
+  }
+  async function loadOlder(){
+    if(loadingOlder||fetching||!userId)return;
+    const activeUser=userId;
+    loadingOlder=true;
+    const required=shownCount+DISPLAY_BATCH;
+    try{
+      // Fetch older source pages until there are 20 more displayable items
+      // or the sources are exhausted. Messages are grouped by conversation.
+      let rounds=0;
+      while(availableRows().length<required && (!noticeExhausted||!messageExhausted) && rounds++<5){
+        let advanced=false;
+        if(!noticeExhausted){
+          const {data,error}=await sb.from('notifications')
+            .select('id,type,title,body,link,created_at,read_at')
+            .eq('recipient_id',userId).order('created_at',{ascending:false})
+            .range(noticeOffset,noticeOffset+NOTICE_BATCH-1);
+          if(error)throw error;
+          if(userId!==activeUser)return;
+          const page=data||[];
+          noticeOffset+=page.length;
+          noticeExhausted=page.length<NOTICE_BATCH;
+          const seen=new Set(recentStatusNotifications.map(x=>String(x.id)));
+          for(const item of page){
+            if(String(item.type||'').toLowerCase().includes('message')||seen.has(String(item.id)))continue;
+            recentStatusNotifications.push(item);seen.add(String(item.id));
+          }
+          advanced=advanced||page.length>0;
+        }
+        if(!messageExhausted&&allConversationIds.length){
+          const {data,error}=await sb.from('application_messages')
+            .select('id,conversation_id,body,created_at,read_at')
+            .in('conversation_id',allConversationIds).neq('sender_id',userId)
+            .order('created_at',{ascending:false})
+            .range(messageOffset,messageOffset+MESSAGE_BATCH-1);
+          if(error)throw error;
+          if(userId!==activeUser)return;
+          const page=data||[];
+          messageOffset+=page.length;
+          messageExhausted=page.length<MESSAGE_BATCH;
+          const seen=new Set(messageRecords.map(x=>String(x.id)));
+          for(const item of page){if(!seen.has(String(item.id))){messageRecords.push(item);seen.add(String(item.id));}}
+          recentMessages=buildThreads();
+          advanced=advanced||page.length>0;
+        }
+        if(!advanced)break;
+      }
+      shownCount=required;
+    }catch(error){
+      console.warn('Could not load older Alygnn notifications:',error);
+      toast.querySelector('span').textContent='Could not load older notifications. Try again.';
+      toast.querySelector('button').hidden=true;
+      toast.hidden=false;
+      if(toastTimer)clearTimeout(toastTimer);
+      toastTimer=setTimeout(()=>{toast.hidden=true;toast.querySelector('button').hidden=false;},4000);
+    }finally{
+      loadingOlder=false;
+      if(userId===activeUser)paint(lastMessageUnread,recentMessages,recentStatusNotifications);
+    }
+  }
   // The bottom Messages navigation badge remains message-only; the bell counts
   // both unread messages and unread database notifications.
   function paint(count,threads,notices=[]) {
     lastMessageUnread=count;
-    const statusUnread=notices.filter(n=>!n.read_at).length;
+    const statusUnread=Math.max(fullStatusUnread,notices.filter(n=>!n.read_at).length);
     const totalUnread=count+statusUnread;
     lastCount=totalUnread;
     bellCount.hidden=totalUnread<=0;
@@ -386,17 +491,16 @@
       : 'You’re all caught up · Recent activity';
     unreadTabCount.textContent=totalUnread>99?'99+':String(totalUnread);
     markButton.hidden=totalUnread<=0;
-    const rows=[
-      ...threads.map(thread=>({kind:'message',value:thread,created_at:thread.message.created_at,
-        unread:thread.unreadCount>0})),
-      ...notices.map(notice=>({kind:'status',value:notice,created_at:notice.created_at,
-        unread:!notice.read_at}))
-    ].filter(item=>activeFilter==='all'||item.unread)
-      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,60);
+    const currentScroll=list.scrollTop;
+    const rows=availableRows().slice(0,shownCount);
+    const canLoadMore=(activeFilter==='all'||totalUnread>0) &&
+      (availableRows().length>shownCount||!noticeExhausted||!messageExhausted);
     if(!rows.length){
-      empty(activeFilter==='unread'?'No unread notifications':'No notifications yet',
-        activeFilter==='unread'?'You’re all caught up. Check All to see previous updates.':
+      empty(activeFilter==='unread'?(totalUnread?'Older unread notifications':'No unread notifications'):'No notifications yet',
+        activeFilter==='unread'?(totalUnread?'Load older to find previous unread updates.':
+          'You’re all caught up. Check All to see previous updates.'):
           'Employer messages, application decisions and account updates will show here.');
+      if(canLoadMore)appendLoadOlder();
       return;
     }
     list.replaceChildren();
@@ -472,6 +576,20 @@
       row.addEventListener('click',()=>navigateTo(conversation));
       list.append(row);
     }
+    if(canLoadMore)appendLoadOlder();
+    list.scrollTop=currentScroll;
+  }
+  function appendLoadOlder(){
+    const wrap=document.createElement('div');
+    wrap.className='alygnn-notify-loadmore-wrap';
+    const button=document.createElement('button');
+    button.type='button';button.className='alygnn-notify-loadmore';
+    button.textContent=loadingOlder?'Loading older notifications…':'Load older notifications';
+    button.disabled=loadingOlder;
+    button.addEventListener('click',loadOlder);
+    const note=document.createElement('span');note.className='alygnn-notify-loadmore-note';
+    note.textContent=`Showing up to ${shownCount} recent notifications`;
+    wrap.append(button,note);list.append(wrap);
   }
   function announce(thread){
     if (document.visibilityState !== 'visible' || !sheet.hidden) return;
@@ -491,73 +609,89 @@
       const {data,error}=await sb.auth.getSession();
       if(error)throw error;
       const id=data?.session?.user?.id||'';
-      if(id!==userId){knownMessageIds=null;recentStatusNotifications=[];allConversationIds=[];userId=id;}
-      if(!id){recentMessages=[];recentStatusNotifications=[];allConversationIds=[];paint(0,[],[]);return;}
-      let notices=recentStatusNotifications;
+      if(id!==userId){
+        knownMessageIds=null;newestMessageTimestamp=0;recentStatusNotifications=[];recentMessages=[];allConversationIds=[];
+        messageRecords=[];messageUnreadByConversation=new Map();conversationById=new Map();
+        noticeOffset=0;messageOffset=0;noticeExhausted=false;messageExhausted=false;
+        fullStatusUnread=0;shownCount=DISPLAY_BATCH;userId=id;
+      }
+      if(!id){paint(0,[],[]);return;}
+      const noticeLimit=Math.max(NOTICE_BATCH,noticeOffset);
       try{
-        const {data:rows,error:noticeError}=await sb.from('notifications')
-          .select('id,type,title,body,link,created_at,read_at')
-          .eq('recipient_id',id).order('created_at',{ascending:false}).limit(40);
-        if(noticeError)throw noticeError;
-        // Message rows are already represented by conversation threads.
-        // Filter them here to prevent a duplicate message notification.
-        notices=(rows||[]).filter(n=>!String(n.type||'').toLowerCase().includes('message'));
-        recentStatusNotifications=notices;
+        const [noticeResult,statusCountResult]=await Promise.all([
+          sb.from('notifications').select('id,type,title,body,link,created_at,read_at')
+            .eq('recipient_id',id).order('created_at',{ascending:false}).range(0,noticeLimit-1),
+          sb.from('notifications').select('id',{head:true,count:'exact'})
+            .eq('recipient_id',id).not('type','ilike','%message%').is('read_at',null)
+        ]);
+        if(noticeResult.error)throw noticeResult.error;
+        const rows=noticeResult.data||[];
+        noticeOffset=rows.length;noticeExhausted=rows.length<noticeLimit;
+        recentStatusNotifications=rows.filter(n=>!String(n.type||'').toLowerCase().includes('message'));
+        if(!statusCountResult.error && typeof statusCountResult.count==='number'){
+          fullStatusUnread=statusCountResult.count;
+        }else if(statusCountResult.error){
+          console.warn('Could not count candidate unread notifications:',statusCountResult.error);
+          fullStatusUnread=Math.max(fullStatusUnread,recentStatusNotifications.filter(n=>!n.read_at).length);
+        }
       }catch(noticeError){
-        // Never break the working message bell if candidate notification RLS
-        // is not yet configured. Retain last successfully read notification rows.
+        // Keep the working message badge functioning if notification RLS fails.
         console.warn('Could not load candidate application notifications:',noticeError);
       }
       const conversationResult=await sb.from('application_conversations').select('*')
         .eq('candidate_id',id).is('candidate_hidden_at',null);
       if(conversationResult.error){
         console.warn('Could not load candidate conversations:',conversationResult.error);
-        paint(0,[],notices);
+        paint(lastMessageUnread,[],recentStatusNotifications);
         return;
       }
       const conversations=conversationResult.data||[];
       const ids=conversations.map(c=>c.id).filter(Boolean);
       allConversationIds=ids;
-      if(!ids.length){recentMessages=[];knownMessageIds=new Set();paint(0,[],notices);return;}
+      conversationById=new Map(conversations.map(c=>[String(c.id),c]));
+      if(!ids.length){
+        recentMessages=[];messageRecords=[];knownMessageIds=new Set();messageExhausted=true;
+        paint(0,[],recentStatusNotifications);return;
+      }
+      const messageLimit=Math.max(MESSAGE_BATCH,messageOffset);
       const [unreadResult,recentResult]=await Promise.all([
         sb.from('application_messages').select('id,conversation_id',{count:'exact'})
           .in('conversation_id',ids).neq('sender_id',id).is('read_at',null).limit(1000),
         sb.from('application_messages').select('id,conversation_id,body,created_at,read_at')
-          .in('conversation_id',ids).neq('sender_id',id).order('created_at',{ascending:false}).limit(100)
+          .in('conversation_id',ids).neq('sender_id',id)
+          .order('created_at',{ascending:false}).range(0,messageLimit-1)
       ]);
       if(unreadResult.error||recentResult.error){
         console.warn('Could not load candidate message history:',unreadResult.error||recentResult.error);
-        paint(0,[],notices);
+        paint(lastMessageUnread,recentMessages,recentStatusNotifications);
         return;
       }
       const unreadCount=unreadResult.count??(unreadResult.data||[]).length;
-      const countByConversation=new Map();
+      messageUnreadByConversation=new Map();
       for(const unread of unreadResult.data||[]){
         const key=String(unread.conversation_id);
-        countByConversation.set(key,(countByConversation.get(key)||0)+1);
+        messageUnreadByConversation.set(key,(messageUnreadByConversation.get(key)||0)+1);
       }
-      const byConversation=new Map(conversations.map(c=>[String(c.id),c]));
       const received=recentResult.data||[];
+      messageRecords=received;
+      messageOffset=received.length;
+      messageExhausted=received.length<messageLimit;
+      recentMessages=buildThreads();
       const newestIds=new Set(received.map(m=>String(m.id)));
-      const threadMap=new Map();
-      for(const message of received){
-        const key=String(message.conversation_id);
-        if(threadMap.has(key)||!byConversation.has(key))continue;
-        threadMap.set(key,{message,conversation:byConversation.get(key),unreadCount:countByConversation.get(key)||0});
-      }
-      const threads=Array.from(threadMap.values())
-        .sort((a,b)=>(b.unreadCount>0)-(a.unreadCount>0) || new Date(b.message.created_at)-new Date(a.message.created_at)).slice(0,12);
       if(knownMessageIds){
-        const firstNew=threads.find(thread=>!knownMessageIds.has(String(thread.message.id)) && !thread.message.read_at);
+        const firstNew=recentMessages.find(thread=>
+          !knownMessageIds.has(String(thread.message.id)) && !thread.message.read_at &&
+          new Date(thread.message.created_at).getTime()>=newestMessageTimestamp);
         if(firstNew)announce(firstNew);
       }
+      newestMessageTimestamp=Math.max(newestMessageTimestamp,...received.slice(0,1).map(m=>new Date(m.created_at).getTime()||0));
       knownMessageIds=newestIds;
-      recentMessages=threads;
-      paint(unreadCount,threads,notices);
+      paint(unreadCount,recentMessages,recentStatusNotifications);
     }catch(error){
       console.warn('Alygnn candidate notifications could not refresh:',error);
-      if(!sheet.hidden && !recentMessages.length && !recentStatusNotifications.length){empty('Notifications unavailable','Please try again in a moment.');}
-      // Keep last known count; never display a false zero on a connection error.
+      if(!sheet.hidden && !recentMessages.length && !recentStatusNotifications.length){
+        empty('Notifications unavailable','Please try again in a moment.');
+      }
     }finally{
       fetching=false;
       if(needsRefresh){needsRefresh=false;refresh();}
@@ -570,7 +704,7 @@
       const {data}=await sb.auth.getSession();
       const id=data?.session?.user?.id;
       if(!id)return;
-      channel=sb.channel('alygnn-candidate-notifications-v25-'+id+'-'+Math.random().toString(36).slice(2))
+      channel=sb.channel('alygnn-candidate-notifications-v26-'+id+'-'+Math.random().toString(36).slice(2))
         .on('postgres_changes',{event:'*',schema:'public',table:'application_messages'},refresh)
         .on('postgres_changes',{event:'*',schema:'public',table:'application_conversations'},refresh)
         .on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'recipient_id=eq.'+id},refresh)
