@@ -1560,6 +1560,100 @@
     .notification-copy strong{display:block;font-size:12px;line-height:1.4}
     .notification-copy span{display:block;margin-top:4px;color:var(--muted);font-size:10px;line-height:1.5}
     .notification-time{color:var(--muted);font-size:9px;white-space:nowrap}
+
+    /* Alygnn employer in-app notification center v27; scoped to this sheet only. */
+    #notifications-sheet{z-index:250;background:rgba(4,16,23,.72);backdrop-filter:blur(3px);align-items:flex-end;justify-content:center}
+    #notifications-sheet .alygnn-employer-notify-panel{
+      width:min(510px,calc(100vw - 12px));max-height:min(86dvh,820px);min-height:min(55dvh,460px);
+      padding:0;border-radius:22px 22px 18px 18px;border:1px solid #DDE4E9;
+      background:#FCFCFA;color:#1A2530;display:flex;flex-direction:column;overflow:hidden;
+      box-shadow:0 28px 75px rgba(0,0,0,.24);font-family:inherit
+    }
+    #notifications-sheet .ae-head{display:flex;gap:11px;align-items:center;padding:20px 21px 16px;flex:0 0 auto}
+    #notifications-sheet .ae-icon{width:45px;height:45px;flex:0 0 45px;display:grid;place-items:center;
+      border-radius:14px;background:#E8EFF4;color:#4B718F}
+    #notifications-sheet .ae-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
+    #notifications-sheet .ae-heading{min-width:0;flex:1}
+    #notifications-sheet .ae-heading h2{font-size:21px;letter-spacing:-.4px;font-weight:800;line-height:1.2;margin:0}
+    #notifications-sheet .ae-heading p{font-size:12px;line-height:1.45;color:#687E8C;margin:5px 0 0}
+    #notifications-sheet .ae-close{appearance:none;border:1px solid #DEE7EB;border-radius:50%;height:36px;width:36px;flex:0 0 36px;
+      display:grid;place-items:center;background:#F1F5F7;color:#43637A;font-size:22px;line-height:1;cursor:pointer}
+    #notifications-sheet .ae-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:0 21px 15px;border-bottom:1px solid #E5EBEF;flex:0 0 auto}
+    #notifications-sheet .ae-tabs{display:flex;gap:3px;background:#EFF3F5;border-radius:12px;padding:4px}
+    #notifications-sheet .ae-tab{border:0;border-radius:9px;background:transparent;color:#677F90;font-weight:750;font-size:12px;
+      padding:9px 15px;min-height:34px;white-space:nowrap}
+    #notifications-sheet .ae-tab[aria-selected="true"]{background:#FFF;box-shadow:0 1px 4px rgba(20,41,55,.12);color:#294A60}
+    #notifications-sheet .ae-tab span{color:#4F80A2;margin-left:4px}
+    #notifications-sheet .ae-mark{border:0;background:none;color:#547FA0;font-weight:750;font-size:12px;padding:10px 0;text-align:right;white-space:nowrap}
+    #notifications-sheet .ae-mark:disabled{opacity:.5;cursor:default}
+    #notifications-sheet .notification-list{margin:0;min-height:120px;overflow-y:auto;overscroll-behavior:contain;
+      flex:1 1 auto;scrollbar-width:thin}
+    #notifications-sheet .ae-section{padding:17px 21px 9px;font-size:10px;text-transform:uppercase;letter-spacing:1.1px;
+      font-weight:800;color:#8395A2}
+    #notifications-sheet .ae-item{width:100%;display:flex;align-items:flex-start;gap:12px;min-height:87px;
+      text-align:left;padding:16px 21px;border:0;border-bottom:1px solid #E7EDF0;
+      background:transparent;color:inherit;font:inherit;cursor:pointer}
+    #notifications-sheet .ae-item.ae-unread{background:rgba(93,127,163,.055)}
+    #notifications-sheet .ae-item:active{background:#E9F1F6}
+    #notifications-sheet .ae-avatar{width:43px;height:43px;flex:0 0 43px;border-radius:13px;background:#E4EFF5;
+      color:#426888;display:grid;place-items:center;font-size:13px;font-weight:850}
+    #notifications-sheet .ae-avatar[data-kind="applicant"]{background:#E4F0E7;color:#397F58}
+    #notifications-sheet .ae-avatar[data-kind="billing"]{background:#F4EDE4;color:#946C3E}
+    #notifications-sheet .ae-avatar[data-kind="security"]{background:#F0E7F2;color:#8C588D}
+    #notifications-sheet .ae-avatar[data-kind="team"]{background:#E9EDF8;color:#5369A0}
+    #notifications-sheet .ae-copy{flex:1;min-width:0;display:grid;gap:4px}
+    #notifications-sheet .ae-kind{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#5D7FA3}
+    #notifications-sheet .ae-title{font-size:13px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+    #notifications-sheet .ae-body{font-size:12px;line-height:1.5;color:#657A8A;display:-webkit-box;
+      -webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+    #notifications-sheet .ae-meta{font-size:10px;color:#8A9CA8;white-space:nowrap;display:flex;flex-direction:column;
+      align-items:flex-end;gap:9px;margin-top:2px}
+    #notifications-sheet .ae-dot{height:7px;width:7px;border-radius:50%;background:#5D7FA3}
+    #notifications-sheet .ae-list-end{text-align:center;padding:20px 16px 25px;display:grid;justify-items:center;gap:8px}
+    #notifications-sheet .ae-load{border:1px solid #C9D7E0;background:#EFF4F7;color:#315B7A;border-radius:10px;
+      min-height:42px;padding:10px 20px;font-weight:800;font-size:12px;max-width:100%}
+    #notifications-sheet .ae-load:disabled{opacity:.65;cursor:wait}
+    #notifications-sheet .ae-list-note{font-size:11px;color:#8395A0}
+    #notifications-sheet .ae-empty{padding:52px 20px;text-align:center;font-size:13px;line-height:1.6;color:#687F8F}
+    #notifications-sheet .ae-empty strong{display:block;font-size:14px;color:#264057;margin-bottom:4px}
+    #notifications-sheet .ae-foot{flex:0 0 auto;padding:13px 21px 16px;border-top:1px solid #E5EBEF;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;background:#F7FAFA}
+    #notifications-sheet .ae-foot-note{color:#8597A2;font-size:11px;line-height:1.4}
+    #notifications-sheet .ae-refresh{border:1px solid #C9D7E0;border-radius:10px;background:#FFF;color:#467393;
+      padding:10px 13px;font-size:12px;font-weight:800}
+    #notifications-sheet button:focus-visible{outline:2px solid #7CA6CF;outline-offset:2px}
+    html[data-theme="dark"] #notifications-sheet .alygnn-employer-notify-panel{
+      background:#112C3A;color:#EDF4F7;border-color:#2C4B59}
+    html[data-theme="dark"] #notifications-sheet .ae-icon{background:#203F50;color:#B8D2E5}
+    html[data-theme="dark"] #notifications-sheet .ae-close{background:#1B394A;border-color:#345466;color:#D4E3ED}
+    html[data-theme="dark"] #notifications-sheet .ae-tools,html[data-theme="dark"] #notifications-sheet .ae-foot,
+    html[data-theme="dark"] #notifications-sheet .ae-item{border-color:#2C4958}
+    html[data-theme="dark"] #notifications-sheet .ae-tabs{background:#092330}
+    html[data-theme="dark"] #notifications-sheet .ae-tab{color:#A8BFCD}
+    html[data-theme="dark"] #notifications-sheet .ae-tab[aria-selected="true"]{background:#294A5D;color:white}
+    html[data-theme="dark"] #notifications-sheet .ae-item.ae-unread{background:rgba(140,182,155,.075)}
+    html[data-theme="dark"] #notifications-sheet .ae-item:active{background:#1A4051}
+    html[data-theme="dark"] #notifications-sheet .ae-title{color:#F0F6F9}
+    html[data-theme="dark"] #notifications-sheet .ae-body,html[data-theme="dark"] #notifications-sheet .ae-heading p,
+    html[data-theme="dark"] #notifications-sheet .ae-empty{color:#B2C5D0}
+    html[data-theme="dark"] #notifications-sheet .ae-empty strong{color:#EDF5FA}
+    html[data-theme="dark"] #notifications-sheet .ae-kind,html[data-theme="dark"] #notifications-sheet .ae-mark{color:#9BC4E0}
+    html[data-theme="dark"] #notifications-sheet .ae-avatar{background:#234B62;color:#D0E7F6}
+    html[data-theme="dark"] #notifications-sheet .ae-avatar[data-kind="applicant"]{background:#21493D;color:#C4E8CC}
+    html[data-theme="dark"] #notifications-sheet .ae-avatar[data-kind="billing"]{background:#503F2D;color:#E8C798}
+    html[data-theme="dark"] #notifications-sheet .ae-avatar[data-kind="security"]{background:#50394D;color:#F1C7E1}
+    html[data-theme="dark"] #notifications-sheet .ae-avatar[data-kind="team"]{background:#36476A;color:#C4D5FF}
+    html[data-theme="dark"] #notifications-sheet .ae-foot{background:#102631}
+    html[data-theme="dark"] #notifications-sheet .ae-load,html[data-theme="dark"] #notifications-sheet .ae-refresh{
+      background:#1D4154;border-color:#426075;color:#DDEEF7}
+    @media(min-width:720px){#notifications-sheet{align-items:center}
+      #notifications-sheet .alygnn-employer-notify-panel{width:min(580px,calc(100vw - 60px));
+        max-height:min(80dvh,850px);border-radius:24px}}
+    @media(max-width:360px){#notifications-sheet .ae-head{padding:16px 15px 13px}
+      #notifications-sheet .ae-tools{padding:0 15px 11px}
+      #notifications-sheet .ae-item{padding:14px 15px}
+      #notifications-sheet .ae-tab{padding:8px 11px}}
     .insight-card{
       margin-top:16px;padding:17px;border-radius:19px;
       background:linear-gradient(145deg,var(--purple-bg),var(--brand-soft));
@@ -6401,13 +6495,25 @@
   </div>
 
   <div class="sheet" id="notifications-sheet" hidden>
-    <div class="sheet-panel">
-      <div class="sheet-grip"></div>
-      <button class="icon-btn" id="close-notifications" style="float:right" type="button">×</button>
-      <h2 class="sheet-title">Notifications</h2>
-      <p class="sheet-sub">Important hiring activity from across your workspace.</p>
-      <div class="notification-list" id="notifications-list"></div>
-    </div>
+    <section class="sheet-panel alygnn-employer-notify-panel" role="dialog" aria-modal="true" aria-labelledby="employer-notify-title">
+      <div class="ae-head">
+        <div class="ae-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></div>
+        <div class="ae-heading"><h2 id="employer-notify-title">Notifications</h2><p id="employer-notify-subtitle">Messages, applicants, and account updates</p></div>
+        <button id="close-notifications" class="ae-close" type="button" aria-label="Close notifications">×</button>
+      </div>
+      <div class="ae-tools">
+        <div class="ae-tabs" role="tablist" aria-label="Filter notifications">
+          <button class="ae-tab" id="employer-notify-all" role="tab" aria-selected="true" type="button">All</button>
+          <button class="ae-tab" id="employer-notify-unread" role="tab" aria-selected="false" type="button">Unread <span id="employer-notify-unread-count">0</span></button>
+        </div>
+        <button id="employer-notify-mark-all" class="ae-mark" type="button">Mark all read</button>
+      </div>
+      <div class="notification-list" id="notifications-list" aria-live="polite"></div>
+      <div class="ae-foot">
+        <span class="ae-foot-note" id="employer-notify-footer-note">Select a notification to view details</span>
+        <button class="ae-refresh" type="button" id="employer-notify-refresh">Refresh</button>
+      </div>
+    </section>
   </div>
 
   <div class="sheet" id="pro-modal" hidden>
@@ -11605,10 +11711,15 @@
       }
     }
 
-    // Alygnn Unified Notifications. Read real notifications from Supabase;
-    // do not fabricate notification history from dashboard tips/applicant counts.
+    // Alygnn employer app notification center v27. App-only, no push changes.
+    // Uses persisted Supabase notifications; preserves existing employer navigation.
+    const EMPLOYER_NOTICE_PAGE_SIZE=20;
     let employerNotificationRows=[];
     let employerNotificationRefreshing=false;
+    let employerNotificationHasMore=false;
+    let employerNotificationNextOffset=0;
+    let employerNotificationUnread=0;
+    let employerNotificationFilter='all';
     const employerNotificationUser=()=>state.currentUser?.id||state.session?.user?.id||'';
     const safeNotificationDestination=(row)=>{
       const kind=String(row.type||'').toLowerCase();
@@ -11618,13 +11729,31 @@
         'app-employer-dashboard.html';
       const raw=String(row.link||'').trim();
       if(!raw)return fallback;
-      try {
+      try{
         const url=new URL(raw,location.href);
-        // Never navigate to another origin through a database notification.
         if(url.origin!==location.origin)return fallback;
         if(!/\.html$/i.test(url.pathname))return fallback;
         return url.pathname+url.search+url.hash;
       }catch(_){return fallback;}
+    };
+    const employerNoticeCategory=(type)=>{
+      const s=String(type||'').toLowerCase();
+      if(/message/.test(s))return {name:'Message',kind:'message',glyph:'M'};
+      if(/applicant|application|candidate|hiring/.test(s))return {name:'Application update',kind:'applicant',glyph:'A'};
+      if(/payment|invoice|billing|subscription|plan/.test(s))return {name:'Billing',kind:'billing',glyph:'B'};
+      if(/security|password|account/.test(s))return {name:'Account update',kind:'security',glyph:'S'};
+      if(/team|member|invite/.test(s))return {name:'Team update',kind:'team',glyph:'T'};
+      if(/verification|company/.test(s))return {name:'Company update',kind:'security',glyph:'C'};
+      return {name:'Job update',kind:'applicant',glyph:'J'};
+    };
+    const employerNoticeTime=(value)=>{
+      const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
+      const seconds=Math.max(0,(Date.now()-date.getTime())/1000);
+      if(seconds<60)return 'Now';
+      if(seconds<3600)return Math.floor(seconds/60)+'m';
+      if(seconds<86400)return Math.floor(seconds/3600)+'h';
+      if(seconds<604800)return Math.floor(seconds/86400)+'d';
+      return date.toLocaleDateString(undefined,{month:'short',day:'numeric'});
     };
     async function refreshEmployerNotificationBadge(){
       const id=employerNotificationUser();
@@ -11634,74 +11763,148 @@
           .select('id',{head:true,count:'exact'})
           .eq('recipient_id',id).is('read_at',null);
         if(error)throw error;
-        const unread=Number(count)||0;
-        els.notificationCount.textContent=unread>99?'99+':String(unread);
-        els.notificationCount.hidden=unread===0;
+        employerNotificationUnread=Number(count)||0;
+        els.notificationCount.textContent=employerNotificationUnread>99?'99+':String(employerNotificationUnread);
+        els.notificationCount.hidden=employerNotificationUnread===0;
+        const tabCount=$('employer-notify-unread-count');
+        if(tabCount)tabCount.textContent=employerNotificationUnread>99?'99+':String(employerNotificationUnread);
+        const subtitle=$('employer-notify-subtitle');
+        if(subtitle)subtitle.textContent=employerNotificationUnread
+          ?employerNotificationUnread+' unread · Messages, applicants, and account updates'
+          :'Messages, applicants, and account updates';
+        const all=$('employer-notify-mark-all');
+        if(all)all.disabled=employerNotificationUnread===0;
       }catch(error){console.warn('Employer notification badge unavailable:',error);}
     }
-    async function renderNotifications(){
-      const list=$('notifications-list');
-      if(!list||employerNotificationRefreshing)return;
-      const id=employerNotificationUser();
-      if(!id)return;
-      employerNotificationRefreshing=true;
+    function employerNoticeEmpty(message,detail){
+      const list=$('notifications-list');if(!list)return;
       list.replaceChildren();
-      const loading=document.createElement('div');
-      loading.className='notification-item';loading.textContent='Checking your notifications…';
-      list.append(loading);
+      const empty=document.createElement('div');empty.className='ae-empty';
+      const strong=document.createElement('strong');strong.textContent=message;
+      empty.append(strong,document.createTextNode(detail));list.append(empty);
+    }
+    function employerNoticeUpdateTabs(){
+      $('employer-notify-all')?.setAttribute('aria-selected',String(employerNotificationFilter==='all'));
+      $('employer-notify-unread')?.setAttribute('aria-selected',String(employerNotificationFilter==='unread'));
+    }
+    function employerNoticePaint(){
+      const list=$('notifications-list');if(!list)return;
+      list.replaceChildren();employerNoticeUpdateTabs();
+      if(!employerNotificationRows.length){
+        employerNoticeEmpty(employerNotificationFilter==='unread'?'No unread notifications':'All caught up',
+          employerNotificationFilter==='unread'?'New unread updates will appear here.':'Your hiring and account updates will appear here.');
+      }
+      let lastSection='';
+      for(const row of employerNotificationRows){
+        const date=new Date(row.created_at);const today=new Date();
+        const at=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+        const section=!Number.isFinite(date.getTime())?'Earlier':date>=at?'Today':date>=new Date(at.getTime()-86400000)?'Yesterday':'Earlier';
+        if(section!==lastSection){
+          const heading=document.createElement('div');heading.className='ae-section';heading.textContent=section;
+          list.append(heading);lastSection=section;
+        }
+        const button=document.createElement('button');button.type='button';
+        button.className='ae-item'+(row.read_at?'':' ae-unread');
+        const category=employerNoticeCategory(row.type);
+        const icon=document.createElement('span');icon.className='ae-avatar';icon.dataset.kind=category.kind;
+        icon.textContent=category.glyph;
+        const copy=document.createElement('span');copy.className='ae-copy';
+        const type=document.createElement('span');type.className='ae-kind';type.textContent=category.name;
+        const title=document.createElement('strong');title.className='ae-title';title.textContent=String(row.title||'Alygnn update');
+        const body=document.createElement('span');body.className='ae-body';body.textContent=String(row.body||'');
+        copy.append(type,title,body);
+        const meta=document.createElement('span');meta.className='ae-meta';
+        const dateText=document.createElement('span');dateText.textContent=employerNoticeTime(row.created_at);
+        meta.append(dateText);
+        if(!row.read_at){const dot=document.createElement('span');dot.className='ae-dot';dot.setAttribute('aria-label','Unread');meta.append(dot);}
+        button.append(icon,copy,meta);
+        button.setAttribute('aria-label',String(row.title||'Alygnn update'));
+        button.addEventListener('click',async()=>{
+          const id=employerNotificationUser();
+          if(!row.read_at&&id){
+            try{
+              const {error}=await sb.from('notifications').update({read_at:new Date().toISOString()})
+                .eq('id',row.id).eq('recipient_id',id);
+              if(error)throw error;
+              row.read_at=new Date().toISOString();
+              await refreshEmployerNotificationBadge();
+            }catch(error){console.warn('Could not mark employer notification read:',error);}
+          }
+          const target=safeNotificationDestination(row);
+          if(target==='app-employer-dashboard.html'||target===location.pathname.replace(/^.*\//,'')){
+            $('notifications-sheet').hidden=true;
+          }else{location.href=target;}
+        });
+        list.append(button);
+      }
+      if(employerNotificationHasMore){
+        const wrap=document.createElement('div');wrap.className='ae-list-end';
+        const button=document.createElement('button');button.className='ae-load';button.type='button';
+        button.textContent='Load older notifications';
+        button.addEventListener('click',async()=>{
+          button.disabled=true;button.textContent='Loading older notifications…';
+          await employerNoticeFetchPage(false);
+        });
+        const caption=document.createElement('span');caption.className='ae-list-note';
+        caption.textContent='Loading 20 notifications at a time';wrap.append(button,caption);list.append(wrap);
+      }
+      const footer=$('employer-notify-footer-note');
+      if(footer)footer.textContent=employerNotificationRows.length
+        ?`Showing ${employerNotificationRows.length} notification${employerNotificationRows.length===1?'':'s'}`
+        :'Select a notification to view details';
+    }
+    async function employerNoticeFetchPage(reset=true){
+      const id=employerNotificationUser(),list=$('notifications-list');
+      if(!id||!list||employerNotificationRefreshing)return;
+      employerNotificationRefreshing=true;
+      const oldScrollTop=reset?0:list.scrollTop;
+      if(reset){employerNotificationRows=[];employerNotificationNextOffset=0;employerNotificationHasMore=false;
+        employerNoticeEmpty('Loading notifications','Checking your recent hiring activity.');}
       try{
-        const {data,error}=await sb.from('notifications')
+        let query=sb.from('notifications')
           .select('id,type,title,body,link,created_at,read_at')
-          .eq('recipient_id',id).order('created_at',{ascending:false}).limit(60);
+          .eq('recipient_id',id).order('created_at',{ascending:false})
+          .range(employerNotificationNextOffset,employerNotificationNextOffset+EMPLOYER_NOTICE_PAGE_SIZE);
+        if(employerNotificationFilter==='unread')query=query.is('read_at',null);
+        const {data,error}=await query;
         if(error)throw error;
-        employerNotificationRows=data||[];
-        list.replaceChildren();
-        if(!employerNotificationRows.length){
-          const empty=document.createElement('div');
-          empty.className='notification-item';
-          empty.textContent='No notifications yet. Messages, applicants, and account updates will appear here.';
-          list.append(empty);
-        }
-        for(const row of employerNotificationRows){
-          const button=document.createElement('button');
-          button.className='notification-item';button.type='button';
-          button.setAttribute('aria-label',String(row.title||'View notification'));
-          const marker=document.createElement('span');marker.className='notification-dot';
-          marker.textContent=row.read_at?'':'•';
-          const copy=document.createElement('span');copy.className='notification-copy';
-          const title=document.createElement('strong');title.textContent=String(row.title||'Alygnn update');
-          const detail=document.createElement('span');detail.textContent=String(row.body||'');
-          copy.append(title,detail);
-          const time=document.createElement('span');time.className='notification-time';
-          const date=new Date(row.created_at);
-          time.textContent=Number.isFinite(date.getTime())?date.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
-          button.append(marker,copy,time);
-          button.addEventListener('click',async()=>{
-            if(!row.read_at){
-              try{
-                const {error:readError}=await sb.from('notifications')
-                  .update({read_at:new Date().toISOString()})
-                  .eq('id',row.id).eq('recipient_id',id);
-                if(readError)throw readError;
-              }catch(error){console.warn('Unable to mark notification read:',error);}
-            }
-            const target=safeNotificationDestination(row);
-            if(target==='app-employer-dashboard.html' || target===location.pathname.replace(/^.*\//,'')){
-              $('notifications-sheet').hidden=true;
-              await renderNotifications();
-            }else location.href=target;
-            refreshEmployerNotificationBadge();
-          });
-          list.append(button);
-        }
+        if(id!==employerNotificationUser())return;
+        const fetched=data||[];
+        employerNotificationHasMore=fetched.length>EMPLOYER_NOTICE_PAGE_SIZE;
+        employerNotificationRows.push(...fetched.slice(0,EMPLOYER_NOTICE_PAGE_SIZE));
+        employerNotificationNextOffset+=Math.min(fetched.length,EMPLOYER_NOTICE_PAGE_SIZE);
+        employerNoticePaint();
+        list.scrollTop=oldScrollTop;
         await refreshEmployerNotificationBadge();
       }catch(error){
-        console.warn('Could not load real employer notifications:',error);
-        list.replaceChildren();
-        const message=document.createElement('div');message.className='notification-item';
-        message.textContent='Notifications are temporarily unavailable. Try opening them again.';
-        list.append(message);
+        console.warn('Could not load employer notifications:',error);
+        if(reset){employerNoticeEmpty('Notifications unavailable','Check your connection and tap Refresh.');}
+        else{
+          const footer=$('employer-notify-footer-note');
+          if(footer)footer.textContent='Could not load older notifications. Tap Refresh and try again.';
+          employerNoticePaint();
+        }
       }finally{employerNotificationRefreshing=false;}
+    }
+    async function renderNotifications(){return employerNoticeFetchPage(true);}
+    async function employerNoticeMarkAllRead(){
+      const id=employerNotificationUser();if(!id)return;
+      const button=$('employer-notify-mark-all');if(button){button.disabled=true;button.textContent='Marking read…';}
+      try{
+        // Updates all unread records, not only the 20 visible in the current page.
+        const {error}=await sb.from('notifications')
+          .update({read_at:new Date().toISOString()}).eq('recipient_id',id).is('read_at',null);
+        if(error)throw error;
+        if(id!==employerNotificationUser())return;
+        await refreshEmployerNotificationBadge();
+        await renderNotifications();
+      }catch(error){
+        console.warn('Could not mark employer notifications read:',error);
+        const footer=$('employer-notify-footer-note');
+        if(footer)footer.textContent='Could not mark notifications read. Please try again.';
+      }finally{
+        if(button){button.textContent='Mark all read';button.disabled=employerNotificationUnread===0;}
+      }
     }
 
     const TEAM_PERMISSION_DEFS=[
@@ -16664,6 +16867,10 @@
       $('notifications-sheet').hidden = false;
     };
     $('close-notifications').onclick = () => $('notifications-sheet').hidden = true;
+    $('employer-notify-all').onclick=()=>{if(employerNotificationFilter!=='all'){employerNotificationFilter='all';renderNotifications();}};
+    $('employer-notify-unread').onclick=()=>{if(employerNotificationFilter!=='unread'){employerNotificationFilter='unread';renderNotifications();}};
+    $('employer-notify-mark-all').onclick=employerNoticeMarkAllRead;
+    $('employer-notify-refresh').onclick=()=>renderNotifications();
     $('notifications-sheet').addEventListener('click',event => {
       if(event.target === $('notifications-sheet')) $('notifications-sheet').hidden = true;
     });
