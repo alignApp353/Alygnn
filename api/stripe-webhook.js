@@ -594,6 +594,25 @@ module.exports = async function handler(req, res) {
             if (!latestPaid && ['active', 'trialing'].includes(status)) status = 'past_due';
           }
           await fulfillSubscription(subscription, status);
+          // ALYGNN_NOTIFICATION_APP_ONLY_INVOICE_V1
+          // In-app billing notifications are restricted to purchases started
+          // from Alygnn's Capacitor app. Website billing is unchanged.
+          // Run only after verified Stripe fulfillment and ignore notice errors.
+          if (String(subscription?.metadata?.source || '').trim().toLowerCase() === 'capacitor_app') {
+            try {
+              const employerId = String(subscription?.metadata?.employer_id || '').trim();
+              if (employerId && event.id) {
+                await rpc('alygnn_notify_stripe_receipt', {
+                  p_event_id: event.id,
+                  p_employer_id: employerId,
+                  p_kind: event.type
+                });
+              }
+            } catch (notificationError) {
+              console.warn('Alygnn app billing notification unavailable:',
+                String(notificationError?.message || 'Unexpected error').slice(0, 120));
+            }
+          }
         }
         break;
       }
