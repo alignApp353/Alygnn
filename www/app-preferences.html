@@ -1097,14 +1097,14 @@ main,
       <div class="section-head">
         <div class="section-num">01 — What you're looking for</div>
         <div class="section-title">What job are you searching for?</div>
-        <div class="section-copy">Optional. Type 3 letters to see recognized job titles.</div>
+        <div class="section-copy">Optional. Search Alygnn job titles or enter any job title, even if it is not suggested.</div>
       </div>
       <div class="card">
         <div class="field">
           <label class="label" for="roleInput">Job title</label>
-          <input id="roleInput" class="input" placeholder="e.g. Mar, Dat, Nur" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="roleInput" class="input" placeholder="e.g. Accounting Tutor" maxlength="120" autocomplete="off" autocorrect="off" spellcheck="false">
           <div id="roleSuggestions" class="suggestions"></div>
-          <div id="roleError" class="field-error">Choose a recognized job title from the suggestions.</div>
+          <div id="roleError" class="field-error">Enter a job title or leave this optional field blank.</div>
         </div>
       </div>
     </section>
@@ -1643,14 +1643,106 @@ function renderSuggestions(inputId,boxId,items,minChars,label,onSelect){
   box.classList.add('show');
 }
 
-/* Role — suggest after 3 characters. If used, it must be recognized. */
-$('roleInput').addEventListener('input',()=>{
-  selectedRole='';
-  $('roleError').classList.remove('show');
-  renderSuggestions('roleInput','roleSuggestions',JOB_TITLES,3,'Use this job title',title=>{
+/* Job-title search: local suggestions, the existing Alygnn job catalog,
+   and titles on active Alygnn postings. Any custom title is accepted too. */
+let roleSearchTimer=null;
+let roleSearchVersion=0;
+function cleanRoleTitle(value){
+  return String(value||'').trim().replace(/\s+/g,' ').slice(0,120);
+}
+function roleSuggestionItems(query,remote=[]){
+  const key=normalize(query);
+  const found=new Map();
+  const add=(title,hint)=>{
+    const label=cleanRoleTitle(title);
+    if(!label||!normalize(label).includes(key)||found.has(normalize(label)))return;
+    found.set(normalize(label),{title:label,hint});
+  };
+  remote.filter(item=>item.source==='posted').forEach(item=>add(item.title,'Currently posted on Alygnn'));
+  remote.filter(item=>item.source!=='posted').forEach(item=>add(item.title,'Job title catalog'));
+  JOB_TITLES.forEach(title=>add(title,'Suggested job title'));
+  return Array.from(found.values()).sort((a,b)=>{
+    const ax=normalize(a.title).startsWith(key)?0:1;
+    const bx=normalize(b.title).startsWith(key)?0:1;
+    const ap=a.hint==='Currently posted on Alygnn'?0:1;
+    const bp=b.hint==='Currently posted on Alygnn'?0:1;
+    return ax-bx || ap-bp || a.title.localeCompare(b.title);
+  }).slice(0,8);
+}
+function showRoleSuggestions(query,remote=[]){
+  const box=$('roleSuggestions');
+  const current=cleanRoleTitle($('roleInput').value);
+  if(current!==query||current.length<2){closeSuggestions('roleSuggestions');return;}
+  const items=roleSuggestionItems(query,remote);
+  box.replaceChildren();
+  const choose=title=>{
     $('roleInput').value=title;
     selectedRole=title;
-  });
+    $('roleError').classList.remove('show');
+    roleSearchVersion++;
+    clearTimeout(roleSearchTimer);
+    closeSuggestions('roleSuggestions');
+    updateProgress();
+  };
+  for(const item of items){
+    const option=document.createElement('button');
+    option.type='button';option.className='suggestion';
+    option.textContent=item.title;
+    const hint=document.createElement('small');hint.textContent=item.hint;
+    option.append(hint);
+    option.addEventListener('click',()=>choose(item.title));
+    box.append(option);
+  }
+  if(!items.some(item=>normalize(item.title)===normalize(query))){
+    const custom=document.createElement('button');
+    custom.type='button';custom.className='suggestion';
+    custom.textContent='Use "'+query+'"';
+    const hint=document.createElement('small');
+    hint.textContent='Custom job title — you can use any role';
+    custom.append(hint);
+    custom.addEventListener('click',()=>choose(query));
+    box.append(custom);
+  }
+  box.classList.add('show');
+}
+async function searchRoleTitles(query,requestId){
+  const searchPattern='%'+query.replace(/[\%_]/g,'\\$&')+'%';
+  const calls=[
+    sb.from('jobs').select('title').eq('status','active')
+      .ilike('title',searchPattern).limit(20),
+    sb.rpc('search_job_titles',{search_query:query,result_limit:20})
+  ];
+  const responses=await Promise.allSettled(calls);
+  if(requestId!==roleSearchVersion||cleanRoleTitle($('roleInput').value)!==query || document.activeElement!==$('roleInput'))return;
+  const remote=[];
+  for(let i=0;i<responses.length;i++){
+    const result=responses[i];
+    if(result.status!=='fulfilled'||result.value?.error)continue;
+    for(const item of result.value?.data||[]){
+      const title=i===0?item.title:(item.job_title||item.display_name);
+      if(title)remote.push({title,source:i===0?'posted':'catalog'});
+    }
+  }
+  showRoleSuggestions(query,remote);
+}
+function onRoleInput(){
+  selectedRole='';
+  $('roleError').classList.remove('show');
+  roleSearchVersion++;
+  clearTimeout(roleSearchTimer);
+  const query=cleanRoleTitle($('roleInput').value);
+  updateProgress();
+  if(query.length<2){closeSuggestions('roleSuggestions');return;}
+  showRoleSuggestions(query);
+  const version=roleSearchVersion;
+  roleSearchTimer=setTimeout(()=>{searchRoleTitles(query,version).catch(error=>{
+    // Suggestions are optional. A network error must never block custom titles.
+    console.warn('Job-title suggestions unavailable:',error);
+  });},230);
+}
+$('roleInput').addEventListener('input',onRoleInput);
+$('roleInput').addEventListener('focus',()=>{
+  if(cleanRoleTitle($('roleInput').value).length>=2)onRoleInput();
 });
 
 
@@ -2280,7 +2372,7 @@ function selectedBenefits(){
 }
 
 function updateProgress(){
-  const roleOkay=!$('roleInput').value.trim() || Boolean(selectedRole);
+  const roleOkay=true; // Any typed job title is valid; role is optional.
   const locationOkay=Boolean(selectedLocation || normalizeCustomLocation($('locationInput').value));
   const workOkay=true; // Work style is optional, including selecting none.
   const jobTypesOkay=selectedJobTypes().length>0;
@@ -2299,18 +2391,9 @@ function updateProgress(){
 function validate(){
   clearMessage();
 
-  const roleText=$('roleInput').value.trim();
-  if(roleText && !selectedRole){
-    const exact=JOB_TITLES.find(title=>normalize(title)===normalize(roleText));
-    if(exact){
-      selectedRole=exact;
-      $('roleInput').value=exact;
-    }else{
-      $('roleError').classList.add('show');
-      $('roleSection').scrollIntoView({behavior:'smooth',block:'start'});
-      return false;
-    }
-  }
+  // A legitimate title never needs to appear in a fixed catalog to be saved.
+  selectedRole=cleanRoleTitle($('roleInput').value);
+  $('roleInput').value=selectedRole;
 
   const locationText=$('locationInput').value.trim();
   if(!selectedLocation){
@@ -2352,7 +2435,7 @@ function collectPreferences(){
   const jobTypes=selectedJobTypes();
 
   return{
-    query:selectedRole||'',
+    query:cleanRoleTitle($('roleInput').value),
     city,
     state,
     country:'United States',
@@ -2388,11 +2471,8 @@ function prefill(saved){
   if(!saved)return;
 
   if(EDIT_MODE && saved.query){
-    const role=JOB_TITLES.find(item=>normalize(item)===normalize(saved.query));
-    if(role){
-      selectedRole=role;
-      $('roleInput').value=role;
-    }
+    selectedRole=cleanRoleTitle(saved.query);
+    $('roleInput').value=selectedRole;
   }else{
     selectedRole='';
     $('roleInput').value='';
