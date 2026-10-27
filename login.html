@@ -706,9 +706,9 @@
 
     if (isExistingAccount) {
       btn.disabled = false; btn.textContent = orig;
-      showMsg('An account with this email already exists. Try signing in instead.');
       switchTab('login');
       document.getElementById('email').value = email;
+      showMsg('You already have an account. Please sign in.', 'info');
       return;
     }
 
