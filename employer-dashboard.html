@@ -64,7 +64,7 @@
   .notif-mark-all:disabled{ opacity:.5; cursor:default; }
   .notif-empty{ font-size:13px; color:var(--text-muted); padding:20px 16px; text-align:center; }
   .notif-item{ display:block; padding:10px 16px; border-top:1px solid var(--border); text-decoration:none; color:inherit; }
-  .notif-item:hover{ background:var(--brand-light); }
+  a.notif-item:hover{ background:var(--brand-light); }
   .notif-item.unread{ background:var(--brand-light); }
   .notif-item-title{ font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
   .notif-item-body{ font-size:12px; color:var(--text-muted); line-height:1.4; }
@@ -4333,6 +4333,20 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         String(n.type || '').toLowerCase().includes('applicant') ||
         String(n.title || '').toLowerCase().includes('applicant') ||
         String(n.body || '').toLowerCase().includes('applied');
+
+      // Verification updates are informational; do not redirect to a dashboard.
+      const isVerificationStatus = /verif(?:ication|ied)/i.test(
+        `${n.type || ''} ${n.title || ''}`
+      );
+      if (isVerificationStatus) {
+        return `
+          <div class="notif-item ${n.read_at ? '' : 'unread'}">
+            <div class="notif-item-title">${escapeHtml(n.title)}</div>
+            ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
+            <div class="notif-item-time">${timeAgo(n.created_at)}</div>
+          </div>
+        `;
+      }
 
       if (isApplicant) {
         const c = notificationApplication(n);
