@@ -148,20 +148,36 @@
   const APP_ROUTES = new Set([
     'app-chat.html', 'app-messages.html', 'app-applied.html', 'app-account.html',
     'app-swipe.html', 'app-employer-dashboard.html', 'app-employer-billing.html',
-    'app-employer-verification-status.html', 'app-employer-team.html',
-    'app-employer-account.html', 'app-employer-account-security.html',
-    'app-employer-pricing.html'
+    'app-employer-verification-status.html', 'app-employer-account.html',
+    'app-employer-account-security.html', 'app-employer-pricing.html'
   ]);
   const safeText = value => String(value == null ? '' : value).trim();
+  const validRole = value => ['candidate','employer'].includes(safeText(value).toLowerCase())
+    ? safeText(value).toLowerCase() : '';
   function workspaceRole() {
     try {
-      const active = safeText(sessionStorage.getItem('alygnn_active_mode') ||
-        localStorage.getItem('alygnn_active_mode')).toLowerCase();
-      if (active === 'candidate' || active === 'employer') return active;
-      const account = safeText(localStorage.getItem('alygnn_account_type')).toLowerCase();
-      if (account === 'candidate' || account === 'employer') return account;
+      // Account type is set by the ACTUAL login flow. active_mode is only a
+      // workspace preference and may be left behind by a previous login.
+      const account = validRole(localStorage.getItem('alygnn_account_type'));
+      if (account) return account;
+      const active = validRole(sessionStorage.getItem('alygnn_active_mode') ||
+        localStorage.getItem('alygnn_active_mode'));
+      if (active) return active;
     } catch (_) {}
     return location.pathname.split('/').pop().startsWith('app-employer-') ? 'employer' : 'candidate';
+  }
+  function roleForNotice(row, data, verifiedRole) {
+    const type = safeText(row?.type).toLowerCase();
+    const title = safeText(row?.title).toLowerCase();
+    const category = safeText(data?.category).toLowerCase();
+    // This is the recipient's role, not any sender role carried by a generic push.
+    // An employer alert must never be sent to candidate onboarding/My Jobs.
+    if (/new.?applicant|new_?application|application_received|application_withdrawn|applicant_received/.test(type) ||
+        category === 'new_applicants' ||
+        /new applicant|new application received|someone applied|candidate applied|application withdrawn|applied to your|applied for your/.test(title)) return 'employer';
+    if (/verification|team|invite|billing|payment|invoice|subscription|plan_status|company_update|security_company_status|company_account|job_approved|job_rejected|job_post|job_review|slot_expir|job_slot/.test(type)) return 'employer';
+    if (/application_shortlisted|application_hired|application_status_changed|job_closed|application_submitted/.test(type)) return 'candidate';
+    return validRole(verifiedRole) || workspaceRole();
   }
   function internalAppLink(value) {
     const raw = safeText(value);
@@ -175,42 +191,48 @@
       return file + url.search;
     } catch (_) { return ''; }
   }
-  function destinationFromNotice(row, data) {
+  function destinationFromNotice(row, data, verifiedRole) {
     const type = safeText(row?.type).toLowerCase();
     const title = safeText(row?.title).toLowerCase();
     const kind = safeText(data?.kind).toLowerCase();
     const category = safeText(data?.category).toLowerCase();
-    const role = data?.role === 'employer' || data?.role === 'candidate' ? data.role : workspaceRole();
+    const role = roleForNotice(row, data, verifiedRole);
     if (/new.?applicant|new_?application|application_received|application_withdrawn|applicant_received/.test(type) ||
         category === 'new_applicants' ||
-        /new applicant|new application received|candidate applied|application withdrawn/.test(title)) {
+        /new applicant|new application received|someone applied|candidate applied|application withdrawn|applied to your|applied for your/.test(title)) {
       return APPLICANT_DESTINATION;
     }
     if (/verification/.test(type) || /verification (approved|rejected|needs attention)/.test(title)) {
       return 'app-employer-verification-status.html';
     }
     if (/team|invite|member/.test(type) || /team invitation|team member/.test(title)) {
-      return 'app-employer-team.html';
+      // Team management is an existing sheet inside the employer dashboard.
+      return 'app-employer-dashboard.html?view=settings&open_team=1';
     }
-    if (/billing|payment|invoice|subscription|plan_status/.test(type) ||
-        category === 'billing' || /invoice|payment|subscription|billing/.test(title)) {
+    if (/billing|payment|invoice|subscription|plan_status|slot_expir|job_slot/.test(type) ||
+        category === 'billing' || /invoice|payment|subscription|billing|slot expiring|slot expired|plan (changed|updated|ended|renewed)/.test(title)) {
       return 'app-employer-billing.html';
     }
-    if (/company_update|security_company_status|company_account/.test(type)) {
+    if (/company_update|security_company_status|company_account/.test(type) || /company update (approved|declined)|employer account (deactivated|reactivated)/.test(title)) {
       return 'app-employer-account.html';
     }
     if (/security|password/.test(type) || kind === 'security' || category === 'security') {
       return role === 'employer' ? 'app-employer-account-security.html' : 'app-account.html';
     }
     if (/job_closed/.test(type)) return 'app-applied.html';
-    if (/job_approved|job_rejected|job_slot|slot_expir|job_post|job_review/.test(type) ||
-        (/posting|slot/.test(title) && role === 'employer')) {
+    if (/job_approved|job_rejected|job_post|job_review/.test(type) ||
+        (/posting/.test(title) && role === 'employer')) {
       return 'app-employer-dashboard.html?view=jobs';
     }
-    // Database links identify the intended workspace, including for shared team accounts.
-    // Only local app pages are allowed; do not turn database text into an external URL.
+    // Saved notifications can carry a precise link. Reject links that cross
+    // into a different workspace or refer to unavailable app pages.
     const linked = internalAppLink(row?.link);
-    if (linked) return linked;
+    if (linked) {
+      const file = linked.split('?')[0];
+      const candidateOnly = ['app-applied.html','app-account.html','app-swipe.html'];
+      if (!(role === 'employer' && candidateOnly.includes(file)) &&
+          !(role === 'candidate' && file.startsWith('app-employer-'))) return linked;
+    }
     if (/application|selected|shortlist|hired|rejected|not_selected/.test(type) ||
         category === 'applications') {
       return role === 'employer' ? APPLICANT_DESTINATION : 'app-applied.html';
@@ -222,7 +244,7 @@
       return role === 'employer' && category !== 'recommendations'
         ? 'app-employer-dashboard.html?view=jobs' : 'app-swipe.html';
     }
-    if (category === 'team_updates') return 'app-employer-account.html';
+    if (category === 'team_updates') return 'app-employer-dashboard.html?view=settings&open_team=1';
     return role === 'employer' ? 'app-employer-dashboard.html' : 'app-account.html';
   }
   function safeDestination(data, notification) {
@@ -251,40 +273,46 @@
     if (!client?.auth?.getSession) return initial;
     try {
       const { data: sessionResult, error: sessionError } = await client.auth.getSession();
-      const userId = sessionResult?.session?.user?.id;
-      if (sessionError || !userId) return initial;
+      const user = sessionResult?.session?.user;
+      if (sessionError || !user?.id) return initial;
+      const verifiedRole = validRole(user.user_metadata?.account_type) ||
+        validRole(user.app_metadata?.account_type) ||
+        validRole(user.user_metadata?.role) || validRole(user.app_metadata?.role);
       const title = safeText(notification?.title);
-      if (!title) return initial;
+      if (!title) return destinationFromNotice({title:'',type:''},data,verifiedRole);
       const { data: notices, error } = await client.from('notifications')
         .select('id,type,title,body,link,read_at')
-        .eq('recipient_id',userId).eq('title',title)
+        .eq('recipient_id',user.id).eq('title',title)
         .order('created_at',{ascending:false}).limit(12);
-      if (error || !notices?.length) return initial;
+      if (error || !notices?.length) return destinationFromNotice({title,type:''},data,verifiedRole);
       const body = safeText(notification?.body);
-      // Require the exact message to avoid resolving a different notification with the same title.
+      // Never mistake a different alert with the same generic title for this tap.
       const match = notices.find(row => safeText(row.body) === body) || null;
-      if (!match) return initial;
+      if (!match) return destinationFromNotice({title,type:''},data,verifiedRole);
       if (!match.read_at) {
-        // Best effort; a failed mark-read must never prevent navigation.
         client.from('notifications').update({read_at:new Date().toISOString()})
-          .eq('id',match.id).eq('recipient_id',userId).then(()=>{},()=>{});
+          .eq('id',match.id).eq('recipient_id',user.id).then(()=>{},()=>{});
       }
-      return destinationFromNotice(match, data);
+      return destinationFromNotice(match, data, verifiedRole);
     } catch (_) { return initial; }
   }
   // New-applicant pushes open the real All Applicants tab, not the candidate My Jobs page.
   // Uses the existing employer dashboard button, without modifying the dashboard HTML.
   function openRequestedApplicantsView() {
-    if (location.pathname.split('/').pop() !== 'app-employer-dashboard.html' ||
-        new URLSearchParams(location.search).get('view') !== 'applicants') return;
+    if (location.pathname.split('/').pop() !== 'app-employer-dashboard.html') return;
+    const params = new URLSearchParams(location.search);
+    const wantsApplicants = params.get('view') === 'applicants';
+    const wantsTeam = params.get('open_team') === '1';
+    if (!wantsApplicants && !wantsTeam) return;
     let attempts = 0;
     const open = () => {
-      const button = document.getElementById('jobs-all-applicants-btn');
+      const button = document.getElementById(wantsApplicants ? 'jobs-all-applicants-btn' : 'team-settings');
       if (document.body?.dataset?.dashboardBooting === 'false' && button) {
         button.click();
         try {
           const url = new URL(location.href);
-          url.searchParams.delete('view');
+          url.searchParams.delete('open_team');
+          if (wantsApplicants) url.searchParams.delete('view');
           history.replaceState(null,'',url.pathname + url.search);
         } catch (_) {}
         return;
