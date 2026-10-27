@@ -143,26 +143,159 @@
       };
     } catch (_) { /* Do not interfere with login/logout if the SDK is immutable. */ }
   }
-  function safeDestination(data) {
-    if (data?.kind === 'message') {
-      const role = data.role === 'employer' ? 'employer' : 'candidate';
+  // Native notification tap destinations only. No Firebase registration or delivery changes.
+  const APPLICANT_DESTINATION = 'app-employer-dashboard.html?view=applicants';
+  const APP_ROUTES = new Set([
+    'app-chat.html', 'app-messages.html', 'app-applied.html', 'app-account.html',
+    'app-swipe.html', 'app-employer-dashboard.html', 'app-employer-billing.html',
+    'app-employer-verification-status.html', 'app-employer-team.html',
+    'app-employer-account.html', 'app-employer-account-security.html',
+    'app-employer-pricing.html'
+  ]);
+  const safeText = value => String(value == null ? '' : value).trim();
+  function workspaceRole() {
+    try {
+      const active = safeText(sessionStorage.getItem('alygnn_active_mode') ||
+        localStorage.getItem('alygnn_active_mode')).toLowerCase();
+      if (active === 'candidate' || active === 'employer') return active;
+      const account = safeText(localStorage.getItem('alygnn_account_type')).toLowerCase();
+      if (account === 'candidate' || account === 'employer') return account;
+    } catch (_) {}
+    return location.pathname.split('/').pop().startsWith('app-employer-') ? 'employer' : 'candidate';
+  }
+  function internalAppLink(value) {
+    const raw = safeText(value);
+    if (!raw || raw.length > 500 || /[\\\x00-\x1f]/.test(raw)) return '';
+    try {
+      const url = new URL(raw, location.href);
+      if (url.origin !== location.origin || url.hash || url.username || url.password) return '';
+      const file = url.pathname.split('/').pop();
+      if (!APP_ROUTES.has(file) || !/^\/?app-[\w-]+\.html$/.test(url.pathname)) return '';
+      if (url.search && !/^\?[a-zA-Z0-9_=&%+.-]{1,250}$/.test(url.search)) return '';
+      return file + url.search;
+    } catch (_) { return ''; }
+  }
+  function destinationFromNotice(row, data) {
+    const type = safeText(row?.type).toLowerCase();
+    const title = safeText(row?.title).toLowerCase();
+    const kind = safeText(data?.kind).toLowerCase();
+    const category = safeText(data?.category).toLowerCase();
+    const role = data?.role === 'employer' || data?.role === 'candidate' ? data.role : workspaceRole();
+    if (/new.?applicant|new_?application|application_received|application_withdrawn|applicant_received/.test(type) ||
+        category === 'new_applicants' ||
+        /new applicant|new application received|candidate applied|application withdrawn/.test(title)) {
+      return APPLICANT_DESTINATION;
+    }
+    if (/verification/.test(type) || /verification (approved|rejected|needs attention)/.test(title)) {
+      return 'app-employer-verification-status.html';
+    }
+    if (/team|invite|member/.test(type) || /team invitation|team member/.test(title)) {
+      return 'app-employer-team.html';
+    }
+    if (/billing|payment|invoice|subscription|plan_status/.test(type) ||
+        category === 'billing' || /invoice|payment|subscription|billing/.test(title)) {
+      return 'app-employer-billing.html';
+    }
+    if (/company_update|security_company_status|company_account/.test(type)) {
+      return 'app-employer-account.html';
+    }
+    if (/security|password/.test(type) || kind === 'security' || category === 'security') {
+      return role === 'employer' ? 'app-employer-account-security.html' : 'app-account.html';
+    }
+    if (/job_closed/.test(type)) return 'app-applied.html';
+    if (/job_approved|job_rejected|job_slot|slot_expir|job_post|job_review/.test(type) ||
+        (/posting|slot/.test(title) && role === 'employer')) {
+      return 'app-employer-dashboard.html?view=jobs';
+    }
+    // Database links identify the intended workspace, including for shared team accounts.
+    // Only local app pages are allowed; do not turn database text into an external URL.
+    const linked = internalAppLink(row?.link);
+    if (linked) return linked;
+    if (/application|selected|shortlist|hired|rejected|not_selected/.test(type) ||
+        category === 'applications') {
+      return role === 'employer' ? APPLICANT_DESTINATION : 'app-applied.html';
+    }
+    if (kind === 'application' || kind === 'applicant') {
+      return role === 'employer' ? APPLICANT_DESTINATION : 'app-applied.html';
+    }
+    if (kind === 'job' || category === 'job_updates' || category === 'recommendations') {
+      return role === 'employer' && category !== 'recommendations'
+        ? 'app-employer-dashboard.html?view=jobs' : 'app-swipe.html';
+    }
+    if (category === 'team_updates') return 'app-employer-account.html';
+    return role === 'employer' ? 'app-employer-dashboard.html' : 'app-account.html';
+  }
+  function safeDestination(data, notification) {
+    const info = data && typeof data === 'object' ? data : {};
+    if (info.kind === 'message') {
+      const role = info.role === 'employer' ? 'employer' :
+        info.role === 'candidate' ? 'candidate' : workspaceRole();
       const params = new URLSearchParams({ role });
-      if (data.conversation && /^[\w-]{20,50}$/.test(String(data.conversation))) {
-        params.set('conversation', String(data.conversation));
-        if (data.application && /^[\w-]{20,50}$/.test(String(data.application))) {
-          params.set('application', String(data.application));
+      if (/^[\w-]{20,50}$/.test(safeText(info.conversation))) {
+        params.set('conversation', String(info.conversation));
+        if (/^[\w-]{20,50}$/.test(safeText(info.application))) {
+          params.set('application', String(info.application));
         }
-        return 'app-chat.html?' + params;
+        return 'app-chat.html?' + params.toString();
       }
       return 'app-messages.html?role=' + role;
     }
-    if (data?.kind === 'job') return 'app-swipe.html';
-    if (data?.kind === 'application') return 'app-applied.html';
-    if (data?.kind === 'applicant') return 'app-employer-dashboard.html';
-    if (data?.kind === 'security') return data.role === 'employer'
-      ? 'app-employer-account-security.html' : 'app-account.html';
-    return null;
+    // Used if the database is temporarily unreachable or notification permissions are changing.
+    return destinationFromNotice({title:notification?.title || '',type:''}, info);
   }
+  async function resolveTappedDestination(notification) {
+    const data = notification?.data || {};
+    const initial = safeDestination(data, notification);
+    if (data?.kind === 'message') return initial;
+    const client = db || getDb();
+    if (!client?.auth?.getSession) return initial;
+    try {
+      const { data: sessionResult, error: sessionError } = await client.auth.getSession();
+      const userId = sessionResult?.session?.user?.id;
+      if (sessionError || !userId) return initial;
+      const title = safeText(notification?.title);
+      if (!title) return initial;
+      const { data: notices, error } = await client.from('notifications')
+        .select('id,type,title,body,link,read_at')
+        .eq('recipient_id',userId).eq('title',title)
+        .order('created_at',{ascending:false}).limit(12);
+      if (error || !notices?.length) return initial;
+      const body = safeText(notification?.body);
+      // Require the exact message to avoid resolving a different notification with the same title.
+      const match = notices.find(row => safeText(row.body) === body) || null;
+      if (!match) return initial;
+      if (!match.read_at) {
+        // Best effort; a failed mark-read must never prevent navigation.
+        client.from('notifications').update({read_at:new Date().toISOString()})
+          .eq('id',match.id).eq('recipient_id',userId).then(()=>{},()=>{});
+      }
+      return destinationFromNotice(match, data);
+    } catch (_) { return initial; }
+  }
+  // New-applicant pushes open the real All Applicants tab, not the candidate My Jobs page.
+  // Uses the existing employer dashboard button, without modifying the dashboard HTML.
+  function openRequestedApplicantsView() {
+    if (location.pathname.split('/').pop() !== 'app-employer-dashboard.html' ||
+        new URLSearchParams(location.search).get('view') !== 'applicants') return;
+    let attempts = 0;
+    const open = () => {
+      const button = document.getElementById('jobs-all-applicants-btn');
+      if (document.body?.dataset?.dashboardBooting === 'false' && button) {
+        button.click();
+        try {
+          const url = new URL(location.href);
+          url.searchParams.delete('view');
+          history.replaceState(null,'',url.pathname + url.search);
+        } catch (_) {}
+        return;
+      }
+      if (attempts++ < 60) setTimeout(open,250);
+    };
+    if (document.readyState === 'loading')
+      document.addEventListener('DOMContentLoaded',open,{once:true});
+    else open();
+  }
+  openRequestedApplicantsView();
   async function ensureListeners() {
     if (listenersReady) return;
     if (!plugin) throw new Error('Native push plugin is not available');
@@ -174,8 +307,16 @@
     await plugin.addListener('pushNotificationReceived', () => {
       window.AlygnnRefreshCandidateMessageBadge?.();
     });
-    await plugin.addListener('pushNotificationActionPerformed', event => {
-      const dest = safeDestination(event?.notification?.data);
+    await plugin.addListener('pushNotificationActionPerformed', async event => {
+      const notification = event?.notification || null;
+      if (!notification) return;
+      // Database-backed links identify the exact event; safe fallbacks still work offline.
+      // Never keep a cold-started app waiting for a network lookup.
+      const fallback = safeDestination(notification.data, notification);
+      const dest = await Promise.race([
+        resolveTappedDestination(notification),
+        new Promise(resolve => setTimeout(() => resolve(fallback), 2200))
+      ]);
       if (dest) window.location.href = dest;
     });
     listenersReady = true;
