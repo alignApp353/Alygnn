@@ -474,6 +474,13 @@
 
   /* Readable notice for the free-account repost restriction only. */
   .toast.repost-notice {
+    top:50%;
+    bottom:auto;
+    transform:translate(-50%,-50%);
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .25s ease, visibility .25s ease;
     width:min(540px,calc(100vw - 32px));
     max-height:min(70vh,440px);
     overflow-y:auto;
@@ -491,6 +498,12 @@
     white-space:normal;
     text-align:left;
     z-index:2000;
+  }
+  .toast.repost-notice.show {
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+    transform:translate(-50%,-50%);
   }
   .repost-notice-icon {
     display:grid;place-items:center;flex:0 0 36px;
@@ -510,7 +523,7 @@
   .repost-notice-close:hover{background:rgba(93,127,163,.10);color:#1A2530}
   .repost-notice-close:focus-visible{outline:2px solid #5D7FA3;outline-offset:2px}
   @media(max-width:600px){
-    .toast.repost-notice{bottom:16px;padding:16px 39px 16px 14px;gap:10px}
+    .toast.repost-notice{padding:16px 39px 16px 14px;gap:10px}
     .repost-notice-icon{width:32px;height:32px;flex-basis:32px}
   }
 
