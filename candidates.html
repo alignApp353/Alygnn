@@ -269,10 +269,18 @@
   }
   .profile-match strong{font-size:13px}
   .profile-match-score{font-size:22px;font-weight:700;color:var(--brand)}
-  .breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px}
-  .break-item{border:1px solid var(--border);border-radius:11px;padding:10px 11px;background:white}
-  .break-name{font-size:10px;color:var(--muted);margin-bottom:4px}
-  .break-value{font-size:13px;font-weight:700;color:var(--text)}
+  /* Applicant profile: app-style breakdown bars; display only known score signals. */
+  .breakdown-heading{margin:18px 0 13px;padding-top:14px;border-top:1px solid var(--border)}
+  .breakdown-heading strong{display:block;font-size:13px;color:var(--text)}
+  .breakdown-heading span{display:block;margin-top:3px;font-size:11px;color:var(--muted)}
+  .breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 20px;margin-bottom:12px}
+  .break-item{min-width:0}
+  .break-row{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:7px}
+  .break-name{font-size:11px;font-weight:700;color:var(--text)}
+  .break-value{font-size:11px;font-weight:700;color:var(--brand);white-space:nowrap}
+  .break-track{height:7px;overflow:hidden;border-radius:999px;background:#E5EBEE}
+  .break-fill{height:100%;border-radius:inherit;background:var(--mint);max-width:100%}
+  .breakdown-note{margin:0 0 16px;font-size:11px;line-height:1.6;color:var(--muted)}
   .match-reasons{margin:0 0 16px 18px;color:var(--muted);font-size:11.5px;line-height:1.6}
   .section-title{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:18px 0 8px}
   .profile-text{font-size:13px;line-height:1.62;color:var(--text)}
@@ -2187,6 +2195,23 @@ function openProfile(applicationId){
   const [statusText,statusClass]=statusLabel(c.status);
   const isDecided=['accepted','rejected'].includes(String(c.status||'').toLowerCase());
 
+  // Present the available website match components in the six app-style slots.
+  // Location, work preferences and pay are not provided by this page's
+  // resume-only score model: leave them unavailable rather than inventing 0%.
+  const matchComponents=Object.fromEntries(
+    (c.match.components||[]).map(component=>[
+      String(component.key||'').toLowerCase(),component.value
+    ])
+  );
+  const appStyleSignals=[
+    ['Skills',matchComponents.skills],
+    ['Experience',matchComponents.experience],
+    ['Location',null],
+    ['Role match',matchComponents['role alignment']],
+    ['Work preferences',null],
+    ['Compensation',null]
+  ];
+
   const expHtml=experience.length
     ? `<ul class="profile-list">${experience.map(exp=>{
         const label=typeof exp==='string'?exp:[
@@ -2229,14 +2254,28 @@ function openProfile(applicationId){
       <div class="profile-match-score">${c.match.score}%</div>
     </div>
 
-    <div class="breakdown">
-      ${c.match.components.map(comp=>`
-        <div class="break-item">
-          <div class="break-name">${escapeHtml(comp.key)}</div>
-          <div class="break-value">${comp.value}%</div>
-        </div>
-      `).join('')}
+    <div class="breakdown-heading">
+      <strong>Score breakdown</strong>
+      <span>Strength of each available signal used by Alygnn</span>
     </div>
+    <div class="breakdown">
+      ${appStyleSignals.map(([label,value])=>{
+        const isKnown=value!==null && value!==undefined && Number.isFinite(Number(value));
+        const percent=isKnown?Math.max(0,Math.min(100,Math.round(Number(value)))):0;
+        return `
+          <div class="break-item">
+            <div class="break-row">
+              <span class="break-name">${escapeHtml(label)}</span>
+              <span class="break-value">${isKnown?percent+'%':'—'}</span>
+            </div>
+            <div class="break-track" aria-label="${escapeHtml(label)}: ${isKnown?percent+' percent':'not available'}">
+              <div class="break-fill" style="width:${percent}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <p class="breakdown-note">A dash means the website doesn't yet have a comparable signal for this applicant. The existing Alygnn Match score also considers job requirements and any explicitly required education; its calculation has not changed.</p>
 
     <ul class="match-reasons">${c.match.reasons.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul>
 
