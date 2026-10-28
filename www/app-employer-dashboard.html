@@ -17574,10 +17574,10 @@
   function nativeMessage(s){
     if(!s?.native)return 'Manage device notifications in the installed Alygnn Android app.';
     if(!s.signedIn)return 'Sign in to manage notifications on this device.';
-    if(!s.enabled)return 'Off for this device. Messages and updates remain available inside Alygnn.';
+    if(!s.enabled)return 'Notifications are off.';
     if(s.permission!=='granted')return 'Android is blocking Alygnn notifications. Enable them in Android Settings → Apps → Alygnn → Notifications.';
-    if(push()?.status?.().code==='REGISTERED')return 'On for this device · Registered for Android alerts.';
-    return 'On for this device · Android notifications allowed.';
+    if(push()?.status?.().code==='REGISTERED')return 'Notifications are on.';
+    return 'Notifications are on.';
   }
   async function refreshDevice(){
     const toggle=byId('employer-push-device-toggle');
