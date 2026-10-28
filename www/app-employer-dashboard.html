@@ -5133,6 +5133,31 @@
 
 <link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
 <link rel="stylesheet" href="app-employer-myjobs-loader.css?v=20261024-employer-exact">
+
+<style id="alygnn-employer-push-control-css">
+  #employer-push-overlay[hidden]{display:none!important}
+  #employer-push-overlay{position:fixed;inset:0;z-index:6000;display:flex;align-items:flex-end;justify-content:center;padding:0;background:rgba(3,12,22,.72);backdrop-filter:blur(3px)}
+  #employer-push-overlay *{box-sizing:border-box}
+  #employer-push-dialog{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:22px 22px 0 0;box-shadow:0 16px 55px rgba(0,0,0,.22);width:100%;max-width:520px;max-height:calc(100dvh - 30px);max-height:calc(100vh - 30px);overflow:auto;overscroll-behavior:contain;padding:23px 21px calc(26px + env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch}
+  #employer-push-dialog .ep-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  #employer-push-dialog h2{font-size:22px;font-weight:800;line-height:1.2;margin:0 0 5px;color:var(--text)}
+  #employer-push-dialog .ep-description{color:var(--muted);font-size:12px;line-height:1.55;margin:0}
+  #employer-push-dialog .ep-close{height:34px;width:34px;flex:0 0 34px;border:1px solid var(--border);border-radius:50%;color:var(--text);background:var(--bg);font-size:22px;line-height:1;cursor:pointer}
+  #employer-push-dialog .ep-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px}
+  #employer-push-dialog h3{font-size:14px;font-weight:800;color:var(--text);margin:0 0 8px}
+  #employer-push-dialog .ep-status{font-size:12px;line-height:1.55;color:var(--muted);margin-bottom:13px;min-height:18px}
+  #employer-push-dialog .ep-actions{display:flex;flex-wrap:wrap;gap:9px}
+  #employer-push-dialog .ep-btn{min-height:43px;padding:10px 14px;border-radius:11px;border:1px solid var(--border);font-size:12px;font-weight:800;cursor:pointer;color:var(--text);background:var(--card)}
+  #employer-push-dialog .ep-btn.ep-primary{background:var(--brand);color:#fff;border-color:var(--brand)}
+  #employer-push-dialog button:disabled{opacity:.55;cursor:wait}
+  #employer-push-dialog .ep-pref-row{display:flex;align-items:center;justify-content:space-between;gap:13px;min-height:51px;padding:11px 0;border-bottom:1px solid var(--border-soft);font-size:13px;font-weight:650;color:var(--text);cursor:pointer}
+  #employer-push-dialog .ep-pref-row:last-of-type{border-bottom:0}
+  #employer-push-dialog .ep-pref-row input{accent-color:var(--brand);width:20px;height:20px;flex:0 0 20px}
+  #employer-push-dialog .ep-info{font-size:11px;line-height:1.5;color:var(--muted);margin:10px 0 0}
+  #employer-push-dialog .ep-error{font-size:12px;color:var(--danger);line-height:1.5;margin:9px 0 0}
+  #employer-push-dialog .ep-error[hidden]{display:none}
+  @media(min-width:650px){#employer-push-overlay{align-items:center;padding:24px}#employer-push-dialog{border-radius:20px;max-height:calc(100vh - 48px)}}
+</style>
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div id="dashboard-boot-loader" class="alygnn-standard-loader alygnn-employer-myjobs-loader" role="status" aria-live="polite" aria-label="Loading employer workspace">
@@ -5905,6 +5930,13 @@
             <span class="settings-icon-label">
               <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span>
               <span class="settings-copy"><strong>Notifications</strong><small>Application and hiring updates</small></span>
+            </span>
+            <span class="settings-chevron">›</span>
+          </button>
+          <button class="settings-link" id="employer-push-settings" type="button" aria-haspopup="dialog" aria-controls="employer-push-dialog">
+            <span class="settings-icon-label">
+              <span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"></rect><path d="M10 18h4M10 5h4"></path></svg></span>
+              <span class="settings-copy"><strong>Push Notifications</strong><small id="employer-push-settings-status" aria-live="polite">Manage notifications on this device</small></span>
             </span>
             <span class="settings-chevron">›</span>
           </button>
@@ -17518,5 +17550,173 @@
 </script>
 
 <script defer src="app-push-notifications.js"></script>
+
+<script id="alygnn-employer-push-controls-script">
+(function(){
+  'use strict';
+  const preferences=[
+    ['messages','New messages',true],
+    ['new_applicants','New applicants',true],
+    ['job_updates','Job and slot updates',true],
+    ['billing','Billing and subscription updates',true],
+    ['team_updates','Verification, team and company updates',true]
+  ];
+  const byId=id=>document.getElementById(id);
+  let busy=false,deviceState=null,prefsBusy=false,prefsUser='',prefDb=null,previousFocus=null;
+  let registerPending=false;
+  const controls=new Map();
+  function push(){return window.AlygnnPush || null;}
+  function db(){
+    try{if(typeof sb!=='undefined'&&sb?.auth?.getSession)return sb;}catch(_){}
+    return window.sb?.auth?.getSession ? window.sb : null;
+  }
+  function showError(id, message){const el=byId(id);el.textContent=message||'';el.hidden=!message;}
+  function hide(){byId('employer-push-overlay').hidden=true;previousFocus?.focus?.();}
+  function nativeMessage(s){
+    if(!s?.native)return 'Manage device notifications in the installed Alygnn Android app.';
+    if(!s.signedIn)return 'Sign in to manage notifications on this device.';
+    if(!s.enabled)return 'Off for this device. Messages and updates remain available inside Alygnn.';
+    if(s.permission!=='granted')return 'Android is blocking Alygnn notifications. Enable them in Android Settings → Apps → Alygnn → Notifications.';
+    if(push()?.status?.().code==='REGISTERED')return 'On for this device · Registered for Android alerts.';
+    return 'On for this device. Android permission is allowed. If alerts are missing, retry device registration.';
+  }
+  async function refreshDevice(){
+    const toggle=byId('employer-push-device-toggle');
+    const retry=byId('employer-push-register-again');
+    try{deviceState=await push()?.getSettings?.()||null;}catch(_){deviceState=null;}
+    const s=deviceState;
+    byId('employer-push-device-message').textContent=nativeMessage(s);
+    byId('employer-push-settings-status').textContent=!s?.native?'Manage notifications on this device':!s.signedIn?'Sign in to manage':s.enabled?(s.permission==='granted'?'Notifications on':'Permission needed'):'Notifications off';
+    toggle.hidden=!s?.native||!s?.signedIn;
+    toggle.disabled=busy||!s?.native||!s.signedIn;
+    toggle.textContent=busy?'Saving…':s?.enabled?'Turn Off Notifications':'Turn On Notifications';
+    retry.hidden=!s?.native||!s?.signedIn||!s.enabled||s.permission!=='granted';
+    retry.disabled=busy||registerPending;
+  }
+  async function toggleDevice(){
+    if(busy)return;
+    busy=true;showError('employer-push-device-error','');
+    const next=!deviceState?.enabled;
+    await refreshDevice();
+    try{
+      if(!push()?.setEnabled)throw Error('Notification settings are still loading. Please try again.');
+      const saved=await push().setEnabled(next);
+      const confirmed=saved?.native ? saved : await push().getSettings();
+      if(confirmed?.enabled!==next || (next&&confirmed.permission!=='granted'))
+        throw Error(next?'Allow Alygnn notifications in Android settings, then try again.':'Could not confirm the change. Please try again.');
+    }catch(e){showError('employer-push-device-error',e?.message||'Could not update notifications. Please try again.');}
+    finally{busy=false;await refreshDevice();}
+  }
+  async function retryRegistration(){
+    if(busy||registerPending)return;
+    showError('employer-push-device-error','');
+    if(!push()?.check){showError('employer-push-device-error','Push registration is still loading.');return;}
+    registerPending=true;await refreshDevice();
+    byId('employer-push-device-message').textContent='Requesting Android device registration…';
+    try{
+      const result=await push().check();
+      if(result?.state==='error')throw Error(result.message||'Could not register this device.');
+      if(result?.code==='REGISTERED')registerPending=false;
+    }catch(e){registerPending=false;showError('employer-push-device-error',e?.message||'Could not register the device.');}
+    await refreshDevice();
+    if(registerPending)byId('employer-push-device-message').textContent='Registration requested. The device will confirm when Firebase responds.';
+    // A pending registration can be retried if a token callback does not arrive.
+    setTimeout(()=>{if(registerPending){registerPending=false;refreshDevice();}},12000);
+  }
+  function createPreferences(){
+    const list=byId('employer-push-category-list');
+    if(list.childElementCount)return;
+    for(const [key,label,defaultValue] of preferences){
+      const row=document.createElement('label');row.className='ep-pref-row';
+      const text=document.createElement('span');text.textContent=label;
+      const input=document.createElement('input');input.type='checkbox';input.checked=defaultValue;input.disabled=true;
+      input.setAttribute('aria-label',label);
+      input.addEventListener('change',()=>savePreference(key,input));
+      row.append(text,input);list.append(row);controls.set(key,input);
+    }
+  }
+  async function loadPreferences(){
+    createPreferences();
+    showError('employer-push-category-error','');
+    prefDb=db();
+    try{
+      if(!prefDb?.auth?.getSession)throw Error('Your account is still loading.');
+      const {data,error}=await prefDb.auth.getSession();if(error)throw error;
+      prefsUser=data?.session?.user?.id||'';
+      if(!prefsUser)throw Error('Sign in to manage notification categories.');
+      const result=await prefDb.from('notification_preferences').select('*').eq('user_id',prefsUser).maybeSingle();
+      if(result.error)throw result.error;
+      for(const [key,,fallback] of preferences){
+        const input=controls.get(key);input.checked=result.data?.[key]??fallback;input.disabled=false;
+      }
+    }catch(_){
+      for(const input of controls.values())input.disabled=true;
+      showError('employer-push-category-error','Category preferences are unavailable. Device notifications can still be managed above.');
+    }
+  }
+  async function savePreference(key,input){
+    if(prefsBusy||!prefDb||!prefsUser){input.checked=!input.checked;return;}
+    prefsBusy=true;input.disabled=true;
+    showError('employer-push-category-error','');
+    const desired=Boolean(input.checked);
+    try{
+      const {error}=await prefDb.from('notification_preferences').upsert({user_id:prefsUser,[key]:desired},{onConflict:'user_id'});
+      if(error)throw error;
+    }catch(_){input.checked=!desired;showError('employer-push-category-error','Could not save this preference. Please try again.');}
+    finally{input.disabled=false;prefsBusy=false;}
+  }
+  async function open(){
+    previousFocus=document.activeElement;
+    byId('employer-push-overlay').hidden=false;
+    byId('employer-push-close').focus();
+    await Promise.all([refreshDevice(),loadPreferences()]);
+  }
+  function init(){
+    const row=byId('employer-push-settings'),overlay=byId('employer-push-overlay');
+    if(!row||!overlay)return;
+    row.addEventListener('click',open);
+    byId('employer-push-close').addEventListener('click',hide);
+    overlay.addEventListener('click',e=>{if(e.target===overlay)hide();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)hide();});
+    byId('employer-push-device-toggle').addEventListener('click',toggleDevice);
+    byId('employer-push-register-again').addEventListener('click',retryRegistration);
+    window.addEventListener('alygnn-push-status',e=>{
+      if(e?.detail?.code==='REGISTERED'||e?.detail?.state==='error')registerPending=false;
+      if(!overlay.hidden&&!busy)refreshDevice();
+      else if(!busy)refreshDevice();
+    });
+    setTimeout(refreshDevice,850);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
+</script>
+
+
+<!-- Employer-only device notifications controls. The existing bell still opens notification history. -->
+<div id="employer-push-overlay" hidden>
+  <section id="employer-push-dialog" role="dialog" aria-modal="true" aria-labelledby="employer-push-heading" tabindex="-1">
+    <div class="ep-head">
+      <div><h2 id="employer-push-heading">Push Notifications</h2><p class="ep-description">Control hiring alerts on this device and choose which updates you receive.</p></div>
+      <button type="button" class="ep-close" id="employer-push-close" aria-label="Close Push Notifications">×</button>
+    </div>
+    <div class="ep-card">
+      <h3>Device notifications</h3>
+      <p class="ep-status" id="employer-push-device-message" role="status" aria-live="polite">Checking notification permissions…</p>
+      <div class="ep-actions">
+        <button type="button" class="ep-btn ep-primary" id="employer-push-device-toggle" disabled>Checking…</button>
+        <button type="button" class="ep-btn" id="employer-push-register-again" hidden>Retry device registration</button>
+      </div>
+      <p class="ep-error" id="employer-push-device-error" role="alert" hidden></p>
+    </div>
+    <div class="ep-card" id="employer-push-category-card">
+      <h3>Notification preferences</h3>
+      <p class="ep-description">Choose which optional notifications you want to receive. Your notification history remains available in Alygnn.</p>
+      <div id="employer-push-category-list"></div>
+      <p class="ep-error" id="employer-push-category-error" role="alert" hidden></p>
+      <p class="ep-info">Security notices remain in your account history. Turning off device notifications stops Android alerts on this device.</p>
+    </div>
+  </section>
+</div>
 </body>
 </html>
