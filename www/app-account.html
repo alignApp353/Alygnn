@@ -2418,6 +2418,47 @@ body[data-theme="dark"]{
   body[data-theme="dark"] .settings-inline-panel{
     background:rgba(93,127,163,.06);
   }
+  /* Only the candidate app Account & Security password flow. */
+  #candidate-security-panel .alygnn-password-label{
+    display:block;margin-top:14px;margin-bottom:2px;color:var(--text);
+    font-size:12px;font-weight:750;
+  }
+  #candidate-security-panel .alygnn-password-field{position:relative;}
+  #candidate-security-panel .alygnn-password-field .settings-input{
+    margin-top:6px;padding-right:76px;
+  }
+  #candidate-security-panel .alygnn-password-eye{
+    position:absolute;right:9px;top:13px;min-width:53px;height:37px;
+    padding:0 8px;border:0;border-radius:10px;background:var(--soft);
+    color:var(--text);font-size:12px;font-weight:750;cursor:pointer;
+  }
+  #candidate-security-panel .alygnn-password-eye:focus-visible,
+  #candidate-security-panel .alygnn-password-link:focus-visible{
+    outline:2px solid var(--brand);outline-offset:2px;
+  }
+  #candidate-security-panel .alygnn-password-code-step[hidden],
+  #candidate-security-panel .alygnn-password-status[hidden],
+  #candidate-security-panel #settings-password-btn[hidden]{display:none!important;}
+  #candidate-security-panel .alygnn-password-status{
+    margin-top:13px;padding:12px 13px;border:1px solid var(--border);
+    border-radius:12px;background:var(--soft);color:var(--text);
+    font-size:12px;font-weight:650;line-height:1.5;overflow-wrap:anywhere;
+  }
+  #candidate-security-panel .alygnn-password-status.success{
+    background:var(--sage-soft);color:#22623E;border-color:#9DCCAB;
+  }
+  #candidate-security-panel .alygnn-password-status.error{
+    background:var(--rose-soft);color:#AD3434;border-color:#E6B0B0;
+  }
+  #candidate-security-panel .alygnn-password-code-step{margin-top:15px;}
+  #candidate-security-panel .alygnn-password-code-step .settings-input{
+    letter-spacing:5px;font-size:18px;font-weight:700;text-align:center;
+  }
+  #candidate-security-panel .alygnn-password-link{
+    display:inline-block;border:0;background:transparent;color:var(--brand-dark);
+    font-weight:750;font-size:12px;padding:10px 0;margin-right:18px;cursor:pointer;
+  }
+  #candidate-security-panel button:disabled{opacity:.65;cursor:wait;}
 </style>
 
 
@@ -3348,14 +3389,31 @@ html[data-theme="dark"] #candidate-profile-boot-error {
 
     <div id="candidate-security-panel" class="settings-inline-panel" hidden>
       <div class="settings-inline-title">Change Password</div>
-      <p class="settings-card-copy">Choose a new password with at least 8 characters.</p>
+      <p class="settings-card-copy">Choose a new password with at least 8 characters. We'll email you a 6-digit verification code before you confirm the change.</p>
 
-      <input id="settings-new-password" class="settings-input" type="password" autocomplete="new-password" placeholder="New password">
-      <input id="settings-confirm-password" class="settings-input" type="password" autocomplete="new-password" placeholder="Confirm password">
+      <label class="alygnn-password-label" for="settings-new-password">New password</label>
+      <div class="alygnn-password-field">
+        <input id="settings-new-password" class="settings-input" type="password" autocomplete="new-password" placeholder="Enter new password" minlength="8">
+        <button class="alygnn-password-eye" type="button" aria-label="Show new password" aria-pressed="false" onclick="toggleCandidatePasswordVisibility('settings-new-password',this)">Show</button>
+      </div>
+      <label class="alygnn-password-label" for="settings-confirm-password">Confirm new password</label>
+      <div class="alygnn-password-field">
+        <input id="settings-confirm-password" class="settings-input" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="8">
+        <button class="alygnn-password-eye" type="button" aria-label="Show confirmation password" aria-pressed="false" onclick="toggleCandidatePasswordVisibility('settings-confirm-password',this)">Show</button>
+      </div>
 
       <button id="settings-password-btn" class="settings-primary-btn" type="button" onclick="changeCandidatePassword()">
-        Update Password
+        Email Verification Code
       </button>
+      <div id="settings-password-code-step" class="alygnn-password-code-step" hidden>
+        <p class="settings-card-copy" id="settings-password-code-help">Enter the 6-digit code sent to your account email. Do not share the code with anyone.</p>
+        <label class="alygnn-password-label" for="settings-password-code">Email verification code</label>
+        <input id="settings-password-code" class="settings-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" aria-describedby="settings-password-code-help">
+        <button id="settings-password-verify" class="settings-primary-btn" type="button" onclick="verifyCandidatePasswordChange()">Verify &amp; Change Password</button>
+        <button id="settings-password-resend" class="alygnn-password-link" type="button" onclick="resendCandidatePasswordCode()">Resend code</button>
+        <button class="alygnn-password-link" type="button" onclick="cancelCandidatePasswordChange()">Cancel</button>
+      </div>
+      <p id="settings-password-status" class="alygnn-password-status" role="status" aria-live="polite" hidden></p>
     </div>
 
     <button class="settings-row" type="button" onclick="AlygnnCandidateSettings.open('privacy')">
@@ -3920,46 +3978,128 @@ function toggleCandidateSetting(key,button){
   }
 }
 
-async function changeCandidatePassword(){
-  const password=safeString($('settings-new-password')?.value);
-  const confirm=safeString($('settings-confirm-password')?.value);
-  const button=$('settings-password-btn');
+// Candidate app security: passwords and verification codes remain in memory only.
+// Supabase sends the code; Alygnn does not generate, store, or log an OTP.
+let candidatePendingPassword=null;
+let candidatePasswordCodeRequestedAt=0;
+const CANDIDATE_PASSWORD_CODE_WINDOW_MS=10*60*1000;
 
-  if(!password || !confirm){
-    showSettingsMessage('Please fill out both password fields.','error');
-    return;
+function candidatePasswordStatus(message,type='info'){
+  const box=$('settings-password-status');
+  if(!box)return;
+  box.textContent=String(message||'');
+  box.className='alygnn-password-status'+(type==='success'?' success':type==='error'?' error':'');
+  box.hidden=!message;
+  // Status stays beside the form rather than disappearing above the viewport.
+}
+function toggleCandidatePasswordVisibility(id,button){
+  const input=$(id);
+  if(!input||!button)return;
+  const reveal=input.type==='password';
+  input.type=reveal?'text':'password';
+  button.textContent=reveal?'Hide':'Show';
+  button.setAttribute('aria-pressed',String(reveal));
+  button.setAttribute('aria-label',(reveal?'Hide':'Show')+(id==='settings-new-password'?' new':' confirmation')+' password');
+}
+function resetCandidatePasswordEyes(){
+  for(const id of ['settings-new-password','settings-confirm-password']){
+    const input=$(id);if(!input)continue;
+    input.type='password';
+    const button=input.parentElement?.querySelector('.alygnn-password-eye');
+    if(button){button.textContent='Show';button.setAttribute('aria-pressed','false');
+      button.setAttribute('aria-label','Show '+(id==='settings-new-password'?'new':'confirmation')+' password');}
   }
-
-  if(password.length<8){
-    showSettingsMessage('Password must be at least 8 characters.','error');
-    return;
-  }
-
-  if(password!==confirm){
-    showSettingsMessage('Passwords do not match.','error');
-    return;
-  }
-
-  const original=button?.textContent || 'Update Password';
-  if(button){
-    button.disabled=true;
-    button.textContent='Updating…';
-  }
-
+}
+function clearCandidatePasswordChallenge(){
+  candidatePendingPassword=null;
+  candidatePasswordCodeRequestedAt=0;
+  const code=$('settings-password-code');if(code)code.value='';
+  const stage=$('settings-password-code-step');if(stage)stage.hidden=true;
+  const send=$('settings-password-btn');if(send){send.hidden=false;send.disabled=false;send.textContent='Email Verification Code';}
+}
+function cancelCandidatePasswordChange(){
+  clearCandidatePasswordChallenge();
+  candidatePasswordStatus('Verification canceled. Your password was not changed.');
+}
+function validateCandidatePasswordEntries(){
+  // Don't trim passwords: spaces may be intentional characters.
+  const password=String($('settings-new-password')?.value||'');
+  const confirm=String($('settings-confirm-password')?.value||'');
+  if(!password||!confirm)throw new Error('Please enter and confirm your new password.');
+  if(password.length<8)throw new Error('Choose a password with at least 8 characters.');
+  if(password!==confirm)throw new Error('Your passwords do not match.');
+  return password;
+}
+async function requestCandidatePasswordCode({resend=false}={}){
+  const button=$(resend?'settings-password-resend':'settings-password-btn');
+  if(button?.disabled)return;
   try{
-    const {error}=await sb.auth.updateUser({password});
-    if(error) throw error;
-
+    const password=validateCandidatePasswordEntries();
+    candidatePasswordStatus('Checking your account…');
+    if(button){button.disabled=true;button.textContent='Sending code…';}
+    const {data,error:userError}=await sb.auth.getUser();
+    if(userError)throw userError;
+    if(!data?.user?.id)throw new Error('Your session has expired. Sign in again before changing your password.');
+    if(!data.user.email&&!data.user.phone)throw new Error('Your account needs a verified email or phone before a code can be sent.');
+    if(typeof sb.auth.reauthenticate!=='function')throw new Error('Email verification is unavailable in this app version. Update Alygnn and try again.');
+    const {error}=await sb.auth.reauthenticate();
+    if(error)throw error;
+    candidatePendingPassword=password;
+    candidatePasswordCodeRequestedAt=Date.now();
+    $('settings-password-code-step').hidden=false;
+    $('settings-password-btn').hidden=true;
+    const address=String(data.user.email||'your verified contact');
+    const safeAddress=address.includes('@') ? address.slice(0,2)+'***@'+address.split('@').slice(-1)[0] : 'your verified contact';
+    candidatePasswordStatus('Verification code sent to '+safeAddress+'. Enter it below to finish.');
+    $('settings-password-code')?.focus();
+  }catch(error){
+    if(!resend)clearCandidatePasswordChallenge();
+    candidatePasswordStatus(error?.message||'Could not send the verification code. Try again.','error');
+  }finally{
+    if(button){button.disabled=false;button.textContent=resend?'Resend code':'Email Verification Code';}
+  }
+}
+async function changeCandidatePassword(){
+  return requestCandidatePasswordCode();
+}
+async function resendCandidatePasswordCode(){
+  if(!candidatePendingPassword)return candidatePasswordStatus('Start a new password change request first.','error');
+  return requestCandidatePasswordCode({resend:true});
+}
+async function verifyCandidatePasswordChange(){
+  const button=$('settings-password-verify');
+  if(button?.disabled)return;
+  const code=String($('settings-password-code')?.value||'').trim();
+  if(!candidatePendingPassword||!candidatePasswordCodeRequestedAt){
+    candidatePasswordStatus('Please request a new verification code.','error');return;
+  }
+  if(Date.now()-candidatePasswordCodeRequestedAt>CANDIDATE_PASSWORD_CODE_WINDOW_MS){
+    clearCandidatePasswordChallenge();
+    candidatePasswordStatus('Your verification request expired. Start again to get a new code.','error');return;
+  }
+  if(!/^[0-9]{6}$/.test(code)){
+    candidatePasswordStatus('Enter the 6-digit code from your email.','error');return;
+  }
+  if(String($('settings-new-password')?.value||'')!==candidatePendingPassword ||
+     String($('settings-confirm-password')?.value||'')!==candidatePendingPassword){
+    clearCandidatePasswordChallenge();
+    candidatePasswordStatus('The password fields changed after requesting the code. Start again to protect your account.','error');return;
+  }
+  try{
+    if(button){button.disabled=true;button.textContent='Verifying…';}
+    candidatePasswordStatus('Verifying your code and updating your password…');
+    const {data,error}=await sb.auth.updateUser({password:candidatePendingPassword,nonce:code});
+    if(error)throw error;
+    if(!data?.user?.id)throw new Error('Password update was not confirmed. Please try again.');
+    clearCandidatePasswordChallenge();
     $('settings-new-password').value='';
     $('settings-confirm-password').value='';
-    showSettingsMessage('Password updated successfully.','success');
+    resetCandidatePasswordEyes();
+    candidatePasswordStatus('Your password was changed successfully. Use your new password the next time you sign in.','success');
   }catch(error){
-    showSettingsMessage(error?.message || 'Unable to update password.','error');
+    candidatePasswordStatus(error?.message||'Could not verify the code or update your password. Please try again.','error');
   }finally{
-    if(button){
-      button.disabled=false;
-      button.textContent=original;
-    }
+    if(button){button.disabled=false;button.textContent='Verify & Change Password';}
   }
 }
 
@@ -4251,6 +4391,13 @@ function toggleCandidateSecurityPanel(){
     panel.removeAttribute('hidden');
   }else{
     panel.setAttribute('hidden','');
+    // Closing Account & Security cancels an unverified password change.
+    clearCandidatePasswordChallenge();
+    const newPass=$('settings-new-password'), confirmPass=$('settings-confirm-password');
+    if(newPass)newPass.value='';
+    if(confirmPass)confirmPass.value='';
+    resetCandidatePasswordEyes();
+    candidatePasswordStatus('');
   }
 
   if(arrow){
