@@ -1038,7 +1038,7 @@
 </head>
 <body>
 
-<div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
+<div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your applicants…||Getting your jobs ready…||Almost there…">
   <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
   <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="alygnn-loader-message">Loading your workspace…</div>
@@ -1083,7 +1083,7 @@
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg>
       </span>
-      Candidates
+      Applicants
     </a>
     <a class="nav-item" id="sidebar-messages-link" href="messages.html">
       <span class="nav-icon" aria-hidden="true">
@@ -1163,17 +1163,17 @@
     <div class="panel" id="panel-candidates">
       <a href="#" onclick="showPanel('jobs'); return false;" class="nav-back-link" style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:14px;">← Back to My Jobs</a>
       <div class="page-header">
-        <div class="page-title" id="candidates-page-title">Candidates</div>
+        <div class="page-title" id="candidates-page-title">Applicants</div>
         <div class="page-sub" id="candidates-page-sub">Job seekers who swiped right on this listing</div>
       </div>
       <!-- Search is wired to filter any element with class "candidate-card" inside
            #candidates-grid by its text content. Works with real candidate cards
            rendered by loadCandidates()/renderCandidates() below. -->
-      <input type="text" class="form-input" id="candidates-search-input" placeholder="Search candidates by name, role, or skill…" autocomplete="off" oninput="filterCandidates()" style="margin-bottom: 16px;">
+      <input type="text" class="form-input" id="candidates-search-input" placeholder="Search applicants by name, role, or skill…" autocomplete="off" oninput="filterCandidates()" style="margin-bottom: 16px;">
       <div id="candidates-grid" class="candidates-grid">
         <div class="empty-state" style="grid-column:1/-1" id="candidates-empty-state">
           <div class="empty-icon">👥</div>
-          <div class="empty-title">No candidates yet</div>
+          <div class="empty-title">No applicants yet</div>
           Once job seekers apply to your listings, they'll appear here.
         </div>
       </div>
@@ -4880,7 +4880,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if (appsError) {
       console.error('Failed to load applications:', appsError);
-      showToast('Could not load candidates.');
+      showToast('Could not load applicants.');
       return;
     }
 
@@ -5725,10 +5725,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           ${isClosed
             ? closedAction
             : pending
-              ? '<button class="btn-view" disabled style="opacity:.45; cursor:not-allowed;" title="This job will accept candidates after business approval.">Candidates</button>'
+              ? '<button class="btn-view" disabled style="opacity:.45; cursor:not-allowed;" title="This job will accept applicants after business approval.">Applicants</button>'
               : billingEntitlement.candidate_access_locked === true
-                ? `<button class="btn-view" onclick="window.location.href='candidates.html?billing=locked'">Unlock candidates</button>`
-                : `<button class="btn-view" onclick="window.location.href='candidates.html?job=${encodeURIComponent(job.id)}'">Candidates</button>`}
+                ? `<button class="btn-view" onclick="window.location.href='candidates.html?billing=locked'">Unlock applicants</button>`
+                : `<button class="btn-view" onclick="window.location.href='candidates.html?job=${encodeURIComponent(job.id)}'">Applicants</button>`}
           <button class="btn-view" onclick="window.location.href='job-details.html?job=${job.id}&from=employer'">View</button>
           ${isClosed
             ? ''
@@ -6409,7 +6409,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const closeReason = String(job.closed_reason || '').toLowerCase();
 
     if (closeReason === 'free_candidate_cap' && !hasActivePaidPlan()) {
-      showToast('This free job reached 25 candidates. Choose a paid plan to reopen it.');
+      showToast('This free job reached 25 applicants. Choose a paid plan to reopen it.');
       setTimeout(() => redirectToPricing('free-candidate-cap'), 700);
       return;
     }
