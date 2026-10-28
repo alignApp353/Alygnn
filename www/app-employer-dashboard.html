@@ -17551,6 +17551,140 @@
 
 <script defer src="app-push-notifications.js"></script>
 
+<script id="alygnn-employer-push-ownership-v46">
+/* Employer Android push-token ownership repair. Runs only in the installed app.
+   Keeps the existing AlygnnPush bridge as the primary registration path. */
+(function(){
+  'use strict';
+  if (window.__alygnnEmployerPushOwnershipV46) return;
+  window.__alygnnEmployerPushOwnershipV46 = true;
+  const TOKEN_KEY='alygnn_android_fcm_token_v1';
+  const PREF_PREFIX='alygnn_push_delivery_enabled_v1_';
+  let repairing=false, lastRepairUser='', lastRepairAt=0;
+  const getDb=()=>{
+    try { if(typeof sb!=='undefined' && sb?.rpc && sb?.auth?.getSession)return sb; }catch(_){}
+    return window.sb?.rpc && window.sb?.auth?.getSession ? window.sb : null;
+  };
+  const nativePlugin=()=>{
+    const c=window.Capacitor;
+    if(!c?.isNativePlatform?.())return null;
+    if(c.Plugins?.PushNotifications)return c.Plugins.PushNotifications;
+    return typeof c.registerPlugin==='function' ? c.registerPlugin('PushNotifications') : null;
+  };
+  function getSavedToken(){try{return localStorage.getItem(TOKEN_KEY)||'';}catch(_){return '';}}
+  function saveToken(token){try{localStorage.setItem(TOKEN_KEY,token);}catch(_){}}
+  function setPreference(uid,on){try{localStorage.setItem(PREF_PREFIX+uid,String(!!on));}catch(_){}}
+  async function getUser(client){
+    const {data,error}=await client.auth.getSession();
+    if(error)throw error;
+    const uid=data?.session?.user?.id;
+    if(!uid)throw Error('Please sign in again to manage notifications.');
+    return uid;
+  }
+  async function requestFreshToken(plugin){
+    if(!plugin)throw Error('Android push notifications are unavailable.');
+    return await new Promise(async(resolve,reject)=>{
+      let finished=false,okListener=null,errorListener=null;
+      const timer=setTimeout(()=>finish(Error('Android did not provide a device registration. Please try again.')),12000);
+      function finish(err,value){
+        if(finished)return;
+        finished=true;clearTimeout(timer);
+        Promise.resolve(okListener?.remove?.()).catch(()=>{});
+        Promise.resolve(errorListener?.remove?.()).catch(()=>{});
+        if(err)reject(err);else resolve(value);
+      }
+      try{
+        okListener=await plugin.addListener('registration',e=>{
+          const token=String(e?.value||'');
+          if(!token)finish(Error('Android returned an empty device registration.'));
+          else finish(null,token);
+        });
+        errorListener=await plugin.addListener('registrationError',()=>finish(Error('Android could not register for push notifications.')));
+        await plugin.register();
+      }catch(_){finish(Error('Android could not register for push notifications.'));}
+    });
+  }
+  async function claimToken(on, fresh){
+    const client=getDb();
+    const plugin=nativePlugin();
+    if(!client||!plugin)throw Error('Notification services are not ready. Try again.');
+    const uid=await getUser(client);
+    const permission=await plugin.checkPermissions();
+    if(on && permission?.receive!=='granted')throw Error('Allow Alygnn notifications in Android settings first.');
+    let token=(!fresh && getSavedToken()) || '';
+    if(!token && !on && permission?.receive!=='granted'){
+      // Android itself blocks notifications, so no remote enabled token is usable.
+      setPreference(uid,false);
+      return window.AlygnnPush?.getSettings?.();
+    }
+    // Even turning OFF must get the real token when it is missing locally;
+    // otherwise a token still assigned to a prior login would stay enabled.
+    if(!token)token=await requestFreshToken(plugin);
+    // Supabase auth.uid(), NOT a client-supplied owner ID, binds this FCM token.
+    const {data,error}=await client.rpc('alygnn_claim_android_push_token',{
+      p_token:token,p_enabled:Boolean(on)
+    });
+    if(error||data!==true){
+      // Do not fall back to a permissive RLS policy or pretend registration succeeded.
+      const code=String(error?.code||'');
+      if(code==='PGRST202'||code==='42883')throw Error('Push registration update is missing from Supabase. Install the included SQL once.');
+      throw Error('Could not save Android notification registration. Please try again.');
+    }
+    saveToken(token);
+    setPreference(uid,on);
+    window.dispatchEvent(new CustomEvent('alygnn-push-status',{detail:{
+      state:on?'success':'disabled',code:on?'REGISTERED':'USER_DISABLED',
+      message:on?'Push notifications enabled':'Push notifications disabled',
+      at:new Date().toISOString()
+    }}));
+    return window.AlygnnPush?.getSettings?.();
+  }
+  async function repairAfterNativeFailure(){
+    if(repairing)return;
+    const client=getDb(),plugin=nativePlugin();
+    if(!client||!plugin)return;
+    let uid;
+    try{uid=await getUser(client);}catch(_){return;}
+    const now=Date.now();
+    if(uid===lastRepairUser&&now-lastRepairAt<30000)return;
+    lastRepairUser=uid;lastRepairAt=now;
+    let wanted=true;
+    try{wanted=localStorage.getItem(PREF_PREFIX+uid)!=='false';}catch(_){}
+    if(!wanted)return;
+    repairing=true;
+    try{await claimToken(true,false);}
+    catch(e){console.warn('Alygnn: Android token registration recovery did not complete.',e?.message||'');}
+    finally{repairing=false;}
+  }
+  function install(){
+    const bridge=window.AlygnnPush;
+    if(!bridge?.setEnabled||bridge.__ownershipV46)return;
+    bridge.__ownershipV46=true;
+    const original=bridge.setEnabled.bind(bridge);
+    bridge.setEnabled=async function(enabled){
+      try{return await original(enabled);}
+      catch(e){
+        // Only recover a rejected database token write. Preserve permission,
+        // session, and other errors from the original bridge unchanged.
+        if(!/Could not turn (on|off) push notifications/.test(String(e?.message||'')))throw e;
+        return claimToken(Boolean(enabled),false);
+      }
+    };
+    window.addEventListener('alygnn-push-status',event=>{
+      const detail=event?.detail||{};
+      if(detail.state==='error' &&
+        /SUPABASE_SAVE_FAILED|42501|23505|PGRST116/.test(String(detail.code||''))){
+        // Existing bridge still attempts registration. Repair only its denied
+        // account/token ownership write, not all notification status updates.
+        repairAfterNativeFailure();
+      }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+})();
+</script>
+
 <script id="alygnn-employer-push-controls-script">
 (function(){
   'use strict';
