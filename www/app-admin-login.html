@@ -9,6 +9,44 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="color-scheme" content="light dark">
+<script id="alygnn-admin-theme-critical">
+(function(){
+  // Match the preference used by Alygnn's employer app pages.
+  const media=window.matchMedia?.('(prefers-color-scheme: dark)');
+  const normalize=(v)=>{
+    v=String(v||'').toLowerCase().trim();
+    if(['system','system-default','default'].includes(v))return 'auto';
+    return ['auto','light','dark'].includes(v)?v:'';
+  };
+  const preference=()=>{
+    for(const key of ['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme']){
+      let value=null;
+      try{value=localStorage.getItem(key)}catch(_e){}
+      const pref=normalize(value);
+      if(pref)return pref;
+    }
+    return 'auto';
+  };
+  const apply=()=>{
+    const pref=preference();
+    const mode=pref==='auto'?(media?.matches?'dark':'light'):pref;
+    const root=document.documentElement;
+    root.dataset.theme=mode;
+    root.dataset.themePreference=pref;
+    root.dataset.effectiveTheme=mode;
+    root.style.colorScheme=mode;
+    root.style.backgroundColor=mode==='dark'?'#071823':'#F6F8F7';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',mode==='dark'?'#071823':'#F6F8F7');
+  };
+  apply();
+  media?.addEventListener?.('change',()=>{if(preference()==='auto')apply();});
+  window.addEventListener('pageshow',apply);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply();});
+  window.addEventListener('storage',e=>{if(['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme'].includes(e.key))apply();});
+  window.AlygnnAdminTheme={apply};
+})();
+</script>
 <style>
 *{box-sizing:border-box}
 :root{--bg:#071823;--panel:#0E1F2D;--border:#294054;--text:#F6F8FA;--muted:#A9B6C5;--brand:#6F99C4;--brand2:#3B6FA7;--sage:#8CB69B;--red:#FF9D9D;--red-bg:#401F25;--green:#77D7A4;--green-bg:#123A2A}
@@ -46,6 +84,39 @@ input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(111,153,196,.12)
 .show{position:absolute;right:8px;top:7px;height:40px;padding:0 10px;border:0;background:transparent;color:var(--brand);font-weight:900}
 .primary{width:100%;height:54px;margin-top:22px;border:0;border-radius:14px;background:var(--brand2);color:#fff;font-weight:900;font-size:15px}.primary:disabled{opacity:.55;cursor:not-allowed}
 .message{display:none;margin-top:16px;padding:12px 13px;border-radius:12px;font-size:12px;font-weight:800;line-height:1.45}.message.show{display:block}.message.error{background:var(--red-bg);color:var(--red);border:1px solid #6B303A}.message.success{background:var(--green-bg);color:var(--green);border:1px solid #24563F}
+
+/* Match Alygnn employer appearance: dark is the original design. */
+html[data-theme="light"]{
+  --bg:#F6F8F7;
+  --panel:#FFFFFF;
+  --panel2:#F1F5F7;
+  --border:#DCE5EA;
+  --text:#192B3B;
+  --muted:#607386;
+  --brand:#537DA7;
+  --brand2:#356BA1;
+  --sage:#73AB8C;
+  --green:#167D50;
+  --green-bg:#E7F6EC;
+  --amber:#936114;
+  --amber-bg:#FFF5DC;
+  --red:#B83E4E;
+  --red-bg:#FEECED;
+  --purple:#764EAE;
+  --purple-bg:#F3EAFE;
+}
+
+html[data-theme="light"] .card{
+  background:linear-gradient(180deg,#FFFFFF,#F8FBFC);
+  box-shadow:0 20px 55px rgba(29,56,75,.10);
+}
+html[data-theme="light"] .back-btn,
+html[data-theme="light"] input{background:#FFFFFF;color:var(--text)}
+html[data-theme="light"] .back-btn{box-shadow:0 6px 18px rgba(29,56,75,.08)}
+html[data-theme="light"] input::placeholder{color:#8696A5}
+html[data-theme="light"] .message.error{border-color:#EBC6CC}
+html[data-theme="light"] .message.success{border-color:#B9E5C8}
+
 </style>
 </head>
 <body data-admin-login-build="95">

@@ -33,6 +33,44 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<meta name="color-scheme" content="light dark">
+<script id="alygnn-admin-theme-critical">
+(function(){
+  // Match the preference used by Alygnn's employer app pages.
+  const media=window.matchMedia?.('(prefers-color-scheme: dark)');
+  const normalize=(v)=>{
+    v=String(v||'').toLowerCase().trim();
+    if(['system','system-default','default'].includes(v))return 'auto';
+    return ['auto','light','dark'].includes(v)?v:'';
+  };
+  const preference=()=>{
+    for(const key of ['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme']){
+      let value=null;
+      try{value=localStorage.getItem(key)}catch(_e){}
+      const pref=normalize(value);
+      if(pref)return pref;
+    }
+    return 'auto';
+  };
+  const apply=()=>{
+    const pref=preference();
+    const mode=pref==='auto'?(media?.matches?'dark':'light'):pref;
+    const root=document.documentElement;
+    root.dataset.theme=mode;
+    root.dataset.themePreference=pref;
+    root.dataset.effectiveTheme=mode;
+    root.style.colorScheme=mode;
+    root.style.backgroundColor=mode==='dark'?'#071823':'#F6F8F7';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',mode==='dark'?'#071823':'#F6F8F7');
+  };
+  apply();
+  media?.addEventListener?.('change',()=>{if(preference()==='auto')apply();});
+  window.addEventListener('pageshow',apply);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply();});
+  window.addEventListener('storage',e=>{if(['alygnnEmployerTheme','alygnn_employer_theme','alygnnTheme','alygnn_theme','alygnn-theme'].includes(e.key))apply();});
+  window.AlygnnAdminTheme={apply};
+})();
+</script>
 <style>
 
 *{
@@ -1144,6 +1182,44 @@ h1{
   }
 }
 
+
+/* Match Alygnn employer appearance: dark is the original design. */
+html[data-theme="light"]{
+  --bg:#F6F8F7;
+  --panel:#FFFFFF;
+  --panel2:#F1F5F7;
+  --border:#DCE5EA;
+  --text:#192B3B;
+  --muted:#607386;
+  --brand:#537DA7;
+  --brand2:#356BA1;
+  --sage:#73AB8C;
+  --green:#167D50;
+  --green-bg:#E7F6EC;
+  --amber:#936114;
+  --amber-bg:#FFF5DC;
+  --red:#B83E4E;
+  --red-bg:#FEECED;
+  --purple:#764EAE;
+  --purple-bg:#F3EAFE;
+}
+
+html[data-theme="light"] .stat,
+html[data-theme="light"] .card{background:#FFFFFF}
+html[data-theme="light"] .card{box-shadow:0 14px 40px rgba(27,53,72,.08)}
+html[data-theme="light"] .fact,
+html[data-theme="light"] .doc{background:#F7FAFB}
+html[data-theme="light"] .check{background:#F5F8FA}
+html[data-theme="light"] .modal select,
+html[data-theme="light"] .modal textarea{background:#FFFFFF;color:var(--text)}
+html[data-theme="light"] .doc-link{background:#E6EFF7;color:#245986}
+html[data-theme="light"] .stat.deactivated,
+html[data-theme="light"] .card.deactivated-card{border-color:#C8B7DC}
+html[data-theme="light"] .status-message.error{border-color:#EBC6CC}
+html[data-theme="light"] .status-message.success,
+html[data-theme="light"] .check.good{border-color:#B9E5C8}
+html[data-theme="light"] .check.warn{border-color:#EBDAB6}
+
 </style>
 </head>
 
@@ -1162,9 +1238,7 @@ Alygnn<span>.</span>
 
 <div class="admin-tools">
 
-<div class="admin-pill">
-ADMIN • EMPLOYER VERIFICATION
-</div>
+
 
 <button
   class="signout"
