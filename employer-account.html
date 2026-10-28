@@ -1022,7 +1022,7 @@
 </head>
 <body>
 
-<div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
+<div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your applicants…||Getting your jobs ready…||Almost there…">
   <div class="alygnn-loader-logo">Alygnn<span>.</span></div>
   <div class="alygnn-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="alygnn-loader-message">Loading your workspace…</div>
@@ -1230,11 +1230,11 @@
 
   <div class="section" id="account-candidates-section">
     <div class="section-header">
-      <h2>Candidates</h2>
+      <h2>Applicants</h2>
       <a href="candidates.html" class="section-link">View all →</a>
     </div>
     <div id="account-candidates-list">
-      <div class="empty-state">No candidates yet. Once people apply to your jobs, you'll see them here.</div>
+      <div class="empty-state">No applicants yet. Once people apply to your jobs, you'll see them here.</div>
     </div>
   </div>
 
@@ -1416,7 +1416,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if(accessList){
       const permissionLabels=[
         ['jobs_manage','Manage jobs'],
-        ['candidates_manage','Review candidates'],
+        ['candidates_manage','Review applicants'],
         ['messages_manage','Messages'],
         ['company_edit','Company profile'],
         ['billing_view','View billing'],
@@ -2533,7 +2533,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         ? `${slots} total reusable job slots${billing ? ' · '+billing.charAt(0).toUpperCase()+billing.slice(1) : ''}${periodEnd ? ' · Current period ends '+periodEnd : ''}`
         : secondActive
           ? `2 total reusable job slots · Second Job Slot $150/month`
-          : `1 permanent reusable free job slot · up to 25 candidates on the free slot`;
+          : `1 permanent reusable free job slot · up to 25 applicants on the free slot`;
 
       const statusLabel=lock
         ? 'Payment past due'
@@ -2667,7 +2667,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         ? `${slots} total reusable job slots${billing ? ' · '+billing.charAt(0).toUpperCase()+billing.slice(1) : ''}${amount ? ' · '+billingMoney(amount) : ''}${renewal ? ' · Current period ends '+renewal : ''}`
         : secondActive
           ? `2 total reusable job slots · Second Job Slot $150/month`
-          : `1 permanent reusable free job slot · up to 25 candidates on the free slot`;
+          : `1 permanent reusable free job slot · up to 25 applicants on the free slot`;
       const settingsBillingSub=document.getElementById('billing-settings-sub');
       if(settingsBillingSub){
         settingsBillingSub.textContent=lock
@@ -2767,7 +2767,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if (employerJobs.length === 0) {
       accountCandidates = [];
-      listEl.innerHTML = '<div class="empty-state">No candidates yet. Once people apply to your jobs, you\'ll see them here.</div>';
+      listEl.innerHTML = '<div class="empty-state">No applicants yet. Once people apply to your jobs, you\'ll see them here.</div>';
       return;
     }
 
@@ -2781,13 +2781,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
     if (appsError) {
       console.error('Failed to load applications:', appsError);
-      listEl.innerHTML = '<div class="empty-state">Could not load candidates right now. Open the console for the Supabase error.</div>';
+      listEl.innerHTML = '<div class="empty-state">Could not load applicants right now. Open the console for the Supabase error.</div>';
       return;
     }
 
     if (!apps || apps.length === 0) {
       accountCandidates = [];
-      listEl.innerHTML = '<div class="empty-state">No candidates yet. Once people apply to your jobs, you\'ll see them here.</div>';
+      listEl.innerHTML = '<div class="empty-state">No applicants yet. Once people apply to your jobs, you\'ll see them here.</div>';
       return;
     }
 
@@ -2834,7 +2834,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (!listEl) return;
 
     if (accountCandidates.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">No candidates yet. Once people apply to your jobs, you\'ll see them here.</div>';
+      listEl.innerHTML = '<div class="empty-state">No applicants yet. Once people apply to your jobs, you\'ll see them here.</div>';
       return;
     }
 
@@ -2863,7 +2863,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }).join('');
 
     const moreHtml = remaining > 0
-      ? `<a class="account-candidates-more" href="employer-dashboard.html">… view all ${accountCandidates.length} candidates →</a>`
+      ? `<a class="account-candidates-more" href="employer-dashboard.html">… view all ${accountCandidates.length} applicants →</a>`
       : '';
 
     listEl.innerHTML = rowsHtml + moreHtml;
