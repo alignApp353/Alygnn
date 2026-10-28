@@ -995,7 +995,7 @@ function setSidebar(){
         <span class="side-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5a4.5 4.5 0 0 1 5 4.5"/></svg>
         </span>
-        Candidates
+        Applicants
       </a>
 
       <a href="messages.html" class="side-link active">
@@ -1525,7 +1525,7 @@ function renderChat(){
       </div>
       <div class="chat-head-actions">
         ${currentRole==='employer'
-          ? `<a class="context-pill" href="candidates.html?job=${encodeURIComponent(d.thread?.job_id||'')}&application=${encodeURIComponent(d.thread?.application_id||'')}">View candidate</a>`
+          ? `<a class="context-pill" href="candidates.html?job=${encodeURIComponent(d.thread?.job_id||'')}&application=${encodeURIComponent(d.thread?.application_id||'')}">View applicant</a>`
           : `<a class="context-pill" href="my-jobs.html">View application</a>`}
         ${d.thread?.id?`<button class="archive-conversation" type="button" onclick="archiveConversationForMe('${escapeHtml(d.thread.id)}',${conversationArchived(d.thread)?'false':'true'})">${conversationArchived(d.thread)?'Move to inbox':'Archive'}</button>`:''}
         ${d.thread?.id?`<button class="delete-conversation" type="button" onclick="deleteConversationForMe('${escapeHtml(d.thread.id)}')">Delete</button>`:''}
