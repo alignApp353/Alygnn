@@ -118,6 +118,10 @@ html[data-theme="dark"] .recovery{background:#10232D;border-color:#29404C}
 .signup a{color:var(--accent-dark);text-decoration:none;font-weight:900}
 .switch{margin-top:15px;text-align:center}
 .switch-btn{border:none;background:transparent;color:var(--accent-dark);font-size:12px;font-weight:900}
+.staff-entry{margin-top:18px;text-align:center}
+.staff-entry a{display:inline-block;padding:10px 14px;color:var(--muted);font-size:11px;font-weight:700;text-decoration:none;opacity:.85}
+.staff-entry a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+html[data-theme="dark"] .staff-entry a{color:#A9B8C5}
 @media(max-height:760px){.login{justify-content:flex-start;padding-top:15px}.identity-icon{width:61px;height:61px}h1{font-size:27px;margin-top:13px}.form{margin-top:23px}.field{margin-top:13px}.input-wrap{min-height:51px}.primary{min-height:52px;margin-top:17px}.divider{margin:18px 0 11px}.social{min-height:49px;margin-top:8px}.signup{margin-top:17px}}
 
 /* Alygnn app-wide appearance sync */
@@ -260,6 +264,7 @@ html[data-theme="dark"] .switch-btn{
 <button class="social" id="apple-btn" type="button"><span class="apple-mark">●</span><span>Continue with Apple</span></button>
 <div class="signup">Don’t have an account? <a href="app-employer-create-account.html">Create one</a></div>
 <div class="switch"><button class="switch-btn" id="switch-btn" type="button">Switch to candidate sign in</button></div>
+<div class="staff-entry"><a href="app-admin-login.html" aria-label="Staff Access">Staff Access</a></div>
 </div></section></main>
 <script>
 const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
