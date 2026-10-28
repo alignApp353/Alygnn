@@ -440,7 +440,7 @@ nav{
       <h2>Roles</h2>
       <div class="sub">You can customize access before sending the invitation.</div>
       <div class="role-guide">
-        <div><strong>Recruiter</strong><span>Post and manage jobs, review candidates, and message applicants.</span></div>
+        <div><strong>Recruiter</strong><span>Post and manage jobs, review applicants, and message applicants.</span></div>
         <div><strong>Hiring Manager</strong><span>Recruiter access plus the ability to edit company hiring information.</span></div>
         <div><strong>Admin</strong><span>Hiring Manager access plus billing visibility. The owner remains the only person with full account control by default.</span></div>
       </div>
@@ -488,8 +488,8 @@ let session=null,access=null,roster=null,editingMember=null,editingInvite=null;
 const $=id=>document.getElementById(id);
 const PERMS=[
  ['jobs_manage','Post & edit jobs','Create, edit, pause, close, and manage company job posts.'],
- ['candidates_manage','Manage applicants','Review applicants and update candidate statuses.'],
- ['messages_manage','Message candidates','Open employer conversations and reply to candidates.'],
+ ['candidates_manage','Manage applicants','Review applicants and update applicant statuses.'],
+ ['messages_manage','Message applicants','Open employer conversations and reply to applicants.'],
  ['company_edit','Edit company profile','Update company details and hiring information.'],
  ['billing_view','View billing','See plan, billing dates, and payment information.'],
  ['billing_manage','Manage billing','Purchase add-ons and change billing settings.'],
