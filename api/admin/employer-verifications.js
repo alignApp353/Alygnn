@@ -117,7 +117,7 @@ async function latestDocuments(supabase, companyIds) {
 }
 
 
-async function pauseCompanyJobsForVerification(supabase, companyId, reason) {
+async function pauseCompanyJobsForVerification(supabase, employerId, reason) {
   const now = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -127,7 +127,7 @@ async function pauseCompanyJobsForVerification(supabase, companyId, reason) {
       pause_reason: reason,
       updated_at: now
     })
-    .eq('company_id', companyId)
+    .eq('employer_id', employerId)
     .eq('status', 'active')
     .select('id');
 
@@ -344,6 +344,12 @@ module.exports = async function handler(req, res) {
         .eq('company_id',companyId).maybeSingle();
       if(lookupError)throw lookupError;
 
+      // Jobs belong to the employer user, not directly to the company.
+      // Verify that link before changing verification/account state.
+      if(['pending_review','rejected','deactivate'].includes(action) && !verificationRow?.user_id){
+        return sendJson(res,400,{success:false,error:'Could not identify the employer account for this company.'});
+      }
+
       if(action==='deactivate'||action==='reactivate'){
         const nextAccountStatus=action==='deactivate'?'deactivated':'active';
 
@@ -359,7 +365,7 @@ module.exports = async function handler(req, res) {
         if(action==='deactivate'){
           jobsPaused=await pauseCompanyJobsForVerification(
             supabase,
-            companyId,
+            verificationRow.user_id,
             'account_deactivated'
           );
         }
@@ -411,7 +417,7 @@ module.exports = async function handler(req, res) {
       if(action==='pending_review'||action==='rejected'){
         jobsPaused=await pauseCompanyJobsForVerification(
           supabase,
-          companyId,
+          verificationRow.user_id,
           action==='rejected'?'verification_rejected':'verification_pending'
         );
       }
