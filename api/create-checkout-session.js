@@ -2804,6 +2804,85 @@ async function runManageAction(res,user,input){
 
 
 
+// iOS-only weekly $0 purchase: create a real invoice containing the existing
+// Stripe weekly Price and promotion. Never grant a slot based on UI totals.
+// Stripe verifies the discount and marks the invoice paid before activation.
+async function confirmIosZeroWeeklyInvoice({user,input,promotionCodeId,priceId,cents,name}){
+  const employerId=String(user?.id||'');
+  const requestId=String(input?.checkout_request_id||'').trim();
+  if(!employerId||!/^[A-Za-z0-9_-]{8,120}$/.test(requestId)){
+    throw Object.assign(new Error('Invalid iOS Weekly Job Slot checkout request.'),{status:400});
+  }
+  if(!priceId||!promotionCodeId||!Number.isSafeInteger(cents)||cents<=0){
+    throw Object.assign(new Error('Weekly Job Slot promotion is not configured.'),{status:400});
+  }
+  const address=normalizeBillingAddress(input.billing_address);
+  const entitlement=await getEntitlement(employerId);
+  const customer=await ensureNativeStripeCustomer({
+    user,employerId,address,preferredCustomerId:entitlement?.stripe_plan_customer_id||null
+  });
+  if(!customer?.id)throw new Error('Stripe customer could not be verified.');
+  const key='alygnn-ios-weekly0-'+require('crypto').createHash('sha256')
+    .update([employerId,requestId,priceId,promotionCodeId].join('|')).digest('hex').slice(0,44);
+  const invoiceParams={
+    customer:customer.id,currency:'usd',collection_method:'charge_automatically',
+    auto_advance:'false',pending_invoice_items_behavior:'exclude',
+    'discounts[0][promotion_code]':promotionCodeId,
+    description:name,
+    'metadata[employer_id]':employerId,
+    'metadata[product]':'weekly_slot',
+    'metadata[payment_flow]':'ios_zero_invoice',
+    'metadata[stripe_price_id]':priceId,
+    'metadata[checkout_request_id]':requestId,
+    'metadata[promotion_code]':String(input.promotion_code||'').trim().toUpperCase()
+  };
+  let invoice=await stripeNativeRequest('POST','invoices',invoiceParams,
+    {'Idempotency-Key':key+'-invoice'});
+  if(!invoice?.id)throw new Error('Stripe did not create the weekly invoice.');
+
+  if(invoice.status==='draft'){
+    await stripeNativeRequest('POST','invoiceitems',{
+      customer:customer.id,invoice:invoice.id,'pricing[price]':priceId,
+      quantity:1,discountable:'true',description:name
+    },{'Idempotency-Key':key+'-item'});
+    invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
+    const discount=(invoice.total_discount_amounts||[])
+      .reduce((sum,row)=>sum+Number(row?.amount||0),0);
+    if(invoice.status!=='draft'||Number(invoice.subtotal)!==cents||
+       Number(invoice.total)!==0||discount<cents){
+      throw Object.assign(new Error('Stripe did not apply a full 100% Weekly Job Slot discount. No purchase was made.'),{status:409});
+    }
+    invoice=await stripeNativeRequest('POST','invoices/'+encodeURIComponent(invoice.id)+'/finalize',
+      {auto_advance:'false'},{'Idempotency-Key':key+'-finalize'});
+  }
+
+  // A retry after finalization must re-read the same Stripe invoice.
+  const verified=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
+  const discount=(verified.total_discount_amounts||[])
+    .reduce((sum,row)=>sum+Number(row?.amount||0),0);
+  const verifiedCustomer=typeof verified.customer==='string'
+    ?verified.customer:verified.customer?.id;
+  if(verified.status!=='paid'||verified.paid!==true||
+     Number(verified.subtotal)!==cents||Number(verified.total)!==0||
+     Number(verified.amount_remaining)!==0||discount<cents||
+     String(verified.metadata?.employer_id||'')!==employerId||
+     String(verified.metadata?.product||'')!=='weekly_slot'||
+     String(verified.metadata?.stripe_price_id||'')!==priceId||
+     String(verified.metadata?.checkout_request_id||'')!==requestId||
+     String(verifiedCustomer||'')!==String(customer.id)){
+    throw Object.assign(new Error('Stripe has not verified a paid $0 Weekly Job Slot invoice. No slot was activated.'),{status:409});
+  }
+  // Same idempotent fulfillment helper as the existing paid weekly flow.
+  const saved=await recordVerifiedWeeklySlotPurchase({
+    employerId,reference:verified.id,amount:0
+  });
+  return{
+    ok:true,completed_in_app:true,verified_payment:true,product:'weekly_slot',
+    invoice_id:verified.id,amount_total_cents:0,synced:true,
+    already_synced:!!saved.already_synced
+  };
+}
+
 async function recordVerifiedWeeklySlotPurchase({employerId,reference,amount}){
   if(!employerId||!reference)throw new Error('Missing confirmed Weekly Job Slot payment details.');
   const url=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
@@ -3328,6 +3407,21 @@ module.exports = async function handler(req, res) {
       terms_version: String(input.terms_version || ''),
       promotion_code: requestedPromotionCode || ''
     };
+
+    // Opt-in exclusively from the iOS app's verified 100%-off weekly flow.
+    // Website, Android, ordinary coupons and all other products use the
+    // unchanged Stripe checkout code immediately below this branch.
+    if(input.native_zero_checkout===true){
+      if(product!=='weekly_slot'||String(input.source||'')!=='capacitor_app'||
+         !nativePaymentSheetRequested(input)||!promotionCodeId||
+         Number(resolvedPromotion?.coupon?.percent_off)!==100){
+        return send(res,400,{error:'A valid 100% Weekly Job Slot promotion is required for iOS in-app checkout.'});
+      }
+      const result=await confirmIosZeroWeeklyInvoice({
+        user,input,promotionCodeId,priceId,cents,name
+      });
+      return send(res,200,result);
+    }
 
     const useNativePaymentSheet=
       nativePaymentSheetRequested(input) &&
