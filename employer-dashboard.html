@@ -4389,8 +4389,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         String(n.title || '').toLowerCase().includes('applicant') ||
         String(n.body || '').toLowerCase().includes('applied');
 
-      // Verification updates are informational; do not redirect to a dashboard.
-      const isVerificationStatus = /verif(?:ication|ied)/i.test(
+      // Verification and job-posting approval statuses are informational only;
+      // never follow their saved links to the older employer app dashboard.
+      const isVerificationStatus = /verif(?:ication|ied)|job[\s_-]*(?:post(?:ing)?[\s_-]*)?(?:approved|rejected|pending)/i.test(
         `${n.type || ''} ${n.title || ''}`
       );
       if (isVerificationStatus) {
