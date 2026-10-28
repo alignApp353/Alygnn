@@ -8864,7 +8864,7 @@
               <button class="mini-btn" data-job-action="view" data-job-id="${job.id}">View Job</button>
               <button class="mini-btn primary" data-job-action="applicants" data-job-id="${job.id}">View Applicants</button>
               <button class="mini-btn" data-job-action="edit" data-job-id="${job.id}">Edit</button>
-              ${freeJobCanBoost(job)
+              ${(status === 'active' || freeJobCanBoost(job))
                 ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${job.id}">Boost · $15/day</button>`
                 : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
                   ? `<button class="mini-btn primary" data-job-action="free-limit-options" data-job-id="${job.id}">View hiring options</button>`
@@ -8918,7 +8918,7 @@
             <button class="mini-btn" data-job-action="view" data-job-id="${escapeHtml(id)}">View Job</button>
             <button class="mini-btn primary" data-job-action="applicants" data-job-id="${escapeHtml(id)}">View Applicants</button>
             <button class="mini-btn" data-job-action="edit" data-job-id="${escapeHtml(id)}">Edit</button>
-            ${freeJobCanBoost(job)
+            ${(statusRaw === 'active' || freeJobCanBoost(job))
               ? `<button class="mini-btn boost" data-job-action="boost" data-job-id="${escapeHtml(id)}">Boost · $15/day</button>`
               : freeJobAtApplicantLimit(job) && !dashboardBasePaidPlanActive()
                 ? `<button class="mini-btn primary" data-job-action="free-limit-options" data-job-id="${escapeHtml(id)}">View hiring options</button>`
