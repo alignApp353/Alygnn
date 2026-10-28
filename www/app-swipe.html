@@ -4053,6 +4053,45 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 .job-card .swipe-compact-value{overflow-wrap:anywhere!important;word-break:normal!important}
 .job-card .swipe-card-details-top:focus-visible{outline:2px solid var(--brand)!important;outline-offset:2px!important}
 </style>
+<style id="alygnn-long-job-title-card-fix-v33">
+/* Two-line titles must not push employer details out of the fixed swipe card.
+   Leave ordinary/short job titles and the full View Details title untouched. */
+.job-card .card-top > div:last-child{min-width:0;flex:1 1 auto}
+@media (max-width:699px){
+  .job-card .job-title.alygnn-long-job-title{
+    font-size:clamp(15px,4.35vw,17px)!important;
+    line-height:1.11!important;
+    letter-spacing:-.15px!important;
+    display:-webkit-box!important;
+    -webkit-box-orient:vertical!important;
+    -webkit-line-clamp:2!important;
+    overflow:hidden!important;
+    overflow-wrap:break-word!important;
+    word-break:normal!important;
+  }
+  .job-card .job-title.alygnn-long-job-title + .company-line{
+    margin-top:3px!important;
+    min-height:14px;
+    line-height:1.1;
+  }
+  .job-card .job-title.alygnn-long-job-title + .company-line .company-name{
+    font-size:11px!important;
+    line-height:1.1!important;
+  }
+}
+@media (min-width:700px){
+  .job-card .job-title.alygnn-long-job-title{
+    font-size:clamp(23px,2.7vw,29px)!important;
+    line-height:1.06!important;
+    display:-webkit-box!important;
+    -webkit-box-orient:vertical!important;
+    -webkit-line-clamp:2!important;
+    overflow:hidden!important;
+  }
+  .job-card .job-title.alygnn-long-job-title + .company-line{margin-top:4px!important}
+}
+</style>
+
 <link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
 </head>
 
@@ -5406,7 +5445,7 @@ function buildCard(job,index){
     <div class="card-top">
       <div class="company-logo">${logoHtml}</div>
       <div>
-        <div class="job-title">${escapeHtml(job.title||'Job Opportunity')}</div>
+        <div class="job-title${String(job.title||'').trim().length>24?' alygnn-long-job-title':''}" title="${escapeHtml(job.title||'Job Opportunity')}">${escapeHtml(job.title||'Job Opportunity')}</div>
         <div class="company-line">
           <div class="company-name">${escapeHtml(company)}</div>
           <div class="verified" title="Verified employer">✓</div>

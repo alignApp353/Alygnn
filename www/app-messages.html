@@ -1189,6 +1189,22 @@ html[data-effective-theme="dark"] .messages-boot-track{background:#293545}
 </style>
 
 
+<style id="alygnn-employer-messages-bell-count-fix-v33">
+/* Employer Messages uses the same unread notification count as Employer Dashboard.
+   Merely opening Messages must never clear or conceal other unread alerts. */
+body.employer-mode #employer-header-notification{position:relative}
+body.employer-mode .employer-messages-notification-badge{
+  position:absolute;top:-5px;right:-7px;
+  min-width:20px;height:20px;padding:0 4px;
+  border-radius:999px;background:#B74F66;color:#fff;
+  border:2px solid var(--card);box-sizing:border-box;
+  display:flex;align-items:center;justify-content:center;
+  font:800 10px/1 'DM Sans',Arial,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+.employer-messages-notification-badge[hidden]{display:none!important}
+</style>
+
 <style id="alygnn-employer-messages-nav-exact-match">
 /* Employer Messages must use the exact same bottom navigation geometry as
    app-employer-dashboard.html so the icons never change between tabs. */
@@ -1398,6 +1414,7 @@ html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .mes
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
         <path d="M10 21h4"></path>
       </svg>
+      <span class="employer-messages-notification-badge" id="employer-messages-notification-count" hidden>0</span>
     </button>
   </div>
 
@@ -1638,6 +1655,34 @@ function renderNav(){
       navButton('settings','Settings','app-account.html#settings');
   }
 }
+
+/* Employer bell count: keep this page consistent with Employer Dashboard.
+ * Only reads notifications: no read_at writes and no message state changes. */
+async function refreshEmployerMessagesNotificationBadge(){
+  if(role!=='employer' || !session?.user?.id) return;
+  const badge=$('employer-messages-notification-count');
+  if(!badge)return;
+  try{
+    const {count,error}=await sb.from('notifications')
+      .select('id',{head:true,count:'exact'})
+      .eq('recipient_id',session.user.id)
+      .is('read_at',null);
+    if(error)throw error;
+    const unread=Math.max(0,Number(count)||0);
+    badge.textContent=unread>99?'99+':String(unread);
+    badge.hidden=unread===0;
+    $('employer-header-notification')?.setAttribute('aria-label',
+      unread?`Notifications (${unread} unread)`:'Notifications');
+  }catch(error){
+    // Preserve the last known count rather than showing a false zero.
+    console.warn('Employer Messages notification count unavailable:',error);
+  }
+}
+window.addEventListener('pageshow',refreshEmployerMessagesNotificationBadge);
+window.addEventListener('focus',refreshEmployerMessagesNotificationBadge);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')refreshEmployerMessagesNotificationBadge();
+});
 
 function initials(value){
   return String(value||'A')
@@ -3040,6 +3085,7 @@ $('employer-header-notification').onclick=()=>{
         :'Search employer or job';
 
     renderNav();
+    if(role==='employer')void refreshEmployerMessagesNotificationBadge();
     await load();
     realtime();
     finishMessagesBoot();
