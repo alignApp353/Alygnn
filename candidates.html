@@ -1744,7 +1744,7 @@ async function loadData(){
   const jobIds=jobs.map(j=>j.id);
   const {data:apps,error:appsError}=await sb
     .from('applications')
-    .select('id,job_id,candidate_id,status,applied_at')
+    .select('id,job_id,candidate_id,status,employer_pipeline_status,applied_at')
     .in('job_id',jobIds)
     .order('applied_at',{ascending:false});
 
@@ -1774,9 +1774,20 @@ async function loadData(){
     const profile=profileMap[app.candidate_id]||null;
     if(!job||!profile)return null;
     const match=calculateMatch(job,profile);
+    const outcomeStatus=String(app.status||'applied').toLowerCase();
+    const pipelineStatus=String(app.employer_pipeline_status||'').toLowerCase();
+    // Employer-side Shortlisted / Reviewed should be shared with the iOS app.
+    // A final Accept / Pass / Hired outcome always takes precedence.
+    const displayStatus=['accepted','rejected','hired'].includes(outcomeStatus)
+      ? outcomeStatus
+      : ['shortlisted','reviewed'].includes(pipelineStatus)
+        ? pipelineStatus
+        : outcomeStatus;
     return {
       applicationId:app.id,
-      status:app.status||'applied',
+      status:displayStatus,
+      outcomeStatus,
+      employerPipelineStatus:pipelineStatus,
       appliedAt:app.applied_at,
       job,
       profile,
@@ -2173,6 +2184,11 @@ function renderCandidate(c,showJobContext=false){
         <button class="btn" onclick="openProfile('${c.applicationId}')">View profile</button>
         ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
         ${['applied','submitted','pending'].includes(String(c.status||'applied').toLowerCase())?`<button class="btn" onclick="updateStatus('${c.applicationId}','reviewed')">Mark under review</button>`:''}
+        ${!['accepted','rejected','hired'].includes(String(c.status||'').toLowerCase())
+          ? c.status==='shortlisted'
+            ? `<button class="btn" onclick="updateShortlist('${c.applicationId}',false)">Remove shortlist</button>`
+            : `<button class="btn" onclick="updateShortlist('${c.applicationId}',true)">Shortlist</button>`
+          : ''}
         <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted')">Accept</button>
         <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected')">Pass</button>
       </div>
@@ -2298,6 +2314,11 @@ function openProfile(applicationId){
     <div class="profile-actions">
       ${candidateCanMessage()?`<button class="btn" onclick="window.location.href='messages.html?application=${encodeURIComponent(c.applicationId)}&job=${encodeURIComponent(c.job.id)}'">Message</button>`:''}
       ${['applied','submitted','pending'].includes(String(c.status||'applied').toLowerCase())?`<button class="btn" onclick="updateStatus('${c.applicationId}','reviewed'); closeProfile();">Mark under review</button>`:''}
+      ${!['accepted','rejected','hired'].includes(String(c.status||'').toLowerCase())
+        ? c.status==='shortlisted'
+          ? `<button class="btn" onclick="updateShortlist('${c.applicationId}',false); closeProfile();">Remove shortlist</button>`
+          : `<button class="btn" onclick="updateShortlist('${c.applicationId}',true); closeProfile();">Shortlist</button>`
+        : ''}
       <button class="btn accept" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','accepted'); closeProfile();">Accept</button>
       <button class="btn pass" ${isDecided?'disabled':''} onclick="updateStatus('${c.applicationId}','rejected'); closeProfile();">Pass</button>
     </div>
@@ -2329,6 +2350,31 @@ async function openResume(path,btn){
   }finally{
     btn.disabled=false;btn.textContent=old;
   }
+}
+
+async function updateShortlist(applicationId,shouldShortlist){
+  const c=candidates.find(item=>item.applicationId===applicationId);
+  if(!c || ['accepted','rejected','hired'].includes(String(c.status||'').toLowerCase()))return;
+
+  // Match the employer app's pipeline: shortlist changes employer_pipeline_status,
+  // not the candidate's actual application outcome.
+  const nextStatus=shouldShortlist?'shortlisted':'reviewed';
+  const {data,error}=await sb
+    .from('applications')
+    .update({employer_pipeline_status:nextStatus})
+    .eq('id',applicationId)
+    .select('id,employer_pipeline_status')
+    .maybeSingle();
+  if(error || !data){
+    console.error('Could not update applicant shortlist:',error||'No application updated');
+    showToast('Could not update shortlist. Please try again.');
+    return;
+  }
+
+  c.employerPipelineStatus=data.employer_pipeline_status||nextStatus;
+  c.status=nextStatus;
+  showToast(shouldShortlist?'Applicant shortlisted.':'Applicant moved to under review.');
+  renderGroups();
 }
 
 async function updateStatus(applicationId,status){
