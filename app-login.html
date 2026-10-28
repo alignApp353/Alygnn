@@ -3,36 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#F6F8F7">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F6F8F7" id="alygnn-theme-color">
 <title>Candidate Login | Alygnn</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+
+<script id="alygnn-theme-critical">
 (function(){
-  const media=window.matchMedia('(prefers-color-scheme: dark)');
-
-  function applySystemTheme(){
-    const effective=media.matches?'dark':'light';
-
-    document.documentElement.dataset.effectiveTheme=effective;
-
-    const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta){
-      meta.setAttribute(
-        'content',
-        effective==='dark'
-          ?'#071722'
-          :'#F6F8F7'
-      );
-    }
+  const ACCOUNT_THEME_TYPE='candidate';
+  const media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function normalize(value){
+    value=String(value||'').toLowerCase().trim();
+    if(value==='system'||value==='system-default'||value==='default') return 'auto';
+    return ['auto','light','dark'].includes(value)?value:'';
   }
-
-  applySystemTheme();
-  media.addEventListener?.('change',applySystemTheme);
+  function read(key){try{return localStorage.getItem(key)}catch(_error){return null}}
+  function write(key,value){try{localStorage.setItem(key,value)}catch(_error){}}
+  function preference(){
+    let pref=normalize(read('alygnnTheme'));
+    if(pref) return pref;
+    const keys=ACCOUNT_THEME_TYPE==='employer'
+      ? ['alygnnEmployerTheme','alygnn_employer_theme']
+      : ['alygnnCandidateTheme','alygnn_candidate_theme'];
+    for(const key of keys){
+      pref=normalize(read(key));
+      if(pref){write('alygnnTheme',pref);return pref;}
+    }
+    for(const key of ['alygnn_theme','alygnn-theme']){
+      pref=normalize(read(key));
+      if(pref){write('alygnnTheme',pref);return pref;}
+    }
+    return 'auto';
+  }
+  function resolved(){
+    const pref=preference();
+    if(pref==='dark'||pref==='light') return pref;
+    return media&&media.matches?'dark':'light';
+  }
+  function apply(){
+    const pref=preference();
+    const theme=resolved();
+    const root=document.documentElement;
+    root.dataset.theme=theme;
+    root.dataset.themePreference=pref;
+    root.dataset.effectiveTheme=theme;
+    root.style.colorScheme=theme;
+    root.style.backgroundColor=theme==='dark'?'#061821':'#F6F8F7';
+    const meta=document.getElementById('alygnn-theme-color');
+    if(meta)meta.setAttribute('content',theme==='dark'?'#061821':'#F6F8F7');
+  }
+  apply();
+  if(media){
+    const onChange=()=>{if(preference()==='auto')apply();};
+    media.addEventListener?.('change',onChange);
+    if(!media.addEventListener)media.addListener?.(onChange);
+  }
+  window.addEventListener('pageshow',apply);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)apply();});
+  window.addEventListener('storage',event=>{
+    if(['alygnnTheme','alygnnEmployerTheme','alygnnCandidateTheme','alygnn_theme','alygnn-theme','alygnn_employer_theme','alygnn_candidate_theme'].includes(event.key))apply();
+  });
+  window.AlygnnTheme={apply,preference,resolved};
 })();
 </script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'DM Sans',Arial,sans-serif!important}
 :root{--brand:#5D7FA3;--sage:#8CB69B;--bg:#F6F8F7;--text:#172333;--muted:#59697A;--border:#DDE3E8;--accent:#3568C0;--accent-dark:#2857A8;--accent-bg:#EAF1FC;--danger:#B64040;--danger-bg:#FCEDED;--success:#18794E;--success-bg:#E8F6EE}
@@ -41,7 +78,9 @@ body{min-height:100vh;background:radial-gradient(circle at 12% 8%,rgba(140,182,1
 button,input,a{font:inherit}
 .page{width:100%;max-width:520px;min-height:100vh;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .topbar{min-height:51px;display:grid;grid-template-columns:48px 1fr 48px;align-items:center}
-.back-btn{width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--text);font-size:21px;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 16px rgba(23,35,51,.06)}
+.back-btn{width:46px;height:46px;border:1px solid #D7E0E6;border-radius:50%;background:rgba(255,255,255,.88);color:#31475A;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(23,35,51,.08);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .16s ease,background .16s ease,border-color .16s ease}
+.back-btn svg{width:20px;height:20px;display:block}
+.back-btn:active{transform:scale(.94)}
 .brand{text-align:center;font-family:'DM Serif Display',Georgia,serif!important;font-size:31px;color:var(--brand)}
 .brand span{color:var(--sage)}
 .login{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px 0 14px}
@@ -70,88 +109,107 @@ input::placeholder{color:#98A2AD}
 .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
 .social{width:100%;min-height:54px;margin-top:10px;border:1px solid var(--border);border-radius:17px;background:#fff;color:var(--text);display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;font-weight:900}
 .social:first-of-type{margin-top:0}
-.google-mark{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:900;color:#4285F4}
-.apple-mark{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif!important;font-size:23px;line-height:1;font-weight:500}
-[hidden]{display:none!important}
+.google-mark{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 21px}.google-mark svg{width:21px;height:21px;display:block}
+.apple-mark{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 21px}.apple-mark svg{width:21px;height:21px;display:block}
 .signup{margin-top:25px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
 .signup a{color:var(--accent-dark);text-decoration:none;font-weight:900}
 .switch{margin-top:15px;text-align:center}
-.switch-btn{border:none;background:transparent;color:var(--accent-dark);font-size:12px;font-weight:900}
+.switch-btn{border:none;background:transparent;color:var(--brand);font-size:12px;font-weight:900}
 @media(max-height:760px){.login{justify-content:flex-start;padding-top:15px}.identity-icon{width:61px;height:61px}h1{font-size:27px;margin-top:13px}.form{margin-top:23px}.field{margin-top:13px}.input-wrap{min-height:51px}.primary{min-height:52px;margin-top:17px}.divider{margin:18px 0 11px}.social{min-height:49px;margin-top:8px}.signup{margin-top:17px}}
 
-html[data-effective-theme="dark"]{
-  --bg:#071722;
-  --text:#F4F7FA;
-  --muted:#A3B1BF;
-  --border:#2A3B49;
-  --accent:#4E7ED8;
-  --accent-dark:#7FA9F3;
-  --accent-bg:#1B3150;
-  --danger:#F3A4A4;
-  --danger-bg:#321D22;
-  --success:#74D5A5;
-  --success-bg:#123126;
+/* Alygnn app-wide appearance sync */
+html[data-theme="dark"]{
+  color-scheme:dark;
 }
 
-html[data-effective-theme="dark"] body{
+html[data-theme="dark"] body{
+  --brand:#6F96BE;
+  --sage:#8FC6A2;
+  --bg:#061821;
+  --text:#F3F7FA;
+  --muted:#A9B8C5;
+  --border:#29404C;
+  --accent:#5D86B1;
+  --accent-dark:#79A7D5;
+  --accent-bg:rgba(93,134,177,.18);
+  --danger:#F08D94;
+  --danger-bg:#3B171B;
+  --success:#83D6A6;
+  --success-bg:#123326;
+
   background:
-    radial-gradient(circle at 12% 8%,rgba(140,182,155,.09),transparent 28%),
+    radial-gradient(circle at 12% 8%,rgba(140,182,155,.08),transparent 28%),
     radial-gradient(circle at 90% 84%,rgba(93,127,163,.12),transparent 31%),
-    var(--bg);
+    #061821;
 }
 
-html[data-effective-theme="dark"] .back-btn,
-html[data-effective-theme="dark"] .input-wrap,
-html[data-effective-theme="dark"] .social{
-  background:#0F202C;
-  color:var(--text);
+html[data-theme="dark"] .back-btn{background:rgba(15,37,48,.92);color:#EAF2F7;border-color:#2D4653;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+
+html[data-theme="dark"] .identity-icon{
+  color:#79A7D5;
+  background:rgba(93,134,177,.18);
 }
 
-html[data-effective-theme="dark"] .input-wrap{
-  border-color:var(--border);
+html[data-theme="dark"] .input-wrap{
+  background:#0B1D26;
+  border-color:#29404C;
 }
 
-html[data-effective-theme="dark"] .input-wrap:focus-within{
-  border-color:#5E8AB7;
-  box-shadow:0 0 0 4px rgba(93,127,163,.16);
+html[data-theme="dark"] input{
+  color:#F3F7FA;
 }
 
-html[data-effective-theme="dark"] .field-icon,
-html[data-effective-theme="dark"] .show-btn{
-  color:#91A3B4;
+html[data-theme="dark"] input::placeholder{
+  color:#718391;
 }
 
-html[data-effective-theme="dark"] input::placeholder{
-  color:#728597;
+html[data-theme="dark"] .field-icon,
+html[data-theme="dark"] .show-btn,
+html[data-theme="dark"] .divider{
+  color:#A9B8C5;
 }
 
-html[data-effective-theme="dark"] .divider{
-  color:#778A9A;
+html[data-theme="dark"] .social{
+  background:#10232D;
+  border-color:#29404C;
+  color:#F3F7FA;
 }
 
-html[data-effective-theme="dark"] .social{
-  border-color:var(--border);
+html[data-theme="dark"] .divider::before,
+html[data-theme="dark"] .divider::after{
+  background:#29404C;
 }
 
-html[data-effective-theme="dark"] .identity-icon{
-  color:#7FA9F3;
-  background:#1B3150;
-}
-
-html[data-effective-theme="dark"] .primary{
-  background:#3D73CF;
-}
-
-html[data-effective-theme="dark"] .back-btn{
+html[data-theme="dark"] .primary{
+  background:#5D86B1;
   box-shadow:none;
+}
+
+html[data-theme="dark"] .message.error{
+  color:#F08D94;
+  background:#3B171B;
+}
+
+html[data-theme="dark"] .message.success{
+  color:#83D6A6;
+  background:#123326;
+}
+
+html[data-theme="dark"] .signup a,
+html[data-theme="dark"] .forgot{
+  color:#79A7D5;
+}
+
+html[data-theme="dark"] .switch-btn{
+  color:#8EB4DA;
 }
 
 </style>
 </head>
-<body>
+<body data-candidate-login-build="2026-09-07-match-employer-design">
 <main class="page">
 <header class="topbar">
-<button class="back-btn" id="back-btn" type="button" aria-label="Go back">←</button>
+<button class="back-btn" id="back-btn" type="button" aria-label="Go back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
 <div class="brand">Alygnn<span>.</span></div><div></div>
 </header>
 <section class="login">
@@ -160,7 +218,7 @@ html[data-effective-theme="dark"] .back-btn{
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21c.7-4.1 3.2-6.2 7.5-6.2s6.8 2.1 7.5 6.2"></path></svg>
 </div>
 <h1>Welcome back</h1>
-<p class="subtitle">Sign in to continue your job search.</p>
+<p class="subtitle">Sign in to continue your job search and applications.</p>
 </div>
 <div class="form">
 <div class="field">
@@ -179,266 +237,445 @@ html[data-effective-theme="dark"] .back-btn{
 <div id="message" class="message" aria-live="polite"></div>
 <button class="primary" id="sign-in-btn" type="button">Sign in</button>
 <div class="divider">or continue with</div>
-<button class="social" id="google-btn" type="button"><span class="google-mark">G</span><span>Continue with Google</span></button>
-<button class="social" id="apple-btn" type="button" aria-label="Continue with Apple" hidden>
-  <span class="apple-mark" aria-hidden="true"></span><span>Continue with Apple</span>
-</button>
+<button class="social" id="google-btn" type="button"><span class="google-mark" aria-hidden="true">
+  <svg viewBox="0 0 24 24" role="img" focusable="false">
+    <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38z"/>
+    <path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.6A10 10 0 0 0 12 22z"/>
+    <path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.07 12c0-.67.11-1.31.32-1.93v-2.6H3.04A10 10 0 0 0 2 12c0 1.61.39 3.13 1.04 4.53l3.35-2.6z"/>
+    <path fill="#EA4335" d="M12 5.94c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.96 2.94 14.7 2 12 2a10 10 0 0 0-8.96 5.47l3.35 2.6C7.18 7.7 9.39 5.94 12 5.94z"/>
+  </svg>
+</span><span>Continue with Google</span></button>
+<button class="social" id="apple-btn" type="button"><span class="apple-mark" aria-hidden="true"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true"><path fill="currentColor" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.4c1.39.07 2.36.74 3.18.8 1.21-.24 2.37-.93 3.67-.84 1.58.13 2.77.79 3.53 1.98-3.25 1.94-2.48 6.18.57 7.37-.67 1.63-1.53 3.24-2.95 3.57zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg></span><span>Continue with Apple</span></button>
 <div class="signup">Don’t have an account? <a href="app-create-account.html">Create one</a></div>
 <div class="switch"><button class="switch-btn" id="switch-btn" type="button">Switch to employer sign in</button></div>
 </div></section></main>
 <script>
-const sb=supabase.createClient('https://auth.alygnn.com','sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const sb=supabase.createClient(
+  'https://auth.alygnn.com',
+  'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+
 const ACCOUNT_TYPE='candidate';
-window.__ALYGNN_LOGIN_BUILD='ios-apple-v2';
-console.log('ALYGNN_LOGIN_BUILD: ios-apple-v2');
+const WORKSPACE_PAGE='app-workspaces.html?after_login=1&preferred=candidate';
 
-const ALYGNN_NATIVE_OAUTH_REDIRECT='alygnn://auth/callback';
+function showMessage(text,type){
+  const m=document.getElementById('message');
+  m.textContent=text;
+  m.className='message '+type;
+}
 
-function isNativeCapacitor(){
+function setLoading(button,loading,loadingText,normalText){
+  button.disabled=loading;
+  button.textContent=loading?loadingText:normalText;
+}
+
+function friendlyError(error){
+  const raw=String(error?.message||'').toLowerCase();
+  if(raw.includes('invalid login credentials')||raw.includes('invalid credentials'))return'Incorrect email or password. Please try again.';
+  if(raw.includes('email not confirmed')||raw.includes('confirm your email'))return'Please verify your email before signing in.';
+  if(raw.includes('fetch')||raw.includes('network')||raw.includes('failed to fetch'))return'Unable to connect. Please check your internet connection.';
+  if(raw.includes('too many requests')||raw.includes('rate limit'))return'Too many attempts. Please wait a few minutes and try again.';if(raw.includes('main activity')||raw.includes('scopes without modifying'))return'Google sign-in could not start. Please update Alygnn and try again.';
+  return error?.message||'Unable to sign in. Please try again.';
+}
+
+async function redirectIfLoggedIn(){
+  const params=new URLSearchParams(location.search);
+  if(params.has('logout'))return;
+
+  const {data}=await sb.auth.getSession();
+  if(data?.session){
+    location.replace(WORKSPACE_PAGE);
+  }
+}
+
+async function signIn(){
+  const email=document.getElementById('email').value.trim().toLowerCase();
+  const password=document.getElementById('password').value;
+  const button=document.getElementById('sign-in-btn');
+
+  if(!email){
+    showMessage('Please enter your email address.','error');
+    return;
+  }
+
+  if(!password){
+    showMessage('Please enter your password.','error');
+    return;
+  }
+
+  setLoading(button,true,'Signing in…','Sign in');
+
+  const {error}=await sb.auth.signInWithPassword({email,password});
+
+  if(error){
+    showMessage(friendlyError(error),'error');
+    setLoading(button,false,'Signing in…','Sign in');
+    return;
+  }
+
+  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
+  showMessage('Welcome back. Checking your workspaces…','success');
+
+  setTimeout(()=>location.replace(WORKSPACE_PAGE),300);
+}
+
+const GOOGLE_WEB_CLIENT_ID='725784285039-f3a7u1r21l9a5vgqd5phqif8uadkk11r.apps.googleusercontent.com';
+const SUPABASE_FUNCTIONS_URL='https://auth.alygnn.com/functions/v1';
+const SUPABASE_PUBLIC_KEY='sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG';
+let socialLoginPlugin=null;
+let socialLoginInitialized=false;
+
+function nativePlatform(){
+  try{return window.Capacitor?.getPlatform?.() || ''}catch(_){return ''}
+}
+
+function isNativeAlygnnApp(){
   try{
-    return !!(
-      window.Capacitor &&
-      typeof window.Capacitor.isNativePlatform==='function' &&
-      window.Capacitor.isNativePlatform()
+    if(window.Capacitor?.isNativePlatform?.())return true;
+    return nativePlatform()==='android' || nativePlatform()==='ios';
+  }catch(_){return false}
+}
+
+function isAndroidNative(){
+  return nativePlatform()==='android';
+}
+
+function getSocialLoginPlugin(){
+  if(socialLoginPlugin)return socialLoginPlugin;
+
+  const cap=window.Capacitor;
+  if(!cap || !cap.isNativePlatform?.()){
+    throw new Error('Native Google sign-in is only available inside the Alygnn app.');
+  }
+
+  // Plain HTML Capacitor apps do not always expose registerPlugin() on
+  // window.Capacitor. Prefer the native plugin proxy Capacitor injects.
+  if(cap.Plugins?.SocialLogin){
+    socialLoginPlugin=cap.Plugins.SocialLogin;
+    return socialLoginPlugin;
+  }
+
+  // Keep compatibility with builds that do expose registerPlugin().
+  if(typeof cap.registerPlugin==='function'){
+    socialLoginPlugin=cap.registerPlugin('SocialLogin');
+    return socialLoginPlugin;
+  }
+
+  // Last-resort direct Capacitor bridge for non-bundled/plain HTML builds.
+  if(typeof cap.nativePromise==='function'){
+    socialLoginPlugin={
+      initialize:(options)=>cap.nativePromise('SocialLogin','initialize',options||{}),
+      login:(options)=>cap.nativePromise('SocialLogin','login',options||{}),
+      logout:(options)=>cap.nativePromise('SocialLogin','logout',options||{})
+    };
+    return socialLoginPlugin;
+  }
+
+  throw new Error('Google sign-in could not connect to the native Alygnn bridge. Reopen the app after syncing Android.');
+}
+
+async function ensureNativeGoogleInitialized(){
+  if(socialLoginInitialized)return getSocialLoginPlugin();
+  const plugin=getSocialLoginPlugin();
+  await plugin.initialize({
+    google:{
+      webClientId:GOOGLE_WEB_CLIENT_ID,
+      mode:'online'
+    }
+  });
+  socialLoginInitialized=true;
+  return plugin;
+}
+
+async function validateGoogleIntent(session,intent='login'){
+  if(!session?.access_token)throw new Error('Google sign-in did not create an Alygnn session.');
+
+  const response=await fetch(SUPABASE_FUNCTIONS_URL+'/validate-google-login',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_PUBLIC_KEY,
+      'Authorization':'Bearer '+session.access_token
+    },
+    body:JSON.stringify({
+      intent:intent==='signup'?'signup':'login'
+    })
+  });
+
+  let payload={};
+  try{payload=await response.json()}catch(_){}
+  if(!response.ok)throw new Error(payload.error||'Could not verify this Google account.');
+  return payload;
+}
+
+async function signOutRejectedGoogle(plugin){
+  try{await sb.auth.signOut({scope:'local'})}catch(_){}
+  try{await plugin?.logout?.({provider:'google'})}catch(_){}
+}
+
+async function candidateGoogleAccessAllowed(user){
+  try{
+    const {data,error}=
+      await sb.rpc(
+        'get_my_workspace_context'
+      );
+
+    if(!error && data && typeof data==='object'){
+      if(data.has_candidate===true){
+        return true;
+      }
+
+      if(
+        data.authenticated===true &&
+        data.has_candidate===false
+      ){
+        return false;
+      }
+    }
+  }catch(error){
+    console.warn(
+      'Candidate workspace check failed:',
+      error
     );
-  }catch(_error){
+  }
+
+  const role=String(
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+
+  return ![
+    'employer',
+    'employer_team',
+    'team_member'
+  ].includes(role);
+}
+
+async function candidateGoogleAccountState(user){
+  let profile=null;
+
+  try{
+    const {data,error}=await sb
+      .from('profiles')
+      .select('role,resume_file_path,resume_data,preferences')
+      .eq('id',user.id)
+      .maybeSingle();
+
+    if(!error){
+      profile=data||null;
+    }
+  }catch(error){
+    console.warn('Could not read candidate Google profile:',error);
+  }
+
+  const role=String(
+    profile?.role||
+    user?.user_metadata?.account_type||
+    user?.user_metadata?.role||
+    user?.app_metadata?.account_type||
+    user?.app_metadata?.role||
+    ''
+  ).toLowerCase().trim();
+
+  if(
+    role==='employer'||
+    role==='employer_team'||
+    role==='team_member'
+  ){
+    return {kind:'employer',role};
+  }
+
+  const identities=Array.isArray(user?.identities)?user.identities:[];
+  const hasEmailIdentity=identities.some(identity=>identity?.provider==='email');
+  const registered=user?.app_metadata?.alygnn_registered===true;
+
+  const hasCandidateData=Boolean(
+    profile?.resume_file_path||
+    profile?.resume_data||
+    profile?.preferences
+  );
+
+  const createdAt=Date.parse(user?.created_at||'');
+  const legacyCandidate=
+    Number.isFinite(createdAt) &&
+    Date.now()-createdAt>60*60*1000 &&
+    ['candidate','seeker','employee'].includes(role);
+
+  if(
+    registered||
+    hasEmailIdentity||
+    hasCandidateData||
+    legacyCandidate
+  ){
+    return {kind:'candidate',role};
+  }
+
+  return {kind:'new',role};
+}
+
+async function createCandidateFromGoogle(session,user){
+  const validation=await validateGoogleIntent(session,'signup');
+
+  if(!validation?.allowed){
+    throw new Error('Alygnn could not create your candidate account with Google.');
+  }
+
+  const fullName=String(
+    user?.user_metadata?.full_name||
+    user?.user_metadata?.name||
+    ''
+  ).trim();
+
+  const {data:updateData,error:updateError}=await sb.auth.updateUser({
+    data:{
+      ...(user?.user_metadata||{}),
+      full_name:fullName,
+      name:fullName,
+      account_type:'candidate',
+      role:'candidate',
+      accepted_terms:true,
+      accepted_privacy:true,
+      EmailFlow:'google'
+    }
+  });
+
+  if(updateError)throw updateError;
+
+  const savedUser=updateData?.user||user;
+
+  const {error:profileError}=await sb
+    .from('profiles')
+    .upsert(
+      {
+        id:savedUser.id,
+        role:'candidate',
+        full_name:fullName
+      },
+      {onConflict:'id'}
+    );
+
+  if(profileError){
+    console.warn('Candidate Google profile save warning:',profileError);
+  }
+
+  localStorage.setItem('alygnn_account_type','candidate');
+  return savedUser;
+}
+
+async function nativeGoogleLogin(button){
+  const plugin=await ensureNativeGoogleInitialized();
+
+  const login=await plugin.login({
+    provider:'google',
+    options:{
+      filterByAuthorizedAccounts:false
+    }
+  });
+
+  const idToken=login?.result?.idToken;
+  if(!idToken){
+    throw new Error('Google did not return a valid sign-in token.');
+  }
+
+  const {data,error}=await sb.auth.signInWithIdToken({
+    provider:'google',
+    token:idToken
+  });
+
+  if(error)throw error;
+
+  const session=
+    data?.session||
+    (await sb.auth.getSession()).data?.session;
+
+  const user=data?.user||session?.user;
+
+  if(!session?.user){
+    throw new Error('Google sign-in did not finish. Please try again.');
+  }
+
+  const state=await candidateGoogleAccountState(user);
+
+  if(state.kind==='employer'){
+    await signOutRejectedGoogle(plugin);
+    showMessage(
+      'This Google account is connected to an employer workspace. Please use Employer Sign In.',
+      'error'
+    );
     return false;
   }
-}
 
-function capacitorPlatform(){
-  try{
-    if(window.Capacitor && typeof window.Capacitor.getPlatform==='function'){
-      return window.Capacitor.getPlatform();
-    }
-  }catch(_error){}
-  return 'web';
-}
-
-function isIOSCapacitor(){
-  return isNativeCapacitor() && capacitorPlatform()==='ios';
-}
-
-function nativePlugin(name){
-  return window.Capacitor?.Plugins?.[name] || null;
-}
-
-function callbackParams(url){
-  const parsed=new URL(url);
-  const query=parsed.searchParams;
-  const hash=new URLSearchParams((parsed.hash||'').replace(/^#/,''));
-
-  return {
-    accessToken:hash.get('access_token')||query.get('access_token'),
-    refreshToken:hash.get('refresh_token')||query.get('refresh_token'),
-    code:query.get('code')||hash.get('code'),
-    error:query.get('error_description')||hash.get('error_description')||
-      query.get('error')||hash.get('error')
-  };
-}
-
-async function consumeNativeOAuthCallback(url){
-  if(!url || !url.startsWith(ALYGNN_NATIVE_OAUTH_REDIRECT)) return false;
-
-  const params=callbackParams(url);
-
-  if(params.error){
-    throw new Error(decodeURIComponent(params.error.replace(/\+/g,' ')));
-  }
-
-  if(params.accessToken && params.refreshToken){
-    const {error}=await sb.auth.setSession({
-      access_token:params.accessToken,
-      refresh_token:params.refreshToken
-    });
-    if(error) throw error;
-  }else if(params.code){
-    const {error}=await sb.auth.exchangeCodeForSession(params.code);
-    if(error) throw error;
+  if(state.kind==='new'){
+    await createCandidateFromGoogle(session,user);
+    showMessage('Google account created. Opening Alygnn…','success');
   }else{
-    throw new Error('Google sign-in returned to Alygnn without a session.');
+    localStorage.setItem('alygnn_account_type','candidate');
+    showMessage('Welcome back. Opening Alygnn…','success');
   }
 
-  try{
-    const Browser=nativePlugin('Browser');
-    if(Browser?.close) await Browser.close();
-  }catch(_error){}
+  setTimeout(
+    ()=>location.replace(WORKSPACE_PAGE),
+    250
+  );
 
   return true;
 }
 
-function oauthShow(text,type='error'){
-  if(typeof showMessage==='function') showMessage(text,type);
-}
-
-
-const TARGET_PAGE='app-account.html';
-function showMessage(text,type){const m=document.getElementById('message');m.textContent=text;m.className='message '+type}
-function setLoading(b,l,lt,nt){b.disabled=l;b.textContent=l?lt:nt}
-function friendlyError(error){const raw=String(error?.message||'').toLowerCase();if(raw.includes('invalid login credentials')||raw.includes('invalid credentials'))return'Incorrect email or password. Please try again.';if(raw.includes('email not confirmed')||raw.includes('confirm your email'))return'Please verify your email before signing in.';if(raw.includes('fetch')||raw.includes('network')||raw.includes('failed to fetch'))return'Unable to connect. Please check your internet connection.';if(raw.includes('too many requests')||raw.includes('rate limit'))return'Too many attempts. Please wait a few minutes and try again.';return error?.message||'Unable to sign in. Please try again.'}
-async function redirectIfLoggedIn(){const params=new URLSearchParams(location.search);if(params.has('logout'))return;const {data}=await sb.auth.getSession();if(data.session)location.replace(TARGET_PAGE)}
-async function signIn(){const email=document.getElementById('email').value.trim().toLowerCase();const password=document.getElementById('password').value;const button=document.getElementById('sign-in-btn');if(!email){showMessage('Please enter your email address.','error');return}if(!password){showMessage('Please enter your password.','error');return}setLoading(button,true,'Signing in…','Sign in');const {error}=await sb.auth.signInWithPassword({email,password});if(error){showMessage(friendlyError(error),'error');setLoading(button,false,'Signing in…','Sign in');return}localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);showMessage('Welcome back. Redirecting…','success');setTimeout(()=>location.replace(TARGET_PAGE),450)}
 async function googleLogin(){
   const button=document.getElementById('google-btn');
-  setLoading(button,true,'Opening Google…','Continue with Google');
+  const original=button.innerHTML;
+  button.disabled=true;
+  button.textContent='Signing in with Google…';
   localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
 
   try{
-    if(isNativeCapacitor()){
-      const {data,error}=await sb.auth.signInWithOAuth({
-        provider:'google',
-        options:{
-          redirectTo:ALYGNN_NATIVE_OAUTH_REDIRECT,
-          skipBrowserRedirect:true
-        }
-      });
-
-      if(error) throw error;
-      if(!data?.url) throw new Error('Unable to open Google sign-in.');
-
-      const Browser=nativePlugin('Browser');
-
-      if(Browser?.open){
-        await Browser.open({
-          url:data.url,
-          toolbarColor:'#071722'
-        });
-      }else{
-        window.location.href=data.url;
-      }
-
-      return;
+    // app-login.html is a native-app page. Never fall back to web OAuth here.
+    // This prevents Google sign-in from opening alygnn.com/Chrome.
+    if(!isNativeAlygnnApp()){
+      throw new Error('Google sign-in is available inside the Alygnn mobile app.');
     }
-
-    const {error}=await sb.auth.signInWithOAuth({
-      provider:'google',
-      options:{redirectTo:'https://alygnn.com/app-account.html'}
-    });
-
-    if(error) throw error;
-
+    const completed=await nativeGoogleLogin(button);
+    if(!completed){
+      button.disabled=false;
+      button.innerHTML=original;
+    }
+    return;
   }catch(error){
-    showMessage(friendlyError(error),'error');
-    setLoading(button,false,'Opening Google…','Continue with Google');
+    console.error('Google sign-in failed:',error);
+    const raw=String(error?.message||error||'').toLowerCase();
+    const cancelled=raw.includes('cancel')||raw.includes('user_cancelled')||raw.includes('canceled');
+    showMessage(cancelled?'Google sign-in was canceled.':friendlyError(error),'error');
+    button.disabled=false;
+    button.innerHTML=original;
   }
 }
 
-function randomNonce(length=32){
-  const chars='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
-  const bytes=new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes,b=>chars[b%chars.length]).join('');
+function applyPlatformLoginUI(){
+  const apple=document.getElementById('apple-btn');
+  if(apple && isAndroidNative())apple.style.display='none';
 }
 
-async function sha256Hex(value){
-  const bytes=new TextEncoder().encode(value);
-  const digest=await crypto.subtle.digest('SHA-256',bytes);
-  return Array.from(new Uint8Array(digest))
-    .map(b=>b.toString(16).padStart(2,'0'))
-    .join('');
-}
 
-async function appleLogin(){
-  const button=document.getElementById('apple-btn');
-  setLoading(button,true,'Opening Apple…','Continue with Apple');
-  localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-
-  try{
-    if(!isIOSCapacitor()){
-      throw new Error('Continue with Apple is only available in the Alygnn iOS app.');
-    }
-
-    const AppleSignIn=nativePlugin('AppleSignIn');
-    if(!AppleSignIn?.signIn){
-      throw new Error('Apple sign-in plugin is not installed. Run: npm install @capawesome/capacitor-apple-sign-in && npx cap sync ios');
-    }
-
-    // Supabase expects the raw nonce while Apple receives its SHA-256 hash.
-    const rawNonce=randomNonce();
-    const hashedNonce=await sha256Hex(rawNonce);
-
-    const result=await AppleSignIn.signIn({
-      scopes:['EMAIL','FULL_NAME'],
-      nonce:hashedNonce
-    });
-
-    if(!result?.idToken){
-      throw new Error('Apple did not return an identity token.');
-    }
-
-    const {data,error}=await sb.auth.signInWithIdToken({
-      provider:'apple',
-      token:result.idToken,
-      nonce:rawNonce
-    });
-    if(error) throw error;
-    if(!data?.session) throw new Error('Apple sign-in completed, but no Alygnn session was created.');
-
-    localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-    showMessage('Apple sign-in successful. Opening Alygnn…','success');
-    setTimeout(()=>location.replace(TARGET_PAGE),350);
-  }catch(error){
-    const raw=String(error?.message||error||'');
-    const lower=raw.toLowerCase();
-    if(lower.includes('cancel') || lower.includes('canceled') || lower.includes('cancelled')){
-      showMessage('Apple sign-in was cancelled.','error');
-    }else{
-      showMessage(friendlyError(error),'error');
-    }
-    setLoading(button,false,'Opening Apple…','Continue with Apple');
-  }
-}
-
-async function finishGoogleReturn(url){
-  try{
-    const handled=await consumeNativeOAuthCallback(url);
-    if(!handled) return;
-
-    localStorage.setItem('alygnn_account_type',ACCOUNT_TYPE);
-    showMessage('Google sign-in successful. Opening Alygnn…','success');
-
-    const {data,error}=await sb.auth.getSession();
-    if(error) throw error;
-    if(!data.session) throw new Error('Google sign-in completed, but no Alygnn session was created.');
-
-    location.replace(TARGET_PAGE);
-  }catch(error){
-    showMessage(friendlyError(error),'error');
-    const button=document.getElementById('google-btn');
-    setLoading(button,false,'Opening Google…','Continue with Google');
-  }
-}
-
-async function setupNativeGoogleReturn(){
-  if(!isNativeCapacitor()) return;
-
-  const App=nativePlugin('App');
-  if(!App) return;
-
-  await App.addListener('appUrlOpen',({url})=>{
-    finishGoogleReturn(url);
-  });
-
-  const launch=await App.getLaunchUrl();
-  if(launch?.url){
-    await finishGoogleReturn(launch.url);
-  }
-}
 document.getElementById('back-btn').addEventListener('click',()=>location.href='app-start.html');
-document.getElementById('show-btn').addEventListener('click',e=>{const i=document.getElementById('password');const s=i.type==='text';i.type=s?'password':'text';e.currentTarget.textContent=s?'Show':'Hide'});
+document.getElementById('show-btn').addEventListener('click',event=>{
+  const input=document.getElementById('password');
+  const showing=input.type==='text';
+  input.type=showing?'password':'text';
+  event.currentTarget.textContent=showing?'Show':'Hide';
+});
 document.getElementById('forgot-btn').addEventListener('click',()=>location.href='app-forgot-password.html');
 document.getElementById('sign-in-btn').addEventListener('click',signIn);
 document.getElementById('google-btn').addEventListener('click',googleLogin);
+document.getElementById('apple-btn')?.addEventListener('click',()=>showMessage('Apple sign-in is not connected yet.','error'));
+document.getElementById('switch-btn').addEventListener('click',()=>location.href='app-employer-login.html');
+document.getElementById('password').addEventListener('keydown',event=>{if(event.key==='Enter')signIn()});
 
-const appleButton=document.getElementById('apple-btn');
-if(appleButton && isIOSCapacitor()){
-  appleButton.hidden=false;
-  appleButton.addEventListener('click',appleLogin);
-}
-
-document.getElementById('switch-btn').addEventListener('click',()=>location.href=ACCOUNT_TYPE==='employer'?'app-login.html':'app-employer-login.html');
-document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
-setupNativeGoogleReturn();
+applyPlatformLoginUI();
+window.AlygnnTheme?.apply?.();
 redirectIfLoggedIn();
 </script>
 </body></html>
