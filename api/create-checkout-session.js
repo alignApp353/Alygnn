@@ -3019,14 +3019,16 @@ async function createIosDiscountedInvoice({user,input,product,priceId,quantity,c
         {'Idempotency-Key':key+'-pay-zero'});
       invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
     }
+    // A confirmed Stripe status='paid' is authoritative even when the legacy
+    // invoice.paid flag is false for a fully discounted $0 invoice.
     // A freshly settled zero-dollar invoice can take a short time to become
     // visible in the GET response. Poll the SAME invoice; never issue a new
     // invoice or grant an entitlement from the coupon preview alone.
-    if(invoice.status!=='paid' || invoice.paid!==true){
+    if(invoice.status!=='paid'){
       for(let check=0;check<5;check++){
         await new Promise(resolve=>setTimeout(resolve,500));
         invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
-        if(invoice.status==='paid' && invoice.paid===true)break;
+        if(invoice.status==='paid')break;
       }
     }
     // Log only non-sensitive invoice verification data. This distinguishes
@@ -3034,7 +3036,7 @@ async function createIosDiscountedInvoice({user,input,product,priceId,quantity,c
     // Never log billing address, email, auth tokens, or Stripe client secrets.
     const finalDiscount=(invoice.total_discount_amounts||[])
       .reduce((n,row)=>n+Number(row?.amount||0),0);
-    if(invoice.status!=='paid'||invoice.paid!==true||
+    if(invoice.status!=='paid'||
        invoice.paid_out_of_band===true||
        Number(invoice.total)!==0||Number(invoice.amount_remaining)!==0||
        Number(invoice.subtotal)!==cents || finalDiscount<=0){
@@ -3071,10 +3073,12 @@ async function syncIosDiscountedInvoice(user,invoiceId){
      !['job_boost','weekly_slot','plan_upgrade'].includes(String(meta.product||''))){
     throw Object.assign(new Error('This is not your Alygnn iOS purchase.'),{status:403});
   }
+  // Verify Stripe's paid status, full invoice amounts and ownership; do not
+  // reject legitimate $0 invoices solely for invoice.paid === false.
   const expected=Number(meta.expected_subtotal_cents);
   const discount=(invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0);
   const total=Number(invoice.total),paid=Number(invoice.amount_paid);
-  if(invoice.status!=='paid'||invoice.paid!==true||invoice.paid_out_of_band===true||
+  if(invoice.status!=='paid'||invoice.paid_out_of_band===true||
      !Number.isSafeInteger(expected)||expected<=0||Number(invoice.subtotal)!==expected||
      !Number.isSafeInteger(total)||total<0||total>=expected||discount<=0||
      Number(invoice.amount_remaining)!==0||paid!==total){
