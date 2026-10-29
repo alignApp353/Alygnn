@@ -2299,6 +2299,7 @@ async function assertCurrentJobStillOpen(){
 }
 
 async function applyToJob(){
+  if(!await AlygnnAge.beforeApplication(sb,job)) return;
   const button=document.getElementById('apply-btn');
   button.disabled=true;
   button.textContent='Applying…';
@@ -2596,5 +2597,6 @@ document.getElementById('apply-btn').addEventListener('click',handlePrimaryActio
   }
 })();
 </script>
+<script src="app-age-eligibility.js"></script>
 </body>
 </html>

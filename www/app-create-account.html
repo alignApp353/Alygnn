@@ -694,6 +694,14 @@ html[data-effective-theme="dark"] .existing-account-card{
     </div>
 
     <div class="field">
+      <label class="field-label" for="date-of-birth">Date of birth</label>
+      <div class="input-shell">
+        <input id="date-of-birth" type="date" autocomplete="bday" required aria-describedby="dob-explanation" style="width:100%;font:inherit;color:var(--text);background:transparent;border:0;outline:0;padding:12px 14px;">
+      </div>
+      <div class="password-help" id="dob-explanation">Alygnn candidates must be at least 16. We use this date to check eligibility.</div>
+    </div>
+
+    <div class="field">
       <label class="field-label" for="email">Email</label>
       <div class="input-shell">
         <svg class="field-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1148,11 +1156,23 @@ function togglePasswordField(inputId,buttonId){
   );
 }
 
+function validCandidateBirthDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value||'')) return false;
+  const date=new Date(value+'T12:00:00Z');
+  if(Number.isNaN(date.getTime()) || date.toISOString().slice(0,10)!==value) return false;
+  const today=new Date();
+  let years=today.getFullYear()-date.getUTCFullYear();
+  if(today.getMonth()<date.getUTCMonth() ||
+    (today.getMonth()===date.getUTCMonth() && today.getDate()<date.getUTCDate())) years--;
+  return years>=16 && years<=120;
+}
+
 async function signup(){
   const firstName=document.getElementById("firstName").value.trim();
   const lastName=document.getElementById("lastName").value.trim();
   const email=document.getElementById("email").value.trim().toLowerCase();
   const password=document.getElementById("password").value;
+  const birthDate=document.getElementById("date-of-birth").value;
   const confirmPassword=document.getElementById("confirm-password").value;
   const button=document.getElementById("create-account-btn");
 
@@ -1161,6 +1181,12 @@ async function signup(){
 
   if(!firstName || !lastName || !email || !password || !confirmPassword){
     setSignupMessage("Please complete all fields.","error");
+    return;
+  }
+
+  if(!birthDate || !validCandidateBirthDate(birthDate)){
+    setSignupMessage("Candidates must be at least 16 years old. Please enter your correct date of birth.","error");
+    document.getElementById("date-of-birth").focus();
     return;
   }
 
@@ -1198,6 +1224,8 @@ async function signup(){
           full_name:`${firstName} ${lastName}`.trim(),
           name:`${firstName} ${lastName}`.trim(),
           account_type:"candidate",
+          date_of_birth:birthDate,
+          age_screen_version:"16plus-2026-10",
           EmailFlow:"app"
         }
       }
@@ -1422,6 +1450,14 @@ async function googleSignup(){
       return;
     }
 
+    const birthDate=document.getElementById('date-of-birth').value;
+    if(!validCandidateBirthDate(birthDate)){
+      await signOutGoogleSession(plugin);
+      setSignupMessage('Candidates must be at least 16. Enter your date of birth before creating a Google account.','error');
+      document.getElementById('date-of-birth').focus();
+      return;
+    }
+
     const validation=await validateGoogleIntent(session,'signup');
 
     if(!validation?.allowed){
@@ -1455,6 +1491,8 @@ async function googleSignup(){
       name:fullName,
       account_type:'candidate',
       role:'candidate',
+      date_of_birth:birthDate,
+      age_screen_version:'16plus-2026-10',
       accepted_terms:true,
       accepted_privacy:true,
       EmailFlow:'google'

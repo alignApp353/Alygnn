@@ -5642,6 +5642,7 @@ function forgetCandidateSeenJob(jobId,userId=session?.user?.id||''){
 }
 
 async function createApplication(job){
+  if(!await AlygnnAge.beforeApplication(sb,job)) throw new Error('Application canceled or age eligibility not confirmed.');
   const {data:existing,error:checkError}=await sb
     .from('applications')
     .select('id')
@@ -6225,5 +6226,6 @@ setTimeout(()=>{
 <script defer src="app-candidate-notifications.js"></script>
 
 <script defer src="app-push-notifications.js"></script>
+<script src="app-age-eligibility.js"></script>
 </body>
 </html>
