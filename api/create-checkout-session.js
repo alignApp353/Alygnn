@@ -3019,19 +3019,38 @@ async function createIosDiscountedInvoice({user,input,product,priceId,quantity,c
         {'Idempotency-Key':key+'-pay-zero'});
       invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
     }
-    // Recheck after Stripe's finalization/settlement response. Never grant
-    // access unless Stripe itself reports paid with the expected discount.
+    // A freshly settled zero-dollar invoice can take a short time to become
+    // visible in the GET response. Poll the SAME invoice; never issue a new
+    // invoice or grant an entitlement from the coupon preview alone.
     if(invoice.status!=='paid' || invoice.paid!==true){
-      for(let check=0;check<2;check++){
-        await new Promise(resolve=>setTimeout(resolve,250));
+      for(let check=0;check<5;check++){
+        await new Promise(resolve=>setTimeout(resolve,500));
         invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
         if(invoice.status==='paid' && invoice.paid===true)break;
       }
     }
+    // Log only non-sensitive invoice verification data. This distinguishes
+    // settlement delays from Stripe's subtotal/discount representation.
+    // Never log billing address, email, auth tokens, or Stripe client secrets.
+    const finalDiscount=(invoice.total_discount_amounts||[])
+      .reduce((n,row)=>n+Number(row?.amount||0),0);
     if(invoice.status!=='paid'||invoice.paid!==true||
+       invoice.paid_out_of_band===true||
        Number(invoice.total)!==0||Number(invoice.amount_remaining)!==0||
-       Number(invoice.subtotal)!==cents ||
-       (invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0)<=0){
+       Number(invoice.subtotal)!==cents || finalDiscount<=0){
+      console.error('Alygnn iOS $0 invoice verification details:',{
+        invoice_id:String(invoice.id||''),
+        stripe_status:String(invoice.status||''),
+        paid:invoice.paid===true,
+        paid_out_of_band:invoice.paid_out_of_band===true,
+        subtotal_cents:Number(invoice.subtotal),
+        expected_subtotal_cents:cents,
+        total_cents:Number(invoice.total),
+        amount_due_cents:Number(invoice.amount_due),
+        remaining_cents:Number(invoice.amount_remaining),
+        discount_cents:finalDiscount,
+        automatic_tax_status:String(invoice.automatic_tax?.status||'')
+      });
       throw Object.assign(new Error('Stripe has not verified this $0 invoice as paid.'),{status:409});
     }
     return {...base,completed_in_app:true,verified_payment:true,
