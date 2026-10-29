@@ -785,6 +785,35 @@ body.employer-role .layout,.layout{display:block!important;}
 body.employer-role .layout>main,.layout>main{margin-left:0!important;width:100%!important;max-width:100%!important;}
 }
 </style>
+
+<style id="alygnn-messages-bubble-font-alignment">
+/* Match employer and candidate chat fonts, compact message sizing and alignment. */
+.chat-shell,.chat-shell button,.chat-shell textarea,.chat-shell input,
+.chat-shell select,.chat-shell .bubble,.chat-shell .bubble-time,
+.chat-shell .alygnn-safe-note,.chat-shell .alygnn-safe-action {
+  font-family:'DM Sans',sans-serif!important;
+}
+.chat-shell .msg-row {display:flex!important;min-width:0!important;align-items:flex-start!important;}
+.chat-shell .msg-row.mine {justify-content:flex-end!important;}
+.chat-shell .msg-row:not(.mine) {justify-content:flex-start!important;}
+.chat-shell .bubble,
+body.candidate-role .chat-shell .bubble,
+body.employer-role .chat-shell .bubble {
+  box-sizing:border-box!important;display:block!important;flex:0 1 auto!important;
+  width:fit-content!important;height:auto!important;min-height:0!important;
+  max-width:min(78%,440px)!important;padding:10px 13px!important;
+  margin:0!important;overflow-wrap:anywhere!important;word-break:break-word!important;
+  white-space:pre-wrap!important;text-align:left!important;
+  font-family:'DM Sans',sans-serif!important;font-size:13px!important;line-height:1.5!important;
+}
+.chat-shell .bubble-time {font-size:10px!important;line-height:1.35!important;margin-top:4px!important;}
+.chat-shell .msg-row.mine .bubble {margin-left:auto!important;}
+.chat-shell .msg-row:not(.mine) .bubble {margin-right:auto!important;}
+.chat-shell .composer {min-width:0!important;}
+.chat-shell .composer textarea {min-width:0!important;}
+.chat-shell .alygnn-safe-note {font-size:12px!important;line-height:1.4!important;}
+@media(max-width:680px){.chat-shell .bubble,body.candidate-role .chat-shell .bubble,body.employer-role .chat-shell .bubble{max-width:88%!important;}}
+</style>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
@@ -2228,10 +2257,10 @@ init()
 'use strict';
 const reasons=[['scam','Suspected scam or fraud'],['harassment','Harassment or threats'],['inappropriate','Inappropriate or offensive content'],['misleading','Misleading job information'],['spam','Spam or unwanted contact'],['other','Other safety concern']];
 const css=document.createElement('style');css.textContent=`
-.alygnn-safe-action{min-height:30px;padding:0 11px;border:1px solid var(--border,#dde3e8);border-radius:999px;background:var(--card,#fff);color:var(--brand,#5d7fa3);font:700 11px system-ui;cursor:pointer}
-.alygnn-safe-action.danger{color:#b44d56}.alygnn-safe-note{padding:8px 13px;color:#9b464b;font:600 12px/1.4 system-ui;background:var(--soft,#f1f4f7);border-top:1px solid var(--border,#ddd)}
+.alygnn-safe-action{min-height:30px;padding:0 11px;border:1px solid var(--border,#dde3e8);border-radius:999px;background:var(--card,#fff);color:var(--brand,#5d7fa3);font:700 11px 'DM Sans',sans-serif;cursor:pointer}
+.alygnn-safe-action.danger{color:#b44d56}.alygnn-safe-note{padding:8px 13px;color:#9b464b;font:600 12px/1.4 'DM Sans',sans-serif;background:var(--soft,#f1f4f7);border-top:1px solid var(--border,#ddd)}
 .alygnn-safe-mask{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:#071724aa;padding:16px}
-.alygnn-safe-card{box-sizing:border-box;width:min(440px,100%);max-height:90dvh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#18283a);border:1px solid var(--border,#ddd);border-radius:18px;padding:22px;box-shadow:0 20px 65px #0003;font-family:system-ui}
+.alygnn-safe-card{box-sizing:border-box;width:min(440px,100%);max-height:90dvh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#18283a);border:1px solid var(--border,#ddd);border-radius:18px;padding:22px;box-shadow:0 20px 65px #0003;font-family:'DM Sans',sans-serif}
 .alygnn-safe-card h2{margin:0 0 8px;font:700 20px system-ui}.alygnn-safe-card p{margin:0 0 14px;color:var(--muted,#657588);font:13px/1.5 system-ui}
 .alygnn-safe-card label{display:block;margin:12px 0 5px;font:700 12px system-ui}.alygnn-safe-card select,.alygnn-safe-card textarea{box-sizing:border-box;width:100%;border:1px solid var(--border,#ddd);border-radius:10px;background:var(--card,#fff);color:var(--text,#18283a);padding:11px;font:13px system-ui}.alygnn-safe-card textarea{min-height:90px;resize:vertical}
 .alygnn-safe-buttons{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.alygnn-safe-buttons button{border:1px solid var(--border,#ddd);background:var(--card,#fff);color:var(--text,#18283a);border-radius:9px;padding:10px 15px;cursor:pointer}.alygnn-safe-buttons button[type=submit]{background:#416e9a;color:white;border-color:#416e9a}
@@ -2240,9 +2269,9 @@ function me(){try{if(typeof currentUser!=='undefined'&&currentUser?.id)return cu
 function client(){try{return sb}catch(_){return null}}
 function opened(){try{if(typeof activeThreadId!=='undefined'&&activeThreadId)return String(activeThreadId)}catch(_){}try{if(typeof conversation!=='undefined'&&conversation?.id)return String(conversation.id)}catch(_){}return ''}
 async function status(id){const api=client();if(!api||!id)throw Error('Sign in and open a conversation first.');const {data,error}=await api.from('alygnn_safety_blocks').select('blocked_by').eq('conversation_id',id);if(error)throw error;return {blocked:(data||[]).length>0,mine:(data||[]).some(row=>String(row.blocked_by)===String(me()))}}
-function note(v){const old=document.getElementById('alygnn-safe-block-message');if(old)old.remove();const wrap=document.querySelector('.composer');if(!wrap)return;const input=wrap.querySelector('textarea'),send=wrap.querySelector('#send,#send-btn');if(input)input.disabled=!!v.blocked;if(send)send.disabled=!!v.blocked;if(v.blocked){const n=document.createElement('div');n.id='alygnn-safe-block-message';n.className='alygnn-safe-note';n.textContent=v.mine?'You blocked this contact. Unblock to send messages.':'Messaging is disabled because this conversation is blocked.';wrap.prepend(n)}}
-async function refresh(id){try{const v=await status(id);document.querySelectorAll('[data-alygnn-block]').forEach(el=>{if(el.dataset.alygnnBlock===id){el.textContent=v.mine?'Unblock contact':v.blocked?'Contact blocked':'Block contact';el.disabled=v.blocked&&!v.mine}});if(opened()===id)note(v)}catch(err){console.warn('Message safety status:',err.message)}}
-async function block(id){if(!id)return alert('Open a conversation first.');let v;try{v=await status(id)}catch(e){return alert(e.message)}if(v.blocked&&!v.mine)return alert('This conversation was blocked by the other participant.');const next=!v.mine;const question=next?'Block this contact? Neither person can send new messages until unblocked. Existing messages and applications remain.':'Unblock this contact and allow messages again?';if(!confirm(question))return;const api=client();const request=next?api.from('alygnn_safety_blocks').insert({conversation_id:id,blocked_by:me()}):api.from('alygnn_safety_blocks').delete().eq('conversation_id',id).eq('blocked_by',me());const {error}=await request;if(error)return alert(error.message);await refresh(id);alert(next?'Contact blocked.':'Contact unblocked.')}
+function note(v){const old=document.getElementById('alygnn-safe-block-message');if(old)old.remove();const wrap=document.querySelector('.composer');if(!wrap)return;const input=wrap.querySelector('textarea'),send=wrap.querySelector('#send,#send-btn');if(input)input.disabled=!!v.blocked;if(send)send.disabled=!!v.blocked;if(v.blocked){const n=document.createElement('div');n.id='alygnn-safe-block-message';n.className='alygnn-safe-note';n.textContent='Messaging is disabled because this conversation is blocked.';wrap.prepend(n)}}
+async function refresh(id){try{const v=await status(id);document.querySelectorAll('[data-alygnn-block]').forEach(el=>{if(el.dataset.alygnnBlock===id){el.textContent=v.mine?'Unblock contact':v.blocked?'Messaging disabled':'Block contact';el.disabled=v.blocked&&!v.mine}});if(opened()===id)note(v)}catch(err){console.warn('Message safety status:',err.message)}}
+async function block(id){if(!id)return alert('Open a conversation first.');let v;try{v=await status(id)}catch(e){return alert(e.message)}if(v.blocked&&!v.mine)return alert('Messaging is disabled because this conversation is blocked.');const next=!v.mine;const question=next?'Block this contact? Neither person can send new messages until unblocked. Existing messages and applications remain.':'Unblock this contact and allow messages again?';if(!confirm(question))return;const api=client();const request=next?api.from('alygnn_safety_blocks').insert({conversation_id:id,blocked_by:me()}):api.from('alygnn_safety_blocks').delete().eq('conversation_id',id).eq('blocked_by',me());const {error}=await request;if(error)return alert(error.message);await refresh(id);alert(next?'Contact blocked.':'Contact unblocked.')}
 function report(id){if(!id)return alert('Open a conversation first.');const api=client();if(!api||!me())return alert('Please sign in.');const mask=document.createElement('div');mask.className='alygnn-safe-mask';mask.innerHTML='<form class="alygnn-safe-card"><h2>Report conversation</h2><p>Your report is private and goes to Alygnn for review. Do not share passwords or payment details.</p><label>Reason</label><select required>'+reasons.map(([id,label])=>'<option value="'+id+'">'+label+'</option>').join('')+'</select><label>Additional details (optional)</label><textarea maxlength="1000" placeholder="Tell us what happened"></textarea><p class="alygnn-safe-error" role="alert" hidden></p><div class="alygnn-safe-buttons"><button type="button" data-cancel>Cancel</button><button type="submit">Send report</button></div></form>';document.body.appendChild(mask);mask.querySelector('[data-cancel]').onclick=()=>mask.remove();mask.addEventListener('click',e=>{if(e.target===mask)mask.remove()});mask.querySelector('form').onsubmit=async ev=>{ev.preventDefault();const button=mask.querySelector('[type=submit]');button.disabled=true;const {error}=await api.from('alygnn_safety_reports').insert({reporter_id:me(),subject_type:'conversation',conversation_id:id,reason:mask.querySelector('select').value,details:mask.querySelector('textarea').value.trim()});if(error){const msg=mask.querySelector('.alygnn-safe-error');msg.hidden=false;msg.textContent=error.message||'Report could not be sent.';button.disabled=false;return}mask.remove();alert('Report submitted to Alygnn for review.')}}
 function button(label,action,id,klass){const el=document.createElement('button');el.type='button';el.className=klass||'alygnn-safe-action';el.textContent=label;el.dataset.alygnnSafety='1';if(action==='block')el.dataset.alygnnBlock=id;el.onclick=e=>{e.preventDefault();e.stopPropagation();(action==='block'?block:report)(id)};return el}
 function website(){const panel=document.getElementById('chat-panel');if(!panel)return;let last='';const render=()=>{const id=opened(),actions=panel.querySelector('.chat-head-actions');if(!actions||!id)return;if(!actions.querySelector('[data-alygnn-safety]')){actions.appendChild(button('Report','report',id));actions.appendChild(button('Block contact','block',id,'alygnn-safe-action danger'));last=id;refresh(id)}else if(last!==id){last=id;for(const b of actions.querySelectorAll('[data-alygnn-safety]')){b.remove()}actions.appendChild(button('Report','report',id));actions.appendChild(button('Block contact','block',id,'alygnn-safe-action danger'));refresh(id)}};new MutationObserver(render).observe(panel,{childList:true,subtree:false});render()}
