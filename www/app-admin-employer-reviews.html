@@ -1220,6 +1220,76 @@ html[data-theme="light"] .status-message.success,
 html[data-theme="light"] .check.good{border-color:#B9E5C8}
 html[data-theme="light"] .check.warn{border-color:#EBDAB6}
 
+
+/* ALYGNN v47: App-admin mobile disclosure and missing tabs. */
+.shell{box-sizing:border-box;min-width:0}
+.summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+.admin-update-tools{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.admin-update-tools[hidden]{display:none!important}
+.admin-update-tools input,.admin-update-tools select,.account-query-row input{
+  box-sizing:border-box;min-width:0;min-height:44px;padding:10px 13px;
+  background:var(--panel);color:var(--text);border:1px solid var(--border);
+  border-radius:12px;font-size:13px;outline-offset:2px
+}
+.admin-update-tools input{flex:1 1 210px}
+.admin-update-tools select{flex:0 1 170px}
+.mobile-company-details{min-width:0}
+.mobile-company-details>.card-head{cursor:pointer;list-style:none;display:flex;align-items:center;min-height:70px;box-sizing:border-box}
+.mobile-company-details>.card-head::-webkit-details-marker{display:none}
+.mobile-company-details>.card-head:focus-visible{outline:3px solid var(--brand);outline-offset:-4px}
+.mobile-company-details:not([open])>.card-head{border-bottom:0;padding-bottom:20px}
+.mobile-company-details .summary-company-primary{min-width:0;flex:1 1 auto}
+.mobile-company-details .badges{align-items:center;max-width:48%;flex:0 1 auto}
+.mobile-company-details .company-name{overflow-wrap:anywhere;line-height:1.2}
+.mobile-company-details .company-sub{overflow-wrap:anywhere}
+.details-chevron{flex:0 0 22px;font-size:22px;line-height:1;color:var(--brand);text-align:center;transition:transform .16s ease}
+.mobile-company-details[open] .details-chevron{transform:rotate(180deg)}
+.mobile-company-id{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin:0 0 12px}
+.admin-update-card .card-head{display:flex;align-items:center;gap:10px}
+.admin-update-card .card-body{padding-top:16px}
+.admin-update-value{overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px;line-height:1.5}
+.admin-update-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.admin-update-panel{min-width:0;overflow-wrap:anywhere;padding:12px;border:1px solid var(--border);background:var(--panel);border-radius:13px}
+.admin-account-search{display:grid;gap:10px;padding:16px;border:1px solid var(--border);background:var(--panel);border-radius:18px}
+.account-query-row{display:flex;gap:9px;flex-wrap:wrap}
+.account-query-row input{flex:1 1 200px}
+.admin-small-note{font-size:12px;color:var(--muted);line-height:1.55}
+.admin-account-results{display:grid;gap:12px;margin-top:12px}
+.admin-account-row{padding:15px;border:1px solid var(--border);border-radius:15px;background:var(--panel);overflow-wrap:anywhere}
+.admin-account-row strong{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+.admin-account-meta{margin:6px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.admin-account-history{display:grid;gap:9px;margin-top:12px}
+.admin-account-history details{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--panel)}
+.admin-account-history summary{cursor:pointer;display:flex;gap:8px;justify-content:space-between;align-items:center;list-style:none}
+.admin-account-history summary::-webkit-details-marker{display:none}
+html[data-theme="light"] .admin-account-row, html[data-theme="light"] .admin-account-search,
+html[data-theme="light"] .admin-update-panel, html[data-theme="light"] .admin-account-history details{background:#FFFFFF}
+@media(max-width:700px){
+  .shell{padding:18px 15px 40px}
+  .hero{margin-top:20px}
+  .hero h1,h1{font-size:29px;line-height:1.13}
+  .hero p{font-size:12px;line-height:1.55}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px}
+  .stat{padding:12px 13px;border-radius:14px;min-width:0}
+  .stat-value{font-size:23px}
+  .toolbar{display:grid;grid-template-columns:1fr;gap:9px;margin-top:16px}
+  .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;width:100%}
+  .tab{width:100%;min-width:0;padding:7px 5px;font-size:10px;line-height:1.25;white-space:normal;min-height:42px}
+  .refresh{min-height:36px;justify-self:end}
+  .queue{gap:9px;margin-top:12px;min-width:0}
+  .card{border-radius:16px}
+  .card-head{padding:14px 13px 13px;gap:8px}
+  .company-name{font-size:15px}
+  .badge{font-size:9px;padding:6px 7px;max-width:100%;overflow-wrap:anywhere;white-space:normal}
+  .card-body{padding:12px 13px 16px}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .fact{min-height:60px;padding:10px}
+  .mobile-company-details .badges{max-width:47%}
+  .admin-update-grid{grid-template-columns:minmax(0,1fr)}
+  .admin-update-tools input,.admin-update-tools select{flex:1 1 100%}
+}
+@media(max-width:360px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.company-name{font-size:14px}}
+
 </style>
 </head>
 
@@ -1323,18 +1393,12 @@ Rejected
 
 
 <article class="stat deactivated">
-
-<div class="stat-label">
-Deactivated
-</div>
-
-<div
-  class="stat-value"
-  id="count-deactivated"
->
-—
-</div>
-
+<div class="stat-label">Deactivated</div>
+<div class="stat-value" id="count-deactivated">—</div>
+</article>
+<article class="stat">
+<div class="stat-label">Update requests</div>
+<div class="stat-value" id="count-updates">—</div>
 </article>
 
 </section>
@@ -1371,7 +1435,8 @@ Rejected
 >
 Deactivated
 </button>
-
+<button class="tab" data-status="profile_updates" type="button">Update requests</button>
+<button class="tab" data-status="accounts" type="button">Accounts</button>
 </div>
 
 
@@ -1386,10 +1451,16 @@ Refresh
 </div>
 
 
-<div
-  class="status-message"
-  id="message"
-></div>
+<div id="update-tools" class="admin-update-tools" hidden>
+  <input id="update-search" type="search" autocomplete="off" placeholder="Search company or Account ID" aria-label="Search update requests">
+  <select id="update-status-filter" aria-label="Filter update requests">
+    <option value="all">All requests</option>
+    <option value="pending">Pending</option>
+    <option value="approved">Approved</option>
+    <option value="declined">Declined</option>
+  </select>
+</div>
+<div class="status-message" id="message"></div>
 
 
 <section
@@ -2190,10 +2261,9 @@ function render(){
           >
 
 
-          <div class="card-head">
-
-          <div>
-
+          <details class="mobile-company-details">
+          <summary class="card-head" aria-label="Expand company details">
+          <div class="summary-company-primary">
             <div class="company-name">
               ${
                 esc(
@@ -2204,30 +2274,7 @@ function render(){
             </div>
 
             <div class="company-sub">
-
-              Company ID:
-              ${
-                esc(
-                  row.company_id ||
-                  'Not connected'
-                )
-              }
-
-              ${
-                row.account_number
-
-                  ? `
-                    • Account:
-                    ${
-                      esc(
-                        row.account_number
-                      )
-                    }
-                  `
-
-                  : ''
-              }
-
+              ${esc(row.account_number || 'Account ID unavailable')}
             </div>
 
           </div>
@@ -2262,11 +2309,10 @@ function render(){
             }
 
           </div>
-
-          </div>
-
-
+          <span class="details-chevron" aria-hidden="true">⌄</span>
+          </summary>
           <div class="card-body">
+          <div class="mobile-company-id">Company ID: ${esc(row.company_id || 'Not connected')}</div>
 
 
           <div class="facts">
@@ -2488,9 +2534,8 @@ function render(){
 
           ${actionButtons(row)}
 
-
           </div>
-
+          </details>
           </article>
           `;
 
@@ -2622,6 +2667,7 @@ async function loadCounts(){
       }
     )
   );
+  await loadProfileCount();
 }
 
 
@@ -3108,6 +3154,166 @@ async function submitAction(){
 
 
 
+
+/* ALYGNN v47: mobile-only admin update requests + account lookup. */
+const ACCOUNT_API='https://alygnn.com/api/delete-account';
+let profileUpdateRequests=[];
+let updateRequestFilter='all';
+let accountLookupId='';
+let adminLoadSerial=0;
+let accountUsers=[];
+let lastAdminActionMessage='';
+function updateFieldLabel(key){
+ const labels={company_name:'Company name',company_headline:'About the company',company_website:'Website',company_phone:'Business phone',business_email:'Business email',business_address:'Business address'};
+ return labels[String(key||'')]||String(key||'Company profile');
+}
+function statusBadge(value){
+ const status=String(value||'pending').toLowerCase();
+ const klass=status==='declined'?'rejected':status==='approved'?'approved':'pending_review';
+ return `<span class="badge ${klass}">${esc(fmtStatus(status))}</span>`;
+}
+function toggleUpdateTools(){ $('update-tools').hidden=currentStatus!=='profile_updates'; }
+async function accountRequest(path='',opts={}){
+ const token=await sessionToken();
+ const response=await fetch(ACCOUNT_API+path,{
+   ...opts,
+   headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json',...(opts.headers||{})}
+ });
+ const result=await response.json().catch(()=>({}));
+ if(response.status===401||response.status===403)throw Error('Admin account lookup was not authorized.');
+ if(!response.ok)throw Error(result.error||`Account lookup failed (${response.status}).`);
+ return result;
+}
+function renderUpdateRequests(){
+ const q=String($('update-search').value||'').toLowerCase().trim();
+ const filtered=profileUpdateRequests.filter(r=>{
+   if(updateRequestFilter!=='all'&&String(r.status||'').toLowerCase()!==updateRequestFilter)return false;
+   const search=[r.company_name_snapshot,r.account_number,r.field_key,r.requested_value,r.reason].join(' ').toLowerCase();
+   return !q||search.includes(q);
+ });
+ const queue=$('queue');
+ if(!filtered.length){queue.innerHTML='<div class="empty">No matching update requests.</div>';return;}
+ queue.innerHTML=filtered.map(r=>{
+  const pending=String(r.status||'').toLowerCase()==='pending';
+  const ident=esc(r.id||'');
+  return `<article class="card admin-update-card">
+    <details class="mobile-company-details">
+      <summary class="card-head" aria-label="Expand update request">
+        <div class="summary-company-primary">
+          <div class="company-name">${esc(r.company_name_snapshot||'Company')}</div>
+          <div class="company-sub">${esc(updateFieldLabel(r.field_key))} · ${esc(r.account_number||'Account ID unavailable')}</div>
+        </div>
+        <div class="badges">${statusBadge(r.status)}</div>
+        <span class="details-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div class="card-body">
+        <div class="company-sub">Submitted ${esc(formatDate(r.created_at))}${r.reviewed_at?' · Reviewed '+esc(formatDate(r.reviewed_at)):''}</div>
+        <div class="admin-update-grid">
+          <div class="admin-update-panel"><div class="fact-label">Current</div><div class="admin-update-value">${esc(r.current_value||'Not provided')}</div></div>
+          <div class="admin-update-panel"><div class="fact-label">Requested</div><div class="admin-update-value">${esc(r.requested_value||'Not provided')}</div></div>
+        </div>
+        <div class="admin-update-panel" style="margin-top:10px"><div class="fact-label">Employer reason</div><div class="admin-update-value">${esc(r.reason||'No reason provided')}</div></div>
+        ${r.admin_note?`<div class="admin-update-panel" style="margin-top:8px"><div class="fact-label">Admin note</div>${esc(r.admin_note)}</div>`:''}
+        ${r.supporting_document_path?`<div class="actions"><button type="button" class="btn" data-review-document="${ident}">View supporting document</button></div>`:''}
+        ${pending?`<div class="actions"><button type="button" class="btn approve" data-update-request="${ident}" data-update-decision="approved">Approve update</button><button type="button" class="btn reject" data-update-request="${ident}" data-update-decision="declined">Decline</button></div>`:''}
+      </div>
+    </details>
+  </article>`;
+ }).join('');
+}
+async function loadProfileUpdates(){
+ const serial=++adminLoadSerial;
+ toggleUpdateTools();
+ $('queue').classList.add('loading');
+ $('queue').innerHTML='<div class="empty">Loading update requests…</div>';
+ try{
+  const result=await request('?update_history=1');
+  if(serial!==adminLoadSerial||currentStatus!=='profile_updates')return;
+  const companyMap=new Map((result.companies||[]).map(c=>[String(c.id),c]));
+  profileUpdateRequests=(result.requests||[]).map(r=>({...r,account_number:companyMap.get(String(r.company_id))?.account_number||''}));
+  renderUpdateRequests();
+  $('count-updates').textContent=String(profileUpdateRequests.filter(r=>String(r.status||'').toLowerCase()==='pending').length);
+ }catch(e){if(serial===adminLoadSerial&&currentStatus==='profile_updates'){
+    $('queue').innerHTML='';showMessage(e.message||'Could not load update requests.','error');}}
+ finally{if(serial===adminLoadSerial)$('queue').classList.remove('loading');}
+}
+async function loadProfileCount(){
+ try{
+  const result=await request('?update_history=1');
+  $('count-updates').textContent=String((result.requests||[]).filter(r=>String(r.status||'').toLowerCase()==='pending').length);
+ }catch(_){$('count-updates').textContent='—';}
+}
+async function viewSupportingDoc(id){
+ const row=profileUpdateRequests.find(r=>String(r.id)===String(id));if(!row?.supporting_document_path)return;
+ const {data,error}=await sb.storage.from('employer-profile-update-documents').createSignedUrl(row.supporting_document_path,120);
+ if(error||!data?.signedUrl)throw Error(error?.message||'Cannot open supporting document.');
+ window.open(data.signedUrl,'_blank','noopener,noreferrer');
+}
+async function decideProfileUpdate(id,decision,button){
+ const row=profileUpdateRequests.find(r=>String(r.id)===String(id));if(!row||String(row.status)!=='pending')return;
+ let note='';
+ if(decision==='declined'){
+  const supplied=prompt('Why are you declining this update?');if(!supplied?.trim())return;note=supplied.trim();
+ }else if(!confirm(`Approve ${updateFieldLabel(row.field_key).toLowerCase()} update for ${row.company_name_snapshot||'this company'}?`))return;
+ button.disabled=true;const before=button.textContent;button.textContent='Saving…';
+ try{
+  const {error}=await sb.rpc('review_employer_profile_update_request',{p_request_id:id,p_decision:decision,p_admin_note:note||null});
+  if(error)throw error;
+  let message=decision==='approved'?'Company update approved.':'Company update declined.';
+  try{
+   await request('',{method:'POST',body:JSON.stringify({action:'company_update_notification',request_id:id,event:decision})});
+  }catch(e){message+=' Employer email could not be confirmed.';}
+  await loadProfileUpdates();
+  showMessage(message,'success');
+ }catch(e){showMessage(e.message||'Could not save company update.','error');}
+ finally{button.disabled=false;button.textContent=before;}
+}
+function accountSearchView(){
+ accountUsers=[];
+ $('queue').classList.remove('loading');
+ $('queue').innerHTML=`<div class="admin-account-search">
+ <strong>Look up a company account</strong>
+ <div class="account-query-row"><input id="admin-account-input" type="search" autocomplete="off" placeholder="Account ID (ALY-XXXXXX)" aria-label="Alygnn Account ID" value="${esc(accountLookupId)}"><button id="admin-account-find" type="button" class="refresh">Look up company</button></div>
+ <div class="admin-small-note">Accounts are not loaded automatically. Search using the employer's Account ID to view linked users and company update history.</div>
+ </div><div id="admin-account-results" class="admin-account-results"><div class="empty">Enter an Account ID to look up a company.</div></div>`;
+ $('admin-account-find').addEventListener('click',()=>lookupAccount());
+ $('admin-account-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupAccount();}});
+}
+async function lookupAccount(){
+ const input=$('admin-account-input');if(!input)return;
+ const q=String(input.value||'').trim();accountLookupId=q;
+ const out=$('admin-account-results');if(!out)return;
+ if(!/^ALY-[A-Z0-9]{3,20}$/i.test(q)){
+  out.innerHTML='<div class="empty">Enter the short Account ID, for example ALY-XXXXXX.</div>';return;
+ }
+ const serial=++adminLoadSerial;
+ out.innerHTML='<div class="empty">Looking up company…</div>';
+ try{
+  const lookup=await request('?account_lookup='+encodeURIComponent(q));
+  const accounts=await accountRequest('?scope=admin&q='+encodeURIComponent(lookup.company_id));
+  if(serial!==adminLoadSerial||currentStatus!=='accounts')return;
+  accountUsers=accounts.accounts||[];
+  const history=lookup.history||[];
+  const users=accountUsers.map(u=>{
+    const tags=[u.owns_company?'Owner':'',u.dual_workspace?'Candidate + Employer':'',u.protected_reason?'Protected':'',Array.isArray(u.roles)?u.roles.join(', '):''].filter(Boolean);
+    return `<article class="admin-account-row"><strong>${esc(u.full_name||u.email||'Alygnn account')}</strong><div class="admin-account-meta">${esc(u.email||'Email unavailable')}</div><div class="admin-account-meta">${esc(tags.join(' · ')||'Team member')}</div></article>`;
+  }).join('')||'<div class="admin-account-row">No linked user accounts found.</div>';
+  const historyHtml=history.map(r=>`<details><summary><span>${esc(updateFieldLabel(r.field_key))} · ${esc(formatDate(r.created_at))}</span>${statusBadge(r.status)}</summary>
+    <div class="admin-update-grid"><div class="admin-update-panel"><div class="fact-label">Previous</div><div class="admin-update-value">${esc(r.current_value||'Not provided')}</div></div><div class="admin-update-panel"><div class="fact-label">Requested</div><div class="admin-update-value">${esc(r.requested_value||'Not provided')}</div></div></div>
+    ${r.reason?`<p class="admin-small-note">Employer reason: ${esc(r.reason)}</p>`:''}${r.admin_note?`<p class="admin-small-note">Admin note: ${esc(r.admin_note)}</p>`:''}
+   </details>`).join('')||'<p class="admin-small-note">No company update history for this account.</p>';
+  out.innerHTML=`<div class="admin-account-row"><strong>${esc(lookup.company_name||'Company')}</strong><div class="admin-account-meta">Account ID: ${esc(lookup.account_number||q)}</div></div>${users}
+  <section class="admin-account-row"><strong>Company update history (${history.length})</strong><div class="admin-account-history">${historyHtml}</div></section>
+  <div class="admin-small-note">For permanent account deletion or role removal, use the existing web Admin Accounts page.</div>`;
+ }catch(e){if(serial===adminLoadSerial&&currentStatus==='accounts')out.innerHTML=`<div class="empty">${esc(e.message||'Could not look up this account.')}</div>`;}
+}
+async function activateAdminTab(status){
+ ++adminLoadSerial;clearMessage();currentStatus=status;toggleUpdateTools();
+ if(status==='profile_updates')return loadProfileUpdates();
+ if(status==='accounts'){accountSearchView();return;}
+ return loadStatus(status);
+}
+
 /* =========================================================
    CLICK HANDLING
 ========================================================= */
@@ -3117,6 +3323,10 @@ $('queue')
     'click',
     event => {
 
+      const docBtn=event.target.closest('[data-review-document]');
+      if(docBtn){viewSupportingDoc(docBtn.dataset.reviewDocument).catch(e=>showMessage(e.message,'error'));return;}
+      const reviewBtn=event.target.closest('[data-update-request]');
+      if(reviewBtn){decideProfileUpdate(reviewBtn.dataset.updateRequest,reviewBtn.dataset.updateDecision,reviewBtn);return;}
       const button =
         event.target.closest(
           '[data-action]'
@@ -3157,6 +3367,12 @@ $('queue')
    TABS
 ========================================================= */
 
+$('update-search').addEventListener('input',()=>{if(currentStatus==='profile_updates')renderUpdateRequests();});
+$('update-status-filter').addEventListener('change',e=>{
+ updateRequestFilter=e.target.value;
+ if(currentStatus==='profile_updates')renderUpdateRequests();
+});
+
 document
   .querySelectorAll(
     '.tab'
@@ -3189,9 +3405,7 @@ document
             );
 
 
-          await loadStatus(
-            button.dataset.status
-          );
+          await activateAdminTab(button.dataset.status);
         }
       );
     }
@@ -3208,12 +3422,8 @@ $('refresh')
     'click',
     ()=>{
 
-      Promise.all([
-        loadStatus(
-          currentStatus
-        ),
-        loadCounts()
-      ]);
+      const work=currentStatus==='accounts' ? (accountLookupId?lookupAccount():accountSearchView()) : activateAdminTab(currentStatus);
+      Promise.all([work,loadCounts()]);
     }
   );
 
