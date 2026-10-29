@@ -156,6 +156,8 @@
   .job-status.draft { background:#EEF1F4; color:#66717D; }
   .job-status.paused { background: var(--rose); }
   .job-status.closed { background: #9BA8B3; }
+  .job-status.archived { background: #8995A0; }
+  .job-status-badge.archived { color:#566573; background:rgba(137,149,160,.15); }
   .job-status-badge.closed { color: #586673; background: rgba(155,168,179,0.14); }
   .job-status-badge { display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 500; vertical-align: middle; }
   .job-status-badge.active { color: #2d8a57; background: var(--mint-light); }
@@ -288,6 +290,16 @@
     line-height: 1.5;
   }
   .job-actions { display:flex; gap:8px; align-items:center; flex-wrap: wrap; }
+  /* Website My Jobs actions match the existing employer app. */
+  .job-actions .btn-pause { color:#916018; background:#FFF4E4; border:1px solid #E8C47C; }
+  .job-actions .btn-pause:hover { background:#FCEBD0; }
+  .job-actions .btn-archive { color:#985454; background:#FAEFEF; border:1px solid rgba(215,154,154,.55); }
+  .job-actions .btn-archive:hover { background:#F5E3E3; }
+  .jobs-view-tabs{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  @media(min-width:861px){
+    #jobs-list .job-row, #closed-jobs-list .job-row, #archived-jobs-list .job-row{ flex-wrap:wrap; }
+    #jobs-list .job-actions, #closed-jobs-list .job-actions, #archived-jobs-list .job-actions{ margin-left:auto; justify-content:flex-end; }
+  }
   .btn-danger { font-size: 12px; color: #a05858; background: rgba(215,154,154,0.15); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
   .btn-danger:hover { opacity: .8; }
 
@@ -1138,10 +1150,11 @@
 
       <div id="job-slot-breakdown" class="alygnn-slot-breakdown" aria-live="polite" style="display:none"></div>
 
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <div class="jobs-view-tabs">
         <button type="button" id="jobs-view-active" class="btn-view" onclick="switchJobsView('active')" style="background:var(--brand);color:white;border-color:var(--brand);">Active jobs</button>
         <button type="button" id="jobs-view-drafts" class="btn-view" onclick="switchJobsView('drafts')">Drafts <span id="draft-jobs-count">(0)</span></button>
         <button type="button" id="jobs-view-closed" class="btn-view" onclick="switchJobsView('closed')">Closed jobs <span id="closed-jobs-count">(0)</span></button>
+        <button type="button" id="jobs-view-archived" class="btn-view" onclick="switchJobsView('archived')">Archived <span id="archived-jobs-count">(0)</span></button>
       </div>
 
       <input type="text" class="form-input" id="jobs-search-input" placeholder="Search your posted jobs by title, location, or type…" autocomplete="off" oninput="renderJobs()" style="margin-bottom: 16px;">
@@ -1155,6 +1168,7 @@
 
       <div id="draft-jobs-list" style="display:none;"></div>
       <div id="closed-jobs-list" style="display:none;"></div>
+      <div id="archived-jobs-list" style="display:none;"></div>
 
     </div>
 
@@ -3382,7 +3396,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     // unlimited listings while waiting for business approval.
     return jobs.filter(job => {
       const status = String(job.status || 'active').toLowerCase();
-      return status === 'active' || status === 'pending';
+      return status === 'active' || status === 'pending' || status === 'paused';
     }).length;
   }
 
@@ -4738,7 +4752,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
     const {data:using,error:usingError}=await sb.from('jobs')
       .select('id').eq('employer_id',ownerId).eq('weekly_slot_purchase_id',purchaseId)
-      .in('status',['active','pending']).limit(1);
+      .in('status',['active','pending','paused']).limit(1);
     if(usingError || (using||[]).length){
       showToast(usingError?'Could not verify weekly slot availability.':'This Weekly Job Slot is already in use.');return;
     }
@@ -4769,7 +4783,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     // On first load, keep the purchased-slot details collapsed to save space.
     const wasExpanded = el.querySelector('details')?.open === true;
     el.style.display = 'block';
-    const activeJobs = jobs.filter(j=>['active','pending'].includes(String(j.status||'').toLowerCase()));
+    const activeJobs = jobs.filter(j=>['active','pending','paused'].includes(String(j.status||'').toLowerCase()));
     const purchases = weeklySlotPurchasesForDisplay;
     const occupied = purchases.filter(p=>activeJobs.some(j=>String(j.weekly_slot_purchase_id||'')===String(p.id))).length;
     const availableWeekly = Math.max(0,purchases.length-occupied);
@@ -5550,19 +5564,22 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   let jobsViewMode = 'active';
 
   function switchJobsView(mode) {
-    jobsViewMode = ['active', 'drafts', 'closed'].includes(mode) ? mode : 'active';
+    jobsViewMode = ['active', 'drafts', 'closed', 'archived'].includes(mode) ? mode : 'active';
 
     const activeBtn = document.getElementById('jobs-view-active');
     const draftsBtn = document.getElementById('jobs-view-drafts');
     const closedBtn = document.getElementById('jobs-view-closed');
+    const archivedBtn = document.getElementById('jobs-view-archived');
     const activeList = document.getElementById('jobs-list');
     const draftsList = document.getElementById('draft-jobs-list');
     const closedList = document.getElementById('closed-jobs-list');
+    const archivedList = document.getElementById('archived-jobs-list');
 
     [
       [activeBtn, 'active'],
       [draftsBtn, 'drafts'],
-      [closedBtn, 'closed']
+      [closedBtn, 'closed'],
+      [archivedBtn, 'archived']
     ].forEach(([button, value]) => {
       if (!button) return;
       const selected = jobsViewMode === value;
@@ -5574,14 +5591,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     if (activeList) activeList.style.display = jobsViewMode === 'active' ? '' : 'none';
     if (draftsList) draftsList.style.display = jobsViewMode === 'drafts' ? '' : 'none';
     if (closedList) closedList.style.display = jobsViewMode === 'closed' ? '' : 'none';
+    if (archivedList) archivedList.style.display = jobsViewMode === 'archived' ? '' : 'none';
   }
 
   function renderJobs() {
     const jobsList = document.getElementById('jobs-list');
     const draftsList = document.getElementById('draft-jobs-list');
     const closedList = document.getElementById('closed-jobs-list');
+    const archivedList = document.getElementById('archived-jobs-list');
     const draftCount = document.getElementById('draft-jobs-count');
     const closedCount = document.getElementById('closed-jobs-count');
+    const archivedCount = document.getElementById('archived-jobs-count');
 
     if (!jobsList) return;
 
@@ -5600,12 +5620,17 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     };
 
     const activeJobs = jobs.filter(job =>
-      !['closed', 'draft'].includes(String(job.status || '').toLowerCase()) &&
+      !['closed', 'draft', 'archived'].includes(String(job.status || '').toLowerCase()) &&
       matchesSearch(job)
     );
 
     const closedJobs = jobs.filter(job =>
       String(job.status || '').toLowerCase() === 'closed' &&
+      matchesSearch(job)
+    );
+
+    const archivedJobs = jobs.filter(job =>
+      String(job.status || '').toLowerCase() === 'archived' &&
       matchesSearch(job)
     );
 
@@ -5638,6 +5663,13 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         : `<div class="empty-state"><div class="empty-title">No closed jobs</div>Jobs you close will stay saved here.</div>`;
     }
 
+    if (archivedList) {
+      archivedList.innerHTML = archivedJobs.length
+        ? archivedJobs.map(job => renderJobRow(job)).join('')
+        : `<div class="empty-state"><div class="empty-title">No archived jobs</div>Jobs you archive will appear here. Previous applicants remain saved.</div>`;
+    }
+
+    if (archivedCount) archivedCount.textContent = `(${jobs.filter(job => String(job.status || '').toLowerCase() === 'archived').length})`;
     if (draftCount) draftCount.textContent = `(${jobDrafts.length})`;
     if (closedCount) {
       closedCount.textContent = `(${jobs.filter(job => String(job.status || '').toLowerCase() === 'closed').length})`;
@@ -5670,10 +5702,14 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     const rawStatus = String(job.status || 'active').toLowerCase();
     const closeReason = String(job.closed_reason || '').toLowerCase();
     const isClosed = rawStatus === 'closed';
+    const isArchived = rawStatus === 'archived';
+    const isPaused = rawStatus === 'paused';
     const pending = ['pending','pending_review','pending_verification'].includes(rawStatus);
 
-    const statusClass = isClosed
-      ? 'closed'
+    const statusClass = isArchived
+      ? 'archived'
+      : isClosed
+        ? 'closed'
       : pending
         ? 'pending'
         : rawStatus === 'active'
@@ -5730,18 +5766,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                 ? `<button class="btn-view" onclick="window.location.href='candidates.html?billing=locked'">Unlock applicants</button>`
                 : `<button class="btn-view" onclick="window.location.href='candidates.html?job=${encodeURIComponent(job.id)}'">Applicants</button>`}
           <button class="btn-view" onclick="window.location.href='job-details.html?job=${job.id}&from=employer'">View</button>
-          ${isClosed
+          ${isClosed || isArchived
             ? ''
-            : pending
-              ? '<button class="btn-view" disabled style="opacity:.45; cursor:not-allowed;" title="Only active jobs can be boosted.">Boost</button>'
+            : (pending || isPaused)
+              ? '<button class="btn-view" disabled style="opacity:.45; cursor:not-allowed;" title="Resume or activate this job before boosting.">Boost</button>'
               : `<button class="btn-view" onclick="window.location.href='boost-checkout.html?job=${encodeURIComponent(job.id)}'">${jobBoostIsActive(job) ? 'Boost again' : 'Boost'}</button>`}
-          ${!isClosed && canUseUrgentBadge()
+          ${!isClosed && !isArchived && !isPaused && canUseUrgentBadge()
             ? `<button class="btn-view ${job.urgently_hiring === true ? 'urgent-on' : ''}" onclick="toggleUrgent('${job.id}')">${job.urgently_hiring === true ? 'Remove urgently hiring' : 'Urgently Hiring'}</button>`
             : ''}
-          <button class="btn-view" onclick="editJob('${job.id}')">Edit</button>
-          ${isClosed
+          ${isArchived ? '' : `<button class="btn-view" onclick="editJob('${job.id}')">Edit</button>`}
+          ${!isClosed && !isArchived && !pending && (rawStatus === 'active' || isPaused)
+            ? `<button class="btn-view btn-pause" onclick="toggleJobPause('${job.id}')">${isPaused ? 'Activate' : 'Pause'}</button>`
+            : ''}
+          ${isClosed || isArchived
             ? ''
             : `<button class="btn-danger" onclick="closeJob('${job.id}')">Close</button>`}
+          ${!isArchived
+            ? `<button class="btn-view btn-archive" onclick="archiveJob('${job.id}')">Archive</button>`
+            : ''}
         </div>
       </div>
     `;
@@ -6213,7 +6255,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         const chosen=weeklySlotPurchasesForDisplay?.find(p=>String(p.id)===selectedWeeklySlotPurchaseId);
         const stillFree=chosen && new Date(chosen.expires_at).getTime()>Date.now() &&
           !jobs.some(j=>String(j.weekly_slot_purchase_id||'')===selectedWeeklySlotPurchaseId &&
-            ['active','pending'].includes(String(j.status||'').toLowerCase()));
+            ['active','pending','paused'].includes(String(j.status||'').toLowerCase()));
         if(!stillFree){showToast('This Weekly Job Slot is no longer available. Refresh My Jobs and select another.');return;}
       }
       const { data: insertedJob, error } = await sb
@@ -6379,7 +6421,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         .from('jobs')
         .select('id,weekly_slot_purchase_id')
         .eq('employer_id', ownerId)
-        .in('status',['active','pending','pending_review','pending_verification'])
+        .in('status',['active','pending','pending_review','pending_verification','paused'])
         .not('weekly_slot_purchase_id','is',null);
       if (purchasesError || occupyingError) {
         showToast('Could not verify available Weekly Job Slots. Please try again.');
@@ -6449,6 +6491,100 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     await loadBillingEntitlement();
     updatePostingAccessUI();
     showToast(employerVerified ? 'Job reopened.' : 'Job moved back to pending approval.');
+  }
+
+  // Pause/activate and archive use the same shared job statuses as the mobile app.
+  // Only a real Supabase update can change a job's visibility or entitlement state.
+  async function toggleJobPause(jobId) {
+    if (isTeamMember && !teamCan('jobs_manage')) {
+      showToast('Your team role does not include job editing access.');
+      return;
+    }
+    const job = jobs.find(j => String(j.id) === String(jobId));
+    if (!job) return;
+    const status = String(job.status || '').toLowerCase();
+    if (status !== 'active' && status !== 'paused') return;
+    const resuming = status === 'paused';
+
+    // A paused Weekly Job keeps its original seven-day expiry. Validate live
+    // before allowing the employer to reactivate it.
+    if (resuming && job.weekly_slot_purchase_id) {
+      const { data: purchase, error: purchaseError } = await sb
+        .from('employer_weekly_slot_purchases')
+        .select('expires_at')
+        .eq('id', job.weekly_slot_purchase_id)
+        .eq('employer_id', workspaceOwnerId)
+        .maybeSingle();
+      if (purchaseError || !purchase) {
+        showToast('Could not verify the Weekly Job expiration. Please try again.');
+        return;
+      }
+      const expiryMs = new Date(purchase.expires_at).getTime();
+      if (!Number.isFinite(expiryMs) || expiryMs <= Date.now()) {
+        showToast('This Weekly Job Slot has expired. Get a new job slot to post again.');
+        return;
+      }
+    }
+    if (resuming && String(job.posting_access_type || '').toLowerCase() === 'free' &&
+        Number(jobAppliedCounts[job.id] || 0) >= 25 && !jobBoostIsActive(job) && !hasActivePaidPlan()) {
+      showToast('This free job reached 25 applicants. Choose a paid plan to reactivate it.');
+      return;
+    }
+    if (!resuming && !confirm(`Pause "${job.title}"? Applicants will not see the job while it is paused. Pausing does not extend a Weekly Job Slot.`)) return;
+
+    const now = new Date().toISOString();
+    const { data: saved, error } = await sb
+      .from('jobs')
+      .update({
+        status: resuming ? (employerVerified ? 'active' : 'pending') : 'paused',
+        pause_reason: resuming ? null : 'manual',
+        updated_at: now
+      })
+      .eq('id', jobId)
+      .eq('employer_id', workspaceOwnerId)
+      .eq('status', status)
+      .select('id, status')
+      .maybeSingle();
+    if (error || !saved) {
+      console.error('Could not update job pause state:', error);
+      showToast(error?.message || 'Could not update job. Refresh and try again.');
+      return;
+    }
+
+    await loadJobs();
+    await loadBillingEntitlement();
+    updatePostingAccessUI();
+    showToast(resuming ? (employerVerified ? 'Job activated.' : 'Job moved to pending approval.') : 'Job paused.');
+  }
+
+  async function archiveJob(jobId) {
+    if (isTeamMember && !teamCan('jobs_manage')) {
+      showToast('Your team role does not include job editing access.');
+      return;
+    }
+    const job = jobs.find(j => String(j.id) === String(jobId));
+    if (!job || ['archived', 'draft'].includes(String(job.status || '').toLowerCase())) return;
+    if (!confirm(`Archive "${job.title}"? It will be removed from active hiring, but the job and its applicants will be saved in Archived.`)) return;
+
+    const now = new Date().toISOString();
+    const { data: saved, error } = await sb
+      .from('jobs')
+      .update({ status: 'archived', updated_at: now })
+      .eq('id', jobId)
+      .eq('employer_id', workspaceOwnerId)
+      .eq('status', job.status)
+      .select('id, status')
+      .maybeSingle();
+    if (error || !saved) {
+      console.error('Could not archive job:', error);
+      showToast(error?.message || 'Could not archive job. Refresh and try again.');
+      return;
+    }
+    if (editingJobId === jobId) cancelEdit();
+    await loadJobs();
+    await loadBillingEntitlement();
+    updatePostingAccessUI();
+    showToast('Job archived. You can find it in Archived.');
   }
 
   async function closeJob(jobId) {
