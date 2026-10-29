@@ -814,6 +814,29 @@ body.employer-role .chat-shell .bubble {
 .chat-shell .alygnn-safe-note {font-size:12px!important;line-height:1.4!important;}
 @media(max-width:680px){.chat-shell .bubble,body.candidate-role .chat-shell .bubble,body.employer-role .chat-shell .bubble{max-width:88%!important;}}
 </style>
+
+<style id="alygnn-content-fit-chat-bubbles-v2">
+/* Only chat bubbles: no forced height/width and no template whitespace. */
+.chat-shell .msg-row,body.candidate-role .chat-shell .msg-row,body.employer-role .chat-shell .msg-row{
+ display:flex!important;flex:0 0 auto!important;height:auto!important;min-height:0!important;
+ align-items:flex-start!important;margin:0 0 10px!important;
+}
+.chat-shell .msg-row.mine{justify-content:flex-end!important;}
+.chat-shell .msg-row:not(.mine){justify-content:flex-start!important;}
+.chat-shell .msg-row>.bubble,body.candidate-role .chat-shell .msg-row>.bubble,body.employer-role .chat-shell .msg-row>.bubble{
+ display:block!important;flex:none!important;align-self:flex-start!important;
+ width:max-content!important;max-width:min(78%,460px)!important;
+ min-width:0!important;height:auto!important;min-height:0!important;max-height:none!important;
+ margin:0!important;padding:9px 12px!important;
+ white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;
+ font-family:'DM Sans',sans-serif!important;font-size:13px!important;line-height:1.45!important;
+}
+.chat-shell .msg-row.mine>.bubble{margin-left:auto!important;}
+.chat-shell .msg-row:not(.mine)>.bubble{margin-right:auto!important;}
+.chat-shell .bubble .alygnn-msg-body{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;margin:0;padding:0;}
+.chat-shell .bubble .bubble-time{display:block!important;white-space:nowrap!important;font-size:10px!important;line-height:1.15!important;margin-top:4px!important;}
+@media(max-width:680px){.chat-shell .msg-row>.bubble,body.candidate-role .chat-shell .msg-row>.bubble,body.employer-role .chat-shell .msg-row>.bubble{max-width:88%!important;}}
+</style>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your candidates…||Getting your jobs ready…||Almost there…">
@@ -1567,7 +1590,7 @@ function renderChat(){
            ${activeMessages.map(m=>`
              <div class="msg-row ${m.sender_id===currentUser.id?'mine':''}">
                <div class="bubble">
-                 <span style="white-space:pre-wrap">${escapeHtml(m.body)}</span>
+                 <span class="alygnn-msg-body">${escapeHtml(m.body)}</span>
                  <div class="bubble-time">${escapeHtml(fullTime(m.created_at))}</div>
                </div>
              </div>`).join('')}`
