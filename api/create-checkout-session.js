@@ -3009,7 +3009,29 @@ async function createIosDiscountedInvoice({user,input,product,priceId,quantity,c
   const base={invoice_id:invoice.id,product,amount_subtotal_cents:cents,
     discount_cents:discountCents,tax_cents:taxes,amount_total_cents:total,currency:'usd'};
   if(total===0){
-    if(invoice.status!=='paid'||invoice.paid!==true||Number(invoice.amount_remaining)!==0){
+    // Stripe can return an open invoice after finalization when automatic
+    // advancement is disabled. Settle only a verified zero-due invoice using
+    // Stripe's normal invoice pay endpoint (never paid_out_of_band).
+    // Reuse the same invoice idempotency key on retries.
+    if(invoice.status==='open' && Number(invoice.amount_due)===0 &&
+       Number(invoice.amount_remaining)===0 && invoice.paid!==true){
+      await stripeNativeRequest('POST','invoices/'+encodeURIComponent(invoice.id)+'/pay',{},
+        {'Idempotency-Key':key+'-pay-zero'});
+      invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
+    }
+    // Recheck after Stripe's finalization/settlement response. Never grant
+    // access unless Stripe itself reports paid with the expected discount.
+    if(invoice.status!=='paid' || invoice.paid!==true){
+      for(let check=0;check<2;check++){
+        await new Promise(resolve=>setTimeout(resolve,250));
+        invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id));
+        if(invoice.status==='paid' && invoice.paid===true)break;
+      }
+    }
+    if(invoice.status!=='paid'||invoice.paid!==true||
+       Number(invoice.total)!==0||Number(invoice.amount_remaining)!==0||
+       Number(invoice.subtotal)!==cents ||
+       (invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0)<=0){
       throw Object.assign(new Error('Stripe has not verified this $0 invoice as paid.'),{status:409});
     }
     return {...base,completed_in_app:true,verified_payment:true,
