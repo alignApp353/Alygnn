@@ -892,15 +892,9 @@ h1{
 
   border-radius:20px;
 
-  background:
-    rgba(
-      14,
-      31,
-      45,
-      .7
-    );
+  background:var(--panel2);
 
-  color:var(--muted);
+  color:var(--text);
 
   text-align:center;
 }
@@ -2550,127 +2544,76 @@ function render(){
    LOAD TAB
 ========================================================= */
 
-async function loadStatus(
-  status = currentStatus
-){
+// Cache loaded admin lists briefly, and share simultaneous requests.
+// The Refresh button and successful admin actions invalidate this cache.
+const ADMIN_LIST_TTL = 60000;
+const adminListCache = new Map();
+const adminListPending = new Map();
+function invalidateAdminLists(){
+  adminListCache.clear();
+  adminListPending.clear();
+}
+async function getAdminList(status){
+  const cached = adminListCache.get(status);
+  if(cached && Date.now() - cached.time < ADMIN_LIST_TTL) return cached.rows;
+  if(adminListPending.has(status)) return adminListPending.get(status);
+  const promise = request('?status=' + encodeURIComponent(status))
+    .then(result => {
+      const rows = result.reviews || [];
+      // Do not repopulate cache when a refresh invalidated this request.
+      if(adminListPending.get(status) === promise){
+        adminListCache.set(status, {rows, time:Date.now()});
+      }
+      return rows;
+    }).finally(() => {
+      if(adminListPending.get(status) === promise) adminListPending.delete(status);
+    });
+  adminListPending.set(status,promise);
+  return promise;
+}
 
+async function loadStatus(status = currentStatus){
   clearMessage();
-
-
-  currentStatus =
-    status;
-
-
-  $('queue')
-    .classList
-    .add('loading');
-
-
-  try{
-
-    const result =
-      await request(
-        '?status=' +
-        encodeURIComponent(
-          status
-        )
-      );
-
-
-    reviews =
-      result.reviews || [];
-
-
+  currentStatus = status;
+  const serial = ++adminLoadSerial;
+  const queue = $('queue');
+  const cached = adminListCache.get(status);
+  if(cached && Date.now()-cached.time < ADMIN_LIST_TTL){
+    reviews = cached.rows;
     render();
-
+    queue.classList.remove('loading');
+    return;
+  }
+  queue.classList.add('loading');
+  queue.innerHTML = '<div class="empty">Loading companies…</div>';
+  try{
+    const rows = await getAdminList(status);
+    if(serial !== adminLoadSerial || currentStatus !== status) return;
+    reviews = rows;
+    render();
   }catch(error){
-
+    if(serial !== adminLoadSerial || currentStatus !== status) return;
     reviews = [];
-
-
-    $('queue')
-      .innerHTML = '';
-
-
-    showMessage(
-      error.message,
-      'error'
-    );
-
+    queue.innerHTML = '';
+    showMessage(error.message,'error');
   }finally{
-
-    $('queue')
-      .classList
-      .remove('loading');
+    if(serial === adminLoadSerial) queue.classList.remove('loading');
   }
 }
 
-
-
-/* =========================================================
-   COUNTS
-========================================================= */
-
 async function loadCounts(){
-
-  const statuses = [
-    'pending_review',
-    'approved',
-    'rejected',
-    'deactivated'
-  ];
-
-
-  await Promise.all(
-
-    statuses.map(
-
-      async status => {
-
-        let id =
-          status ===
-          'pending_review'
-
-            ? 'pending'
-
-            : status;
-
-
-        try{
-
-          const result =
-            await request(
-              '?status=' +
-              encodeURIComponent(
-                status
-              )
-            );
-
-
-          $(
-            'count-' + id
-          ).textContent =
-            String(
-              (
-                result.reviews ||
-                []
-              ).length
-            );
-
-        }catch(error){
-
-          $(
-            'count-' + id
-          ).textContent =
-            '—';
-        }
-      }
-    )
-  );
+  const statuses = ['pending_review','approved','rejected','deactivated'];
+  await Promise.all(statuses.map(async status => {
+    const id = status === 'pending_review' ? 'pending' : status;
+    try{
+      const rows = await getAdminList(status);
+      $('count-' + id).textContent = String(rows.length);
+    }catch(error){
+      $('count-' + id).textContent = '—';
+    }
+  }));
   await loadProfileCount();
 }
-
-
 
 /* =========================================================
    MODAL
@@ -3127,10 +3070,9 @@ async function submitAction(){
     );
 
 
+    invalidateAdminLists();
     await Promise.all([
-      loadStatus(
-        currentStatus
-      ),
+      loadStatus(currentStatus),
       loadCounts()
     ]);
 
@@ -3422,6 +3364,7 @@ $('refresh')
     'click',
     ()=>{
 
+      invalidateAdminLists();
       const work=currentStatus==='accounts' ? (accountLookupId?lookupAccount():accountSearchView()) : activateAdminTab(currentStatus);
       Promise.all([work,loadCounts()]);
     }
