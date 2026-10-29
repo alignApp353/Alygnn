@@ -1503,6 +1503,27 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     };
   }
 
+  if(nativePaymentSheetRequested(input)&&resolvedPromotion?.promotion?.id&&amountDue>0&&
+     input.source==='capacitor_ios_app'){
+    const native=await createIosDiscountedInvoice({
+      user:{id:employerId,email:input.employer_email||null},
+      input:{...input,ios_upgrade_from:currentPlan,ios_upgrade_to:targetPlan,
+        ios_upgrade_billing:billing,ios_upgrade_subscription_id:sub.id,
+        ios_upgrade_target_price_id:targetPrice},
+      product:'plan_upgrade',priceId:upgrade.priceId,quantity:1,
+      cents:difference,name:`Alygnn ${currentPlan} to ${targetPlan} upgrade`,
+      promotionCodeId:resolvedPromotion.promotion.id
+    });
+    if(!native.payment_sheet||!native.client_secret)throw new Error('Stripe did not prepare the discounted upgrade payment sheet.');
+    return{
+      change:'upgrade_payment_required',effective:'after_payment',
+      fixed_difference_cents:difference,amount_due_now_cents:native.amount_total_cents,
+      amount_due_cents:native.amount_total_cents,amount_paid_cents:0,
+      current_plan:currentPlan,target_plan:targetPlan,billing_period:billing,
+      next_renewal_amount_cents:targetCatalog.cents,...native
+    };
+  }
+
   const successUrl=allowedReturnUrl(
     input.success_url,
     `https://alygnn.com/employer-dashboard.html?payment=upgrade-success&plan=${encodeURIComponent(targetPlan)}&billing=${encodeURIComponent(billing)}`
@@ -2883,6 +2904,181 @@ async function confirmIosZeroWeeklyInvoice({user,input,promotionCodeId,priceId,c
   };
 }
 
+
+// iOS-only reconciliation. Never trust the client to declare a payment successful.
+async function fulfillVerifiedIosBoost({employerId,jobId,days,reference,amountCents}){
+  if(!employerId||!jobId||!reference||!Number.isSafeInteger(Number(amountCents))||Number(amountCents)<0){
+    throw Object.assign(new Error('The Stripe Boost receipt was incomplete.'),{status:409});
+  }
+  const response=await fetch(manageBase()+'/rest/v1/rpc/activate_paid_job_boost',{
+    method:'POST',headers:manageServiceHeaders(),body:JSON.stringify({
+      p_employer_id:employerId,p_job_id:jobId,p_days:days,
+      p_payment_reference:reference,p_amount_cents:Number(amountCents)
+    })
+  });
+  const data=await response.json().catch(()=>null);
+  if(!response.ok)throw Object.assign(new Error(data?.message||data?.error||'Stripe verified payment, but Boost activation is still pending.'),{status:409});
+  return {ok:true,synced:true,product:'job_boost',boost_activated:true,job_id:jobId,days,boosted_until:data?.boosted_until||null};
+}
+
+async function syncIosBoostPayment(user,paymentIntentId){
+  if(!/^pi_[A-Za-z0-9_]+$/.test(String(paymentIntentId||'')))throw Object.assign(new Error('Invalid Stripe payment reference.'),{status:400});
+  const intent=await manageStripe('GET','payment_intents/'+encodeURIComponent(paymentIntentId));
+  const meta=intent.metadata||{};
+  if(String(meta.employer_id||'')!==String(user.id)||String(meta.product||'')!=='job_boost'||meta.payment_flow!=='native'){
+    throw Object.assign(new Error('This is not your in-app Job Boost payment.'),{status:403});
+  }
+  if(intent.status!=='succeeded'||Number(intent.amount_received)!==Number(intent.amount)){
+    throw Object.assign(new Error('Stripe has not completed this Boost payment.'),{status:409});
+  }
+  const days=Number(meta.days);
+  if(!Number.isInteger(days)||days<1||days>30||!String(meta.job_id||'')){
+    throw Object.assign(new Error('Invalid Boost details on Stripe payment.'),{status:409});
+  }
+  await verifyOwnedActiveJob(String(user.access_token||''),user.id,meta.job_id);
+  return await fulfillVerifiedIosBoost({
+    employerId:user.id,jobId:meta.job_id,days,reference:intent.id,amountCents:intent.amount_received
+  });
+}
+
+// Create a Stripe invoice to let Stripe, rather than a UI estimate, determine
+// a coupon's exact discount. Only opted-in iOS one-time purchases use this flow.
+// A paid invoice is also a permanent $0/discounted record in Billing history.
+async function createIosDiscountedInvoice({user,input,product,priceId,quantity,cents,name,jobId,days,promotionCodeId}){
+  if(!['weekly_slot','job_boost','plan_upgrade'].includes(product) || !promotionCodeId ||
+     !Number.isSafeInteger(cents)||cents<=0||!priceId){
+    throw Object.assign(new Error('This discounted iOS checkout is not available.'),{status:400});
+  }
+  const requestId=String(input.checkout_request_id||'').trim();
+  if(!/^[A-Za-z0-9_-]{8,120}$/.test(requestId)){
+    throw Object.assign(new Error('A valid checkout request ID is required.'),{status:400});
+  }
+  if(product==='job_boost')await verifyOwnedActiveJob(input.__authToken,user.id,jobId);
+  const entitlement=await getEntitlement(user.id);
+  const customer=await ensureNativeStripeCustomer({
+    user,employerId:user.id,address:normalizeBillingAddress(input.billing_address),
+    preferredCustomerId:entitlement?.stripe_plan_customer_id||null
+  });
+  if(!customer?.id)throw new Error('Stripe customer could not be verified.');
+  const key='alygnn-ios-promo-'+require('crypto').createHash('sha256')
+    .update([user.id,requestId,product,jobId||'',priceId,promotionCodeId].join('|'))
+    .digest('hex').slice(0,42);
+  const invoiceParams={
+    customer:customer.id,currency:'usd',collection_method:'charge_automatically',
+    auto_advance:'false',pending_invoice_items_behavior:'exclude',
+    'discounts[0][promotion_code]':promotionCodeId,
+    'automatic_tax[enabled]':'true',description:name,
+    'metadata[employer_id]':user.id,'metadata[product]':product,
+    'metadata[payment_flow]':'ios_promo_invoice',
+    'metadata[stripe_price_id]':priceId,
+    'metadata[checkout_request_id]':requestId,
+    'metadata[job_id]':jobId||'',
+    'metadata[days]':days||'',
+    'metadata[expected_subtotal_cents]':String(cents),
+    'metadata[promotion_code]':String(input.promotion_code||'').trim().toUpperCase(),
+    'metadata[upgrade_from_plan]':String(input.ios_upgrade_from||''),
+    'metadata[upgrade_to_plan]':String(input.ios_upgrade_to||''),
+    'metadata[upgrade_billing]':String(input.ios_upgrade_billing||''),
+    'metadata[upgrade_subscription_id]':String(input.ios_upgrade_subscription_id||''),
+    'metadata[upgrade_target_price_id]':String(input.ios_upgrade_target_price_id||'')
+  };
+  let invoice=await stripeNativeRequest('POST','invoices',invoiceParams,{'Idempotency-Key':key+'-invoice'});
+  if(!invoice?.id)throw new Error('Stripe did not create a discounted invoice.');
+  if(invoice.status==='draft'){
+    await stripeNativeRequest('POST','invoiceitems',{
+      customer:customer.id,invoice:invoice.id,'pricing[price]':priceId,
+      quantity,discountable:'true',description:name
+    },{'Idempotency-Key':key+'-item'});
+  }
+  invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id),{'expand[]':'confirmation_secret'});
+  const discount=(invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0);
+  const actualSubtotal=Number(invoice.subtotal), total=Number(invoice.total);
+  if(actualSubtotal!==cents || !Number.isSafeInteger(total) || total<0 ||
+     total>=actualSubtotal || discount<=0){
+    throw Object.assign(new Error('Stripe could not apply the selected promotion. Nothing was charged.'),{status:409});
+  }
+  if(invoice.status==='draft'){
+    invoice=await stripeNativeRequest('POST','invoices/'+encodeURIComponent(invoice.id)+'/finalize',{
+      auto_advance:'false'
+    },{'Idempotency-Key':key+'-finalize'});
+  }
+  invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoice.id),{'expand[]':'confirmation_secret'});
+  if(Number(invoice.total)!==total)throw Object.assign(new Error('Stripe invoice amount changed during finalization.'),{status:409});
+  const discountCents=(invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0);
+  const taxes=(invoice.total_tax_amounts||invoice.total_taxes||[]).reduce((n,row)=>n+Number(row?.amount||0),0);
+  const base={invoice_id:invoice.id,product,amount_subtotal_cents:cents,
+    discount_cents:discountCents,tax_cents:taxes,amount_total_cents:total,currency:'usd'};
+  if(total===0){
+    if(invoice.status!=='paid'||invoice.paid!==true||Number(invoice.amount_remaining)!==0){
+      throw Object.assign(new Error('Stripe has not verified this $0 invoice as paid.'),{status:409});
+    }
+    return {...base,completed_in_app:true,verified_payment:true,
+      ...await syncIosDiscountedInvoice(user,invoice.id)};
+  }
+  const secret=invoice?.confirmation_secret?.client_secret;
+  if(!secret||invoice.status!=='open')throw Object.assign(new Error('Stripe did not prepare the discounted native payment sheet.'),{status:409});
+  return {...base,payment_sheet:true,client_secret:secret,
+    publishable_key:process.env.STRIPE_PUBLISHABLE_KEY,
+    billing_address:normalizeBillingAddress(input.billing_address)};
+}
+
+async function syncIosDiscountedInvoice(user,invoiceId){
+  if(!/^in_[A-Za-z0-9_]+$/.test(String(invoiceId||'')))throw Object.assign(new Error('Invalid Stripe invoice reference.'),{status:400});
+  const invoice=await stripeNativeRequest('GET','invoices/'+encodeURIComponent(invoiceId));
+  const meta=invoice.metadata||{};
+  if(String(meta.employer_id||'')!==String(user.id)||meta.payment_flow!=='ios_promo_invoice'||
+     !['job_boost','weekly_slot','plan_upgrade'].includes(String(meta.product||''))){
+    throw Object.assign(new Error('This is not your Alygnn iOS purchase.'),{status:403});
+  }
+  const expected=Number(meta.expected_subtotal_cents);
+  const discount=(invoice.total_discount_amounts||[]).reduce((n,row)=>n+Number(row?.amount||0),0);
+  const total=Number(invoice.total),paid=Number(invoice.amount_paid);
+  if(invoice.status!=='paid'||invoice.paid!==true||invoice.paid_out_of_band===true||
+     !Number.isSafeInteger(expected)||expected<=0||Number(invoice.subtotal)!==expected||
+     !Number.isSafeInteger(total)||total<0||total>=expected||discount<=0||
+     Number(invoice.amount_remaining)!==0||paid!==total){
+    throw Object.assign(new Error('Stripe has not verified this discounted invoice as paid.'),{status:409});
+  }
+  if(meta.product==='plan_upgrade'){
+    const from=String(meta.upgrade_from_plan||'').toLowerCase();
+    const target=String(meta.upgrade_to_plan||'').toLowerCase();
+    const billing=String(meta.upgrade_billing||'').toLowerCase();
+    const targetPrice=MANAGE_CATALOG[billing]?.[target]?.priceId;
+    const upgrade=fixedUpgradePrice(from,target,billing);
+    if(!targetPrice||!upgrade||Number(upgrade.cents)!==expected||
+       String(upgrade.priceId)!==String(meta.stripe_price_id)||
+       String(targetPrice)!==String(meta.upgrade_target_price_id)){
+      throw Object.assign(new Error('Stripe invoice does not match the authorized plan upgrade.'),{status:409});
+    }
+    const ent=await getEntitlement(user.id);
+    const subscription=await resolveSubscription(user.id,ent);
+    if(!subscription||String(subscription.id)!==String(meta.upgrade_subscription_id)){
+      throw Object.assign(new Error('The upgrade is not linked to your active Stripe plan.'),{status:409});
+    }
+    const current=subscriptionPlan(ent,subscription);
+    const currentBilling=subscriptionBilling(ent,subscription);
+    if(current===target&&currentBilling===billing){
+      return {ok:true,synced:true,product:'plan_upgrade',change:'upgrade_applied',already_synced:true};
+    }
+    if(current!==from||currentBilling!==billing){
+      throw Object.assign(new Error('The source plan changed before the invoice was applied. Contact Alygnn support.'),{status:409});
+    }
+    await applyPaidFixedUpgrade({employerId:user.id,sub:subscription,
+      targetPlan:target,billing,targetPrice});
+    return {ok:true,synced:true,product:'plan_upgrade',change:'upgrade_applied'};
+  }
+  if(meta.product==='weekly_slot'){
+    const saved=await recordVerifiedWeeklySlotPurchase({employerId:user.id,reference:invoice.id,amount:paid});
+    return {ok:true,synced:true,product:'weekly_slot',already_synced:!!saved.already_synced};
+  }
+  const days=Number(meta.days);
+  if(!Number.isInteger(days)||days<1||days>30||!meta.job_id||expected!==days*1500){
+    throw Object.assign(new Error('The Stripe invoice does not match the expected Boost.'),{status:409});
+  }
+  return await fulfillVerifiedIosBoost({employerId:user.id,jobId:meta.job_id,
+    days,reference:invoice.id,amountCents:paid});
+}
+
 async function recordVerifiedWeeklySlotPurchase({employerId,reference,amount}){
   if(!employerId||!reference)throw new Error('Missing confirmed Weekly Job Slot payment details.');
   const url=new URL(manageBase()+'/rest/v1/employer_weekly_slot_purchases');
@@ -3164,6 +3360,37 @@ module.exports = async function handler(req, res) {
       return send(res,200,{ok:true,synced:true,...result});
     }
 
+    if(billingAction==='sync_ios_boost_payment'){
+      const result=await syncIosBoostPayment({...user,access_token:token},input.payment_intent_id);
+      return send(res,200,result);
+    }
+    if(billingAction==='sync_ios_discounted_invoice'){
+      const result=await syncIosDiscountedInvoice(user,input.invoice_id);
+      return send(res,200,result);
+    }
+    if(billingAction==='complete_ios_zero_boost'){
+      if(input.terms_accepted!==true||input.source!=='capacitor_ios_app'||
+         input.product!=='job_boost')return send(res,400,{error:'Invalid iOS Boost checkout request.'});
+      const jobId=String(input.job_id||'');
+      const days=Number(input.days);
+      if(!jobId||!Number.isInteger(days)||days<1||days>30)return send(res,400,{error:'Invalid Boost job or duration.'});
+      await verifyOwnedActiveJob(token,user.id,jobId);
+      const promo=await resolvePromotionCode(input.promotion_code);
+      if(!promo?.promotion?.id||Number(promo?.coupon?.percent_off)!==100){
+        return send(res,400,{error:'A verified 100%-off Boost promotion is required.'});
+      }
+      const result=await createIosDiscountedInvoice({
+        user,input:{...input,__authToken:token},product:'job_boost',
+        priceId:PRICE_IDS.job_boost_day,quantity:days,cents:days*1500,
+        name:`Alygnn Job Boost — ${days} day${days===1?'':'s'}`,jobId,days,
+        promotionCodeId:promo.promotion.id
+      });
+      if(result.verified_payment!==true||result.boost_activated!==true){
+        throw Object.assign(new Error('Stripe did not confirm the free Boost.'),{status:409});
+      }
+      return send(res,200,result);
+    }
+
     if(billingAction==='validate_promo'){
       const resolved=await resolvePromotionCode(input.promotion_code);
 
@@ -3419,6 +3646,21 @@ module.exports = async function handler(req, res) {
       }
       const result=await confirmIosZeroWeeklyInvoice({
         user,input,promotionCodeId,priceId,cents,name
+      });
+      return send(res,200,result);
+    }
+
+    // iOS-only: apply partial/100%-off one-time promotions on Stripe invoices,
+    // then present the resulting native PaymentSheet (or fulfill a verified $0 invoice).
+    // Android and website remain on their existing Stripe Checkout flows.
+    if(input.ios_native_invoice_checkout===true){
+      if(String(input.source||'')!=='capacitor_ios_app'||!nativePaymentSheetRequested(input)||
+         !['weekly_slot','job_boost'].includes(product)||!promotionCodeId){
+        return send(res,400,{error:'This iOS promotional checkout is unavailable.'});
+      }
+      const result=await createIosDiscountedInvoice({
+        user,input:{...input,__authToken:token},product,priceId,quantity,cents,name,
+        jobId,days,promotionCodeId
       });
       return send(res,200,result);
     }
