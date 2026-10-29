@@ -16893,6 +16893,15 @@
       $('support-settings').click();
     };
     window.addEventListener('focus',refreshEmployerNotificationBadge);
+    // Android WebView may resume without a normal focus event. Keep the bell
+    // in sync after background delivery and while a foreground push arrives.
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible') refreshEmployerNotificationBadge();
+    });
+    window.addEventListener('alygnn-native-push-received',()=>{
+      if(!$('notifications-sheet')?.hidden) renderNotifications();
+      else refreshEmployerNotificationBadge();
+    });
     $('notifications-btn').onclick = () => {
       renderNotifications();
       $('notifications-sheet').hidden = false;

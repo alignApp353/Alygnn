@@ -333,7 +333,10 @@
       report('error', 'Firebase registration failed: ' + e.message, e.code || 'FIREBASE_REGISTRATION_FAILED');
     });
     await plugin.addListener('pushNotificationReceived', () => {
+      // Refresh the currently visible notification center on either workspace.
+      // Do not include private notification payloads in this event.
       window.AlygnnRefreshCandidateMessageBadge?.();
+      window.dispatchEvent(new Event('alygnn-native-push-received'));
     });
     await plugin.addListener('pushNotificationActionPerformed', async event => {
       const notification = event?.notification || null;
