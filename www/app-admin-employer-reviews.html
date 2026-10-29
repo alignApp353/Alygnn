@@ -1282,7 +1282,7 @@ html[data-theme="light"] .check.warn{border-color:#EBDAB6}
 html[data-theme="light"] .admin-account-row, html[data-theme="light"] .admin-account-search,
 html[data-theme="light"] .admin-update-panel, html[data-theme="light"] .admin-account-history details{background:#FFFFFF}
 @media(max-width:700px){
-  .shell{padding:18px 15px 40px}
+  .shell{padding:max(50px, calc(env(safe-area-inset-top, 0px) + 20px)) 15px 40px}
   .topbar{margin-bottom:4px}
   .brand{font-size:34px}
   .hero{margin-top:20px}
@@ -1309,6 +1309,29 @@ html[data-theme="light"] .admin-update-panel, html[data-theme="light"] .admin-ac
 }
 @media(max-width:360px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.company-name{font-size:14px}}
 
+
+/* Android Admin header: clear the system status bar and align the wordmark/actions. */
+.topbar{align-items:center}
+.brand{display:block;flex:0 0 auto;line-height:1.05;white-space:nowrap}
+.admin-tools{display:flex;align-items:center;justify-content:flex-end;min-height:44px}
+.signout{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;padding:0 15px;
+  border:1px solid var(--brand2);border-radius:12px;
+  background:var(--panel);color:var(--text);
+  font-size:13px;line-height:1.1;font-weight:800;
+  white-space:nowrap;touch-action:manipulation;
+}
+.signout:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
+@media(max-width:700px){
+  .topbar{min-height:46px;margin-bottom:5px;gap:12px}
+  .brand{font-size:34px}
+  .admin-tools{display:flex;min-height:44px}
+}
+@media(max-width:360px){
+  .brand{font-size:30px}
+  .signout{padding:0 12px}
+}
 </style>
 </head>
 
@@ -1325,7 +1348,9 @@ Alygnn<span>.</span>
 </div>
 
 
-<div class="admin-tools" aria-hidden="true"></div>
+<div class="admin-tools">
+  <button class="signout" id="signout" type="button" aria-label="Sign out of Alygnn Admin">Sign out</button>
+</div>
 
 </header>
 
