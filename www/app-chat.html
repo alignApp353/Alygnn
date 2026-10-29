@@ -770,6 +770,8 @@ textarea{
         Archive conversation
       </button>
 
+      <button class="menu-action" id="report-chat" type="button">Report conversation</button>
+      <button class="menu-action danger" id="block-chat" type="button">Block contact</button>
       <button
         class="menu-action danger"
         id="delete-chat"
@@ -792,6 +794,8 @@ textarea{
       hidden>
     </div>
   </div>
+
+  <div class="alygnn-safety-notice" id="blocked-chat-note" hidden role="status"></div>
 
   <main
     class="messages"
@@ -819,6 +823,7 @@ textarea{
   </div>
 </div>
 
+<script src="app-safety-controls.js"></script>
 <script>
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
@@ -1145,6 +1150,49 @@ async function metadata(){
   }
 }
 
+async function refreshChatSafety(){
+  const control=$('block-chat');
+  const notice=$('blocked-chat-note');
+  if(!conversation?.id||!session?.user?.id){
+    control.hidden=true;
+    notice.hidden=true;
+    return;
+  }
+  try{
+    const state=await AlygnnSafety.blockState(sb,conversation.id,session.user.id);
+    control.hidden=state.blocked&&!state.mine;
+    control.textContent=state.mine?'Unblock contact':'Block contact';
+    notice.hidden=!state.blocked;
+    notice.textContent=state.mine
+      ?'You blocked this contact. New messages are disabled until you unblock.'
+      :'This conversation has been blocked. New messages are disabled.';
+    $('composer').style.display=state.blocked?'none':'';
+  }catch(error){
+    control.hidden=true;
+    setNotice('Safety controls could not load. '+(error.message||''),true);
+    $('composer').style.display='none';
+  }
+}
+
+async function chatSafetyAction(action){
+  $('chat-menu').hidden=true;
+  if(!conversation?.id||!session?.user?.id)return;
+  try{
+    if(action==='report'){
+      const sent=await AlygnnSafety.report(sb,'conversation',conversation.id,session.user.id);
+      if(sent)setNotice('Report sent to Alygnn for review.');
+      return;
+    }
+    const state=await AlygnnSafety.blockState(sb,conversation.id,session.user.id);
+    if(state.blocked&&!state.mine)throw new Error('You cannot remove a block placed by the other participant.');
+    const block=!state.mine;
+    if(block&&!confirm('Block this contact? Neither person can send new messages in this conversation until you unblock.'))return;
+    await AlygnnSafety.setBlocked(sb,conversation.id,session.user.id,block);
+    await refreshChatSafety();
+    setNotice(block?'Contact blocked.':'Contact unblocked.');
+  }catch(error){setNotice(error?.message||'Safety action failed.',true);}
+}
+
 async function findConversation(){
   let result=null;
 
@@ -1244,6 +1292,7 @@ async function findConversation(){
   }
 
   renderContext();
+  await refreshChatSafety();
 }
 
 async function loadMessages(){
@@ -1634,6 +1683,9 @@ $('archive-chat').onclick=
 
 $('delete-chat').onclick=
   deleteConversation;
+
+$('report-chat').onclick=()=>void chatSafetyAction('report');
+$('block-chat').onclick=()=>void chatSafetyAction('block');
 
 document.addEventListener(
   'click',

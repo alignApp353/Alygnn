@@ -1480,6 +1480,7 @@ html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .mes
 })();
 </script>
 
+<script src="app-safety-controls.js"></script>
 <script>
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
@@ -2105,6 +2106,7 @@ function threadHtml(row){
               }
 
               ${archivedTag}
+              ${row.safetyBlocked?'<span class="archived-tag">Blocked</span>':''}
             </div>
 
             <div class="job">
@@ -2187,6 +2189,9 @@ function threadHtml(row){
           data-id="${esc(row.id)}">
           ${row.archived?'Move to inbox':'Archive conversation'}
         </button>
+
+        <button class="menu-action" type="button" data-action="report" data-id="${esc(row.id)}">Report conversation</button>
+        <button class="menu-action danger" type="button" data-action="block" data-id="${esc(row.id)}">${row.safetyMine?'Unblock contact':(row.safetyBlocked?'Contact blocked':'Block contact')}</button>
 
         <button
           class="menu-action danger"
@@ -2693,6 +2698,30 @@ async function load(){
         new Date(a.lastMessageAt).getTime()
       );
 
+    // Read only block state for conversations this account can already access.
+    // A failed safety lookup must be visible; do not silently imply a contact is unblocked.
+    if(inboxRows.length){
+      try{
+        const blocks=await sb.from('alygnn_safety_blocks')
+          .select('conversation_id,blocked_by')
+          .in('conversation_id',inboxRows.map(item=>item.id));
+        if(blocks.error)throw blocks.error;
+        const byConversation=new Map();
+        (blocks.data||[]).forEach(block=>{
+          const id=String(block.conversation_id);
+          if(!byConversation.has(id))byConversation.set(id,[]);
+          byConversation.get(id).push(String(block.blocked_by));
+        });
+        inboxRows.forEach(item=>{
+          const ids=byConversation.get(item.id)||[];
+          item.safetyBlocked=ids.length>0;
+          item.safetyMine=ids.includes(String(session.user.id));
+        });
+      }catch(safetyError){
+        console.warn('Could not load conversation safety status:',safetyError);
+        setNotice('Conversation safety controls are temporarily unavailable.',true);
+      }
+    }
     buildJobFilter(inboxRows);
     renderList();
   }catch(error){
@@ -2812,6 +2841,31 @@ async function deleteConversation(id){
     );
   }finally{
     mutating=false;
+  }
+}
+
+async function alygnnConversationSafetyAction(id, action){
+  const row=inboxRows.find(x=>x.id===String(id));
+  if(!row || !session?.user?.id) return;
+  closeMenus();
+  try{
+    if(action==='report'){
+      const sent=await AlygnnSafety.report(sb,'conversation',id,session.user.id);
+      if(sent)setNotice('Report sent. Alygnn will review it.');
+      return;
+    }
+    const state=await AlygnnSafety.blockState(sb,id,session.user.id);
+    if(state.blocked&&!state.mine){
+      setNotice('This conversation was blocked by the other participant.',true);
+      return;
+    }
+    const block=!state.mine;
+    if(block&&!confirm('Block this contact? Neither person will be able to send new messages in this conversation until you unblock it.'))return;
+    await AlygnnSafety.setBlocked(sb,id,session.user.id,block);
+    setNotice(block?'Contact blocked for this conversation.':'Contact unblocked.');
+    await load();
+  }catch(error){
+    setNotice(error?.message||'This action could not be completed.',true);
   }
 }
 
@@ -3006,6 +3060,8 @@ document.addEventListener(
         archiveConversation(id,false);
       }else if(action.dataset.action==='delete'){
         deleteConversation(id);
+      }else if(action.dataset.action==='report'||action.dataset.action==='block'){
+        void alygnnConversationSafetyAction(id,action.dataset.action);
       }
 
       return;

@@ -1391,6 +1391,7 @@ html[data-effective-theme="dark"] .toast{
 
   <div class="header-actions">
     <button class="circle-btn" id="share-btn" type="button" aria-label="Share job">↗</button>
+    <button class="circle-btn" id="report-job-btn" type="button" aria-label="Report job listing" title="Report job listing">⚑</button>
   </div>
 </header>
 
@@ -1525,6 +1526,7 @@ html[data-effective-theme="dark"] .toast{
 
 <div class="toast" id="toast"></div>
 
+<script src="app-safety-controls.js"></script>
 <script>
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
@@ -2454,6 +2456,14 @@ document.getElementById('back-btn').addEventListener('click',()=>{
 });
 
 document.getElementById('share-btn').addEventListener('click',shareJob);
+
+document.getElementById('report-job-btn').addEventListener('click',async()=>{
+  if(!job?.id||!session?.user?.id)return;
+  try{
+    const sent=await AlygnnSafety.report(sb,'job',job.id,session.user.id);
+    if(sent)showToast('Job report sent to Alygnn for review.');
+  }catch(error){showToast(error?.message||'Could not report this job.');}
+});
 
 
 document.getElementById('pass-btn').addEventListener('click',()=>{
