@@ -164,6 +164,7 @@ button{
   justify-content:space-between;
 
   gap:20px;
+  min-height:52px;
 }
 
 .brand{
@@ -172,7 +173,9 @@ button{
     Georgia,
     serif;
 
-  font-size:36px;
+  font-size:40px;
+  line-height:1;
+  letter-spacing:-.6px;
 
   color:var(--brand);
 }
@@ -184,7 +187,10 @@ button{
 .admin-tools{
   display:flex;
   align-items:center;
+  justify-content:flex-end;
   gap:10px;
+  min-width:0;
+  min-height:1px;
 }
 
 .admin-pill{
@@ -1127,16 +1133,19 @@ h1{
   }
 
   .topbar{
-    align-items:flex-start;
+    align-items:center;
   }
 
   .admin-tools{
-    flex-direction:column;
-    align-items:flex-end;
+    display:none;
   }
 
   .admin-pill{
     font-size:9px;
+  }
+
+  .brand{
+    font-size:35px;
   }
 
   h1{
@@ -1274,6 +1283,8 @@ html[data-theme="light"] .admin-account-row, html[data-theme="light"] .admin-acc
 html[data-theme="light"] .admin-update-panel, html[data-theme="light"] .admin-account-history details{background:#FFFFFF}
 @media(max-width:700px){
   .shell{padding:18px 15px 40px}
+  .topbar{margin-bottom:4px}
+  .brand{font-size:34px}
   .hero{margin-top:20px}
   .hero h1,h1{font-size:29px;line-height:1.13}
   .hero p{font-size:12px;line-height:1.55}
@@ -1314,19 +1325,7 @@ Alygnn<span>.</span>
 </div>
 
 
-<div class="admin-tools">
-
-
-
-<button
-  class="signout"
-  id="signout"
-  type="button"
->
-Sign out
-</button>
-
-</div>
+<div class="admin-tools" aria-hidden="true"></div>
 
 </header>
 
@@ -3444,8 +3443,10 @@ async function exitAdminPortal(){
     buttons.forEach(button => { if(button)button.disabled = false; });
   }
 }
-$('signout').addEventListener('click', exitAdminPortal);
-$('exit-admin').addEventListener('click', exitAdminPortal);
+const signoutButton=$('signout');
+const exitAdminButton=$('exit-admin');
+if(signoutButton)signoutButton.addEventListener('click', exitAdminPortal);
+if(exitAdminButton)exitAdminButton.addEventListener('click', exitAdminPortal);
 
 
 
