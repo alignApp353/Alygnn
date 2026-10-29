@@ -209,24 +209,16 @@ button{
 }
 
 .signout{
-  min-height:38px;
-
-  padding:
-    0
-    13px;
-
-  border:
-    1px solid
-    var(--border);
-
-  border-radius:11px;
-
-  background:transparent;
-
-  color:var(--muted);
-
-  font-size:11px;
-  font-weight:900;
+  min-height:46px;
+  padding:0 15px;
+  border:1px solid var(--brand2);
+  border-radius:12px;
+  background:var(--panel2);
+  color:var(--text);
+  font-size:13px;
+  font-weight:800;
+  white-space:nowrap;
+  touch-action:manipulation;
 }
 
 
@@ -389,6 +381,28 @@ h1{
 
 .refresh{
   color:var(--text);
+}
+
+/* The Admin exit must remain obvious and easy to tap on phones. */
+.toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.exit-admin{
+  min-height:46px;
+  padding:0 16px;
+  border:1px solid var(--brand2);
+  border-radius:12px;
+  background:var(--brand2);
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  touch-action:manipulation;
+}
+.signout:focus-visible,.exit-admin:focus-visible{
+  outline:3px solid var(--brand);
+  outline-offset:3px;
+}
+@media(max-width:700px){
+  .toolbar-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
+  .toolbar-actions .refresh,.toolbar-actions .exit-admin{min-height:46px;width:100%;justify-self:stretch}
 }
 
 
@@ -1434,6 +1448,7 @@ Deactivated
 </div>
 
 
+<div class="toolbar-actions">
 <button
   class="refresh"
   id="refresh"
@@ -1441,6 +1456,10 @@ Deactivated
 >
 Refresh
 </button>
+<button class="exit-admin" id="exit-admin" type="button" aria-label="Exit Admin and sign out">
+Exit Admin
+</button>
+</div>
 
 </div>
 
@@ -3410,18 +3429,23 @@ $('action-modal')
    SIGN OUT
 ========================================================= */
 
-$('signout')
-  .addEventListener(
-    'click',
-    async ()=>{
-
-      await sb.auth.signOut();
-
-      location.replace(
-        'app-admin-login.html'
-      );
-    }
-  );
+// Both visible controls securely leave the Admin portal.
+// Do not navigate away while the existing session is still active.
+async function exitAdminPortal(){
+  const buttons = [$('signout'), $('exit-admin')];
+  if(buttons.some(button => button?.disabled))return;
+  buttons.forEach(button => { if(button)button.disabled = true; });
+  try{
+    const {error} = await sb.auth.signOut();
+    if(error)throw error;
+    location.replace('app-start.html');
+  }catch(error){
+    showMessage('Unable to sign out. Please try again.','error');
+    buttons.forEach(button => { if(button)button.disabled = false; });
+  }
+}
+$('signout').addEventListener('click', exitAdminPortal);
+$('exit-admin').addEventListener('click', exitAdminPortal);
 
 
 
