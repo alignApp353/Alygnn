@@ -389,26 +389,12 @@ h1{
   color:var(--text);
 }
 
-/* The Admin exit must remain obvious and easy to tap on phones. */
+/* Refresh remains easy to tap on Android after removing the duplicate Exit Admin control. */
 .toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-.exit-admin{
-  min-height:46px;
-  padding:0 16px;
-  border:1px solid var(--brand2);
-  border-radius:12px;
-  background:var(--brand2);
-  color:#fff;
-  font-size:13px;
-  font-weight:900;
-  touch-action:manipulation;
-}
-.signout:focus-visible,.exit-admin:focus-visible{
-  outline:3px solid var(--brand);
-  outline-offset:3px;
-}
+.signout:focus-visible{outline:3px solid var(--brand);outline-offset:3px}
 @media(max-width:700px){
-  .toolbar-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
-  .toolbar-actions .refresh,.toolbar-actions .exit-admin{min-height:46px;width:100%;justify-self:stretch}
+  .toolbar-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr)}
+  .toolbar-actions .refresh{min-height:46px;width:100%;justify-self:stretch}
 }
 
 
@@ -1479,9 +1465,6 @@ Deactivated
   type="button"
 >
 Refresh
-</button>
-<button class="exit-admin" id="exit-admin" type="button" aria-label="Exit Admin and sign out">
-Exit Admin
 </button>
 </div>
 
@@ -3456,7 +3439,7 @@ $('action-modal')
 // Both visible controls securely leave the Admin portal.
 // Do not navigate away while the existing session is still active.
 async function exitAdminPortal(){
-  const buttons = [$('signout'), $('exit-admin')];
+  const buttons = [$('signout')];
   if(buttons.some(button => button?.disabled))return;
   buttons.forEach(button => { if(button)button.disabled = true; });
   try{
@@ -3469,9 +3452,7 @@ async function exitAdminPortal(){
   }
 }
 const signoutButton=$('signout');
-const exitAdminButton=$('exit-admin');
 if(signoutButton)signoutButton.addEventListener('click', exitAdminPortal);
-if(exitAdminButton)exitAdminButton.addEventListener('click', exitAdminPortal);
 
 
 
