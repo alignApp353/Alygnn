@@ -296,9 +296,58 @@
   .job-actions .btn-archive { color:#985454; background:#FAEFEF; border:1px solid rgba(215,154,154,.55); }
   .job-actions .btn-archive:hover { background:#F5E3E3; }
   .jobs-view-tabs{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  /* My Jobs: keep information and controls on separate rows, like the app.
+     Layout only; all existing job-action handlers remain untouched. */
+  .job-row-neat .job-badges-row{
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px 9px;
+    margin:7px 0 5px;
+  }
+  .job-row-neat .job-badges-row:empty{display:none}
+  .job-row-neat .job-badges-row > span{margin:0}
+  .job-row-neat .job-badges-row .weekly-job-until,
+  .job-row-neat .job-badges-row .boost-until{white-space:normal;line-height:1.4}
   @media(min-width:861px){
-    #jobs-list .job-row, #closed-jobs-list .job-row, #archived-jobs-list .job-row{ flex-wrap:wrap; }
-    #jobs-list .job-actions, #closed-jobs-list .job-actions, #archived-jobs-list .job-actions{ margin-left:auto; justify-content:flex-end; }
+    #jobs-list .job-row-neat,
+    #closed-jobs-list .job-row-neat,
+    #archived-jobs-list .job-row-neat{
+      display:grid;
+      grid-template-columns:8px minmax(0,1fr) auto;
+      grid-template-rows:auto auto;
+      align-items:start;
+      gap:14px 12px;
+      padding:19px 22px;
+    }
+    .job-row-neat .job-status{grid-column:1;grid-row:1;margin-top:10px}
+    .job-row-neat .job-info{grid-column:2;grid-row:1;min-width:0}
+    .job-row-neat .job-title-text{
+      display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+      font-size:16px;line-height:1.4;margin-bottom:5px;
+      overflow-wrap:anywhere;
+    }
+    .job-row-neat .job-title-text .job-status-badge{margin:0}
+    .job-row-neat .job-meta{line-height:1.5;overflow-wrap:anywhere}
+    .job-row-neat .job-stats{
+      grid-column:3;grid-row:1;align-self:center;
+      display:flex;align-items:center;gap:0;
+      padding:11px 8px;border:1px solid var(--border);
+      border-radius:11px;background:rgba(93,127,163,.035);
+    }
+    .job-row-neat .job-stats > div{min-width:63px;padding:0 10px}
+    .job-row-neat .job-stats > div + div{border-left:1px solid var(--border)}
+    .job-row-neat .job-actions{
+      grid-column:2 / 4;grid-row:2;
+      display:flex;justify-content:flex-start;align-items:center;
+      flex-wrap:wrap;gap:8px;margin:0;
+      padding-top:14px;border-top:1px solid var(--border);
+      width:100%;
+    }
+    .job-row-neat .job-actions .btn-view,
+    .job-row-neat .job-actions .btn-danger{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-height:35px;padding:9px 13px;
+      border-radius:9px;font-size:12px;line-height:1.2;
+      white-space:normal;text-align:center;
+    }
   }
   .btn-danger { font-size: 12px; color: #a05858; background: rgba(215,154,154,0.15); border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
   .btn-danger:hover { opacity: .8; }
@@ -5747,10 +5796,11 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       : '';
 
     return `
-      <div class="job-row">
+      <div class="job-row job-row-neat">
         <div class="job-status ${statusClass}"></div>
         <div class="job-info">
-          <div class="job-title-text">${escapeHtml(job.title)}<span class="job-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>${weeklyBadge}${jobBoostIsActive(job) ? `<span class="boosted-pill">Boosted</span><span class="boost-until">until ${escapeHtml(formatBoostUntil(job.boosted_until))}</span>` : ''}${job.urgently_hiring === true ? `<span class="urgent-pill">Urgently Hiring</span>` : ''}</div>
+          <div class="job-title-text">${escapeHtml(job.title)}<span class="job-status-badge ${statusClass}">${escapeHtml(statusLabel)}</span></div>
+          <div class="job-badges-row">${weeklyBadge}${jobBoostIsActive(job) ? `<span class="boosted-pill">Boosted</span><span class="boost-until">until ${escapeHtml(formatBoostUntil(job.boosted_until))}</span>` : ''}${job.urgently_hiring === true ? `<span class="urgent-pill">Urgently Hiring</span>` : ''}</div>
           <div class="job-meta">${escapeHtml(job.job_type || '')} · ${escapeHtml(formatWorkStyleLabel(job.work_style))}${job.salary ? ' · ' + escapeHtml(job.salary) : ''}${job.location ? ' · ' + escapeHtml(job.location) : ''}</div>
         </div>
         <div class="job-stats">
