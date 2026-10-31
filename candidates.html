@@ -73,7 +73,7 @@
   }
   .info-note strong{color:var(--text)}
 
-  /* Candidates-page status filters; keep the existing By job, Accepted, and Passed views. */
+  /* Candidates-page status filters; keep the existing All, Accepted, and Passed views. */
   .candidate-view-tabs{
     display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-6px 0 18px;
   }
@@ -675,14 +675,14 @@ body.employer-role .layout>main,.layout>main{margin-left:0!important;width:100%!
       <div>
         <a class="back-candidates-btn" id="back-to-jobs" href="candidates.html" style="display:none">← All jobs</a>
         <div class="page-kicker" id="page-kicker">Applicant workspace</div>
-        <h1 id="page-title">Applicants by job</h1>
+        <h1 id="page-title">Applicants</h1>
         <div class="page-sub" id="page-sub">Choose a job to review its applicants. Applicant lists stay separated by the role they applied to.</div>
       </div>
     </div>
 
     <div class="candidate-view-tabs" id="candidate-view-tabs">
       <button class="candidate-view-tab active" id="candidate-tab-jobs" type="button" onclick="setCandidateView('jobs')">
-        By job
+        All
       </button>
       <button class="candidate-view-tab" id="candidate-tab-pending" type="button" onclick="setCandidateView('pending')">
         Pending review <span class="candidate-view-count" id="pending-count">0</span>
@@ -1994,7 +1994,7 @@ function renderGroups(){
 
     if(CANDIDATE_STATUS_VIEWS.includes(candidateView)){
       const viewLabel=CANDIDATE_STATUS_LABELS[candidateView];
-      if(pageTitle)pageTitle.textContent=`${viewLabel} applicants by job`;
+      if(pageTitle)pageTitle.textContent=`${viewLabel} applicants`;
       if(pageSub)pageSub.textContent=({
         pending:'Open a job to see applicants waiting for an employer review.',
         review:'Open a job to see applications currently under review.',
@@ -2009,7 +2009,7 @@ function renderGroups(){
       return;
     }
 
-    if(pageTitle)pageTitle.textContent='Applicants by job';
+    if(pageTitle)pageTitle.textContent='Applicants';
     if(pageSub)pageSub.textContent='Choose a job to review its applicants. Applicant lists stay separated by the role they applied to.';
     if(sortSelect)sortSelect.style.display='none';
     if(searchInput)searchInput.placeholder='Search jobs…';
