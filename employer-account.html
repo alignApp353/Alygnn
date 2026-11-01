@@ -1019,6 +1019,20 @@
 
 @media(max-width:1100px){nav .nav-right{margin-left:auto;}nav .account-mobile-menu-button{display:inline-flex!important;}nav .nav-links{display:none!important;}nav .nav-right>:not(.notif-wrap){display:none!important;} .account-mobile-menu.alygnn-drawer-sidebar{display:flex!important;flex-direction:column;gap:4px;right:auto!important;border-radius:0!important;padding:20px 16px!important;max-height:none!important;} .account-mobile-menu .alygnn-drawer-close{align-self:flex-end!important;} .account-mobile-menu .account-mobile-signout{color:#a05858!important;} .account-mobile-menu [hidden]{display:none!important;} }
 </style>
+<style id="alygnn-account-menu-match-dashboard">
+/* Mobile account menu typography and row styling match the employer dashboard drawer. */
+@media (max-width:1100px){
+  #account-mobile-menu.alygnn-drawer-sidebar{padding:20px 16px!important;gap:4px!important;background:#FCFCFA!important;}
+  #account-mobile-menu .alygnn-drawer-close{display:flex!important;margin:0 0 12px auto!important;align-self:flex-end!important;width:36px;height:36px;padding:0!important;flex:0 0 36px;justify-content:center;align-items:center;border:1px solid var(--border)!important;border-radius:10px!important;background:#F6F8F7!important;color:#4A5968!important;}
+  #account-mobile-menu .account-mobile-menu-label{display:block;padding:0 12px;margin:0 0 10px;color:#4A5968;font:500 10px/1.5 'DM Sans',sans-serif;letter-spacing:2px;}
+  #account-mobile-menu a:not(.alygnn-drawer-close),#account-mobile-menu button:not(.alygnn-drawer-close){display:flex!important;align-items:center;gap:12px;width:100%;min-height:46px;padding:12px!important;text-align:left;border:0!important;border-radius:11px!important;background:transparent;color:#4A5968;font:400 15px/1.4 'DM Sans',sans-serif!important;text-decoration:none;cursor:pointer;}
+  #account-mobile-menu .account-mobile-menu-icon{display:inline-flex;flex:0 0 21px;width:21px;height:21px;align-items:center;justify-content:center;color:inherit;}
+  #account-mobile-menu [aria-current="page"]{color:#5D7FA3!important;background:rgba(93,127,163,.10)!important;font-weight:500!important;}
+  #account-mobile-menu a:hover,#account-mobile-menu button:not(.alygnn-drawer-close):hover{background:rgba(93,127,163,.08)!important;}
+  #account-mobile-menu .account-mobile-menu-divider{height:1px;background:#DDE3E8;margin:10px 0 12px;flex:0 0 auto;}
+  #account-mobile-menu .account-mobile-signout{color:#A05858!important;margin-top:0!important;}
+}
+</style>
 </head>
 <body>
 
@@ -1060,12 +1074,14 @@
 </nav>
 <div class="alygnn-drawer-scrim" id="alygnn-drawer-scrim"></div>
 <div class="account-mobile-menu alygnn-drawer-sidebar" id="account-mobile-menu">
-  <button type="button" class="alygnn-drawer-close" aria-label="Close navigation" title="Close navigation"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7"/></svg></button>
-  <a href="employers.html">Home</a>
-  <a href="employer-account.html" aria-current="page">Account</a>
-  <button type="button" id="account-mobile-post-job" onclick="document.getElementById('account-post-job-btn').click()">Post a job</button>
-  <button type="button" id="account-mobile-dashboard" onclick="document.getElementById('dashboard-btn').click()">Dashboard</button>
-  <button type="button" class="account-mobile-signout" onclick="signOut()">Sign out</button>
+  <button type="button" class="alygnn-drawer-close" aria-label="Close navigation" title="Close navigation"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  <div class="account-mobile-menu-label">EMPLOYER</div>
+  <a href="employers.html"><span class="account-mobile-menu-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-7H9v7H3z"/></svg></span><span>Home</span></a>
+  <a href="employer-account.html" aria-current="page"><span class="account-mobile-menu-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><span>Account</span></a>
+  <button type="button" id="account-mobile-post-job" onclick="document.getElementById('account-post-job-btn').click()"><span class="account-mobile-menu-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Post a job</span></button>
+  <button type="button" id="account-mobile-dashboard" onclick="document.getElementById('dashboard-btn').click()"><span class="account-mobile-menu-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></span><span>Dashboard</span></button>
+  <div class="account-mobile-menu-divider"></div>
+  <button type="button" class="account-mobile-signout" onclick="signOut()"><span class="account-mobile-menu-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="m15 16 4-4-4-4M19 12H9"/></svg></span><span>Sign out</span></button>
 </div>
 
 
