@@ -3236,24 +3236,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
   // Website notifications may contain links saved by the iOS/Android app.
   // Normalize only app-only destinations; keep normal website links untouched.
-  function websiteNotificationLink(n){
-    const raw=String(n?.link || '').trim();
-    const label=String(n?.type || '')+' '+String(n?.title || '');
-    if(/weekly[\s_-]*job[\s_-]*slot/i.test(label)) return 'employer-account.html#billing-section';
-    if(!raw) return '#';
-    try{
-      const url=new URL(raw,window.location.href);
-      const file=url.pathname.split('/').pop().toLowerCase();
-      if(/^app-employer-(billing|pricing)(?:\.html)?$/.test(file)) return 'employer-account.html#billing-section';
-      if(/^app-employer-(account|settings)(?:\.html)?$/.test(file)) return 'employer-account.html';
-      if(/^app-employer-(dashboard|myjobs)(?:\.html)?$/.test(file)) return 'employer-dashboard.html';
-      if(/^app-employer-(candidates|applicants)(?:\.html)?$/.test(file)) return 'candidates.html';
-      if(/^app-employer-messages(?:\.html)?$/.test(file)) return 'messages.html';
-      if(/^app-[^/]*\.html$/.test(file)) return 'employer-dashboard.html';
-      if(!['http:','https:'].includes(url.protocol)) return '#';
-      return raw;
-    }catch(_){return '#';}
-  }
 
   function renderNotifDropdown(items) {
     notificationItemsCache = items || [];
@@ -3285,7 +3267,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         `;
       }
       if (n.source === 'message') {
-        return `<a class="notif-item unread" href="${escapeHtml(n.link || '#')}" onclick="handleEmployerMessageNotification(event, '${n.id}')">
+        return `<a class="notif-item unread" href="${escapeHtml(alygnnWebsiteNotificationDestination(n))}" onclick="handleEmployerMessageNotification(event, '${n.id}')">
           <div class="notif-item-title">${escapeHtml(n.title)}</div>
           ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
           <div class="notif-item-time">${timeAgo(n.created_at)}</div>
@@ -3303,7 +3285,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
 
       return `
-        <a class="notif-item ${n.read_at ? '' : 'unread'}" href="${escapeHtml(websiteNotificationLink(n))}" onclick="markNotificationRead('${n.id}')">
+        <a class="notif-item ${n.read_at ? '' : 'unread'}" href="${escapeHtml(alygnnWebsiteNotificationDestination(n))}" onclick="markNotificationRead('${n.id}')">
           <div class="notif-item-title">${escapeHtml(n.title)}</div>
           ${n.body ? `<div class="notif-item-body">${escapeHtml(n.body)}</div>` : ''}
           <div class="notif-item-time">${timeAgo(n.created_at)}</div>
@@ -3326,7 +3308,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
     const dropdown = document.getElementById('notif-dropdown');
     if (dropdown) dropdown.style.display = 'none';
-    window.location.href = n.link || 'messages.html';
+    window.location.href = alygnnWebsiteNotificationDestination(n) === '#' ? 'messages.html' : alygnnWebsiteNotificationDestination(n);
   }
 
   async function markNotificationRead(id) {
@@ -3740,6 +3722,41 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });backdrop.addEventListener('click',close);drawer.querySelector('.alygnn-drawer-close')?.addEventListener('click',close);drawer.addEventListener('click',e=>{if(e.target.closest('a,button:not(.alygnn-drawer-close)'))close();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});window.addEventListener('resize',()=>{if(innerWidth>1100)close();});
 })();
+</script>
+<script id="alygnn-website-notification-routes">
+
+// Website-only routing: stored notification links can originate in the native app.
+// Resolve destinations at click time so older notifications are covered too.
+function alygnnWebsiteNotificationDestination(n){
+  const raw=String(n?.link||'').trim();
+  const label=[n?.type,n?.title,n?.body].filter(Boolean).join(' ').toLowerCase();
+  if(/(?:job[\s_-]*slots?|weekly[\s_-]*slots?|additional[\s_-]*job[\s_-]*slots?)/i.test(label)
+     && !/applicant|candidate|message|conversation/i.test(String(n?.type||''))) return 'pricing.html';
+  if(!raw) return '#';
+  try{
+    const u=new URL(raw,window.location.origin);
+    if(!['http:','https:'].includes(u.protocol))return '#';
+    // Native-app links may be absolute URLs; keep navigation inside this website.
+    const file=u.pathname.split('/').pop().toLowerCase();
+    const routes={
+      'app-employer-billing.html':'employer-account.html#billing-section',
+      'app-employer-pricing.html':'pricing.html',
+      'app-employer-account.html':'employer-account.html',
+      'app-employer-settings.html':'employer-account.html',
+      'app-employer-dashboard.html':'employer-dashboard.html',
+      'app-employer-myjobs.html':'employer-dashboard.html',
+      'app-employer-candidates.html':'candidates.html',
+      'app-employer-applicants.html':'candidates.html',
+      'app-employer-messages.html':'messages.html',
+      'app-employer-team.html':'employer-team.html',
+      'app-employer-team-members.html':'employer-team.html'
+    };
+    if(routes[file]) return routes[file];
+    if(/^app-[^/]*\.html$/.test(file)) return 'employer-dashboard.html';
+    if(u.origin!==window.location.origin) return '#';
+    return u.pathname+u.search+u.hash;
+  }catch(_){return '#';}
+}
 </script>
 </body>
 </html>
