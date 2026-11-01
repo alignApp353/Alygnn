@@ -1239,7 +1239,7 @@ const escapeHtml = esc;
       }
       if(n.source==='message'){
         return `
-          <a class="notif-item unread" href="${escapeHtml(n.link||'#')}"
+          <a class="notif-item unread" href="${escapeHtml(alygnnWebsiteNotificationDestination(n))}"
              onclick="handleEmployerMessageNotification(event,'${n.id}')">
             <div class="notif-item-title">${escapeHtml(n.title)}</div>
             ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
@@ -1248,7 +1248,7 @@ const escapeHtml = esc;
       }
 
       return `
-        <a class="notif-item ${n.read_at?'':'unread'}" href="${n.link?escapeHtml(n.link):'#'}"
+        <a class="notif-item ${n.read_at?'':'unread'}" href="${escapeHtml(alygnnWebsiteNotificationDestination(n))}"
            onclick="handleEmployerRegularNotification(event,'${n.id}')">
           <div class="notif-item-title">${escapeHtml(normalizedEmployerNotificationTitle(n))}</div>
           ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
@@ -1278,7 +1278,7 @@ const escapeHtml = esc;
 
     const destination=String(n.link||'').trim();
     if(destination){
-      location.href=destination;
+      location.href=alygnnWebsiteNotificationDestination(n);
     }else{
       await refreshNotifications();
     }
@@ -1301,7 +1301,7 @@ const escapeHtml = esc;
 
     const dropdown=document.getElementById('notif-dropdown');
     if(dropdown)dropdown.style.display='none';
-    location.href=n.link||'messages.html';
+    location.href=alygnnWebsiteNotificationDestination(n)==='#'?'messages.html':alygnnWebsiteNotificationDestination(n);
   }
 
   async function markAllEmployerNotificationsRead(event){
@@ -1511,6 +1511,41 @@ document.addEventListener('keydown',event=>{
    }
  }
 })();
+</script>
+<script id="alygnn-website-notification-routes">
+
+// Website-only routing: stored notification links can originate in the native app.
+// Resolve destinations at click time so older notifications are covered too.
+function alygnnWebsiteNotificationDestination(n){
+  const raw=String(n?.link||'').trim();
+  const label=[n?.type,n?.title,n?.body].filter(Boolean).join(' ').toLowerCase();
+  if(/(?:job[\s_-]*slots?|weekly[\s_-]*slots?|additional[\s_-]*job[\s_-]*slots?)/i.test(label)
+     && !/applicant|candidate|message|conversation/i.test(String(n?.type||''))) return 'pricing.html';
+  if(!raw) return '#';
+  try{
+    const u=new URL(raw,window.location.origin);
+    if(!['http:','https:'].includes(u.protocol))return '#';
+    // Native-app links may be absolute URLs; keep navigation inside this website.
+    const file=u.pathname.split('/').pop().toLowerCase();
+    const routes={
+      'app-employer-billing.html':'employer-account.html#billing-section',
+      'app-employer-pricing.html':'pricing.html',
+      'app-employer-account.html':'employer-account.html',
+      'app-employer-settings.html':'employer-account.html',
+      'app-employer-dashboard.html':'employer-dashboard.html',
+      'app-employer-myjobs.html':'employer-dashboard.html',
+      'app-employer-candidates.html':'candidates.html',
+      'app-employer-applicants.html':'candidates.html',
+      'app-employer-messages.html':'messages.html',
+      'app-employer-team.html':'employer-team.html',
+      'app-employer-team-members.html':'employer-team.html'
+    };
+    if(routes[file]) return routes[file];
+    if(/^app-[^/]*\.html$/.test(file)) return 'employer-dashboard.html';
+    if(u.origin!==window.location.origin) return '#';
+    return u.pathname+u.search+u.hash;
+  }catch(_){return '#';}
+}
 </script>
 </body>
 </html>
