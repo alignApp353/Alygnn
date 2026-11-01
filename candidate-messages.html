@@ -1204,6 +1204,24 @@ body.employer-role .chat-shell .bubble {
 .chat-shell .bubble .bubble-time{display:block!important;white-space:nowrap!important;font-size:10px!important;line-height:1.15!important;margin-top:4px!important;}
 @media(max-width:680px){.chat-shell .msg-row>.bubble,body.candidate-role .chat-shell .msg-row>.bubble,body.employer-role .chat-shell .msg-row>.bubble{max-width:88%!important;}}
 </style>
+
+<style id="alygnn-candidate-messages-small-window-scroll-fix">
+/* Only candidate Messages in narrow browser windows: restore document scrolling.
+   Preserve conversation-list and bubble scrolling within the chat itself. */
+@media(max-width:900px){
+ html:has(body.candidate-role),body.candidate-role{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important}
+ body.candidate-role .layout{height:auto!important;min-height:calc(100dvh - 64px)!important;overflow:visible!important}
+ body.candidate-role main{height:auto!important;min-height:0!important;overflow:visible!important;padding-bottom:40px!important}
+ body.candidate-role .chat-shell{flex:0 0 auto!important;height:min(720px,max(510px,calc(100dvh - 190px)))!important;min-height:0!important;overflow:hidden!important}
+ body.candidate-role .conversation-list,body.candidate-role .messages{min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+}
+@media(max-width:680px){
+ body.candidate-role .chat-shell{height:auto!important;min-height:0!important;display:flex!important;flex-direction:column!important}
+ body.candidate-role .conversations{flex:0 0 auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+ body.candidate-role .conversation-list{max-height:220px!important;overflow-y:auto!important}
+ body.candidate-role .chat-panel{flex:0 0 auto!important;height:460px!important;min-height:0!important;overflow:hidden!important}
+}
+</style>
 </head>
 <body>
 <div id="loading" class="alygnn-page-loader" data-loader-messages="Loading your messages…||Getting your conversations ready…||Almost there…">
