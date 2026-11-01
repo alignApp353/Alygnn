@@ -2058,7 +2058,7 @@ function renderMessagesEmployerNotifications(items){
     }
     return `
     <a class="notif-item ${n.read_at?'':'unread'}"
-       href="${n.link?escapeHtml(n.link):'#'}"
+       href="${escapeHtml(alygnnWebsiteNotificationDestination(n))}"
        onclick="handleMessagesEmployerNotification(event,'${n.id}')">
       <div class="notif-item-title">${escapeHtml(n.title||'Notification')}</div>
       ${n.body?`<div class="notif-item-body">${escapeHtml(n.body)}</div>`:''}
@@ -2103,7 +2103,7 @@ async function handleMessagesEmployerNotification(event,id){
   if(dropdown) dropdown.style.display='none';
 
   if(item.link){
-    window.location.href=item.link;
+    window.location.href=alygnnWebsiteNotificationDestination(item);
   }else{
     await refreshMessagesEmployerNotifications();
   }
@@ -2303,6 +2303,41 @@ function chat(){const menu=document.getElementById('chat-menu');if(!menu||!docum
 function inbox(){const list=document.getElementById('list');if(!list)return;const enhance=()=>{for(const menu of list.querySelectorAll('.thread-menu')){if(menu.querySelector('[data-alygnn-safety]'))continue;const id=menu.dataset.menu;if(!id)continue;const r=button('Report conversation','report',id,'menu-action');const b=button('Block contact','block',id,'menu-action danger');r.dataset.alygnnInbox='1';b.dataset.alygnnInbox='1';menu.appendChild(r);menu.appendChild(b)}};list.addEventListener('click',e=>{const b=e.target.closest('[data-alygnn-inbox]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const menu=b.closest('.thread-menu');if(menu)menu.hidden=true;const id=menu?.dataset.menu;if(id)(b.hasAttribute('data-alygnn-block')?block:report)(id)},true);new MutationObserver(enhance).observe(list,{childList:true,subtree:false});enhance()}
 function start(){website();chat();inbox()}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
+</script>
+<script id="alygnn-website-notification-routes">
+
+// Website-only routing: stored notification links can originate in the native app.
+// Resolve destinations at click time so older notifications are covered too.
+function alygnnWebsiteNotificationDestination(n){
+  const raw=String(n?.link||'').trim();
+  const label=[n?.type,n?.title,n?.body].filter(Boolean).join(' ').toLowerCase();
+  if(/(?:job[\s_-]*slots?|weekly[\s_-]*slots?|additional[\s_-]*job[\s_-]*slots?)/i.test(label)
+     && !/applicant|candidate|message|conversation/i.test(String(n?.type||''))) return 'pricing.html';
+  if(!raw) return '#';
+  try{
+    const u=new URL(raw,window.location.origin);
+    if(!['http:','https:'].includes(u.protocol))return '#';
+    // Native-app links may be absolute URLs; keep navigation inside this website.
+    const file=u.pathname.split('/').pop().toLowerCase();
+    const routes={
+      'app-employer-billing.html':'employer-account.html#billing-section',
+      'app-employer-pricing.html':'pricing.html',
+      'app-employer-account.html':'employer-account.html',
+      'app-employer-settings.html':'employer-account.html',
+      'app-employer-dashboard.html':'employer-dashboard.html',
+      'app-employer-myjobs.html':'employer-dashboard.html',
+      'app-employer-candidates.html':'candidates.html',
+      'app-employer-applicants.html':'candidates.html',
+      'app-employer-messages.html':'messages.html',
+      'app-employer-team.html':'employer-team.html',
+      'app-employer-team-members.html':'employer-team.html'
+    };
+    if(routes[file]) return routes[file];
+    if(/^app-[^/]*\.html$/.test(file)) return 'employer-dashboard.html';
+    if(u.origin!==window.location.origin) return '#';
+    return u.pathname+u.search+u.hash;
+  }catch(_){return '#';}
+}
 </script>
 </body>
 </html>
