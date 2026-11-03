@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contact — Alygnn</title>
+<title>Help & support — Alygnn</title>
 <meta name="description" content="Get in touch with the Alygnn team.">
 <link rel="canonical" href="https://alygnn.com/contact.html">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -96,6 +96,27 @@
 }
 
 @media(max-width:640px){.page{padding:36px 18px 72px}nav{padding:0 16px;gap:12px}.nav-links{gap:10px;min-width:0;flex-wrap:wrap;justify-content:flex-end}.nav-links a{font-size:12px}.doc-title{font-size:clamp(26px,8vw,35px)}}
+
+/* Employer-app-inspired Help & support design — website only */
+.support-page{max-width:730px;padding:42px 24px 80px;}
+.support-header{display:flex;align-items:center;gap:18px;margin-bottom:25px;}
+.support-hero-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#EAF0F4;color:var(--brand);flex:0 0 auto;}
+.support-hero-icon svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.support-header .doc-title{font-family:'DM Sans',sans-serif;font-weight:700;font-size:30px;margin:0 0 4px;letter-spacing:-.6px;}
+.support-header .doc-sub{font-size:14px;line-height:1.5;}
+.support-panel{background:#FFF;border:1px solid var(--border);border-radius:23px;padding:25px 28px;margin-bottom:18px;box-shadow:0 12px 32px rgba(26,37,48,.035);}
+.support-panel h2{font-size:19px;font-weight:600;margin:0 0 8px;}
+.support-intro,.support-email p{font-size:13px;color:var(--text-muted);line-height:1.65;margin-bottom:17px;}
+.support-panel label{font-weight:500;font-size:13px;margin:17px 0 8px;}
+.support-panel input,.support-panel select,.support-panel textarea{display:block;width:100%;border:1px solid var(--border);border-radius:13px;padding:13px 16px;font:400 14px 'DM Sans',sans-serif;color:var(--text);background:#fff;outline:none;}
+.support-panel :is(input,select,textarea):focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(93,127,163,.09);}
+.support-panel textarea{min-height:145px;resize:vertical;line-height:1.6;}
+.support-panel .btn-primary{width:auto;min-width:155px;border-radius:13px;font-weight:500;padding:13px 22px;margin-top:20px;}
+.support-email p{margin-bottom:13px;}
+.support-email-link{display:inline-flex;border:1px solid var(--border);border-radius:13px;padding:13px 17px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;overflow-wrap:anywhere;}
+.support-email-link:hover{color:var(--brand);border-color:var(--brand);}
+.identity-fields[hidden]{display:none!important;}
+@media(max-width:640px){.support-page{padding:25px 17px 65px;}.support-header{gap:12px}.support-hero-icon{width:48px;height:48px;border-radius:14px}.support-header .doc-title{font-size:25px}.support-panel{padding:22px 19px;border-radius:20px}.support-panel input,.support-panel select,.support-panel textarea{font-size:16px}.support-panel .btn-primary{width:100%;}}
 </style>
 </head>
 <body>
@@ -107,28 +128,46 @@
   </div>
 </nav>
 
-<div class="page">
-  <div class="doc-header">
-    <h1 class="doc-title">Get in touch</h1>
-    <p class="doc-sub">Questions, feedback, or something not working right? Send us a message and we'll get back to you.</p>
+<main class="page support-page">
+  <div class="support-header">
+    <div class="support-hero-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></div>
+    <div><h1 class="doc-title">Help &amp; support</h1><p class="doc-sub">Send the Alygnn team a message without leaving the website.</p></div>
   </div>
 
-  <form id="contact-form">
-    <label for="name">Full name</label>
-    <input type="text" id="name" name="name" placeholder="Your name" required>
+  <section class="support-panel" aria-labelledby="contact-panel-title">
+    <h2 id="contact-panel-title">Contact Alygnn</h2>
+    <p class="support-intro" id="support-signed-in">Tell us what you need help with. We'll use your details to respond by email.</p>
+    <form id="contact-form">
+      <div class="identity-fields" id="contact-identity-fields">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" placeholder="Your name" autocomplete="name" required>
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <label for="topic">What do you need help with?</label>
+      <select id="topic" name="topic" required>
+        <option value="Account & login">Account &amp; login</option>
+        <option value="Employer verification">Employer verification</option>
+        <option value="Billing & plan">Billing &amp; plan</option>
+        <option value="Team access">Team access</option>
+        <option value="Jobs & candidates">Jobs &amp; candidates</option>
+        <option value="Report a problem">Report a problem</option>
+        <option value="Privacy request">Privacy request</option>
+        <option value="Other">Other</option>
+      </select>
+      <label for="message">Message</label>
+      <textarea id="message" name="message" placeholder="Tell us what you need help with." minlength="5" maxlength="5000" required></textarea>
+      <button type="submit" class="btn-primary" id="submit-btn">Send message</button>
+      <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
+    </form>
+  </section>
 
-    <label for="email">Email address</label>
-    <input type="email" id="email" name="email" placeholder="you@example.com" required>
-
-    <label for="message">Message</label>
-    <textarea id="message" name="message" placeholder="How can we help?" required></textarea>
-
-    <button type="submit" class="btn-primary" id="submit-btn">Send message</button>
-    <div class="form-status" id="form-status"></div>
-  </form>
-
-  <p class="alt-contact">You can also reach us directly at <a href="mailto:admin@alygnn.com">admin@alygnn.com</a>.</p>
-</div>
+  <section class="support-panel support-email" aria-labelledby="email-support-title">
+    <h2 id="email-support-title">Email support</h2>
+    <p>You can also contact Alygnn directly.</p>
+    <a href="mailto:admin@alygnn.com" class="support-email-link">admin@alygnn.com</a>
+  </section>
+</main>
 
 <footer>
   <a href="index.html" id="contact-footer-home">Alygnn</a>
@@ -185,7 +224,7 @@ const { createClient } = supabase;
       referrer.includes('/candidates.html');
 
     if (explicitEmployer || employerReferrer) {
-      home = 'employers.html';
+      home = 'employer-account.html';
     }
 
     try {
@@ -205,7 +244,7 @@ const { createClient } = supabase;
         ).toLowerCase();
 
         if (role === 'employer') {
-          home = 'employers.html';
+          home = 'employer-account.html';
         } else if (role) {
           home = 'index.html';
         }
@@ -221,6 +260,25 @@ const { createClient } = supabase;
 
   setContactHomeDestination();
 
+  async function hydrateEmployerContact() {
+    const fromEmployer = new URLSearchParams(location.search).get('from') === 'employer';
+    if (!fromEmployer) return;
+    const intro = document.getElementById('support-signed-in');
+    const identity = document.getElementById('contact-identity-fields');
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user?.email) return;
+      const user = session.user;
+      const email = user.email;
+      const name = String(user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0]).trim();
+      document.getElementById('name').value = name;
+      document.getElementById('email').value = email;
+      if (intro) intro.textContent = `Signed in as ${email}. We'll include your account email so our team can respond.`;
+      if (identity) identity.hidden = true;
+    } catch (error) { console.warn('Contact account prefill unavailable:', error); }
+  }
+  hydrateEmployerContact();
+
   const form = document.getElementById('contact-form');
   const submitBtn = document.getElementById('submit-btn');
   const status = document.getElementById('form-status');
@@ -235,7 +293,7 @@ const { createClient } = supabase;
     const payload = {
       name: document.getElementById('name').value.trim(),
       email: document.getElementById('email').value.trim(),
-      message: document.getElementById('message').value.trim()
+      message: `[${document.getElementById('topic').value}]\n\n${document.getElementById('message').value.trim()}`
     };
 
     try {
