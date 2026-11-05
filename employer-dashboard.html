@@ -3091,11 +3091,24 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         return;
       }
 
-      const blueprint = ownerProfile?.hiring_blueprint;
+      // Match the completion check in employer-onboarding.html so verified
+      // employers cannot loop between onboarding and the dashboard.
+      const blueprint = ownerProfile?.hiring_blueprint &&
+        typeof ownerProfile.hiring_blueprint === 'object'
+        ? ownerProfile.hiring_blueprint : null;
+      const verificationStatus = String(ownerProfile?.verification_status || '').trim().toLowerCase();
       const hasCompletedOnboarding =
-        !!blueprint &&
-        typeof blueprint === 'object' &&
-        Object.keys(blueprint).length > 0;
+        ownerProfile?.employer_verified === true ||
+        verificationStatus === 'approved' ||
+        (!!blueprint && (
+          blueprint.onboarding_complete === true ||
+          (
+            !!String(blueprint.company_id || '').trim() &&
+            !!String(blueprint.irs_document_path || '').trim() &&
+            Array.isArray(blueprint.company_priorities) && blueprint.company_priorities.length >= 5 &&
+            Array.isArray(blueprint.candidate_priorities) && blueprint.candidate_priorities.length >= 5
+          )
+        ));
 
       if (!hasCompletedOnboarding) {
         window.location.replace('employer-onboarding.html');
