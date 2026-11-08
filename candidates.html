@@ -626,6 +626,47 @@ body.employer-role .layout,.layout{display:block!important;}
 body.employer-role .layout>main,.layout>main{margin-left:0!important;width:100%!important;max-width:100%!important;}
 }
 </style>
+
+<style id="alygnn-applicants-narrow-card-fix">
+/* Applicants page only: keep the existing wide-desktop layout, but stop
+   action buttons from squeezing candidate summaries in smaller windows. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  .candidate-card {
+    grid-template-columns: minmax(0, 1fr) 108px;
+    gap: 14px 18px;
+    align-items: start;
+  }
+  .candidate-card .candidate-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    border-top: 1px solid var(--border);
+    padding-top: 13px;
+  }
+}
+@media (max-width: 900px) {
+  .candidate-card { align-items: start; }
+  .candidate-card .candidate-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+}
+@media (max-width: 620px) {
+  .candidate-card { grid-template-columns: minmax(0, 1fr); }
+  .candidate-card .match-box { justify-content: flex-start; }
+}
+.candidate-card .candidate-main,
+.candidate-card .candidate-top > div:last-child { min-width: 0; }
+.candidate-card .candidate-summary {
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
+}
+.candidate-card .candidate-actions .btn { max-width: 100%; }
+</style>
 </head>
 <body>
 <div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your applicants…||Getting your jobs ready…||Almost there…">
