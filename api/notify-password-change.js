@@ -450,6 +450,58 @@ async function deliver(settings, eventInfo) {
   }
   return { sent, alreadyDelivered, disabled, failed, devices: tokens.size };
 }
+// Safety-report emails: this path is invoked ONLY by a secret-authenticated
+// Supabase database webhook after a report has been inserted. It never accepts
+// report text, recipients, or conversation IDs directly from a public caller.
+async function handleSafetyReportEmail(event) {
+  const reportId = safeId(event?.record?.id);
+  if (!reportId) return { skipped: true, reason: 'Missing report ID' };
+  const base = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!base.startsWith('https://') || !key || !resendKey) {
+    throw new Error('Report notification environment variables are missing');
+  }
+  const cfg = { base, key };
+  const report = await getOne(cfg, 'alygnn_safety_reports', reportId);
+  if (!report || report.subject_type !== 'conversation') {
+    return { skipped: true, reason: 'Not a conversation report' };
+  }
+
+  // Limit the size of untrusted report content in the outgoing email.
+  const plain = value => String(value ?? '').slice(0, 1500);
+  const escapeHtml = value => plain(value).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[c]);
+  const reason = plain(report.reason || 'Not specified');
+  const details = plain(report.details || 'No additional details');
+  const submitted = plain(report.created_at || 'Not available');
+  const conversation = safeId(report.conversation_id) || 'Not available';
+  const reporter = safeId(report.reporter_id) || 'Not available';
+  const label = (name, value) => `<tr><td style="padding:8px 12px;font-weight:700;vertical-align:top">${name}</td><td style="padding:8px 12px;overflow-wrap:anywhere;white-space:pre-wrap">${escapeHtml(value)}</td></tr>`;
+  const html = `<div style="background:#F6F8F7;padding:28px 14px;font-family:Arial,sans-serif;color:#172333"><div style="max-width:600px;margin:auto;background:#fff;padding:26px;border:1px solid #DDE3E8;border-radius:16px"><h2 style="margin-top:0;color:#5D7FA3">Alygnn — Conversation report</h2><p>A conversation was reported and needs private administrator review.</p><table style="width:100%;border-collapse:collapse;font-size:14px">${label('Report ID', reportId)}${label('Reason', reason)}${label('Details', details)}${label('Conversation ID', conversation)}${label('Reporter ID', reporter)}${label('Submitted', submitted)}</table><p style="color:#647282;font-size:12px;margin-top:22px">Internal safety report. Do not forward to the reported user.</p></div></div>`;
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': `alygnn-conversation-report-${reportId}`
+    },
+    body: JSON.stringify({
+      from: 'Alygnn <admin@alygnn.com>',
+      to: ['admin@alygnn.com'],
+      reply_to: 'noreply@alygnn.com',
+      subject: 'Alygnn safety alert — New conversation report',
+      html
+    })
+  });
+  if (!response.ok) {
+    // Avoid logging private report text or external-provider response bodies.
+    throw new Error(`Report email provider rejected request (${response.status})`);
+  }
+  return { sent: true, report_id: reportId };
+}
+
 async function handlePushWebhook(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const expected = process.env.ALYGNN_PUSH_WEBHOOK_SECRET || '';
@@ -458,9 +510,13 @@ async function handlePushWebhook(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   try {
-    const cfg = settings();
     const event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     if (!event || typeof event !== 'object' || Array.isArray(event)) return res.status(400).json({ error: 'Invalid event' });
+    if (event.schema === 'public' && event.table === 'alygnn_safety_reports' && event.type === 'INSERT') {
+      const result = await handleSafetyReportEmail(event);
+      return res.status(200).json(result);
+    }
+    const cfg = settings();
     const supported = (event.schema === 'public' &&
         (event.type === 'INSERT' && ['application_messages', 'applications'].includes(event.table) ||
          event.type === 'UPDATE' && event.table === 'applications')) ||
