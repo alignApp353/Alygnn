@@ -336,7 +336,7 @@
   }
   function noticeKind(notice) {
     const type=text(notice.type).toLowerCase();
-    if(type.includes('application')||type.includes('selected')||type.includes('hired')) return 'application';
+    if(['application','selected','not_selected','not-selected','rejected','declined','accepted','shortlist','hired','hiring_decision'].some(value=>type.includes(value))) return 'application';
     if(type.includes('password')||type.includes('security')||type.includes('account')) return 'security';
     if(type.includes('job')||type.includes('recommend')) return 'job';
     return 'account';
@@ -349,7 +349,16 @@
     const link=text(notice.link);
     // Navigation stays inside app files. Never follow arbitrary database URLs.
     if(/^app-[a-z0-9-]+\.html(?:\?[a-z0-9_%+&=.-]*)?$/i.test(link))return link;
-    if(kind==='application')return 'app-applied.html';
+    // The website sometimes saves website-relative links in notifications.
+    // Route those links to the equivalent candidate app page without opening a browser.
+    if(kind==='application'){
+      const qs=link.includes('?')?link.slice(link.indexOf('?')+1).split('#')[0]:'';
+      const params=new URLSearchParams(qs);
+      const application=params.get('application')||params.get('application_id');
+      const destination=new URLSearchParams();
+      if(application && /^[a-z0-9-]{1,80}$/i.test(application))destination.set('application',application);
+      return 'app-applied.html'+(destination.toString()?'?'+destination:'');
+    }
     if(kind==='job')return 'app-swipe.html';
     return 'app-account.html';
   }
