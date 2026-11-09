@@ -1615,5 +1615,66 @@ const { createClient } = supabase;
   })();
 </script>
 
+
+<!-- Alygnn mobile app invitation: homepage only, mobile browsers only. -->
+<style id="alygnn-mobile-app-invite-style">
+  #alygnn-app-invite[hidden]{display:none!important}
+  #alygnn-app-invite{position:fixed;inset:0;z-index:25000;background:rgba(8,22,32,.58);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'DM Sans',Arial,sans-serif}
+  #alygnn-app-invite .invite-card{width:min(100%,380px);border:1px solid #DDE3E8;border-radius:24px;padding:28px 23px 22px;background:#FCFCFA;box-shadow:0 26px 80px rgba(0,0,0,.25);color:#1A2530;text-align:center;position:relative}
+  #alygnn-app-invite .invite-logo{font-family:'DM Serif Display',Georgia,serif;font-size:32px;letter-spacing:-.6px;color:#5D7FA3}
+  #alygnn-app-invite .invite-logo span{color:#8CB69B}
+  #alygnn-app-invite h2{font:700 22px/1.2 'DM Sans',Arial,sans-serif;margin:17px 0 10px;letter-spacing:-.4px}
+  #alygnn-app-invite p{font:400 14px/1.6 'DM Sans',Arial,sans-serif;color:#526576;margin:0 0 20px}
+  #alygnn-app-invite .invite-action{display:flex;align-items:center;justify-content:center;min-height:48px;width:100%;border-radius:13px;padding:12px 14px;margin:9px 0 0;font:700 14px 'DM Sans',Arial,sans-serif;text-decoration:none;cursor:pointer}
+  #alygnn-app-invite .invite-primary{background:#5D7FA3;color:white;border:1px solid #5D7FA3}
+  #alygnn-app-invite .invite-secondary{background:#fff;color:#345F91;border:1px solid #C9D8E3}
+  #alygnn-app-invite .invite-website{margin-top:17px;border:0;background:transparent;color:#596B7B;font-size:13px;font-weight:700;cursor:pointer;padding:9px}
+  #alygnn-app-invite .invite-note{display:block;font:400 12px/1.55 'DM Sans',Arial,sans-serif;color:#667789;margin:10px 0 0}
+  #alygnn-app-invite .invite-close{position:absolute;top:10px;right:12px;width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;color:#687786;font-size:25px;cursor:pointer}
+  @media(min-width:901px){#alygnn-app-invite{display:none!important}}
+</style>
+<div id="alygnn-app-invite" role="dialog" aria-modal="true" aria-labelledby="alygnn-app-invite-title" hidden>
+  <div class="invite-card">
+    <button type="button" class="invite-close" aria-label="Continue on website" id="alygnn-invite-close">&times;</button>
+    <div class="invite-logo">Alygnn<span>.</span></div>
+    <h2 id="alygnn-app-invite-title">Continue with Alygnn</h2>
+    <p>Use the Alygnn app for the best experience, or keep browsing the website.</p>
+    <button type="button" id="alygnn-invite-return" class="invite-action invite-primary">Return to Alygnn app</button>
+    <a id="alygnn-invite-store" class="invite-action invite-secondary" rel="noopener noreferrer" target="_blank">Find Alygnn in the app store</a>
+    <small class="invite-note" id="alygnn-invite-note">Already installed? You can also open Alygnn from your Home Screen.</small>
+    <button type="button" class="invite-website" id="alygnn-invite-web">Continue on website</button>
+  </div>
+</div>
+<script id="alygnn-mobile-app-invite-script">
+(function(){
+  'use strict';
+  if(window.Capacitor?.isNativePlatform?.())return;
+  if(!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))return;
+  const modal=document.getElementById('alygnn-app-invite');
+  if(!modal)return;
+  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Neither official App Store listing nor Alygnn deep-link URL was supplied.
+  // Send users to a clearly-labelled store SEARCH, never another application's listing.
+  const store=document.getElementById('alygnn-invite-store');
+  store.href=ios?'https://apps.apple.com/us/search?term=Alygnn':'https://play.google.com/store/search?q=Alygnn&c=apps';
+  store.textContent=ios?'Find Alygnn on the App Store':'Find Alygnn on Google Play';
+  const note=document.getElementById('alygnn-invite-note');
+  const done=()=>{modal.hidden=true;try{sessionStorage.setItem('alygnn_home_app_invite_dismissed_v1','1')}catch(_){}};
+  document.getElementById('alygnn-invite-close').addEventListener('click',done);
+  document.getElementById('alygnn-invite-web').addEventListener('click',done);
+  document.getElementById('alygnn-invite-return').addEventListener('click',()=>{
+    // The link back to a native app is provided by Safari's own return-to-app control
+    // after a native app opens Safari; do not guess an unsupported custom URL scheme.
+    note.textContent=ios?'Tap “Alygnn” at the top-left of Safari to return to the app. If it is not shown, open Alygnn from your Home Screen.':'Open Alygnn from your phone’s app screen. You can return to this webpage later.';
+    document.getElementById('alygnn-invite-return').textContent='Open Alygnn from your phone';
+  });
+  modal.addEventListener('click',e=>{if(e.target===modal)done()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)done()});
+  try{if(sessionStorage.getItem('alygnn_home_app_invite_dismissed_v1')==='1')return}catch(_){}
+  if(new URLSearchParams(location.search).has('stay_web'))return;
+  modal.hidden=false;
+})();
+</script>
+
 </body>
 </html>
