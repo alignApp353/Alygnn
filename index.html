@@ -1639,9 +1639,8 @@ const { createClient } = supabase;
     <div class="invite-logo">Alygnn<span>.</span></div>
     <h2 id="alygnn-app-invite-title">Continue with Alygnn</h2>
     <p>Use the Alygnn app for the best experience, or keep browsing the website.</p>
-    <button type="button" id="alygnn-invite-return" class="invite-action invite-primary">Return to Alygnn app</button>
+    <button type="button" id="alygnn-invite-return" class="invite-action invite-primary">Open Alygnn App</button>
     <a id="alygnn-invite-store" class="invite-action invite-secondary" rel="noopener noreferrer" target="_blank">Find Alygnn in the app store</a>
-    <small class="invite-note" id="alygnn-invite-note">Already installed? You can also open Alygnn from your Home Screen.</small>
     <button type="button" class="invite-website" id="alygnn-invite-web">Continue on website</button>
   </div>
 </div>
@@ -1658,15 +1657,29 @@ const { createClient } = supabase;
   const store=document.getElementById('alygnn-invite-store');
   store.href=ios?'https://apps.apple.com/us/search?term=Alygnn':'https://play.google.com/store/search?q=Alygnn&c=apps';
   store.textContent=ios?'Find Alygnn on the App Store':'Find Alygnn on Google Play';
-  const note=document.getElementById('alygnn-invite-note');
   const done=()=>{modal.hidden=true;try{sessionStorage.setItem('alygnn_home_app_invite_dismissed_v1','1')}catch(_){}};
   document.getElementById('alygnn-invite-close').addEventListener('click',done);
   document.getElementById('alygnn-invite-web').addEventListener('click',done);
   document.getElementById('alygnn-invite-return').addEventListener('click',()=>{
-    // The link back to a native app is provided by Safari's own return-to-app control
-    // after a native app opens Safari; do not guess an unsupported custom URL scheme.
-    note.textContent=ios?'Tap “Alygnn” at the top-left of Safari to return to the app. If it is not shown, open Alygnn from your Home Screen.':'Open Alygnn from your phone’s app screen. You can return to this webpage later.';
-    document.getElementById('alygnn-invite-return').textContent='Open Alygnn from your phone';
+    // Attempt a native app URL. An iOS URL type / Android intent filter for
+    // "alygnn" must be registered in the native build for this to open it.
+    // If the scheme is unsupported, send the user to a store search instead.
+    const destination=store.href;
+    let switched=false;
+    const markSwitched=()=>{if(document.visibilityState==='hidden')switched=true;};
+    document.addEventListener('visibilitychange',markSwitched);
+    window.addEventListener('pagehide',markSwitched,{once:true});
+    const fallback=()=>{
+      document.removeEventListener('visibilitychange',markSwitched);
+      if(!switched&&document.visibilityState!=='hidden')window.location.assign(destination);
+    };
+    window.setTimeout(fallback,1700);
+    if(ios){
+      window.location.href='alygnn://open';
+    }else{
+      const encoded=encodeURIComponent(destination);
+      window.location.href='intent://open#Intent;scheme=alygnn;package=com.alygnn.app;S.browser_fallback_url='+encoded+';end';
+    }
   });
   modal.addEventListener('click',e=>{if(e.target===modal)done()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)done()});
