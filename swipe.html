@@ -1036,22 +1036,38 @@
         }
       }
 
-      if (Array.isArray(pref.jobTypes) && pref.jobTypes.length) {
-        const wantedTypes = pref.jobTypes.map(t => JOB_TYPE_MAP[t] || t);
-        results = results.filter(job => wantedTypes.includes(job.job_type));
+      // Match any selected employment type against all types advertised by a job.
+      // Employer postings may save multiple types in one string or an array.
+      // Blank selections must never hide jobs.
+      const normalizeJobType = value => String(value || '').trim().toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace(/^contractor$/, 'contract')
+        .replace(/^intern$/, 'internship');
+      const chosenTypes = Array.isArray(pref.jobTypes) ? pref.jobTypes :
+        (pref.jobType ? [pref.jobType] : []);
+      const wantedTypes = new Set(chosenTypes.map(type =>
+        normalizeJobType(JOB_TYPE_MAP[String(type).toUpperCase()] || type)
+      ).filter(Boolean));
+      if (wantedTypes.size) {
+        results = results.filter(job => {
+          const listed = [job.job_type, job.employment_type]
+            .filter(Boolean)
+            .flatMap(value => Array.isArray(value) ? value : String(value).split(/[,;|/]+/))
+            .map(normalizeJobType).filter(Boolean);
+          return listed.some(type => wantedTypes.has(type));
+        });
       }
 
-      if (pref.workStyle) {
-        // "Remote" preference is treated as a strict filter since that's
-        // usually a hard requirement; other work styles are left loose so
-        // results don't get overly narrow.
-        if (pref.workStyle === 'Remote') {
-          results = results.filter(job => job.work_style === 'Remote');
-        }
-      }
+      // Match the iOS Discover behavior: selected work styles influence
+      // relevance and are not an additional strict exclusion on this screen.
+      // This also supports the website's multi-select preferences format.
 
       if (!results.length) {
-        throw new Error('No jobs match your preferences right now. Try widening your criteria in Preferences, or check back soon.');
+        jobs = [];
+        currentIndex = 0;
+        updateStats();
+        showScreen('empty');
+        return;
       }
 
       results = await attachEmployerLogos(results);
