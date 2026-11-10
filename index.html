@@ -1241,6 +1241,27 @@
 }
 
 @media(max-width:600px){.hero{padding:38px 5% 44px;min-width:0}.hero-visual{width:100%;min-width:0;max-width:100%;height:min(390px,105vw)}.nav-right{gap:8px}.nav-links{gap:10px} .float-salary,.float-remote{max-width:70%}}
+
+/* Homepage mobile navigation: keep all actions visible without horizontal clipping. */
+@media (max-width: 900px) {
+  nav { padding-left: 4%; padding-right: 4%; gap: 10px; }
+  nav .logo { white-space: nowrap; flex: 0 0 auto; }
+  nav .nav-right { margin-left: auto; gap: 10px; flex: 0 1 auto; min-width: 0; }
+  nav .nav-right > a[href="employers.html"] { display: none; }
+  nav #nav-auth-link { min-width: 0; white-space: nowrap; font-size: 13px; }
+  nav #nav-cta-btn { min-width: 0; white-space: nowrap; padding: 10px 15px; font-size: 13px; }
+  nav .nav-toggle { flex: 0 0 36px; width: 36px; height: 40px; margin-left: 0; padding: 8px; align-items: center; justify-content: center; }
+  .mobile-menu { position: fixed; top: 64px; left: 0; right: 0; z-index: 999; max-height: calc(100dvh - 64px); overflow-y: auto; box-shadow: 0 16px 24px rgba(26,37,48,.09); }
+}
+@media (max-width: 390px) {
+  nav { padding-left: 12px; padding-right: 12px; gap: 6px; }
+  nav .logo { font-size: 20px; }
+  nav .nav-right { gap: 6px; }
+  nav #nav-auth-link { font-size: 12px; }
+  nav #nav-cta-btn { font-size: 12px; padding: 9px 11px; }
+  nav .nav-toggle { width: 32px; flex-basis: 32px; padding: 6px; }
+}
+
 </style>
 </head>
 <body>
@@ -1262,6 +1283,7 @@
   </div>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
+  <a href="employers.html">For employers</a>
   <a href="#how">How it works</a>
   <a href="#features">Features</a>
   <a href="#about">About</a>
