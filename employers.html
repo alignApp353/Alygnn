@@ -374,6 +374,44 @@
 }
 
 @media(max-width:560px){nav{padding-left:16px;padding-right:16px;gap:8px}.nav-links{gap:10px;min-width:0}.nav-links a{font-size:12px}}
+
+  /* Mobile navigation only. Desktop layout and auth handling stay unchanged. */
+  @media (max-width: 900px) {
+    nav { gap: 10px; }
+    nav > .logo { flex: 0 0 auto; white-space: nowrap; }
+    nav .nav-right { min-width: 0; flex: 0 1 auto; gap: 12px; }
+    nav #nav-jobseekers-link { display: none; }
+    nav .nav-toggle { flex: 0 0 auto; margin-left: 0; padding: 8px 2px; }
+    nav #nav-auth-link { min-width: 0; white-space: nowrap; }
+    nav #nav-cta-btn { min-width: 0; white-space: nowrap; }
+    .mobile-menu {
+      position: fixed;
+      z-index: 999;
+      top: 64px;
+      left: 0;
+      right: 0;
+      max-height: calc(100dvh - 64px);
+      overflow-y: auto;
+      box-shadow: 0 14px 25px rgba(26,37,48,.07);
+    }
+  }
+  @media (max-width: 600px) {
+    nav { padding-left: 16px; padding-right: 16px; gap: 6px; }
+    nav > .logo { font-size: 21px; }
+    nav .nav-right { gap: 9px; }
+    nav #nav-auth-link { font-size: 13px; }
+    nav #nav-cta-btn { font-size: 13px; padding: 9px 14px; }
+  }
+  @media (max-width: 380px) {
+    nav { padding-left: 12px; padding-right: 12px; }
+    nav .nav-right { gap: 7px; }
+    nav #nav-auth-link { display: none; }
+    #mobile-auth-link { display: block; }
+  }
+  @media (min-width: 381px) {
+    #mobile-auth-link { display: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -454,10 +492,26 @@
   <a href="#how">How it works</a>
   <a href="pricing.html" id="mobile-pricing-link" style="display:none;">Pricing</a>
   <a href="#faq">FAQ</a>
+  <a href="index.html">For jobseekers</a>
+  <a id="mobile-auth-link" href="login.html?role=employer" style="visibility:hidden;pointer-events:none;">Sign in</a>
 </div>
 <script>
   const navToggle = document.getElementById('nav-toggle');
   const mobileMenu = document.getElementById('mobile-menu');
+  // Mirror the existing auth-controlled label and destination on very small phones.
+  const desktopAuthLink = document.getElementById('nav-auth-link');
+  const mobileAuthLink = document.getElementById('mobile-auth-link');
+  const syncMobileAuth = () => {
+    mobileAuthLink.textContent = desktopAuthLink.textContent;
+    mobileAuthLink.href = desktopAuthLink.getAttribute('href');
+    const ready = desktopAuthLink.classList.contains('auth-ready');
+    mobileAuthLink.style.visibility = ready ? 'visible' : 'hidden';
+    mobileAuthLink.style.pointerEvents = ready ? 'auto' : 'none';
+  };
+  new MutationObserver(syncMobileAuth).observe(desktopAuthLink, {
+    attributes: true, attributeFilter: ['class', 'href'], childList: true, characterData: true, subtree: true
+  });
+  syncMobileAuth();
   navToggle.addEventListener('click', () => {
     const isOpen = mobileMenu.classList.toggle('open');
     navToggle.classList.toggle('open', isOpen);
