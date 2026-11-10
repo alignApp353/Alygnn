@@ -841,6 +841,9 @@ body.employer-role .chat-shell .bubble {
 <style id="alygnn-mobile-messages-spacing-only">
 /* Phone-only conversation spacing and chat-header containment. */
 @media (max-width:680px) {
+  .chat-shell .conversations {
+    max-height:360px !important;
+  }
   .chat-shell .conversation-list .conversation {
     padding:20px 16px !important;
     min-height:88px;
@@ -851,7 +854,7 @@ body.employer-role .chat-shell .bubble {
     border-top:1px solid rgba(221,227,232,.75);
   }
   .chat-shell .conversation-list {
-    max-height:230px !important;
+    max-height:255px !important;
     -webkit-overflow-scrolling:touch;
   }
   .chat-shell .chat-head {
@@ -877,7 +880,7 @@ body.employer-role .chat-shell .bubble {
     min-width:0 !important;
   }
   .chat-shell .chat-head .chat-head-actions > * {flex:0 0 auto;max-width:100%;}
-  .chat-shell .chat-panel {height:580px !important;min-height:0 !important;}
+  .chat-shell .chat-panel {height:520px !important;min-height:0 !important;}
   .chat-shell .messages {flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;}
   .chat-shell .composer {flex:0 0 auto !important;}
 }
