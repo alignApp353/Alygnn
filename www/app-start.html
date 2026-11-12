@@ -99,6 +99,23 @@ button,a{font:inherit}
 @media(max-height:720px){.hero{margin-top:42px}.choices{margin-top:25px}.choice{min-height:125px}.footer{padding-top:25px}}
 @media(max-width:360px){.page{padding-left:14px;padding-right:14px}.choice{grid-template-columns:54px 1fr 38px;padding:16px;gap:12px}.choice-icon{width:54px;height:54px}.arrow{width:38px;height:38px}}
 
+/* Tablet landscape: use the available width without changing phone layouts. */
+@media (min-width: 768px) and (orientation: landscape) {
+  .page{max-width:860px;padding-left:32px;padding-right:32px}
+  .brand{font-size:52px}
+  .hero{margin-top:clamp(36px,6vh,64px)}
+  .hero h1{font-size:38px}
+  .hero p{font-size:17px}
+  .choices{margin-top:32px;gap:20px}
+  .choice{min-height:154px;padding:24px;grid-template-columns:70px 1fr 48px;gap:20px}
+  .choice-icon{width:70px;height:70px}
+  .choice-icon svg{width:34px;height:34px}
+  .choice-title{font-size:21px}
+  .choice-copy{font-size:15px}
+  .arrow{width:48px;height:48px}
+}
+
+
 /* Make the experience chooser match the saved appearance before login. */
 html[data-theme="dark"]{
   --brand:#7EA8D0;--brand-dark:#9CBADF;--sage:#8FC6A2;
