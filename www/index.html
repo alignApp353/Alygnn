@@ -52,9 +52,6 @@
   }
 
   function resolved(){
-    const pref=preference();
-    if(pref==='dark') return 'dark';
-    if(pref==='light') return 'light';
     return media&&media.matches?'dark':'light';
   }
 
@@ -74,7 +71,7 @@
   apply();
 
   if(media){
-    const onChange=()=>{ if(preference()==='auto') apply(); };
+    const onChange=()=>apply();
     media.addEventListener?.('change',onChange);
     if(!media.addEventListener) media.addListener?.(onChange);
   }
@@ -82,12 +79,15 @@
   window.AlygnnEntryTheme={apply,accountType,preference,resolved};
 })();
 </script>
+<!-- ALYGNN EXACT WORDMARK STARTUP v1 -->
 <title>Alygnn</title>
 <!-- ALYGNN CAPACITOR ENTRYPOINT V71 -->
+<script>window.__alygnnStartupBegan=Date.now();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<!-- ALYGNN EARLY LOADER PATCH v1: let HTML paint while Supabase downloads -->
+<script defer src="vendor/alygnn-handoff-supabase.umd.js"></script>
 <style>
 *{
   box-sizing:border-box;
@@ -153,15 +153,13 @@ body.is-leaving .splash{
 }
 
 .logo{
-  display:inline-block;
-  font-family:'DM Serif Display',Georgia,serif;
-  font-size:clamp(54px,15vw,72px);
-  line-height:.95;
-  letter-spacing:-2px;
-  color:var(--brand);
-  text-rendering:optimizeLegibility;
-  -webkit-font-smoothing:antialiased;
+  display:block;
+  width:min(265px,78vw);
+  height:auto;
+  margin:0 auto;
+  object-fit:contain;
 }
+
 
 .logo-dot{
   color:var(--sage);
@@ -224,69 +222,163 @@ body.is-leaving .splash{
   }
 }
 
+
+/* ALYGNN STARTUP HANDOFF ONLY v1: entry page bridge to native splash */
+#alygnn-native-handoff {
+  position:fixed !important;
+  inset:0 !important;
+  z-index:9999 !important;
+  width:100vw !important;
+  min-height:100vh !important;
+  min-height:100dvh !important;
+  background:#F6F8F7 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  margin:0 !important;
+  padding:0 !important;
+  transform:none !important;
+  opacity:1 !important;
+  transition:none !important;
+}
+#alygnn-native-handoff picture {
+  position:relative !important;
+  display:block !important;
+  /* Responsive on every viewport: use both available width and height.
+     At 390px phone width, 68vw ~= 265px, closer to the native logo size.
+     No forced 300px minimum on tiny or landscape screens.
+     Aspect ratio of original square PNG is preserved automatically. */
+  width:min(520px, 68vw, 70vh) !important;
+  width:min(520px, 68vw, 70dvh) !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  flex-shrink:0 !important;
+}
+#alygnn-native-handoff img {
+  display:block !important;
+  width:100% !important;
+  height:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+}
+@media (prefers-color-scheme:dark) {
+  #alygnn-native-handoff { background:#071722 !important; }
+}
+
+/* ALYGNN TABLET STARTUP SCALE v1: keep native cover and HTML logo similarly sized.
+   Phones retain original 68vw/70dvh rule. Large screens use smaller bounded art. */
+/* ALYGNN TABLET READABLE SCALE v2: enlarge only the branded tablet loader.
+   Keep the native startup cover and HTML art the same size; phone layout untouched. */
+@media (min-width:600px) and (min-height:450px) {
+  #alygnn-native-handoff picture {
+    width:min(650px, 76vw, 82vh) !important;
+    width:min(650px, 76vw, 82dvh) !important;
+  }
+}
+
+
+/* ALYGNN STARTUP BAR ANIMATION ONLY v1: PNG art is unchanged except for removal of its frozen bar. */
+#alygnn-native-handoff .alygnn-handoff-track {
+  position:absolute !important;
+  display:block !important;
+  left:38.28125% !important;
+  top:62.5% !important;
+  width:23.52431% !important;
+  height:0.86806% !important;
+  min-height:2px;
+  overflow:hidden !important;
+  border-radius:999px !important;
+  background:#E2E9EE !important;
+  pointer-events:none;
+}
+html[data-theme="dark"] #alygnn-native-handoff .alygnn-handoff-track {
+  background:#2C4252 !important;
+}
+#alygnn-native-handoff .alygnn-handoff-bar {
+  position:absolute !important;
+  display:block !important;
+  top:0 !important;
+  bottom:0 !important;
+  left:-48% !important;
+  width:48% !important;
+  border-radius:999px !important;
+  background:linear-gradient(90deg,#5D7FA3,#8CB69B) !important;
+  animation:alygnn-handoff-slide 1.15s cubic-bezier(.4,0,.2,1) infinite !important;
+  will-change:transform;
+}
+@keyframes alygnn-handoff-slide {
+  0% { transform:translateX(0); opacity:.55; }
+  45% { opacity:1; }
+  100% { transform:translateX(310%); opacity:.65; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #alygnn-native-handoff .alygnn-handoff-bar {
+    left:0 !important;
+    width:100% !important;
+    animation:none !important;
+    opacity:.8 !important;
+  }
+}
 </style>
 </head>
 <body>
-<main class="splash" aria-label="Alygnn is loading">
-  <div class="logo">Alygnn<span class="logo-dot">.</span></div>
-  <div class="tagline" id="splash-message">Finding your fit.</div>
-  <div class="loading-track" aria-hidden="true">
-    <div class="loading-bar"></div>
-  </div>
+<main id="alygnn-native-handoff" role="status" aria-label="Alygnn is loading">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="alygnn-handoff-native-dark.png">
+    <img src="alygnn-handoff-native-light.png" width="1152" height="1152" decoding="sync" fetchpriority="high" alt="Alygnn. Where opportunity meets talent">
+    <span class="alygnn-handoff-track" aria-hidden="true"><span class="alygnn-handoff-bar"></span></span>
+  </picture>
 </main>
 <script>
 window.AlygnnEntryTheme?.apply?.();
 
-const ALYGNN_EMPLOYER_LOADING_MESSAGES=[
-  "Building your team.",
-  "Finding your next hire.",
-  "Connecting you with talent.",
-  "Preparing your hiring workspace.",
-  "Matching talent to opportunity.",
-  "Getting your candidates ready.",
-  "Organizing your hiring pipeline.",
-  "Bringing your workspace together.",
-  "Loading your hiring dashboard.",
-  "Preparing your next move.",
-  "Finding talent that fits.",
-  "Getting your team in place.",
-  "Preparing your candidate matches.",
-  "Powering up your hiring workspace.",
-  "Bringing the right people closer.",
-  "Getting your hiring tools ready.",
-  "Preparing your recruiting workspace.",
-  "Connecting you to your next hire.",
-  "Getting everything ready to hire.",
-  "Helping you build what’s next."
-];
-
-function alygnnEmployerLoadingMessage(){
-  const storageKey='alygnnEmployerLastLoadingMessage';
-  let last='';
-  try{ last=localStorage.getItem(storageKey)||''; }catch(_error){}
-
-  let choices=ALYGNN_EMPLOYER_LOADING_MESSAGES;
-  if(last && choices.length>1){
-    choices=choices.filter(message=>message!==last);
+// Remove the Android-only native cover only AFTER the actual PNG is decoded
+// and the HTML loader has had an opportunity to paint two animation frames.
+// The cover prevents the blank WebView handoff; no timing is added to routing.
+(function notifyNativeLoaderPainted(){
+  let sent=false;
+  let attempts=0;
+  function reveal(){
+    if(sent) return;
+    if(!window.AlygnnStartupBridge || typeof window.AlygnnStartupBridge.ready!=='function'){
+      if(++attempts<30) setTimeout(reveal,80);
+      return;
+    }
+    sent=true;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      try { window.AlygnnStartupBridge.ready(); } catch(_e) {}
+    }));
   }
+  const image=document.querySelector('#alygnn-native-handoff img');
+  if(!image){ reveal(); return; }
+  // <picture> may select a different dark-mode source: decode the actually
+  // selected image before asking native Android to reveal the WebView.
+  let finished=false;
+  function finish(){
+    if(finished) return;
+    finished=true;
+    if(typeof image.decode==='function' && image.complete && image.naturalWidth>0){
+      image.decode().catch(()=>{}).then(reveal);
+    }else{
+      reveal();
+    }
+  }
+  if(image.complete && image.naturalWidth>0){ finish(); return; }
+  image.addEventListener('load',finish,{once:true});
+  image.addEventListener('error',finish,{once:true});
+  // Failsafe: native also has a safety timeout if image loading stalls.
+  setTimeout(finish,3000);
+})();
 
-  const message=choices[Math.floor(Math.random()*choices.length)]||'Building your team.';
-  try{ localStorage.setItem(storageKey,message); }catch(_error){}
-  return message;
-}
-
+// Only the app-opening message is fixed. Tab loaders and routes remain untouched.
 function setSplashMessage(){
   const node=document.getElementById('splash-message');
-  if(!node) return;
-
-  const type=window.AlygnnEntryTheme?.accountType?.() || 'candidate';
-  node.textContent=type==='employer'
-    ? alygnnEmployerLoadingMessage()
-    : 'Finding your fit.';
+  if(node) node.textContent='Where opportunity meets talent';
 }
-
 setSplashMessage();
 
+document.addEventListener('DOMContentLoaded', function(){
 const sb=supabase.createClient(
   'https://auth.alygnn.com',
   'sb_publishable_3l8krRh6WCyvKfNumWDBDw_C6CKr7rG',
@@ -299,24 +391,12 @@ const sb=supabase.createClient(
   }
 );
 
-const SPLASH_MIN_MS=1250;
-const splashStartedAt=Date.now();
-
-function wait(ms){
-  return new Promise(resolve=>setTimeout(resolve,ms));
-}
-
 async function leaveSplash(destination){
-  const elapsed=Date.now()-splashStartedAt;
-  const remaining=Math.max(0,SPLASH_MIN_MS-elapsed);
-
-  if(remaining){
-    await wait(remaining);
-  }
-
-  document.body.classList.add('is-leaving');
-  await wait(220);
-
+  // Startup only: allow the existing animated loading bar to be visible.
+  // Do not add time if session checks have already taken this long.
+  const elapsed=Date.now()-(window.__alygnnStartupBegan||Date.now());
+  const remaining=Math.max(0,1800-elapsed);
+  if(remaining) await new Promise(resolve=>setTimeout(resolve,remaining));
   window.location.replace(destination);
 }
 
@@ -346,6 +426,7 @@ async function leaveSplash(destination){
 
   await leaveSplash(destination);
 })();
+});
 </script>
 </body>
 </html>
