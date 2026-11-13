@@ -1123,6 +1123,7 @@ async function deactivateAccount(sb, user) {
     .update({cleanup_completed_at:new Date().toISOString(),updated_at:new Date().toISOString()})
     .eq('user_id',user.id).eq('status','deactivated');
   if (completedError) throw completedError;
+  console.info('Account lifecycle deactivated:', {user_id:user.id,delete_after:deadline});
   return {success:true,status:'deactivated',delete_after:deadline,
     cleanup_complete:true,subscriptions_canceled:true,jobs_closed:true};
 }
@@ -1147,6 +1148,7 @@ async function reactivateAccount(sb, user) {
     error.status = 409;
     throw error;
   }
+  console.info('Account lifecycle reactivated:', {user_id:user.id});
   return {success:true,status:'active',
     subscriptions_restored:false,jobs_restored:false};
 }
@@ -1229,7 +1231,7 @@ async function sendReactivationConfirmationOnce(sb, user) {
 async function lifecycleAction(req,res,sb,user,action) {
   if (action === 'closure_status') {
     const current=await lifecycleRow(sb,user.id);
-    return sendJson(res,200,{success:true,status:current?.status || 'active',
+    return sendJson(res,200,{success:true,user_id:user.id,status:current?.status || 'active',
       delete_after:current?.status === 'deactivated' ? current.delete_after : null,
       cleanup_complete:current?.status === 'deactivated' ? !!current.cleanup_completed_at : null});
   }
@@ -1277,8 +1279,16 @@ async function lifecycleAction(req,res,sb,user,action) {
 }
 
 async function scheduledClosureCleanup(res,sb) {
+  const now = new Date();
+  const minimumAge = new Date(now.getTime() - 30 * LIFECYCLE_DAY_MS).toISOString();
+  // Safety: never permanently delete a recently deactivated account, even if
+  // delete_after was accidentally set to an earlier date. Cleanup must also be
+  // complete before automatic deletion is eligible.
   const {data:due,error} = await sb.from(LIFE_TABLE).select('user_id')
-    .eq('status','deactivated').lte('delete_after',new Date().toISOString()).limit(10);
+    .eq('status','deactivated')
+    .not('cleanup_completed_at','is',null)
+    .lte('deactivated_at',minimumAge)
+    .lte('delete_after',now.toISOString()).limit(10);
   if (error) throw error;
   let processed=0,failures=0;
   for (const row of due || []) {
@@ -1286,12 +1296,17 @@ async function scheduledClosureCleanup(res,sb) {
       const {data:claimed,error:claimError} = await sb.from(LIFE_TABLE)
         .update({status:'deleting',updated_at:new Date().toISOString()})
         .eq('user_id',row.user_id).eq('status','deactivated')
+        .not('cleanup_completed_at','is',null)
+        .lte('deactivated_at',minimumAge)
         .lte('delete_after',new Date().toISOString()).select('user_id');
       if (claimError) throw claimError;
       if (!claimed?.length) continue;
       const {data,error:authError}=await sb.auth.admin.getUserById(row.user_id);
       if (authError && !/not found|does not exist/i.test(authError.message || '')) throw authError;
-      if (data?.user) await permanentlyDeleteUser(sb,data.user);
+      if (data?.user) {
+        console.info('Account lifecycle expired deletion:', {user_id:row.user_id});
+        await permanentlyDeleteUser(sb,data.user);
+      }
       const {error:clearError}=await sb.from(LIFE_TABLE).delete().eq('user_id',row.user_id);
       if (clearError) throw clearError;
       processed++;
