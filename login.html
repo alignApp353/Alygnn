@@ -572,6 +572,66 @@
     else sessionStorage.removeItem('preferences');
   }
 
+  // Account status belongs to the existing server endpoint, never local storage.
+  // Reactivation uses the currently authenticated user ID, preserving that account.
+  async function ensureActiveAccount(session, expectedUser) {
+    try {
+      if (!session?.access_token || !expectedUser?.id ||
+          session.user?.id !== expectedUser.id) {
+        throw new Error('Could not verify the signed-in account. Please sign in again.');
+      }
+      const response = await fetch('/api/delete-account?action=closure_status', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store'
+      });
+      const state = await response.json().catch(() => ({}));
+      if (!response.ok || state.success !== true) {
+        throw new Error(state.error || 'Could not verify account status. Please retry.');
+      }
+      if (state.user_id && state.user_id !== expectedUser.id) {
+        throw new Error('The account identity changed during sign-in. Please try again.');
+      }
+      if (state.status === 'deactivated') {
+        if (!state.delete_after || Date.parse(state.delete_after) <= Date.now()) {
+          throw new Error('The 30-day recovery period has expired. Contact Alygnn support.');
+        }
+        const restoredResponse = await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ action: 'reactivate' }),
+          cache: 'no-store'
+        });
+        const restored = await restoredResponse.json().catch(() => ({}));
+        if (!restoredResponse.ok || restored.success !== true || restored.status !== 'active') {
+          throw new Error(restored.error || 'Reactivation failed. Contact Alygnn support.');
+        }
+        // Never show a successful recovery if the server still marks it inactive.
+        const verifyResponse = await fetch('/api/delete-account?action=closure_status', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store'
+        });
+        const verified = await verifyResponse.json().catch(() => ({}));
+        if (!verifyResponse.ok || verified.success !== true || verified.status !== 'active' ||
+            (verified.user_id && verified.user_id !== expectedUser.id)) {
+          throw new Error('Account recovery could not be verified. Contact Alygnn support.');
+        }
+      } else if (state.status !== 'active') {
+        throw new Error('This account is unavailable or pending deletion. Contact Alygnn support.');
+      }
+      return true;
+    } catch (error) {
+      console.error('Alygnn account recovery check failed:', error);
+      await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+      showMsg(error?.message || 'Could not verify account recovery. Please retry.');
+      return false;
+    }
+  }
+
   async function doLogin() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -601,37 +661,9 @@
         return;
       }
 
-      // Before redirecting into Alygnn, check for a deactivated account.
-      // The server owns this state; query parameters/browser storage are never trusted.
-      const closureResponse = await fetch('/api/delete-account?action=closure_status', {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
-      });
-      const closure = await closureResponse.json().catch(() => ({}));
-      if (!closureResponse.ok || !closure.success) {
-        await sb.auth.signOut({ scope: 'local' }).catch(() => {});
-        showMsg(closure.error || 'Could not verify account status. Please retry.');
-        return;
-      }
-      if (closure.status === 'deactivated') {
-        // A successful sign-in within the recovery period restores the account
-        // automatically. The server validates the deadline before reactivation.
-        const reactivateResponse = await fetch('/api/delete-account', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
-          body: JSON.stringify({ action: 'reactivate' })
-        });
-        const restored = await reactivateResponse.json().catch(() => ({}));
-        if (!reactivateResponse.ok || !restored.success) {
-          await sb.auth.signOut({ scope: 'local' }).catch(() => {});
-          showMsg(restored.error || 'Reactivation failed. Contact Alygnn support.');
-          return;
-        }
-      } else if (closure.status !== 'active') {
-        await sb.auth.signOut({ scope: 'local' }).catch(() => {});
-        showMsg('This account is pending deletion. Contact Alygnn support.');
-        return;
-      }
+      // Validate this account's lifecycle before routing into any dashboard.
+      // Password and social sign-ins must use the same server-side check.
+      if (!await ensureActiveAccount(sessionData.session, signedInUser)) return;
 
       const destination = await redirectForUser(signedInUser, currentRole);
 
@@ -840,6 +872,8 @@
           showMsg('You already have an Alygnn account. Please sign in.', 'info');
           return;
         }
+        const { data: signupSessionData } = await sb.auth.getSession();
+        if (!await ensureActiveAccount(signupSessionData?.session, user)) return;
         const signupDestination = await redirectForUser(user, attempt.role || currentRole);
         window.location.replace(signupDestination);
         return;
@@ -849,6 +883,8 @@
         showMsg("You don't have an Alygnn account yet. Please choose Create account to continue.", 'info');
         return;
       }
+      const { data: socialSessionData } = await sb.auth.getSession();
+      if (!await ensureActiveAccount(socialSessionData?.session, user)) return;
       const destination = await redirectForUser(user, attempt.role || currentRole);
       const wrongSide = (attempt.role === 'seeker' && /\/employer-(?:onboarding|dashboard)\.html/.test(destination)) ||
         (attempt.role === 'employer' && /\/account\.html/.test(destination));
