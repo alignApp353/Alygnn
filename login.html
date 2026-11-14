@@ -907,7 +907,7 @@
       redirectTo: window.location.origin + '/reset-password.html'
     });
     if (error) { showMsg(error.message); return; }
-    showMsg('Reset email sent — check your inbox.', 'success');
+    showMsg('If an Alygnn account exists for this email, you’ll receive password-reset instructions. Please check your inbox and spam folder.', 'info');
   }
 
   function toggleEye(id, btn) {
