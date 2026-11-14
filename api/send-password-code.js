@@ -261,8 +261,15 @@ async function recoveryHandler(req, res) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const resendKey = process.env.RESEND_API_KEY;
   const rateSecret = process.env.PASSWORD_RESET_RATE_LIMIT_SECRET;
-  if (!url.startsWith('https://') || !serviceKey || !resendKey || !rateSecret || rateSecret.length < 24)
+  if (!url.startsWith('https://') || !serviceKey || !resendKey || !rateSecret || rateSecret.length < 24) {
+    console.error('Alygnn recovery configuration missing:', {
+      supabase_url: url.startsWith('https://'),
+      service_role_key: !!serviceKey,
+      resend_api_key: !!resendKey,
+      rate_limit_secret: !!rateSecret && rateSecret.length >= 24
+    });
     return send(res, 503, { error: 'Account recovery is temporarily unavailable.' });
+  }
 
   let body = req.body;
   try { if (typeof body === 'string') body = JSON.parse(body); } catch (_) {}
@@ -281,8 +288,13 @@ async function recoveryHandler(req, res) {
         `${url}/rest/v1/rpc/alygnn_password_reset_consume_limit`, authHeaders,
         { p_bucket: hmac(rateSecret, `${label}:${value}`), p_max_attempts: allowed }
       );
-      if (!quota.ok || typeof quota.result !== 'boolean')
+      if (!quota.ok || typeof quota.result !== 'boolean') {
+        console.error('Alygnn recovery rate limiter error:', {
+          bucket: label, http_status: quota.status, code: String(quota.result?.code || ''),
+          result_type: typeof quota.result
+        });
         return send(res, 503, { error: 'Account recovery is temporarily unavailable.' });
+      }
       if (!quota.result)
         return send(res, 429, { error: 'Too many requests. Please try again later.' });
     }
@@ -294,9 +306,11 @@ async function recoveryHandler(req, res) {
       { type: 'recovery', email }
     );
 
-    const notFound = link.status === 404 && 
+    const notFound = [400, 404, 422].includes(link.status) &&
       (link.result?.code === 'user_not_found' ||
-       /user.*(not found|does not exist)/i.test(String(link.result?.msg || link.result?.message || '')));
+       /(?:user|account).*(?:not found|does not exist)|no user found/i.test(
+         String(link.result?.msg || link.result?.message || '')
+       ));
 
     let subject, plain, html;
     if (notFound) {
@@ -327,7 +341,8 @@ is associated with it. It may have been deleted, or a different email may have b
 <p>Do not share this code. If you did not request it, ignore this email.</p>`;
     } else {
       // Don't mistake a provider/admin error for a nonexistent user.
-      console.error('Alygnn recovery Supabase error', link.status, link.result?.code || 'unknown');
+      console.error('Alygnn recovery Supabase error', link.status, link.result?.code || 'unknown',
+        String(link.result?.msg || link.result?.message || '').slice(0,150));
       return send(res, 503, { error: 'Account recovery is temporarily unavailable.' });
     }
 
