@@ -186,7 +186,7 @@ async function legacyPasswordCodeHandler(req, res) {
  * type=recovery, which does NOT create a user and does NOT send mail).
  * Sends via Resend:
  *  - Active account: six-digit OTP (valid for Supabase verifyOtp(recovery)).
- *  - Missing/deleted account: private email explaining no active account.
+ *  - Missing/deleted account: no email, generic public success response.
  *
  * Never returns email-existence status to a public client.
  * NO secret is ever sent to the browser.
@@ -210,8 +210,8 @@ const ORIGINS = new Set([
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const successfulMessage =
-  'If the address can receive mail, you will get recovery instructions. ' +
-  'Active accounts receive a six-digit code; other addresses receive account-help instructions.';
+  'If an Alygnn account exists for this email, you will receive password-reset instructions. ' +
+  'Please check your inbox and spam folder.';
 
 function send(res, status, payload) {
   res.statusCode = status;
@@ -314,17 +314,10 @@ async function recoveryHandler(req, res) {
 
     let subject, plain, html;
     if (notFound) {
-      subject = 'Alygnn account recovery — next steps';
-      plain = 'We received a recovery request for this email, but there is no active Alygnn account associated with it. ' +
-              'The account may have been deleted, or another email may have been used. ' +
-              'You can create a new account at https://alygnn.com or contact contact@alygnn.com if you need help. ' +
-              'If you did not make this request, you can ignore this message.';
-      html = `<h2>Alygnn account recovery</h2>
-<p>We received a recovery request for this email, but <strong>no active Alygnn account</strong>
-is associated with it. It may have been deleted, or a different email may have been used.</p>
-<p><a href="https://alygnn.com">Create an Alygnn account</a> or
-<a href="mailto:contact@alygnn.com">contact support</a>.</p>
-<p>If you did not request this, you can ignore this message.</p>`;
+      // Deleted or unregistered address: do not send any email.
+      // Return the same public confirmation as for an existing account.
+      await holdSince(started);
+      return send(res, 200, { ok: true, message: successfulMessage });
     } else if (link.ok) {
       const code = String(link.result?.email_otp || '');
       if (!/^\d{6}$/.test(code)) {
