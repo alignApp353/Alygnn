@@ -92,6 +92,30 @@ button{
     calc(28px + env(safe-area-inset-bottom));
 }
 
+/* Back to candidate sign-in, matching Alygnn's rounded arrow control. */
+.page{position:relative}
+.signup-back-btn{
+  position:absolute;
+  top:calc(25px + env(safe-area-inset-top));
+  left:22px;
+  width:46px;
+  height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:var(--surface);
+  color:var(--text);
+  box-shadow:0 8px 22px rgba(23,35,51,.08);
+  text-decoration:none;
+  z-index:2;
+}
+.signup-back-btn svg{width:20px;height:20px;display:block}
+.signup-back-btn:active{transform:scale(.94)}
+@media (min-width:700px) and (min-height:600px){
+  .signup-back-btn{top:calc(34px + env(safe-area-inset-top));left:44px}
+}
 .brand-wrap{
   text-align:center;
 }
@@ -663,6 +687,9 @@ html[data-effective-theme="dark"] .existing-account-card{
 <body>
 
 <main class="page">
+  <a class="signup-back-btn" href="app-login.html" aria-label="Back to candidate sign in" title="Back to sign in">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+  </a>
 
   <div class="brand-wrap" aria-label="Alygnn">
     <div class="brand">Alygnn<span class="brand-dot" aria-hidden="true"></span></div>
