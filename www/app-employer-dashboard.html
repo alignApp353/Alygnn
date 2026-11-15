@@ -5158,6 +5158,79 @@
   #employer-push-dialog .ep-error[hidden]{display:none}
   @media(min-width:650px){#employer-push-overlay{align-items:center;padding:24px}#employer-push-dialog{border-radius:20px;max-height:calc(100vh - 48px)}}
 </style>
+
+<style id="alygnn-employer-settings-tablet-scale-only">
+  /* Tablet touch layouts only: preserve phones, desktop web, all other views. */
+  @media (min-width: 720px) and (pointer: coarse) {
+    body:has(#settings-view:not([hidden])) .shell {
+      max-width: min(100%, 1120px);
+    }
+    #settings-view {
+      max-width: 1040px;
+      margin-inline: auto;
+    }
+    body:has(#settings-view:not([hidden])) .page {
+      padding-inline: clamp(24px, 4vw, 52px);
+    }
+    #settings-view .settings-page-head {
+      margin-bottom: 28px;
+    }
+    #settings-view .settings-page-head .eyebrow {
+      font-size: 13px;
+    }
+    #settings-view .page-title {
+      font-size: clamp(32px, 3.8vw, 42px);
+    }
+    #settings-view .settings-page-head .page-sub {
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 820px;
+    }
+    #settings-view .settings-card {
+      padding: 20px;
+      border-radius: 24px;
+    }
+    #settings-view .section-kicker,
+    #settings-view .settings-group-title {
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+    #settings-view .section-kicker {
+      margin-top: 26px;
+      margin-bottom: 12px;
+    }
+    #settings-view .settings-link {
+      min-height: 86px !important;
+      padding: 16px 22px;
+      gap: 16px;
+    }
+    #settings-view .settings-icon-label {
+      gap: 18px;
+    }
+    #settings-view .settings-icon {
+      width: 50px;
+      height: 50px;
+      flex-basis: 50px;
+      border-radius: 15px;
+    }
+    #settings-view .settings-icon svg {
+      width: 23px;
+      height: 23px;
+    }
+    #settings-view .settings-copy strong {
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    #settings-view .settings-copy small {
+      font-size: 12px;
+      line-height: 1.4;
+      margin-top: 5px;
+    }
+    #settings-view .settings-chevron {
+      font-size: 24px;
+    }
+  }
+</style>
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div id="dashboard-boot-loader" class="alygnn-standard-loader alygnn-employer-myjobs-loader" role="status" aria-live="polite" aria-label="Loading employer workspace">
