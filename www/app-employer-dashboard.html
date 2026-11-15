@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#F6F8F7">
+  <script id="alygnn-native-tablet-layout-detection">
+  (function () {
+    /* Only native Capacitor webviews get the larger tablet UI. */
+    var ua = navigator.userAgent || '';
+    var androidWebView = /Android/i.test(ua) && /\bwv\b/i.test(ua);
+    var capacitorScheme = location.protocol === 'capacitor:';
+    var nativeCapacitor = !!(window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === 'function' &&
+      window.Capacitor.isNativePlatform());
+    if (androidWebView || capacitorScheme || nativeCapacitor) {
+      document.documentElement.classList.add('alygnn-native-app');
+    }
+  })();
+  </script>
   <title>Employer Workspace V5 | Alygnn</title>
 
   <script id="alygnn-employer-theme-critical">
@@ -5232,33 +5246,59 @@
   }
 </style>
 <style id="alygnn-employer-tablet-bottom-nav-only">
-  /* Larger touch targets on tablets only; no phone or desktop layout changes. */
-  @media (min-width: 720px) and (pointer: coarse) {
-    .bottom-nav {
-      min-height: 98px !important;
-      padding: 12px 24px calc(14px + env(safe-area-inset-bottom)) !important;
-      grid-template-columns: repeat(5, minmax(84px, 112px)) !important;
-      column-gap: clamp(14px, 3vw, 28px) !important;
-      align-items: center;
+  /* Android/iOS native app tablets only. The native marker is intentionally
+     independent of pointer:coarse, which is unreliable in tablet emulators. */
+  @media screen and (min-width: 700px) {
+    html.alygnn-native-app .bottom-nav {
+      min-height: 104px !important;
+      padding: 10px clamp(18px, 5vw, 58px)
+        calc(14px + env(safe-area-inset-bottom)) !important;
+      grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      column-gap: clamp(8px, 2vw, 28px) !important;
+      align-items: stretch;
     }
-    .bottom-nav .nav-item {
-      min-height: 64px;
-      gap: 6px;
-      padding: 6px 2px;
-      font-size: 12px;
+    html.alygnn-native-app .bottom-nav .nav-item {
+      min-height: 76px;
+      gap: 7px;
+      padding: 8px 4px;
+      font-size: 13px !important;
       line-height: 1.25;
     }
-    .bottom-nav .nav-icon,
-    .bottom-nav .nav-icon svg {
-      width: 29px;
-      height: 29px;
+    html.alygnn-native-app .bottom-nav .nav-icon,
+    html.alygnn-native-app .bottom-nav .nav-icon svg {
+      width: 31px !important;
+      height: 31px !important;
     }
-    .bottom-nav .nav-item.active::before {
+    html.alygnn-native-app .bottom-nav .nav-item.active::before {
       top: -10px;
-      width: 38px;
+      width: 44px;
     }
-    /* Preserve room for the taller fixed bar when scrolling. */
-    .shell { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+    html.alygnn-native-app .messaging-nav-badge {
+      top: 1px;
+      right: calc(50% - 29px);
+      min-width: 19px;
+      height: 19px;
+      font-size: 10px;
+    }
+    html.alygnn-native-app body {
+      padding-bottom: calc(122px + env(safe-area-inset-bottom));
+    }
+    html.alygnn-native-app #settings-view {
+      padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
+    }
+    /* Readable content area for the employer views shown in the recording. */
+    html.alygnn-native-app .shell { max-width: min(100%, 1100px); }
+    html.alygnn-native-app .page { padding-inline: clamp(22px, 4vw, 52px); }
+    html.alygnn-native-app .page-title,
+    html.alygnn-native-app .welcome h1 { font-size: clamp(32px, 3.6vw, 42px); }
+    html.alygnn-native-app .welcome p,
+    html.alygnn-native-app .page-sub { font-size: 16px; }
+    html.alygnn-native-app .section-title { font-size: 19px; }
+    html.alygnn-native-app .job-title { font-size: 19px; }
+    html.alygnn-native-app .job-meta { font-size: 13px; }
+    html.alygnn-native-app .candidate-name { font-size: 16px; }
+    html.alygnn-native-app .candidate-job { font-size: 13px; }
+    html.alygnn-native-app .section-link { font-size: 13px; }
   }
 </style>
 </head>
