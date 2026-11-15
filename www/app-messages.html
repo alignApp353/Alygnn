@@ -1440,6 +1440,41 @@ html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .mes
  }
 }
 </style>
+
+<style id="alygnn-tablet-employer-messages-header-consistency-20261114">
+/* Native tablet employer Messages only. Candidate and phone layout remain unchanged. */
+@media screen and (min-width:700px){
+ html.alygnn-native-app body.employer-mode .top{
+   min-height:94px!important;grid-template-columns:62px minmax(0,1fr) 62px!important;
+   margin-inline:calc(-1 * clamp(24px,4vw,52px))!important;
+   padding:calc(12px + env(safe-area-inset-top)) clamp(22px,4vw,52px) 12px!important;
+ }
+ html.alygnn-native-app body.employer-mode .top .back{
+   visibility:visible!important;pointer-events:auto!important;display:flex!important;
+   width:56px!important;height:56px!important;align-items:center;justify-content:center;
+   font-size:27px!important;border-radius:50%!important;
+ }
+ html.alygnn-native-app body.employer-mode .top .logo{font-size:34px!important}
+ html.alygnn-native-app body.employer-mode #employer-header-notification{
+   width:56px!important;height:56px!important;justify-self:end!important;
+   position:relative!important;margin:0!important;
+ }
+ html.alygnn-native-app body.employer-mode #employer-header-notification svg{width:28px!important;height:28px!important}
+ html.alygnn-native-app body.employer-mode .employer-messages-notification-badge{
+   min-width:22px!important;height:22px!important;font-size:11px!important;
+ }
+ /* The earlier exact-match rules use !important. Override them for tablets. */
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer{
+   min-height:110px!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+   column-gap:clamp(8px,2vw,30px)!important;
+   padding:12px clamp(20px,5vw,66px) calc(14px + env(safe-area-inset-bottom))!important;
+ }
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer .nav{
+   min-height:76px!important;font-size:14px!important;gap:8px!important;padding:9px 6px!important;
+ }
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer .nav svg{width:32px!important;height:32px!important}
+}
+</style>
 </head>
 
 <body class="messages-booting">
@@ -3139,7 +3174,7 @@ document.addEventListener(
 $('back').onclick=()=>{
   location.href=
     role==='employer'
-      ?'app-employer-dashboard.html?view=applicants'
+      ?(document.documentElement.classList.contains('alygnn-native-app') && window.matchMedia('(min-width:700px)').matches ? 'app-employer-dashboard.html?view=dashboard' : 'app-employer-dashboard.html?view=applicants')
       :'app-applied.html';
 };
 
