@@ -204,6 +204,21 @@ html[data-theme="dark"] .switch-btn{
   color:#8EB4DA;
 }
 
+/* Tablet-only readability: phone UI and authentication remain unchanged. */
+@media (min-width: 700px) and (min-height: 600px) {
+  .page{max-width:820px;min-height:100vh;min-height:100dvh;padding:32px 42px 42px}
+  .topbar{grid-template-columns:58px 1fr 58px;min-height:64px}
+  .brand{font-size:43px}
+  .login{width:100%;max-width:680px;margin:0 auto;padding:30px 0;justify-content:center}
+  .identity-icon{width:88px;height:88px}.identity-icon svg{width:43px;height:43px}
+  h1{font-size:39px;margin-top:23px}
+  .subtitle{font-size:17px;max-width:520px}
+  .form{margin-top:34px}.field{margin-top:20px}
+  label{font-size:16px}.forgot,.show-btn{font-size:14px}
+  .input-wrap{min-height:65px;padding:0 20px}input{font-size:17px}
+  .primary{min-height:64px;font-size:17px}.social{min-height:62px;font-size:16px}
+  .signup{font-size:15px}.switch-btn{font-size:15px}.divider{font-size:12px}
+}
 </style>
 </head>
 <body data-candidate-login-build="2026-09-07-match-employer-design">
