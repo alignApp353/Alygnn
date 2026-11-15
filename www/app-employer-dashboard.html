@@ -5231,6 +5231,36 @@
     }
   }
 </style>
+<style id="alygnn-employer-tablet-bottom-nav-only">
+  /* Larger touch targets on tablets only; no phone or desktop layout changes. */
+  @media (min-width: 720px) and (pointer: coarse) {
+    .bottom-nav {
+      min-height: 98px !important;
+      padding: 12px 24px calc(14px + env(safe-area-inset-bottom)) !important;
+      grid-template-columns: repeat(5, minmax(84px, 112px)) !important;
+      column-gap: clamp(14px, 3vw, 28px) !important;
+      align-items: center;
+    }
+    .bottom-nav .nav-item {
+      min-height: 64px;
+      gap: 6px;
+      padding: 6px 2px;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .bottom-nav .nav-icon,
+    .bottom-nav .nav-icon svg {
+      width: 29px;
+      height: 29px;
+    }
+    .bottom-nav .nav-item.active::before {
+      top: -10px;
+      width: 38px;
+    }
+    /* Preserve room for the taller fixed bar when scrolling. */
+    .shell { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+  }
+</style>
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
   <div id="dashboard-boot-loader" class="alygnn-standard-loader alygnn-employer-myjobs-loader" role="status" aria-live="polite" aria-label="Loading employer workspace">
