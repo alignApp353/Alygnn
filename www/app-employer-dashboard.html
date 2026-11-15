@@ -5340,14 +5340,8 @@
  html.alygnn-native-app .candidate-meta{font-size:12px}
  html.alygnn-native-app .candidate-row{min-height:92px}
  html.alygnn-native-app body{padding-bottom:calc(130px + env(safe-area-inset-bottom))!important}
- /* Do not reveal uninitialized Dashboard (placeholder greeting and zero counts).
-    Warm tablet tab returns use the existing loader's slim progress bar,
-    without replaying the large startup branding. Cold-start loader unchanged. */
- html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"]>.shell{visibility:hidden!important}
- html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"] #dashboard-boot-loader{opacity:1!important;visibility:visible!important;pointer-events:auto!important;background:var(--bg)!important}
- html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"] #dashboard-boot-loader .alygnn-boot-logo,
- html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"] #dashboard-boot-loader .alygnn-boot-copy{display:none!important}
- html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"] #dashboard-boot-loader .alygnn-boot-track{width:100px!important;max-width:100%!important;opacity:.85}
+ /* Tablet tab returns retain the normal, branded loading screen until
+    the dashboard initialization has completed. */
 }
 </style>
 

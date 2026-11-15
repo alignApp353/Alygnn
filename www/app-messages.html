@@ -1432,12 +1432,19 @@ html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .mes
  html.alygnn-native-app body.employer-mode{padding-bottom:calc(130px + env(safe-area-inset-bottom))!important}
  html.alygnn-native-app body.employer-mode .title{font-size:clamp(32px,3.6vw,42px)!important}
  html.alygnn-native-app body.employer-mode .sub{font-size:16px!important}
- /* Only warm, deliberate employer navigation skips a repeated full-screen logo. */
- html.alygnn-native-app.alygnn-employer-messages-warm-nav body.messages-booting>.shell,
- html.alygnn-native-app.alygnn-employer-messages-warm-nav body.messages-booting>.bottom-nav{visibility:visible!important}
- html.alygnn-native-app.alygnn-employer-messages-warm-nav .messages-boot-loader{
-    opacity:0!important;visibility:hidden!important;pointer-events:none!important;
- }
+ /* Do not bypass the boot overlay on warm tablet navigation:
+    the conversation list can still be fetching data after page navigation. */
+}
+</style>
+<style id="alygnn-employer-messages-wait-until-ready-20261114">
+/* Native tablet employer Messages: loading overlay remains on screen until
+   initial messages query + list render finish. Candidate and phone unaffected. */
+@media screen and (min-width:700px){
+  html.alygnn-native-app body.messages-booting:not(.candidate-mode)>.shell,
+  html.alygnn-native-app body.messages-booting:not(.candidate-mode)>.bottom-nav{visibility:hidden!important}
+  html.alygnn-native-app body.messages-booting:not(.candidate-mode) .messages-boot-loader{
+    opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+  }
 }
 </style>
 
@@ -1634,11 +1641,11 @@ function finishMessagesBoot(){
     clearTimeout(window.__alygnnMessagesBootWatchdog);
     window.__alygnnMessagesBootWatchdog=null;
   }
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
     document.body.classList.remove('messages-booting');
     const loader=document.getElementById('messages-boot-loader');
     if(loader)loader.setAttribute('aria-hidden','true');
-  });
+  }));
 }
 
 const esc=value=>
