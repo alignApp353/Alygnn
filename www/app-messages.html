@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script id="alygnn-employer-messages-native-tablet">
+(function(){
+ try{
+  var nativeView=/Android.*\bwv\b/i.test(navigator.userAgent||'') || location.protocol==='capacitor:';
+  if(nativeView) document.documentElement.classList.add('alygnn-native-app');
+  var stamp=Number(sessionStorage.getItem('alygnnEmployerTabletNavAt')||0);
+  if(nativeView && window.matchMedia('(min-width:700px)').matches &&
+     new URLSearchParams(location.search).get('role')==='employer' &&
+     stamp && Date.now()-stamp<12000)
+     document.documentElement.classList.add('alygnn-employer-messages-warm-nav');
+  sessionStorage.removeItem('alygnnEmployerTabletNavAt');
+ }catch(_error){}
+})();
+</script>
 <meta name="color-scheme" content="light dark">
 <script id="alygnn-candidate-route-before-paint">
 (function(){
@@ -1395,6 +1409,37 @@ html.alygnn-candidate-messages-route body.messages-booting .messages-boot-loader
 html.alygnn-candidate-messages-route.alygnn-slow-boot body.messages-booting .messages-boot-loader{opacity:1!important;visibility:visible!important;pointer-events:auto!important}
 </style>
 <link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
+<style id="alygnn-employer-messages-tablet-20261114">
+/* Only employer-mode Messages inside native tablets. Never affect candidate or web. */
+@media screen and (min-width:700px){
+ html.alygnn-native-app body.employer-mode .shell{
+    max-width:min(100%,1120px)!important;
+    padding-inline:clamp(24px,4vw,52px)!important;
+ }
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer{
+    min-height:110px!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    column-gap:clamp(8px,2vw,30px)!important;
+    padding:12px clamp(20px,5vw,66px) calc(14px + env(safe-area-inset-bottom))!important;
+ }
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer .nav{
+    min-height:76px!important;font-size:14px!important;
+    gap:8px!important;padding:9px 6px!important;
+ }
+ html.alygnn-native-app body.employer-mode .bottom-nav.employer .nav svg{
+    width:32px!important;height:32px!important;
+ }
+ html.alygnn-native-app body.employer-mode{padding-bottom:calc(130px + env(safe-area-inset-bottom))!important}
+ html.alygnn-native-app body.employer-mode .title{font-size:clamp(32px,3.6vw,42px)!important}
+ html.alygnn-native-app body.employer-mode .sub{font-size:16px!important}
+ /* Only warm, deliberate employer navigation skips a repeated full-screen logo. */
+ html.alygnn-native-app.alygnn-employer-messages-warm-nav body.messages-booting>.shell,
+ html.alygnn-native-app.alygnn-employer-messages-warm-nav body.messages-booting>.bottom-nav{visibility:visible!important}
+ html.alygnn-native-app.alygnn-employer-messages-warm-nav .messages-boot-loader{
+    opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+ }
+}
+</style>
 </head>
 
 <body class="messages-booting">
@@ -1627,13 +1672,18 @@ function navButton(name,label,url,active=false){
   return `
     <button
       class="nav ${active?'active':''}"
-      onclick="${active?'return false;':`location.href='${url}'`}">
+      onclick="${active?'return false;':`if(window.alygnnMarkEmployerTabletNav)window.alygnnMarkEmployerTabletNav();location.href='${url}'`}">
       <svg viewBox="0 0 24 24">${icon[name]}</svg>
       <span>${label}</span>
       ${messageBadge}
     </button>
   `;
 }
+
+window.alygnnMarkEmployerTabletNav=function(){
+  if(role!=='employer')return;
+  try{sessionStorage.setItem('alygnnEmployerTabletNavAt',String(Date.now()));}catch(_error){}
+};
 
 function renderNav(){
   const nav=$('nav');

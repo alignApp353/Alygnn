@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script id="alygnn-tablet-warm-nav-prepaint">
+(function(){
+  try {
+    var isNative = /Android.*\bwv\b/i.test(navigator.userAgent || '') ||
+      location.protocol === 'capacitor:';
+    var isTablet = window.matchMedia('(min-width: 700px)').matches;
+    var stamp = Number(sessionStorage.getItem('alygnnEmployerTabletNavAt') || 0);
+    if(isNative && isTablet && stamp && Date.now() - stamp < 12000){
+      document.documentElement.classList.add('alygnn-tablet-warm-nav');
+    }
+    sessionStorage.removeItem('alygnnEmployerTabletNavAt');
+  } catch(_error) {}
+})();
+</script>
   <meta name="theme-color" content="#F6F8F7">
   <script id="alygnn-native-tablet-layout-detection">
   (function () {
@@ -5300,6 +5314,36 @@
     html.alygnn-native-app .candidate-job { font-size: 13px; }
     html.alygnn-native-app .section-link { font-size: 13px; }
   }
+</style>
+<style id="alygnn-tablet-employer-20261114-final">
+/* Native tablet only; phone and browser remain unaffected. */
+@media screen and (min-width:700px) {
+ html.alygnn-native-app .bottom-nav {
+   min-height:110px!important;
+   grid-template-columns:repeat(5,minmax(0,1fr))!important;
+   column-gap:clamp(8px,2vw,30px)!important;
+   padding:12px clamp(20px,5vw,66px) calc(14px + env(safe-area-inset-bottom))!important;
+ }
+ html.alygnn-native-app .bottom-nav .nav-item {
+   min-height:76px!important; font-size:14px!important; gap:8px!important;
+   padding:9px 6px!important;
+ }
+ html.alygnn-native-app .bottom-nav .nav-icon,
+ html.alygnn-native-app .bottom-nav .nav-icon svg {width:32px!important;height:32px!important}
+ html.alygnn-native-app .shell{max-width:min(100%,1120px)!important}
+ html.alygnn-native-app #settings-view .settings-link{min-height:80px!important}
+ html.alygnn-native-app #settings-view .settings-copy strong{font-size:17px!important}
+ html.alygnn-native-app #settings-view .settings-copy small{font-size:13px!important}
+ html.alygnn-native-app #settings-view .settings-icon{width:50px!important;height:50px!important;flex-basis:50px!important}
+ html.alygnn-native-app .metric-label{font-size:15px!important}
+ html.alygnn-native-app .metric-note{font-size:12px!important}
+ html.alygnn-native-app .candidate-meta{font-size:12px}
+ html.alygnn-native-app .candidate-row{min-height:92px}
+ html.alygnn-native-app body{padding-bottom:calc(130px + env(safe-area-inset-bottom))!important}
+ /* Fast return from a sibling employer tab: show cached shell while auth/data refresh. */
+ html.alygnn-native-app.alygnn-tablet-warm-nav body[data-dashboard-booting="true"]>.shell{visibility:visible!important}
+ html.alygnn-native-app.alygnn-tablet-warm-nav #dashboard-boot-loader{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+}
 </style>
 </head>
 <body data-employer-dashboard-build="2026-08-30-slot-paywall-open-closed-tabs" data-dashboard-booting="true">
@@ -17261,6 +17305,7 @@
         return;
       }
 
+      try { sessionStorage.setItem('alygnnEmployerTabletNavAt', String(Date.now())); } catch(_error) {}
       location.href=
         'app-messages.html?role=employer';
     };
