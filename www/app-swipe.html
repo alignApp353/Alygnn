@@ -4094,6 +4094,30 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 </style>
 
 <link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
+<style id="alygnn-android-tablet-card-fix-20261119">
+/* Only tablets: keep phone proportions exactly as they were. */
+@media (min-width:700px) and (min-height:900px){
+  .progress-card{max-width:min(820px,calc(100vw - 44px))!important}
+  .swipe-area{padding-inline:20px!important; min-height:0!important}
+  .card-stack{
+    max-width:min(820px,calc(100vw - 44px))!important;
+    height:clamp(470px,60dvh,730px)!important;
+    min-height:0!important;max-height:calc(100dvh - 270px)!important;
+  }
+  .job-card{padding:clamp(22px,3.2vw,36px)!important}
+  .swipe-card-insights{gap:12px!important}
+}
+@media (min-width:700px) and (max-height:899px){
+  .progress-card{max-width:min(750px,calc(100vw - 40px))!important}
+  .card-stack{max-width:min(750px,calc(100vw - 40px))!important}
+}
+@media (min-width:700px){
+  .job-details-overlay{align-items:center!important;justify-content:center!important;padding:20px!important}
+  .job-details-sheet{width:min(820px,calc(100vw - 40px))!important;max-width:820px!important;max-height:calc(100dvh - 40px)!important;border-radius:26px!important}
+  .details-footer{border-radius:0 0 26px 26px!important}
+  .details-scroll{padding-inline:clamp(20px,4vw,40px)!important}
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -4608,21 +4632,9 @@ function skillsScore(job){
     return Math.round((matched/required.length)*100);
   }
 
-  // Fallback for legacy jobs that have no structured skill list.
-  const haystack=normalizeMatchText(jobSearchText(job));
-  if(!haystack)return null;
-  const matched=candidate.filter(skill=>{
-    const normalized=normalizeMatchText(skill);
-    if(!normalized)return false;
-    if(haystack.includes(normalized))return true;
-    const tokens=matchTokens(normalized);
-    return tokens.length&&tokens.every(token=>haystack.includes(token));
-  }).length;
-
-  // With no explicit requirements, treat matching resume skills as evidence
-  // rather than making every unrelated resume skill count against the user.
-  if(!matched)return 0;
-  return Math.min(100,Math.round(55 + (matched-1)*15));
+  // No structured requirements means the skills percentage is unknown.
+  // A word search against the job description is not a reliable skills score.
+  return null;
 }
 
 
@@ -5333,13 +5345,13 @@ function renderSwipeMatchHighlights(job){
       label,
       value:scoreMetric(job,key)
     }))
-    .filter(item=>item.value!==null)
+    .filter(item=>item.value!==null && item.value>0)
     .slice(0,3);
 
   if(!metrics.length)return `
     <div class="swipe-insight swipe-match-insight">
-      <div class="swipe-insight-label">Why this matches</div>
-      <div class="swipe-match-unavailable">Match details not available yet</div>
+      <div class="swipe-insight-label">Match information</div>
+      <div class="swipe-match-unavailable">Not enough matching information to show highlights</div>
     </div>
   `;
 

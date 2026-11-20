@@ -2356,6 +2356,36 @@ nav.app-nav #resumeBuilderBack{display:inline-flex!important;align-items:center;
 @media(prefers-color-scheme:dark){nav.app-nav #resumeBuilderBack{border-color:#42586B!important;color:#F4F7F9!important;background:#15202B!important}}
 html[data-effective-theme="dark"] nav.app-nav #resumeBuilderBack{border-color:#42586B!important;color:#F4F7F9!important;background:#15202B!important}
 </style>
+<!-- Match the Android candidate's saved appearance, not only Android system mode. -->
+<script src="app-candidate-theme.js"></script>
+<style id="alygnn-android-resume-builder-theme-sync-20261119">
+html[data-effective-theme="dark"]{
+  color-scheme:dark;
+  --bg:#061821;--card-bg:#15202B;--text:#F4F7F9;
+  --border:#2B3946;--text-muted:#A7B2BD;
+  --brand-light:rgba(93,127,163,.18);--danger-light:rgba(214,79,79,.16);
+}
+html[data-effective-theme="light"]{
+  color-scheme:light;
+  --bg:#F5F8F8;--card-bg:#FFFFFF;--text:#172333;
+  --border:#DCE5EB;--text-muted:#66788A;
+  --brand-light:rgba(93,127,163,.10);--danger-light:rgba(215,154,154,.12);
+}
+html[data-effective-theme="dark"] body,
+html[data-effective-theme="dark"] main{background:#061821!important;color:#F4F7F9!important}
+html[data-effective-theme="dark"] nav.app-nav,
+html[data-effective-theme="dark"] .bottom-actions{background:#061821!important;border-color:#2B3946!important}
+html[data-effective-theme="dark"] :is(.section-card,.score-card,.template-picker,.repeat-item,.preview-shell){
+  background:#15202B!important;color:#F4F7F9!important;border-color:#2B3946!important;
+}
+html[data-effective-theme="dark"] :is(input,textarea,select,.template-option,.action-btn,.location-suggestions,.skill-suggestions){
+  background:#101A23!important;color:#F4F7F9!important;border-color:#2B3946!important;
+}
+html[data-effective-theme="dark"] :is(.location-suggestion,.skill-option){color:#F4F7F9!important}
+html[data-effective-theme="dark"] :is(input,textarea)::placeholder{color:#82939F!important}
+/* A printable resume and its miniature templates remain white. */
+html[data-effective-theme="dark"] :is(.resume-paper,.template-thumb){background:#fff!important}
+</style>
 </head>
 
 <body>
