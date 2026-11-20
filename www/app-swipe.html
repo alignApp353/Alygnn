@@ -4099,13 +4099,35 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 @media (min-width:700px) and (min-height:900px){
   .progress-card{max-width:min(820px,calc(100vw - 44px))!important}
   .swipe-area{padding-inline:20px!important; min-height:0!important}
+  /* In portrait, size the active card to its contents instead of creating a
+     fixed-height empty middle row between the role and requirements. */
   .card-stack{
     max-width:min(820px,calc(100vw - 44px))!important;
-    height:clamp(470px,60dvh,730px)!important;
-    min-height:0!important;max-height:calc(100dvh - 270px)!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
   }
-  .job-card{padding:clamp(22px,3.2vw,36px)!important}
-  .swipe-card-insights{gap:12px!important}
+  .card-stack>.job-card:first-child,
+  .card-stack>.job-card.alygnn-recommended-card:first-child{
+    position:relative!important;
+    inset:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:53px 28px 22px!important;
+  }
+  .card-stack>.job-card:nth-child(n+2){
+    position:absolute!important;
+    inset:0!important;
+    height:100%!important;
+  }
+  .job-card .swipe-card-insights{
+    grid-template-rows:auto auto auto!important;
+    align-content:start!important;
+    flex:0 0 auto!important;
+    gap:12px!important;
+  }
+  .job-card .swipe-role-insight{min-height:0!important}
 }
 @media (min-width:700px) and (max-height:899px){
   .progress-card{max-width:min(750px,calc(100vw - 40px))!important}
