@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-alygnn-responsive="candidate">
 <head>
+<script src="app-auth-history-guard.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alygnn — Resume</title>
@@ -526,6 +527,15 @@ html[data-theme="dark"] #loading.alygnn-loader{background:radial-gradient(circle
 <link rel="stylesheet" href="app-candidate-responsive-v2.css">
 <script defer src="app-candidate-back-v2.js"></script>
 <link rel="stylesheet" href="app-alygnn-loading-standard.css?v=20261024-final">
+<style id="alygnn-resume-navigation-contrast-fix">
+.resume-flow-topbar .resume-flow-back{display:inline-flex!important;align-items:center;justify-content:center;min-height:40px;min-width:70px;padding:8px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card-bg);color:var(--text)!important;text-decoration:none;font-size:13px;font-weight:800;white-space:nowrap;position:relative;z-index:2}
+.resume-flow-topbar{grid-template-columns:minmax(70px,1fr) auto minmax(70px,1fr)!important}
+html[data-effective-theme="dark"] .resume-flow-topbar .resume-flow-back{background:#15202B!important;border-color:#42586B!important;color:#F4F7F9!important}
+html[data-effective-theme="dark"] .option-grid .build-btn,html[data-effective-theme="dark"] .upload-panel .primary-btn{background:#35679A!important;color:#FFFFFF!important;border-color:#35679A!important;opacity:1}
+html[data-effective-theme="dark"] .option-grid .preview-btn{background:#15202B!important;border:1px solid #7E9AB1!important;color:#FFFFFF!important;opacity:1}
+html[data-effective-theme="dark"] .option-card .option-title,html[data-effective-theme="dark"] .option-card .option-action{color:#F4F7F9!important}
+html[data-effective-theme="dark"] .option-card .option-copy{color:#B8C6D2!important}
+</style>
 </head>
 <body>
 <div class="alygnn-loader alygnn-standard-loader" id="loading" aria-live="polite" aria-label="Loading resume">
@@ -537,7 +547,7 @@ html[data-theme="dark"] #loading.alygnn-loader{background:radial-gradient(circle
 </div>
 <div class="screen">
 <div class="topbar resume-flow-topbar">
-  <div class="resume-flow-spacer" aria-hidden="true"></div>
+  <a class="resume-flow-back" href="app-account.html" aria-label="Back to profile">← Back</a>
   <div class="logo">Alygnn<span>.</span></div>
   <div class="resume-flow-spacer" aria-hidden="true"></div>
 </div>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="app-auth-history-guard.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Account & security — Alygnn</title>
@@ -214,7 +215,7 @@ const { createClient } = supabase;
   async function init() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) {
-      window.location.href = 'login.html';
+      window.location.replace('app-employer-login.html?logout=1');
       return;
     }
 
