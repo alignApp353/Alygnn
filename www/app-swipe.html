@@ -4192,6 +4192,18 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 .alygnn-match-note{grid-column:1/-1;font-size:11px;line-height:1.45;color:var(--text-muted)}
 .alygnn-mini-row-top{gap:6px;flex-wrap:wrap}
 </style>
+<style id="alygnn-android-tablet-portrait-center-20261121">
+/* Center the compact card and its controls together within the usable area.
+   Auto height allows taller content to grow instead of clipping the controls. */
+@media (min-width:700px) and (min-height:900px) and (orientation:portrait){
+  body:not(.no-jobs-mode) #swipe-area{
+    height:auto!important;
+    min-height:calc(100dvh - 92px - 86px)!important;
+    justify-content:center!important;
+    padding:24px 20px calc(96px + env(safe-area-inset-bottom))!important;
+  }
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
