@@ -7,8 +7,9 @@
   if (window.__alygnnSheetSwipeInstalled) return;
   window.__alygnnSheetSwipeInstalled = true;
 
-  const HANDLE = '.candidate-settings-sheet-handle, .sheet-handle, .sheet-grip';
+  const HANDLE = '.candidate-settings-sheet-handle, .sheet-handle, .sheet-grip, .details-grip';
   const closeButtonBySheet = {
+    'job-details-overlay': '#details-close',
     'candidate-sheet': '#close-candidate',
     'job-preview-sheet': '#close-job-preview',
     'team-sheet': '#close-team-sheet',
@@ -19,10 +20,10 @@
   };
 
   function locate(handle) {
-    const panel = handle.closest('.candidate-settings-sheet, .sheet-panel, .sheet');
-    const overlay = handle.closest('.candidate-settings-sheet-backdrop, .sheet-backdrop, .sheet[id]');
+    const panel = handle.closest('.candidate-settings-sheet, .sheet-panel, .job-details-sheet, .sheet');
+    const overlay = handle.closest('.candidate-settings-sheet-backdrop, .sheet-backdrop, .job-details-overlay, .sheet[id]');
     if (!panel || !overlay) return null;
-    if (overlay.hidden || (overlay.classList.contains('sheet-backdrop') && !overlay.classList.contains('open'))) return null;
+    if (overlay.hidden || overlay.getAttribute('aria-hidden') === 'true' || (overlay.classList.contains('sheet-backdrop') && !overlay.classList.contains('open'))) return null;
     return { panel, overlay };
   }
 
@@ -63,6 +64,7 @@
       panel.style.willChange = restoreStyle.willChange;
     }
     handle.addEventListener('pointerdown', function (event) {
+      if (gesture || settleTimer) return;
       if (event.button !== undefined && event.button !== 0) return;
       const found = locate(handle);
       if (!found) return;
@@ -88,7 +90,7 @@
       const g=gesture;
       if (!g || event.pointerId !== g.pointerId) return;
       gesture=null;
-      const delta=Math.max(0,g.lastY-g.startY);
+      const delta=Math.max(0,(cancelled?g.lastY:event.clientY)-g.startY);
       const duration=Math.max(1,performance.now()-g.startTime);
       const velocity=delta/duration;
       const close=!cancelled && (delta>Math.min(110,g.panel.getBoundingClientRect().height*.25) || (delta>=45 && velocity>.6));
@@ -98,8 +100,7 @@
       if(close) {
         g.panel.style.transform='translate3d(0,'+Math.ceil(innerHeight)+'px,0)';
         settleTimer=setTimeout(function(){
-          dismiss(g.overlay);
-          restore(g.panel,g.original);
+          try { dismiss(g.overlay); } finally { restore(g.panel,g.original); }
         }, reduce ? 0 : 175);
       } else {
         g.panel.style.transform=g.original.transform || 'translate3d(0,0,0)';
@@ -108,6 +109,7 @@
     }
     handle.addEventListener('pointerup',function(event){finish(event,false);});
     handle.addEventListener('pointercancel',function(event){finish(event,true);});
+    handle.addEventListener('lostpointercapture',function(event){finish(event,true);});
     handle.addEventListener('keydown',function(event){
       if(event.key==='Enter'||event.key===' '||event.key==='Escape'){
         const found=locate(handle);
@@ -123,7 +125,7 @@
     style.id='alygnn-sheet-swipe-style';
     // The invisible touch target extends around the existing visible grip; no
     // changes to the line's size, positioning, color, or parent layout.
-    style.textContent = '.alygnn-sheet-swipe-handle{position:relative!important;touch-action:none!important;cursor:grab}.alygnn-sheet-swipe-handle:active{cursor:grabbing}.alygnn-sheet-swipe-handle::after{content:"";position:absolute;left:50%;top:50%;width:112px;height:36px;transform:translate(-50%,-50%);background:transparent}.alygnn-sheet-swipe-handle:focus-visible{outline:2px solid #5D7FA3;outline-offset:8px}';
+    style.textContent = '.alygnn-sheet-swipe-handle{position:relative!important;touch-action:none!important;cursor:grab}.alygnn-sheet-swipe-handle:active{cursor:grabbing}.alygnn-sheet-swipe-handle::after{content:"";position:absolute;left:50%;top:50%;width:140px;height:42px;transform:translate(-50%,-50%);background:transparent}.alygnn-sheet-swipe-handle:focus-visible{outline:2px solid #5D7FA3;outline-offset:8px}';
     document.head.appendChild(style);
     document.querySelectorAll(HANDLE).forEach(setup);
   }

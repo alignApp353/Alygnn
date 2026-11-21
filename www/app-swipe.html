@@ -4173,6 +4173,25 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
   #swipe-area .old-action-layout .btn-undo .undo-svg{width:26px!important;height:26px!important}
 }
 </style>
+<style id="alygnn-android-tablet-final-controls-20261121">
+@media (min-width:700px){
+  body:not(.no-jobs-mode) #swipe-area{height:auto!important;min-height:0!important;justify-content:flex-start!important;padding:24px 20px calc(110px + env(safe-area-inset-bottom))!important;top:0!important}
+  html,body{overflow-y:auto!important;overflow-x:hidden!important}
+  #swipe-area .card-stack{flex:0 0 auto!important}
+  #swipe-area .old-action-layout{width:min(440px,100%)!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;margin:26px auto 0!important;align-items:start!important}
+  #swipe-area .old-action-layout .action-wrap{width:100%!important;min-width:0!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:8px!important}
+  #swipe-area .old-action-layout .action-btn{flex:0 0 auto!important;display:grid!important;place-items:center!important;align-self:center!important}
+  #swipe-area .old-action-layout .action-label{font-size:14px!important;line-height:1.3!important}
+  .details-hero{padding:20px!important}
+}
+@media (min-width:700px) and (max-height:899px){
+  body:not(.no-jobs-mode) #swipe-area{padding-top:12px!important}
+  #swipe-area .old-action-layout{margin-top:20px!important;width:min(360px,100%)!important}
+}
+.details-match-wrap .alygnn-match-mini{margin-bottom:0!important}
+.alygnn-match-note{grid-column:1/-1;font-size:11px;line-height:1.45;color:var(--text-muted)}
+.alygnn-mini-row-top{gap:6px;flex-wrap:wrap}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -4764,13 +4783,13 @@ function experienceScore(job){
 
 function scoreMetric(job,key){
   const value=job?._alygnn_breakdown?.[key];
-  return Number.isFinite(Number(value))
+  return value != null && value !== "" && Number.isFinite(Number(value))
     ?Math.max(0,Math.min(100,Math.round(Number(value))))
     :null;
 }
 
 function compactMetric(label,value){
-  const display=value==null?'—':value+'%';
+  const display=value==null?'Not assessed':value===0?'No overlap detected':value+'%';
   const width=value==null?0:value;
 
   return `
@@ -4787,16 +4806,14 @@ function compactMetric(label,value){
 }
 
 function renderCompactAlygnnMatch(job){
-  const score=Number.isFinite(Number(job?.match_score))
+  const score=job?.match_score != null && Number.isFinite(Number(job.match_score))
     ?Math.max(0,Math.min(100,Math.round(Number(job.match_score))))
     :null;
 
   const breakdown=job?._alygnn_breakdown||{};
 
-  const skills=scoreMetric(job,'skills');
-  const experience=scoreMetric(job,'experience');
-  const salary=scoreMetric(job,'salary');
-  const location=scoreMetric(job,'location');
+  const metrics=[['skills','Skills'],['experience','Experience'],['salary','Salary'],['location','Location'],['workStyle','Work style'],['jobType','Job type'],['role','Role'],['benefits','Benefits'],['industry','Industry']].map(([key,label])=>({label,value:scoreMetric(job,key)})).filter(item=>item.value!==null);
+  if(score===null && !metrics.length)return '<div class="alygnn-match-mini">Match information not available yet.</div>'; 
 
   return `
     <div class="alygnn-match-mini">
@@ -4820,10 +4837,8 @@ function renderCompactAlygnnMatch(job){
         </div>
 
         <div class="alygnn-mini-metrics">
-          ${compactMetric('Skills',skills)}
-          ${compactMetric('Experience',experience)}
-          ${compactMetric('Salary',salary)}
-          ${compactMetric('Location',location)}
+          ${metrics.map(item=>compactMetric(item.label,item.value)).join('')}
+          ${metrics.some(item=>item.value===0)?'<div class="alygnn-match-note">0% means no overlap was detected in the information compared. It does not mean you are unqualified.</div>':''}
         </div>
       </div>
     </div>
@@ -5202,7 +5217,7 @@ function openJobDetails(index){
   const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
   const type=job.job_type||job.employment_type||'Job';
   const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
+  const alygnnScore=job.match_score != null && Number.isFinite(Number(job.match_score))
     ?Math.round(Number(job.match_score))
     :null;
   const lists=getJobLists(job);
@@ -5480,7 +5495,7 @@ function buildCard(job,index){
   const location=job.location||[job.city,job.state].filter(Boolean).join(', ')||'Location not listed';
   const type=job.job_type||job.employment_type||'Job';
   const style=job.work_style||'';
-  const alygnnScore=Number.isFinite(Number(job.match_score))
+  const alygnnScore=job.match_score != null && Number.isFinite(Number(job.match_score))
     ?Math.round(Number(job.match_score))
     :null;
   const match=alygnnScore!=null
@@ -6295,5 +6310,6 @@ setTimeout(()=>{
 
 <script defer src="app-push-notifications.js"></script>
 <script src="app-age-eligibility.js"></script>
+<script defer src="app-sheet-swipe.js?v=20261121"></script>
 </body>
 </html>
