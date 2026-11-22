@@ -686,6 +686,29 @@ body.employer-role .layout>main,.layout>main{margin-left:0!important;width:100%!
 }
 .candidate-card .candidate-actions .btn { max-width: 100%; }
 </style>
+<style id="alygnn-applicants-mobile-notification-fit">
+/* Applicants only: anchor the notification panel to the full mobile header,
+   not the narrow bell wrapper. Desktop positioning remains unchanged. */
+@media (max-width: 860px) {
+  nav .notif-wrap { position: static; }
+  nav #notif-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: auto;
+    right: 12px;
+    width: min(340px, calc(100% - 24px));
+    max-width: calc(100% - 24px);
+    max-height: min(420px, calc(100vh - 88px));
+    max-height: min(420px, calc(100dvh - 88px));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav #notif-dropdown .notif-item-title,
+  nav #notif-dropdown .notif-item-body { overflow-wrap: anywhere; }
+}
+</style>
 </head>
 <body>
 <div id="auth-loading" class="alygnn-page-loader" data-loader-messages="Loading your workspace…||Preparing your applicants…||Getting your jobs ready…||Almost there…">
