@@ -4358,6 +4358,122 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
   #swipe-area .old-action-layout {margin-top:18px!important;}
 }
 </style>
+
+<style id="alygnn-android-tablet-orientation-fit-20261123">
+/* Android Discover tablet only. No changes to swiping logic or phone screens. */
+@media (min-width:700px) and (orientation:portrait){
+  body:not(.no-jobs-mode) #swipe-area{
+    width:100%!important;box-sizing:border-box!important;
+    height:auto!important;min-height:0!important;
+    justify-content:flex-start!important;align-items:center!important;
+    padding:14px 18px calc(92px + env(safe-area-inset-bottom))!important;
+    margin:0 auto!important;
+  }
+  #swipe-area .card-stack{
+    width:100%!important;margin:0 auto!important;flex-shrink:0!important;
+  }
+  #swipe-area .old-action-layout{margin:16px auto 0!important;flex-shrink:0!important}
+}
+@media (min-width:700px) and (orientation:landscape){
+  /* All elements must fit between header/progress and fixed bottom navigation.
+     Keep a stable height per screen and show longer text in View details. */
+  html,body{overflow-x:hidden!important;overflow-y:hidden!important}
+  .progress-shell{padding-top:6px!important}
+  .progress-shell .progress-card{
+    min-height:58px!important;max-height:62px!important;
+    padding:6px 12px!important;
+    max-width:min(800px,calc(100vw - 48px))!important;
+  }
+  .progress-shell .progress-card .stat-val{font-size:22px!important}
+  .progress-shell .progress-card .stat-label{font-size:12px!important;margin-top:0!important}
+  .progress-shell .progress-card #job-progress-copy{font-size:12px!important}
+  body:not(.no-jobs-mode) #swipe-area{
+    width:100%!important;box-sizing:border-box!important;
+    height:calc(100dvh - 92px - 68px - 82px)!important;
+    min-height:0!important;max-height:none!important;
+    margin:0 auto!important;
+    padding:8px 18px 4px!important;
+    overflow:hidden!important;
+    justify-content:center!important;align-items:center!important;
+  }
+  #swipe-area .card-stack{
+    width:100%!important;
+    max-width:min(800px,calc(100vw - 48px))!important;
+    height:clamp(210px,calc(100dvh - 338px),340px)!important;
+    min-height:0!important;max-height:340px!important;
+    margin:0 auto!important;flex:0 1 auto!important;
+  }
+  #swipe-area .card-stack>.job-card:first-child,
+  #swipe-area .card-stack>.job-card.alygnn-recommended-card:first-child{
+    position:relative!important;inset:auto!important;
+    height:100%!important;min-height:0!important;max-height:100%!important;
+    box-sizing:border-box!important;overflow:hidden!important;
+    padding:30px 20px 10px!important;
+    border-radius:22px!important;
+  }
+  #swipe-area .card-stack>.job-card:nth-child(n+2){height:100%!important;inset:0!important}
+  #swipe-area .job-card .swipe-card-toolbar{
+    min-height:30px!important;height:30px!important;margin-bottom:5px!important;
+  }
+  #swipe-area .job-card .match{font-size:12px!important;padding:5px 9px!important}
+  #swipe-area .job-card .swipe-card-details-top{min-height:30px!important;font-size:12px!important}
+  #swipe-area .job-card .card-top{
+    height:auto!important;min-height:38px!important;max-height:48px!important;
+    margin-bottom:5px!important;
+  }
+  #swipe-area .job-card .company-logo{width:40px!important;height:40px!important;border-radius:12px!important}
+  #swipe-area .job-card .job-title,
+  #swipe-area .job-card .job-title.alygnn-long-job-title{font-size:clamp(18px,2vw,24px)!important;line-height:1.1!important}
+  #swipe-area .job-card .company-name{font-size:12px!important}
+  #swipe-area .job-card .mobile-job-tags{
+    min-height:0!important;height:auto!important;max-height:52px!important;
+    gap:5px!important;margin-bottom:5px!important;overflow:hidden!important;
+  }
+  #swipe-area .job-card .mobile-tag{
+    min-height:21px!important;height:auto!important;
+    font-size:10px!important;line-height:1.1!important;padding:4px 6px!important;
+  }
+  #swipe-area .job-card .swipe-card-insights{
+    min-height:0!important;gap:4px!important;overflow:hidden!important;flex:1 1 auto!important;
+  }
+  #swipe-area .job-card .swipe-match-insight{padding-top:4px!important}
+  #swipe-area .job-card .swipe-insight-label,
+  #swipe-area .job-card .swipe-compact-label{font-size:9px!important;line-height:1.1!important}
+  #swipe-area .job-card .swipe-match-metric,
+  #swipe-area .job-card .swipe-match-metric strong{font-size:10px!important;line-height:1.1!important}
+  #swipe-area .job-card .swipe-match-metric{padding:3px!important}
+  #swipe-area .job-card .swipe-role-copy{
+    font-size:11px!important;line-height:1.25!important;-webkit-line-clamp:2!important;
+  }
+  #swipe-area .job-card .swipe-requirements-line{padding-top:4px!important;gap:2px!important}
+  #swipe-area .job-card .swipe-compact-value{font-size:10px!important;line-height:1.2!important;-webkit-line-clamp:1!important}
+  #swipe-area .job-card .swipe-card-date{
+    font-size:10px!important;line-height:1.1!important;
+    margin-top:4px!important;padding-top:4px!important;
+  }
+  #swipe-area .old-action-layout{
+    width:100%!important;max-width:min(800px,calc(100vw - 48px))!important;
+    gap:12px!important;margin:10px auto 0!important;
+    flex:0 0 auto!important;
+  }
+  #swipe-area .old-action-layout .action-btn{
+    height:56px!important;min-height:56px!important;max-height:56px!important;
+    border-radius:13px!important;gap:1px!important;padding:3px!important;
+  }
+  #swipe-area .old-action-layout .action-btn .control-icon{
+    width:15px!important;height:15px!important;flex-basis:15px!important;
+  }
+  #swipe-area .old-action-layout .action-btn .control-title{font-size:13px!important}
+  #swipe-area .old-action-layout .action-btn .control-sub{font-size:9px!important}
+}
+/* Extra-short landscape tablets: tighten content further but retain three actions. */
+@media (min-width:700px) and (orientation:landscape) and (max-height:570px){
+  #swipe-area .card-stack{height:clamp(165px,calc(100dvh - 310px),230px)!important}
+  #swipe-area .job-card .swipe-role-copy{-webkit-line-clamp:1!important}
+  #swipe-area .old-action-layout .action-btn{height:49px!important;min-height:49px!important;max-height:49px!important}
+  #swipe-area .job-card .swipe-requirements-line{display:none!important}
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
