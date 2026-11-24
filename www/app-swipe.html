@@ -4312,166 +4312,83 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 @media(min-width:700px){#swipe-area .old-action-layout .action-btn .control-icon{width:22px!important;height:22px!important;flex-basis:22px!important}}
 @media(min-width:700px) and (max-height:899px){#swipe-area .old-action-layout .action-btn .control-icon{width:18px!important;height:18px!important;flex-basis:18px!important}}
 </style>
-<style id="alygnn-android-tablet-orientation-spacing-20261123">
-/* Android tablet Discover: do not touch phone layouts or swipe/counter logic. */
-@media (min-width:700px) and (orientation:portrait) {
-  /* Keep a small, consistent gap after the progress summary instead of
-     vertically centering the card in all the unused screen space. */
+<style id="alygnn-android-tablet-viewport-repair-20261123">
+/* Only the candidate Discover tablet view: align content within the real
+   visible space between progress and fixed navigation. */
+@media (min-width:700px){
   body:not(.no-jobs-mode) #swipe-area {
-    height:auto!important;
-    min-height:0!important;
-    justify-content:flex-start!important;
-    padding-top:18px!important;
-    padding-bottom:calc(104px + env(safe-area-inset-bottom))!important;
+    position:relative!important;top:0!important;
+    box-sizing:border-box!important;
+    height:var(--alygnn-discover-space,calc(100dvh - 270px))!important;
+    min-height:0!important;max-height:none!important;
+    width:100%!important;margin:0 auto!important;
+    display:flex!important;flex-direction:column!important;
+    justify-content:center!important;align-items:center!important;
+    padding:12px 20px!important;overflow:hidden!important;
   }
-  #swipe-area .card-stack {margin-top:0!important;}
-}
-@media (min-width:700px) and (orientation:landscape) {
-  /* Short landscape screens cannot fit a full job card, three actions and
-     the fixed navigation simultaneously. Let the page scroll rather than
-     allowing the navigation to cover the card and action buttons. */
-  html,body {overflow-x:hidden!important;overflow-y:auto!important;}
-  body:not(.no-jobs-mode) #swipe-area {
-    height:auto!important;
-    min-height:0!important;
-    overflow:visible!important;
-    justify-content:flex-start!important;
-    padding:14px 18px calc(116px + env(safe-area-inset-bottom))!important;
+  #swipe-area .card-stack{width:100%!important;max-width:min(820px,calc(100vw - 40px))!important;
+    height:auto!important;min-height:0!important;margin:0 auto!important;flex:0 1 auto!important;
   }
-  .progress-shell .progress-card,
-  #swipe-area .card-stack {
-    max-width:min(640px,calc(100vw - 48px))!important;
+  #swipe-area .card-stack>.job-card:first-child{position:relative!important;inset:auto!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    box-sizing:border-box!important;
   }
-  #swipe-area .card-stack {
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin-top:0!important;
+  #swipe-area .card-stack>.job-card:nth-child(n+2){position:absolute!important;inset:0!important;height:100%!important}
+  #swipe-area .old-action-layout{width:100%!important;max-width:min(820px,calc(100vw - 40px))!important;
+    margin:18px auto 0!important;flex:0 0 auto!important;
   }
-  #swipe-area .card-stack>.job-card:first-child {
-    position:relative!important;
-    inset:auto!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-  }
-  #swipe-area .old-action-layout {margin-top:18px!important;}
-}
-</style>
-
-<style id="alygnn-android-tablet-orientation-fit-20261123">
-/* Android Discover tablet only. No changes to swiping logic or phone screens. */
-@media (min-width:700px) and (orientation:portrait){
-  body:not(.no-jobs-mode) #swipe-area{
-    width:100%!important;box-sizing:border-box!important;
-    height:auto!important;min-height:0!important;
-    justify-content:flex-start!important;align-items:center!important;
-    padding:14px 18px calc(92px + env(safe-area-inset-bottom))!important;
-    margin:0 auto!important;
-  }
-  #swipe-area .card-stack{
-    width:100%!important;margin:0 auto!important;flex-shrink:0!important;
-  }
-  #swipe-area .old-action-layout{margin:16px auto 0!important;flex-shrink:0!important}
 }
 @media (min-width:700px) and (orientation:landscape){
-  /* All elements must fit between header/progress and fixed bottom navigation.
-     Keep a stable height per screen and show longer text in View details. */
   html,body{overflow-x:hidden!important;overflow-y:hidden!important}
-  .progress-shell{padding-top:6px!important}
-  .progress-shell .progress-card{
-    min-height:58px!important;max-height:62px!important;
-    padding:6px 12px!important;
-    max-width:min(800px,calc(100vw - 48px))!important;
-  }
+  .progress-shell {padding-top:6px!important}
+  .progress-shell .progress-card{min-height:58px!important;padding:6px 12px!important;
+    max-width:min(960px,calc(100vw - 48px))!important}
   .progress-shell .progress-card .stat-val{font-size:22px!important}
   .progress-shell .progress-card .stat-label{font-size:12px!important;margin-top:0!important}
   .progress-shell .progress-card #job-progress-copy{font-size:12px!important}
-  body:not(.no-jobs-mode) #swipe-area{
-    width:100%!important;box-sizing:border-box!important;
-    height:calc(100dvh - 92px - 68px - 82px)!important;
-    min-height:0!important;max-height:none!important;
-    margin:0 auto!important;
-    padding:8px 18px 4px!important;
-    overflow:hidden!important;
-    justify-content:center!important;align-items:center!important;
-  }
-  #swipe-area .card-stack{
-    width:100%!important;
-    max-width:min(800px,calc(100vw - 48px))!important;
-    height:clamp(210px,calc(100dvh - 338px),340px)!important;
-    min-height:0!important;max-height:340px!important;
-    margin:0 auto!important;flex:0 1 auto!important;
-  }
-  #swipe-area .card-stack>.job-card:first-child,
-  #swipe-area .card-stack>.job-card.alygnn-recommended-card:first-child{
-    position:relative!important;inset:auto!important;
-    height:100%!important;min-height:0!important;max-height:100%!important;
-    box-sizing:border-box!important;overflow:hidden!important;
-    padding:30px 20px 10px!important;
-    border-radius:22px!important;
-  }
-  #swipe-area .card-stack>.job-card:nth-child(n+2){height:100%!important;inset:0!important}
-  #swipe-area .job-card .swipe-card-toolbar{
-    min-height:30px!important;height:30px!important;margin-bottom:5px!important;
-  }
-  #swipe-area .job-card .match{font-size:12px!important;padding:5px 9px!important}
-  #swipe-area .job-card .swipe-card-details-top{min-height:30px!important;font-size:12px!important}
-  #swipe-area .job-card .card-top{
-    height:auto!important;min-height:38px!important;max-height:48px!important;
-    margin-bottom:5px!important;
-  }
-  #swipe-area .job-card .company-logo{width:40px!important;height:40px!important;border-radius:12px!important}
-  #swipe-area .job-card .job-title,
-  #swipe-area .job-card .job-title.alygnn-long-job-title{font-size:clamp(18px,2vw,24px)!important;line-height:1.1!important}
-  #swipe-area .job-card .company-name{font-size:12px!important}
-  #swipe-area .job-card .mobile-job-tags{
-    min-height:0!important;height:auto!important;max-height:52px!important;
-    gap:5px!important;margin-bottom:5px!important;overflow:hidden!important;
-  }
-  #swipe-area .job-card .mobile-tag{
-    min-height:21px!important;height:auto!important;
-    font-size:10px!important;line-height:1.1!important;padding:4px 6px!important;
-  }
-  #swipe-area .job-card .swipe-card-insights{
-    min-height:0!important;gap:4px!important;overflow:hidden!important;flex:1 1 auto!important;
-  }
-  #swipe-area .job-card .swipe-match-insight{padding-top:4px!important}
-  #swipe-area .job-card .swipe-insight-label,
-  #swipe-area .job-card .swipe-compact-label{font-size:9px!important;line-height:1.1!important}
-  #swipe-area .job-card .swipe-match-metric,
-  #swipe-area .job-card .swipe-match-metric strong{font-size:10px!important;line-height:1.1!important}
-  #swipe-area .job-card .swipe-match-metric{padding:3px!important}
-  #swipe-area .job-card .swipe-role-copy{
-    font-size:11px!important;line-height:1.25!important;-webkit-line-clamp:2!important;
-  }
+  body:not(.no-jobs-mode) #swipe-area{padding:8px 20px 10px!important;gap:0!important}
+  #swipe-area .card-stack{max-width:min(960px,calc(100vw - 48px))!important;
+    height:calc(var(--alygnn-discover-space,500px) - 100px)!important;
+    min-height:0!important;max-height:none!important;flex:0 1 auto!important}
+  #swipe-area .card-stack>.job-card:first-child{height:100%!important;overflow:hidden!important;
+    padding:30px 24px 12px!important;gap:0!important}
+  #swipe-area .job-card .swipe-card-toolbar{min-height:32px!important;height:32px!important;margin-bottom:7px!important}
+  #swipe-area .job-card .match{font-size:13px!important;padding:6px 10px!important}
+  #swipe-area .job-card .swipe-card-details-top{min-height:31px!important;font-size:12px!important}
+  #swipe-area .job-card .card-top{height:auto!important;min-height:52px!important;max-height:57px!important;margin-bottom:7px!important}
+  #swipe-area .job-card .company-logo{width:45px!important;height:45px!important;border-radius:12px!important}
+  #swipe-area .job-card .job-title{font-size:clamp(20px,2vw,26px)!important;line-height:1.12!important}
+  #swipe-area .job-card .company-name{font-size:13px!important}
+  #swipe-area .job-card .mobile-job-tags{min-height:0!important;height:auto!important;max-height:47px!important;
+    margin-bottom:7px!important;gap:5px!important;overflow:hidden!important}
+  #swipe-area .job-card .mobile-tag{min-height:22px!important;height:auto!important;font-size:11px!important;
+    line-height:1.15!important;padding:4px 8px!important}
+  #swipe-area .job-card .swipe-card-insights{min-height:0!important;max-height:none!important;
+    flex:1 1 auto!important;gap:6px!important;overflow:hidden!important}
+  #swipe-area .job-card .swipe-match-insight{padding-top:5px!important}
+  #swipe-area .job-card .swipe-insight-label,#swipe-area .job-card .swipe-compact-label{
+    font-size:10px!important;line-height:1.15!important}
+  #swipe-area .job-card .swipe-match-metric,#swipe-area .job-card .swipe-match-metric strong{
+    font-size:11px!important;line-height:1.1!important}
+  #swipe-area .job-card .swipe-match-metric{padding:4px!important}
+  #swipe-area .job-card .swipe-role-copy{font-size:12px!important;line-height:1.3!important;
+    -webkit-line-clamp:2!important}
   #swipe-area .job-card .swipe-requirements-line{padding-top:4px!important;gap:2px!important}
-  #swipe-area .job-card .swipe-compact-value{font-size:10px!important;line-height:1.2!important;-webkit-line-clamp:1!important}
-  #swipe-area .job-card .swipe-card-date{
-    font-size:10px!important;line-height:1.1!important;
-    margin-top:4px!important;padding-top:4px!important;
-  }
-  #swipe-area .old-action-layout{
-    width:100%!important;max-width:min(800px,calc(100vw - 48px))!important;
-    gap:12px!important;margin:10px auto 0!important;
-    flex:0 0 auto!important;
-  }
-  #swipe-area .old-action-layout .action-btn{
-    height:56px!important;min-height:56px!important;max-height:56px!important;
-    border-radius:13px!important;gap:1px!important;padding:3px!important;
-  }
-  #swipe-area .old-action-layout .action-btn .control-icon{
-    width:15px!important;height:15px!important;flex-basis:15px!important;
-  }
-  #swipe-area .old-action-layout .action-btn .control-title{font-size:13px!important}
-  #swipe-area .old-action-layout .action-btn .control-sub{font-size:9px!important}
+  #swipe-area .job-card .swipe-compact-value{font-size:11px!important;line-height:1.2!important;-webkit-line-clamp:1!important}
+  #swipe-area .job-card .swipe-card-date{font-size:10px!important;margin-top:5px!important;padding-top:5px!important}
+  #swipe-area .old-action-layout{max-width:min(960px,calc(100vw - 48px))!important;margin:12px auto 0!important;gap:12px!important}
+  #swipe-area .old-action-layout .action-btn{height:64px!important;min-height:64px!important;
+    max-height:64px!important;border-radius:14px!important;gap:2px!important;padding:3px!important}
+  #swipe-area .old-action-layout .action-btn .control-icon{width:17px!important;height:17px!important;flex-basis:17px!important}
+  #swipe-area .old-action-layout .action-btn .control-title{font-size:14px!important}
+  #swipe-area .old-action-layout .action-btn .control-sub{font-size:10px!important}
 }
-/* Extra-short landscape tablets: tighten content further but retain three actions. */
-@media (min-width:700px) and (orientation:landscape) and (max-height:570px){
-  #swipe-area .card-stack{height:clamp(165px,calc(100dvh - 310px),230px)!important}
-  #swipe-area .job-card .swipe-role-copy{-webkit-line-clamp:1!important}
-  #swipe-area .old-action-layout .action-btn{height:49px!important;min-height:49px!important;max-height:49px!important}
+@media (min-width:700px) and (orientation:landscape) and (max-height:650px){
+  #swipe-area .card-stack>.job-card:first-child{padding-top:26px!important}
   #swipe-area .job-card .swipe-requirements-line{display:none!important}
+  #swipe-area .job-card .swipe-role-copy{-webkit-line-clamp:1!important}
+  #swipe-area .old-action-layout .action-btn{height:52px!important;min-height:52px!important;max-height:52px!important}
+  #swipe-area .card-stack{height:calc(var(--alygnn-discover-space,400px) - 86px)!important}
 }
 </style>
 </head>
@@ -6607,5 +6524,31 @@ setTimeout(()=>{
 <script defer src="app-push-notifications.js"></script>
 <script src="app-age-eligibility.js"></script>
 <script defer src="app-sheet-swipe.js?v=20261121"></script>
+<script id="alygnn-discover-measured-viewport">
+(function(){
+  function sizeDiscover(){
+    if(window.innerWidth<700)return;
+    const progress=document.querySelector('.progress-shell');
+    const nav=document.getElementById('candidate-bottom-nav');
+    if(!progress||!nav)return;
+    const available=Math.max(0,Math.floor(nav.getBoundingClientRect().top-progress.getBoundingClientRect().bottom));
+    if(available>0)document.documentElement.style.setProperty('--alygnn-discover-space',available+'px');
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sizeDiscover);
+  else sizeDiscover();
+  window.addEventListener('resize',sizeDiscover);
+  window.addEventListener('orientationchange',sizeDiscover);
+  window.addEventListener('pageshow',sizeDiscover);
+  if(typeof ResizeObserver!=='undefined'){
+    window.addEventListener('load',()=>{
+      const obs=new ResizeObserver(sizeDiscover);
+      ['.top-header','.progress-shell','#candidate-bottom-nav'].forEach(selector=>{
+        const el=document.querySelector(selector);if(el)obs.observe(el);
+      });
+      sizeDiscover();
+    });
+  }
+})();
+</script>
 </body>
 </html>
