@@ -1504,7 +1504,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
   }
 
   if(nativePaymentSheetRequested(input)&&resolvedPromotion?.promotion?.id&&amountDue>0&&
-     input.source==='capacitor_ios_app'){
+     ['capacitor_app','capacitor_ios_app'].includes(String(input.source||''))){
     const native=await createIosDiscountedInvoice({
       user:{id:employerId,email:input.employer_email||null},
       input:{...input,ios_upgrade_from:currentPlan,ios_upgrade_to:targetPlan,
