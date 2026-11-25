@@ -4338,11 +4338,14 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
     margin:18px auto 0!important;flex:0 0 auto!important;
   }
 }
-/* Portrait only: shift the existing centered group modestly downward.
-   This changes the top/bottom balance without altering the card or controls. */
-@media (min-width:700px) and (orientation:portrait){
+/* Tablet portrait: lower the stats and keep the swipe card close below it.
+   Keep the working card, button styles, and all navigation logic unchanged. */
+@media (min-width:700px) and (min-height:900px) and (orientation:portrait){
+ .progress-shell{
+   padding-top:clamp(76px,10dvh,128px)!important;
+ }
  body:not(.no-jobs-mode) #swipe-area{
-   padding-top:68px!important;
+   padding-top:12px!important;
    padding-bottom:8px!important;
  }
 }
