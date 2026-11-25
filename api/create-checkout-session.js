@@ -2850,7 +2850,9 @@ async function prepareIosWeeklyZeroPaymentMethod({user,input,token}){
   const setup=await stripeNativeRequest('POST','setup_intents',{
     customer:customer.id,
     usage:'off_session',
-    'automatic_payment_methods[enabled]':'true',
+    // A fully discounted purchase still collects the card in the same
+    // card-entry UI as a normal Alygnn checkout. Do not show Pix/Bank/etc.
+    'payment_method_types[0]':'card',
     'metadata[employer_id]':user.id,
     'metadata[product]':'weekly_slot',
     'metadata[payment_flow]':'ios_zero_setup',
