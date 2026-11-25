@@ -4369,6 +4369,27 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
  #swipe-area .old-action-layout{margin:18px auto 0!important}
 }
 </style>
+<style id="alygnn-android-portrait-balanced-gaps-20261125">
+/* Tablet portrait spacing ONLY. Keep existing swipe behavior and card styles. */
+@media (min-width:700px) and (min-height:900px) and (orientation:portrait) {
+  /* Consistent breathing room below the fixed Alygnn header. */
+  .progress-shell {
+    padding-top:52px!important;
+    padding-bottom:0!important;
+  }
+  /* Place the card with a deliberate gap after the stats, not an auto-centered gap. */
+  body:not(.no-jobs-mode) #swipe-area {
+    justify-content:flex-start!important;
+    height:var(--alygnn-discover-space,calc(100dvh - 270px))!important;
+    padding-top:28px!important;
+    padding-bottom:12px!important;
+  }
+  /* Keep the card design untouched; separate its controls visibly. */
+  body:not(.no-jobs-mode) #swipe-area .old-action-layout {
+    margin-top:24px!important;
+  }
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
