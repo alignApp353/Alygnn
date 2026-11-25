@@ -4313,57 +4313,107 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 @media(min-width:700px) and (max-height:899px){#swipe-area .old-action-layout .action-btn .control-icon{width:18px!important;height:18px!important;flex-basis:18px!important}}
 </style>
 <style id="alygnn-android-tablet-viewport-repair-20261123">
-/* Only the candidate Discover tablet view: align content within the real
-   visible space between progress and fixed navigation. */
+/* Candidate Discover tablet composition. The existing viewport observer computes
+   --alygnn-discover-space from the live position of the statistics and navigation.
+   The card stays content-sized; extra space is shared around card + controls.
+   Phone styles and swipe/counter JavaScript are deliberately unchanged. */
 @media (min-width:700px){
-  body:not(.no-jobs-mode) #swipe-area {
-    position:relative!important;top:0!important;
+  body:not(.no-jobs-mode) #swipe-area{
+    position:relative!important;
+    top:auto!important;
     box-sizing:border-box!important;
-    height:var(--alygnn-discover-space,calc(100dvh - 270px))!important;
-    min-height:0!important;max-height:none!important;
-    width:100%!important;margin:0 auto!important;
-    display:flex!important;flex-direction:column!important;
-    justify-content:center!important;align-items:center!important;
-    padding:12px 20px!important;overflow:hidden!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:var(--alygnn-discover-space,calc(100dvh - 270px))!important;
+    max-height:none!important;
+    margin:0 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:var(--alygnn-card-actions-gap,clamp(18px,2.2dvh,30px))!important;
+    padding:var(--alygnn-group-top-pad,clamp(24px,4.8dvh,64px)) 20px
+            var(--alygnn-group-bottom-pad,clamp(10px,1.5dvh,20px))!important;
+    overflow:visible!important;
   }
-  #swipe-area .card-stack{width:100%!important;max-width:min(820px,calc(100vw - 40px))!important;
-    height:auto!important;min-height:0!important;margin:0 auto!important;flex:0 1 auto!important;
+  body:not(.no-jobs-mode) #swipe-area .card-stack{
+    width:100%!important;
+    max-width:min(820px,calc(100vw - 40px))!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0 auto!important;
+    flex:0 0 auto!important;
   }
-  #swipe-area .card-stack>.job-card:first-child{position:relative!important;inset:auto!important;
-    height:auto!important;min-height:0!important;max-height:none!important;
+  body:not(.no-jobs-mode) #swipe-area .card-stack>.job-card:first-child{
+    position:relative!important;
+    inset:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
     box-sizing:border-box!important;
   }
-  #swipe-area .card-stack>.job-card:nth-child(n+2){position:absolute!important;inset:0!important;height:100%!important}
-  #swipe-area .old-action-layout{width:100%!important;max-width:min(820px,calc(100vw - 40px))!important;
-    margin:18px auto 0!important;flex:0 0 auto!important;
+  body:not(.no-jobs-mode) #swipe-area .card-stack>.job-card:nth-child(n+2){
+    position:absolute!important;
+    inset:0!important;
+    height:100%!important;
+  }
+  body:not(.no-jobs-mode) #swipe-area .old-action-layout{
+    width:100%!important;
+    max-width:min(820px,calc(100vw - 40px))!important;
+    margin:0 auto!important;
+    flex:0 0 auto!important;
   }
 }
-/* Portrait only: shift the existing centered group modestly downward.
-   This changes the top/bottom balance without altering the card or controls. */
 @media (min-width:700px) and (orientation:portrait){
- body:not(.no-jobs-mode) #swipe-area{
-   padding-top:68px!important;
-   padding-bottom:8px!important;
- }
+  /* Space moves fluidly as the tablet grows: no fixed top position. */
+  body:not(.no-jobs-mode) #swipe-area{
+    --alygnn-group-top-pad:clamp(34px,6dvh,80px);
+    --alygnn-group-bottom-pad:clamp(10px,1.5dvh,20px);
+    --alygnn-card-actions-gap:clamp(22px,2.5dvh,34px);
+  }
 }
-/* Landscape: revert the forced compact-height and tiny typography treatment.
-   Restore the earlier natural-height, readable-width tablet layout. */
 @media (min-width:700px) and (orientation:landscape){
- html,body{overflow-x:hidden!important;overflow-y:auto!important}
- body:not(.no-jobs-mode) #swipe-area{
-   height:auto!important;min-height:0!important;max-height:none!important;
-   overflow:visible!important;justify-content:flex-start!important;
-   padding:14px 18px calc(116px + env(safe-area-inset-bottom))!important;
- }
- .progress-shell .progress-card,
- #swipe-area .card-stack{max-width:min(640px,calc(100vw - 48px))!important}
- #swipe-area .card-stack{height:auto!important;min-height:0!important;
-   max-height:none!important;margin:0 auto!important;flex:0 0 auto!important}
- #swipe-area .card-stack>.job-card:first-child{
-   position:relative!important;inset:auto!important;height:auto!important;
-   min-height:0!important;max-height:none!important;overflow:visible!important;
- }
- #swipe-area .old-action-layout{margin:18px auto 0!important}
+  /* Prefer a single screen when height allows; scroll on shorter landscape
+     viewports instead of clipping the card or hiding actions behind the tabs. */
+  html,body{overflow-x:hidden!important;overflow-y:auto!important}
+  body:not(.no-jobs-mode) #swipe-area{
+    --alygnn-group-top-pad:clamp(8px,1.5dvh,18px);
+    --alygnn-group-bottom-pad:clamp(12px,2dvh,24px);
+    --alygnn-card-actions-gap:clamp(12px,1.8dvh,22px);
+  }
+  .progress-shell .progress-card,
+  body:not(.no-jobs-mode) #swipe-area .card-stack{
+    max-width:min(760px,calc(100vw - 48px))!important;
+  }
+  body:not(.no-jobs-mode) #swipe-area .old-action-layout{
+    max-width:min(760px,calc(100vw - 48px))!important;
+  }
+}
+@media (min-width:700px) and (orientation:landscape) and (max-height:690px){
+  /* Short landscape screens may physically not fit all content. */
+  body:not(.no-jobs-mode) #swipe-area{
+    min-height:0!important;
+    padding-bottom:calc(108px + env(safe-area-inset-bottom))!important;
+    justify-content:flex-start!important;
+  }
+}
+</style>
+<style id="alygnn-android-tablet-header-stats-spacing-20261125">
+/* Pixel Tablet portrait, including 600–699 CSS-pixel viewport widths.
+   Scope to tall tablet screens. No changes to the swipe/card/actions logic. */
+@media (min-width:600px) and (min-height:850px) and (orientation:portrait){
+  html body .top-header{
+    box-sizing:border-box!important;
+    height:118px!important;
+    min-height:118px!important;
+    max-height:118px!important;
+    padding:calc(20px + env(safe-area-inset-top)) 18px 18px!important;
+  }
+  html body .progress-shell{
+    padding-top:24px!important;
+    padding-bottom:0!important;
+  }
 }
 </style>
 </head>
