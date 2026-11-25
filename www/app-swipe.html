@@ -4381,12 +4381,12 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
   body:not(.no-jobs-mode) #swipe-area {
     justify-content:flex-start!important;
     height:var(--alygnn-discover-space,calc(100dvh - 270px))!important;
-    padding-top:28px!important;
+    padding-top:clamp(36px,5dvh,64px)!important;
     padding-bottom:12px!important;
   }
   /* Keep the card design untouched; separate its controls visibly. */
   body:not(.no-jobs-mode) #swipe-area .old-action-layout {
-    margin-top:24px!important;
+    margin-top:32px!important;
   }
 }
 </style>
