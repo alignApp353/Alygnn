@@ -2825,6 +2825,83 @@ async function runManageAction(res,user,input){
 
 
 
+// iOS-only: show the SAME native Stripe PaymentSheet for fully discounted weekly slots.
+// This SetupIntent saves a payment method; it NEVER activates a job slot by itself.
+async function prepareIosWeeklyZeroPaymentMethod({user,input,token}){
+  if(input.source!=='capacitor_ios_app' || !nativePaymentSheetRequested(input) ||
+     input.product!=='weekly_slot' || input.terms_accepted!==true){
+    throw Object.assign(new Error('Invalid iOS payment-method setup request.'),{status:400});
+  }
+  const requestId=String(input.checkout_request_id||'').trim();
+  if(!/^[A-Za-z0-9_-]{8,120}$/.test(requestId)){
+    throw Object.assign(new Error('Invalid checkout request.'),{status:400});
+  }
+  const promo=await resolvePromotionCode(input.promotion_code);
+  if(!promo?.promotion?.id || Number(promo?.coupon?.percent_off)!==100){
+    throw Object.assign(new Error('A valid 100%-off promotion is required.'),{status:400});
+  }
+  const address=normalizeBillingAddress(input.billing_address);
+  const ent=await getEntitlement(user.id);
+  const customer=await ensureNativeStripeCustomer({
+    user,employerId:user.id,address,preferredCustomerId:ent?.stripe_plan_customer_id||null
+  });
+  const key='alygnn-ios-setup-weekly-'+require('crypto').createHash('sha256')
+    .update([user.id,requestId,promo.promotion.id].join('|')).digest('hex').slice(0,44);
+  const setup=await stripeNativeRequest('POST','setup_intents',{
+    customer:customer.id,
+    usage:'off_session',
+    'automatic_payment_methods[enabled]':'true',
+    'metadata[employer_id]':user.id,
+    'metadata[product]':'weekly_slot',
+    'metadata[payment_flow]':'ios_zero_setup',
+    'metadata[checkout_request_id]':requestId,
+    'metadata[promotion_code_id]':promo.promotion.id,
+    'metadata[price_id]':PRICE_IDS.weekly_job_slot
+  },{'Idempotency-Key':key});
+  if(!setup?.client_secret || !setup?.id)throw new Error('Stripe could not prepare secure card setup.');
+  return {ok:true,setup_payment_sheet:true,setup_intent_id:setup.id,
+    setup_intent_client_secret:setup.client_secret,
+    publishable_key:process.env.STRIPE_PUBLISHABLE_KEY,
+    amount_total_cents:0};
+}
+
+async function finalizeIosWeeklyZeroPaymentMethod({user,input}){
+  if(input.source!=='capacitor_ios_app'||!nativePaymentSheetRequested(input)||
+     input.product!=='weekly_slot'||input.terms_accepted!==true){
+    throw Object.assign(new Error('Invalid iOS checkout completion request.'),{status:400});
+  }
+  const id=String(input.setup_intent_id||'').trim();
+  if(!/^seti_[A-Za-z0-9_]+$/.test(id)){
+    throw Object.assign(new Error('Invalid Stripe card setup reference.'),{status:400});
+  }
+  const setup=await stripeNativeRequest('GET','setup_intents/'+encodeURIComponent(id));
+  const meta=setup.metadata||{};
+  const promo=await resolvePromotionCode(input.promotion_code);
+  const customerId=typeof setup.customer==='string'?setup.customer:setup.customer?.id;
+  if(setup.status!=='succeeded'||!setup.payment_method||!customerId ||
+     String(meta.employer_id||'')!==String(user.id)||
+     meta.product!=='weekly_slot'||meta.payment_flow!=='ios_zero_setup'||
+     String(meta.checkout_request_id||'')!==String(input.checkout_request_id||'')||
+     !promo?.promotion?.id||Number(promo?.coupon?.percent_off)!==100||
+     String(meta.promotion_code_id)!==String(promo.promotion.id)||
+     String(meta.price_id)!==String(PRICE_IDS.weekly_job_slot)){
+    throw Object.assign(new Error('Stripe has not verified the card setup and promotion for this checkout.'),{status:409});
+  }
+  // A completed SetupIntent is *not* a payment. Existing invoice logic must
+  // verify the exact Stripe price, promo, zero total and paid invoice first.
+  const result=await createIosDiscountedInvoice({
+    user,input:{...input,expected_setup_customer_id:customerId},
+    product:'weekly_slot',priceId:PRICE_IDS.weekly_job_slot,quantity:1,
+    cents:9900,name:'Alygnn Weekly Job Slot',jobId:'',days:7,
+    promotionCodeId:promo.promotion.id
+  });
+  if(result?.completed_in_app!==true||result?.verified_payment!==true||
+     result?.synced!==true||Number(result?.amount_total_cents)!==0){
+    throw Object.assign(new Error('Stripe has not confirmed a $0 invoice. No job slot was activated.'),{status:409});
+  }
+  return result;
+}
+
 // iOS-only weekly $0 purchase: create a real invoice containing the existing
 // Stripe weekly Price and promotion. Never grant a slot based on UI totals.
 // Stripe verifies the discount and marks the invoice paid before activation.
@@ -2960,6 +3037,9 @@ async function createIosDiscountedInvoice({user,input,product,priceId,quantity,c
     preferredCustomerId:entitlement?.stripe_plan_customer_id||null
   });
   if(!customer?.id)throw new Error('Stripe customer could not be verified.');
+  if(input.expected_setup_customer_id && String(customer.id)!==String(input.expected_setup_customer_id)){
+    throw Object.assign(new Error('Stripe customer changed during secure checkout.'),{status:409});
+  }
   const key='alygnn-ios-promo-'+require('crypto').createHash('sha256')
     .update([user.id,requestId,product,jobId||'',priceId,promotionCodeId].join('|'))
     .digest('hex').slice(0,42);
@@ -3374,6 +3454,15 @@ module.exports = async function handler(req, res) {
     // Billing & plan management shares this existing Vercel function so the
     // Hobby deployment stays below the Serverless Function limit.
     const billingAction = String(input.action || '').toLowerCase();
+
+    if(billingAction==='prepare_ios_weekly_zero_setup'){
+      const result=await prepareIosWeeklyZeroPaymentMethod({user,input,token});
+      return send(res,200,result);
+    }
+    if(billingAction==='finalize_ios_weekly_zero_setup'){
+      const result=await finalizeIosWeeklyZeroPaymentMethod({user,input});
+      return send(res,200,result);
+    }
 
     if (billingAction==='sync_second_slot_checkout' || billingAction==='reconcile_second_slot_checkout') {
       const result=await reconcileVerifiedSecondSlot(
