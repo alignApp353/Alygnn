@@ -4400,12 +4400,20 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
 }
 </style>
 <style id="alygnn-android-tablet-header-stats-spacing-20261125">
-/* Portrait tablet only: slightly taller Alygnn header and a clear gap to stats.
-   Keep existing responsive card/action positioning and all JS untouched. */
-@media (min-width:700px) and (orientation:portrait){
-  /* A visibly taller branded top bar and an unmistakable separation to stats. */
-  body .top-header{min-height:124px!important;padding-top:calc(24px + env(safe-area-inset-top))!important;padding-bottom:24px!important;}
-  body .progress-shell{padding-top:32px!important;}
+/* Pixel Tablet portrait, including 600–699 CSS-pixel viewport widths.
+   Scope to tall tablet screens. No changes to the swipe/card/actions logic. */
+@media (min-width:600px) and (min-height:850px) and (orientation:portrait){
+  html body .top-header{
+    box-sizing:border-box!important;
+    height:118px!important;
+    min-height:118px!important;
+    max-height:118px!important;
+    padding:calc(20px + env(safe-area-inset-top)) 18px 18px!important;
+  }
+  html body .progress-shell{
+    padding-top:24px!important;
+    padding-bottom:0!important;
+  }
 }
 </style>
 </head>
