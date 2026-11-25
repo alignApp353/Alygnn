@@ -2921,33 +2921,6 @@ html[data-theme="dark"] #candidate-profile-boot-error {
   border-radius:14px;background:#416A9B;color:#fff;font-weight:800}
 </style>
 <link rel="stylesheet" href="app-myjobs-loader-exact.css?v=20261024-2143">
-<style id="alygnn-profile-tablet-content-scale">
-/* Scale only the visible profile workspace; leave settings and navigation alone. */
-@media(min-width:700px){
-  #profile-view.page{width:100%!important;max-width:1040px!important;padding-inline:clamp(24px,3.6vw,48px)!important;box-sizing:border-box!important}
-  #profile-view .eyebrow{font-size:clamp(12px,1.5vw,16px)!important}
-  #profile-view .greeting{font-size:clamp(36px,4.4vw,48px)!important}
-  #profile-view .lead{font-size:clamp(16px,1.9vw,20px)!important;max-width:none!important}
-  #profile-view .candidate-profile-home{gap:clamp(16px,2vw,24px)!important}
-  #profile-view .candidate-profile-home .section-title{font-size:clamp(21px,2.6vw,28px)!important}
-  #profile-view .profile-card-clean,#profile-view .candidate-resource-card{padding:clamp(20px,2.6vw,30px)!important}
-  #profile-view .profile-top-clean,#profile-view .candidate-resource-head{gap:clamp(14px,1.8vw,22px)!important}
-  #profile-view .avatar{width:clamp(68px,8.5vw,88px)!important;height:clamp(68px,8.5vw,88px)!important;flex-basis:clamp(68px,8.5vw,88px)!important;font-size:clamp(24px,3vw,32px)!important}
-  #profile-view .profile-name{font-size:clamp(22px,2.7vw,30px)!important;white-space:normal!important;overflow-wrap:anywhere}
-  #profile-view .profile-meta{font-size:clamp(15px,1.8vw,19px)!important;overflow-wrap:anywhere}
-  #profile-view .candidate-resource-icon{width:clamp(46px,5.8vw,60px)!important;height:clamp(46px,5.8vw,60px)!important;flex-basis:clamp(46px,5.8vw,60px)!important}
-  #profile-view .candidate-resource-icon svg{width:26px!important;height:26px!important}
-  #profile-view .candidate-resource-kicker,#profile-view .preference-summary-label{font-size:clamp(12px,1.4vw,15px)!important}
-  #profile-view .candidate-resource-title{font-size:clamp(20px,2.4vw,26px)!important;line-height:1.25!important;overflow-wrap:anywhere}
-  #profile-view .candidate-ready-pill{font-size:13px!important}
-  #profile-view .candidate-resource-copy{font-size:clamp(15px,1.8vw,19px)!important}
-  #profile-view .profile-edit-btn,#profile-view .candidate-inline-edit{min-width:64px!important;height:44px!important;font-size:15px!important}
-  #profile-view .candidate-secondary-btn{min-height:52px!important;font-size:clamp(15px,1.8vw,19px)!important}
-  #profile-view .preference-summary-row{min-height:54px!important;grid-template-columns:minmax(90px,22%) minmax(0,1fr)!important;padding:12px 16px!important}
-  #profile-view .preference-summary-row strong{font-size:clamp(15px,1.8vw,19px)!important;white-space:normal!important;overflow-wrap:anywhere}
-  #profile-view .profile-discover-btn{min-height:60px!important;font-size:clamp(17px,2vw,22px)!important}
-}
-</style>
 </head>
 
 <body class="candidate-profile-booting" data-candidate-nav-build="2026-08-26-discover-color-sync">
@@ -2957,13 +2930,6 @@ html[data-theme="dark"] #candidate-profile-boot-error {
     <div class="alygnn-boot-logo">Alygnn<span>.</span></div>
     <div class="alygnn-boot-copy">Opening your profile.</div>
     <div class="alygnn-boot-track" aria-hidden="true"><div class="alygnn-boot-bar"></div></div>
-  </div>
-</div>
-<div id="candidate-profile-boot-error" role="alert" hidden>
-  <div class="boot-error-card">
-    <h2>We couldn't open your profile</h2>
-    <p>Your account information did not finish loading. Please check your connection and try again.</p>
-    <button type="button" onclick="window.location.reload()">Try again</button>
   </div>
 </div>
 
@@ -4630,11 +4596,24 @@ async function countApplications(userId){
   return 0;
 }
 
+// Android candidate startup recovery: retry transient failures, then use a safe
+// authenticated destination instead of an unresponsive profile-error page.
+let candidateWorkspaceStartFailures=0;
+let candidateWorkspaceRecoveryScheduled=false;
+async function recoverCandidateWorkspaceDestination(){
+  if(candidateWorkspaceRecoveryScheduled)return;
+  candidateWorkspaceRecoveryScheduled=true;
+  try{
+    const {data,error}=await sb.auth.getSession();
+    window.location.replace(!error && data?.session ? 'app-swipe.html' : 'app-login.html');
+  }catch(_){
+    window.location.replace('app-login.html');
+  }
+}
 async function loadCandidateWorkspace(options={}){
   const loadId=++candidateWorkspaceLoadId;
   let profileLoadFailed=false;
   let candidateRedirecting=false;
-  document.getElementById('candidate-profile-boot-error')?.setAttribute('hidden','');
   const restoring=Boolean(options.restoring);
 
   if(restoring && $('loading')){
@@ -5012,12 +4991,24 @@ async function loadCandidateWorkspace(options={}){
       previewReviewed:effectivePreviewReviewed,
       preferencesComplete:effectivePreferencesComplete
     }) === true;
+    candidateWorkspaceStartFailures=0;
 
   }catch(error){
     console.error('Candidate workspace failed:',error);
     profileLoadFailed=true;
     if(loadId===candidateWorkspaceLoadId){
-      document.getElementById('candidate-profile-boot-error')?.removeAttribute('hidden');
+      candidateRedirecting=true;
+      candidateWorkspaceStartFailures+=1;
+      if(candidateWorkspaceStartFailures<=2){
+        const retryDelay=candidateWorkspaceStartFailures===1?600:1600;
+        setTimeout(()=>{
+          if(loadId===candidateWorkspaceLoadId){
+            loadCandidateWorkspace({restoring:true});
+          }
+        },retryDelay);
+      }else{
+        recoverCandidateWorkspaceDestination();
+      }
     }
   }finally{
     if(loadId===candidateWorkspaceLoadId && !candidateRedirecting){
@@ -5200,12 +5191,14 @@ $('dashboard-resume-input')?.addEventListener('change',event=>{
 syncCandidateView();
 restoreCandidateScreenState();
 loadCandidateWorkspace();
-// Slow/offline connections must not leave a permanent spinner or expose setup placeholders.
+// Slow/offline requests must not strand a candidate on a blank or error page.
+// Avoid restoring stale data; recover to an authenticated screen after the deadline.
 setTimeout(()=>{
   if(document.body.classList.contains('candidate-profile-booting')){
-    document.getElementById('candidate-profile-boot-error')?.removeAttribute('hidden');
+    ++candidateWorkspaceLoadId; // Ignore a late response from an older load.
+    recoverCandidateWorkspaceDestination();
   }
-},25000);
+},18000);
 configureWorkspaceModeSwitch();
 
 // Preserve the current Candidate screen when Android backgrounds the app or
