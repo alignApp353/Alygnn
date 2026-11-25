@@ -4399,6 +4399,14 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
   }
 }
 </style>
+<style id="alygnn-android-tablet-header-stats-spacing-20261125">
+/* Portrait tablet only: slightly taller Alygnn header and a clear gap to stats.
+   Keep existing responsive card/action positioning and all JS untouched. */
+@media (min-width:700px) and (orientation:portrait){
+  .top-header{min-height:102px!important;padding-top:calc(17px + env(safe-area-inset-top))!important;padding-bottom:17px!important;}
+  .progress-shell{padding-top:20px!important;}
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
