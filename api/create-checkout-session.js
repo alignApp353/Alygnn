@@ -1663,6 +1663,25 @@ async function customerSnapshot(customerId,sub){
     }
   }
 
+  // A saved card can exist without being the customer's invoice default.
+  // The website's billing portal lists these attached methods; surface one
+  // on the app/website summary instead of incorrectly saying no card exists.
+  if(!pm?.card){
+    try{
+      const cards=await manageStripe('GET','payment_methods',{
+        customer:customerId,type:'card',limit:30
+      });
+      const attached=(cards?.data||[]).filter(row=>
+        row?.type==='card' && row?.card &&
+        String(row?.customer||'')===String(customerId)
+      );
+      attached.sort((a,b)=>Number(b.created||0)-Number(a.created||0));
+      if(attached.length)pm=attached[0];
+    }catch(error){
+      console.warn('Could not list saved cards:',error?.message||error);
+    }
+  }
+
   let invoices=[];
   try{
     const result=await manageStripe('GET','invoices',{
@@ -2033,6 +2052,15 @@ async function billingAccountSummary(user,ent,planSub,secondSub){
     ...teamSeatCustomerIds
   ].filter(Boolean);
 
+  // Card-only/$0 checkouts may create a billing customer before a
+  // subscription is associated with the employer entitlement.
+  try{
+    const savedCustomer=await findStripeCustomerForEmployer(user?.id);
+    if(savedCustomer?.id)ids.push(savedCustomer.id);
+  }catch(error){
+    console.warn('Could not resolve saved-card customer:',error?.message||error);
+  }
+
   const uniqueIds=[...new Set(ids)];
   const snapshots=[];
 
@@ -2385,6 +2413,7 @@ async function runManageAction(res,user,input){
     const customerId=
       stripeCustomerId(sub,ent) ||
       (typeof secondSlot?.customer==='string' ? secondSlot.customer : secondSlot?.customer?.id) ||
+      (await findStripeCustomerForEmployer(user.id))?.id ||
       null;
 
     if(!customerId){
