@@ -1672,17 +1672,29 @@ window.addEventListener('beforeunload',saveDraft);
     )
   );
   // Use the app's approved company membership when profile onboarding flags lag.
+  // Match the app's canonical company-account resolver before trying the
+  // direct membership join, which can be hidden by row-level security.
   const approvedCompany = await (async () => {
+    try {
+      const {data: linked, error: rpcError} = await sb.rpc('get_my_employer_company');
+      if (!rpcError && linked) {
+        const companies = Array.isArray(linked) ? linked : [linked];
+        if (companies.some(company =>
+          !!(company?.id || company?.company_id) &&
+          String(company?.verification_status || '').trim().toLowerCase() === 'approved'
+        )) return true;
+      } else if (rpcError) console.warn('Canonical company lookup unavailable:', rpcError);
+    } catch (error) { console.warn('Canonical company lookup failed:', error); }
     try {
       const {data, error} = await sb.from('company_members')
         .select('company_id,companies(verification_status)')
         .eq('user_id', session.user.id).eq('membership_status', 'active').limit(20);
       if (error) { console.warn('Unable to check approved company:', error); return false; }
       return (data || []).some(member => {
-        const company=Array.isArray(member.companies)?member.companies[0]:member.companies;
-        return !!member.company_id && String(company?.verification_status||'').toLowerCase()==='approved';
+        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
+        return !!member.company_id && String(company?.verification_status || '').trim().toLowerCase() === 'approved';
       });
-    } catch(error) { console.warn('Approved company check failed:', error); return false; }
+    } catch (error) { console.warn('Approved company check failed:', error); return false; }
   })();
 
   const onboardingAlreadySubmitted=
