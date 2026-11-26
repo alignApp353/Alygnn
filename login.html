@@ -349,7 +349,31 @@
   const urlRole = new URLSearchParams(window.location.search).get('role');
   let currentRole = urlRole === 'employer' ? 'employer' : 'seeker';
 
+  // Same source of truth as the app: the signed-in user's active company membership.
+  // A pending or rejected company must never be treated as approved.
+  async function approvedEmployerCompany(userId) {
+    if (!userId) return false;
+    try {
+      const { data, error } = await sb.from('company_members')
+        .select('company_id,companies(id,verification_status)')
+        .eq('user_id', userId)
+        .eq('membership_status', 'active')
+        .limit(20);
+      if (error) { console.warn('Company approval lookup unavailable:', error); return false; }
+      return Array.isArray(data) && data.some(member => {
+        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
+        return !!member.company_id && String(company?.verification_status || '').toLowerCase() === 'approved';
+      });
+    } catch (error) {
+      console.warn('Company approval lookup failed:', error);
+      return false;
+    }
+  }
+
   async function employerDestination(userId) {
+    if (await approvedEmployerCompany(userId)) {
+      return window.location.origin + '/employer-dashboard.html';
+    }
     const { data: profile, error } = await sb
       .from('profiles')
       .select('role, employer_verified, verification_status, hiring_blueprint')
@@ -446,12 +470,10 @@
       'seeker'
     ).toLowerCase();
 
-    // Every employer enters through onboarding. That page is the single source
-    // of truth for whether setup is already complete and forwards completed
-    // employers to the dashboard. This avoids duplicate checks on login.html
-    // and prevents login <-> dashboard redirect loops.
+    // Approved employers go directly to their existing workspace. New or
+    // unapproved employers continue through the existing onboarding route.
     if (role === 'employer') {
-      return window.location.origin + '/employer-onboarding.html';
+      return await employerDestination(user.id);
     }
 
     return window.location.origin + '/account.html';
