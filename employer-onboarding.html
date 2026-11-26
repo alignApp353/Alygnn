@@ -1685,6 +1685,27 @@ window.addEventListener('beforeunload',saveDraft);
         )) return true;
       } else if (rpcError) console.warn('Canonical company lookup unavailable:', rpcError);
     } catch (error) { console.warn('Canonical company lookup failed:', error); }
+    // Match the mobile app's authenticated server-side company resolver.
+    // Never infer approval from localStorage, email, or a purchase.
+    try {
+      const { data: authData } = await sb.auth.getSession();
+      const accessToken = authData?.session?.access_token;
+      if (accessToken) {
+        const response = await fetch('/api/company/my-company', {
+          headers: { Authorization: 'Bearer ' + accessToken },
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          const payload = await response.json();
+          const company = payload?.company || payload?.data?.company || payload?.data || payload;
+          const companyId = String(company?.id || company?.company_id || payload?.company_id || '').trim();
+          const status = String(company?.verification_status || company?.verificationStatus || payload?.verification_status || '').trim().toLowerCase();
+          if (companyId && status === 'approved') return true;
+        }
+      }
+    } catch (error) {
+      console.warn('Employer company API lookup unavailable:', error);
+    }
     try {
       const {data, error} = await sb.from('company_members')
         .select('company_id,companies(verification_status)')
