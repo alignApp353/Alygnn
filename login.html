@@ -352,20 +352,37 @@
 
   // Shared with the app: an active membership in an approved company
   // is authoritative for employer approval. Never rely on browser storage.
+  // Use the canonical company resolver used by the Alygnn app. Its
+  // SECURITY DEFINER implementation can see this employer's company even
+  // when the ordinary company_members -> companies join is hidden by RLS.
   async function alygnnApprovedCompanyForUser(userId) {
     if (!userId) return false;
     try {
+      const { data: linked, error: rpcError } = await sb.rpc('get_my_employer_company');
+      if (!rpcError && linked) {
+        const companies = Array.isArray(linked) ? linked : [linked];
+        if (companies.some(company => {
+          const id = company?.company_id || company?.id;
+          return !!id && String(company?.verification_status || '').trim().toLowerCase() === 'approved';
+        })) return true;
+      } else if (rpcError) {
+        console.warn('Canonical employer company lookup unavailable:', rpcError);
+      }
+    } catch (error) {
+      console.warn('Canonical employer company lookup failed:', error);
+    }
+    // Backward-compatible fallback for workspaces where the join is visible.
+    try {
       const { data, error } = await sb.from('company_members')
         .select('company_id,companies(verification_status)')
-        .eq('user_id', userId).eq('membership_status', 'active')
-        .limit(20);
-      if (error) { console.warn('Company approval lookup unavailable:', error); return false; }
-      return (data || []).some(m => {
-        const c = Array.isArray(m.companies) ? m.companies[0] : m.companies;
-        return !!m.company_id && String(c?.verification_status || '').toLowerCase() === 'approved';
+        .eq('user_id', userId).eq('membership_status', 'active').limit(20);
+      if (error) { console.warn('Company membership lookup unavailable:', error); return false; }
+      return (data || []).some(member => {
+        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
+        return !!member.company_id && String(company?.verification_status || '').trim().toLowerCase() === 'approved';
       });
     } catch (error) {
-      console.warn('Company approval lookup failed:', error);
+      console.warn('Company membership lookup failed:', error);
       return false;
     }
   }
