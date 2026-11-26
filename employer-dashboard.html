@@ -3251,6 +3251,27 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     }
   }
 
+
+  // Shared with the app: an active membership in an approved company
+  // is authoritative for employer approval. Never rely on browser storage.
+  async function alygnnApprovedCompanyForUser(userId) {
+    if (!userId) return false;
+    try {
+      const { data, error } = await sb.from('company_members')
+        .select('company_id,companies(verification_status)')
+        .eq('user_id', userId).eq('membership_status', 'active')
+        .limit(20);
+      if (error) { console.warn('Company approval lookup unavailable:', error); return false; }
+      return (data || []).some(m => {
+        const c = Array.isArray(m.companies) ? m.companies[0] : m.companies;
+        return !!m.company_id && String(c?.verification_status || '').toLowerCase() === 'approved';
+      });
+    } catch (error) {
+      console.warn('Company approval lookup failed:', error);
+      return false;
+    }
+  }
+
   async function checkAuth() {
     const { data, error } = await sb.auth.getUser();
     const authedUser = data && data.user;
@@ -3324,7 +3345,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         typeof ownerProfile.hiring_blueprint === 'object'
         ? ownerProfile.hiring_blueprint : null;
       const verificationStatus = String(ownerProfile?.verification_status || '').trim().toLowerCase();
+      const approvedCompany = await alygnnApprovedCompanyForUser(authedUser.id);
       const hasCompletedOnboarding =
+        approvedCompany ||
         ownerProfile?.employer_verified === true ||
         verificationStatus === 'approved' ||
         (!!blueprint && (
@@ -3345,9 +3368,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       profile = ownerProfile || {};
       currentProfile = profile;
 
-      employerVerified =
+      employerVerified = approvedCompany || (
         profile?.employer_verified === true &&
-        profile?.verification_status === 'approved';
+        String(profile?.verification_status || '').toLowerCase() === 'approved'
+      );
 
       const displayName =
         profile?.company_name ||
