@@ -3273,6 +3273,27 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     } catch (error) {
       console.warn('Canonical employer company lookup failed:', error);
     }
+    // Match the mobile app's authenticated server-side company resolver.
+    // Never infer approval from localStorage, email, or a purchase.
+    try {
+      const { data: authData } = await sb.auth.getSession();
+      const accessToken = authData?.session?.access_token;
+      if (accessToken) {
+        const response = await fetch('/api/company/my-company', {
+          headers: { Authorization: 'Bearer ' + accessToken },
+          cache: 'no-store'
+        });
+        if (response.ok) {
+          const payload = await response.json();
+          const company = payload?.company || payload?.data?.company || payload?.data || payload;
+          const companyId = String(company?.id || company?.company_id || payload?.company_id || '').trim();
+          const status = String(company?.verification_status || company?.verificationStatus || payload?.verification_status || '').trim().toLowerCase();
+          if (companyId && status === 'approved') return true;
+        }
+      }
+    } catch (error) {
+      console.warn('Employer company API lookup unavailable:', error);
+    }
     // Backward-compatible fallback for workspaces where the join is visible.
     try {
       const { data, error } = await sb.from('company_members')
@@ -3351,7 +3372,10 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       }
 
       const role = String(ownerProfile?.role || authedUser.user_metadata?.role || '').toLowerCase();
-      if (role !== 'employer') {
+      // App-created employers may have a stale profiles.role value.
+      // Authoritative approved-company membership wins over that stale field.
+      const approvedCompany = await alygnnApprovedCompanyForUser(authedUser.id);
+      if (role !== 'employer' && !approvedCompany) {
         window.location.replace('login.html?role=employer');
         return;
       }
@@ -3362,7 +3386,6 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         typeof ownerProfile.hiring_blueprint === 'object'
         ? ownerProfile.hiring_blueprint : null;
       const verificationStatus = String(ownerProfile?.verification_status || '').trim().toLowerCase();
-      const approvedCompany = await alygnnApprovedCompanyForUser(authedUser.id);
       const hasCompletedOnboarding =
         approvedCompany ||
         ownerProfile?.employer_verified === true ||
