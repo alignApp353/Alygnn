@@ -396,7 +396,8 @@ async function createNativePaymentIntent({
   priceId,
   name,
   metadata,
-  requestId
+  requestId,
+  savePaymentMethod=false
 }){
   // Calculate applicable tax for every native one-time payment using
   // the selected Stripe Price's product tax code and customer billing address.
@@ -413,7 +414,7 @@ async function createNativePaymentIntent({
     description:name,
     receipt_email:user?.email||undefined,
     'automatic_payment_methods[enabled]':'true',
-    setup_future_usage:'off_session'
+    ...(savePaymentMethod ? {setup_future_usage:'off_session'} : {})
   };
   params['hooks[inputs][tax][calculation]']=tax.id;
 
@@ -567,7 +568,8 @@ async function createNativePaymentSheetCheckout({
         priceId,
         name,
         metadata,
-        requestId
+        requestId,
+        savePaymentMethod:input?.save_payment_method===true
       });
 
   return{
@@ -1360,7 +1362,7 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
     'line_items[0][quantity]':1,
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto',
-    'payment_intent_data[setup_future_usage]':'off_session'
+    ...(input.save_payment_method===true ? {'payment_intent_data[setup_future_usage]':'off_session'} : {})
   };
   Object.entries(metadata).forEach(([key,value])=>{
     if(value===undefined||value===null||value==='')return;
@@ -1557,7 +1559,7 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     'automatic_tax[enabled]':'true',
     billing_address_collection:'auto'
   };
-  if(amountDue>0){
+  if(amountDue>0 && input.save_payment_method===true){
     params['payment_intent_data[setup_future_usage]']='off_session';
   }
 
@@ -4087,6 +4089,10 @@ module.exports = async function handler(req, res) {
       billing_address_collection: 'auto'
     };
     params['line_items[0][price]']=priceId;
+    if(mode==='payment' && input.save_payment_method===true){
+      params.customer_creation='always';
+      params['payment_intent_data[setup_future_usage]']='off_session';
+    }
 
     if(promotionCodeId){
       params['discounts[0][promotion_code]']=promotionCodeId;
