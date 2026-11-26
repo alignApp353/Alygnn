@@ -1621,6 +1621,27 @@ form.addEventListener('input',saveDraft);
 form.addEventListener('change',saveDraft);
 window.addEventListener('beforeunload',saveDraft);
 
+  // Same source of truth as the app: the signed-in user's active company membership.
+  // A pending or rejected company must never be treated as approved.
+async function approvedEmployerCompany(userId) {
+    if (!userId) return false;
+    try {
+      const { data, error } = await sb.from('company_members')
+        .select('company_id,companies(id,verification_status)')
+        .eq('user_id', userId)
+        .eq('membership_status', 'active')
+        .limit(20);
+      if (error) { console.warn('Company approval lookup unavailable:', error); return false; }
+      return Array.isArray(data) && data.some(member => {
+        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
+        return !!member.company_id && String(company?.verification_status || '').toLowerCase() === 'approved';
+      });
+    } catch (error) {
+      console.warn('Company approval lookup failed:', error);
+      return false;
+    }
+  }
+
 (async()=>{
   renderVoices();
   renderRankList('company-priorities',[]);
@@ -1633,8 +1654,23 @@ window.addEventListener('beforeunload',saveDraft);
   // and both inputs still allow normal manual entry.
   setupGooglePlacesAutocomplete();
 
-  const {data:{session}}=await sb.auth.getSession();
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){
+    // A fresh navigation can race initial session restoration in some browsers.
+    await new Promise(resolve=>setTimeout(resolve,450));
+    const retry=await sb.auth.getSession();
+    session=retry.data?.session||null;
+  }
   if(!session){location.replace('login.html?role=employer');return}
+
+  // The mobile app may have approved this company even if website-only profile
+  // onboarding flags were never written. Trust the current user's membership.
+  if (await approvedEmployerCompany(session.user.id)) {
+    onboardingCompleted=true;
+    window.removeEventListener('beforeunload',saveDraft);
+    location.replace('employer-dashboard.html#jobs');
+    return;
+  }
 
   // Scope the draft to this specific user so it can never be restored
   // into a different employer's session on the same browser.
