@@ -349,20 +349,20 @@
   const urlRole = new URLSearchParams(window.location.search).get('role');
   let currentRole = urlRole === 'employer' ? 'employer' : 'seeker';
 
-  // Same source of truth as the app: the signed-in user's active company membership.
-  // A pending or rejected company must never be treated as approved.
-  async function approvedEmployerCompany(userId) {
+
+  // Shared with the app: an active membership in an approved company
+  // is authoritative for employer approval. Never rely on browser storage.
+  async function alygnnApprovedCompanyForUser(userId) {
     if (!userId) return false;
     try {
       const { data, error } = await sb.from('company_members')
-        .select('company_id,companies(id,verification_status)')
-        .eq('user_id', userId)
-        .eq('membership_status', 'active')
+        .select('company_id,companies(verification_status)')
+        .eq('user_id', userId).eq('membership_status', 'active')
         .limit(20);
       if (error) { console.warn('Company approval lookup unavailable:', error); return false; }
-      return Array.isArray(data) && data.some(member => {
-        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
-        return !!member.company_id && String(company?.verification_status || '').toLowerCase() === 'approved';
+      return (data || []).some(m => {
+        const c = Array.isArray(m.companies) ? m.companies[0] : m.companies;
+        return !!m.company_id && String(c?.verification_status || '').toLowerCase() === 'approved';
       });
     } catch (error) {
       console.warn('Company approval lookup failed:', error);
@@ -371,9 +371,6 @@
   }
 
   async function employerDestination(userId) {
-    if (await approvedEmployerCompany(userId)) {
-      return window.location.origin + '/employer-dashboard.html';
-    }
     const { data: profile, error } = await sb
       .from('profiles')
       .select('role, employer_verified, verification_status, hiring_blueprint')
@@ -399,7 +396,9 @@
       )
     );
 
+    const approvedCompany = await alygnnApprovedCompanyForUser(userId);
     const onboardingComplete =
+      approvedCompany ||
       profile?.employer_verified === true ||
       status === 'approved' ||
       blueprintLooksComplete;
@@ -470,8 +469,8 @@
       'seeker'
     ).toLowerCase();
 
-    // Approved employers go directly to their existing workspace. New or
-    // unapproved employers continue through the existing onboarding route.
+    // Route approved app-created employers straight to their existing website
+    // dashboard. New employers still enter onboarding.
     if (role === 'employer') {
       return await employerDestination(user.id);
     }
