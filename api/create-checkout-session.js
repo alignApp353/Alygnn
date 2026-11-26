@@ -1366,8 +1366,13 @@ async function crossBillingUpgradeNow({employerId,ent,sub,targetPlan,billing,inp
     if(value===undefined||value===null||value==='')return;
     params[`metadata[${key}]`]=String(value);
   });
-  // Show the Stripe promotion-code entry for every cross-billing upgrade.
-  params.allow_promotion_codes='true';
+  // Apply a validated coupon in Checkout, or allow entry on Stripe when none supplied.
+  const requestedPromo=String(input.promotion_code||'').trim().toUpperCase();
+  const resolvedPromo=requestedPromo?await resolvePromotionCode(requestedPromo):null;
+  if(requestedPromo&&!resolvedPromo?.promotion?.id)
+    throw Object.assign(new Error('Promotion code is invalid or expired.'),{status:400});
+  if(resolvedPromo?.promotion?.id)params['discounts[0][promotion_code]']=resolvedPromo.promotion.id;
+  else params.allow_promotion_codes='true';
   const checkout=await stripeCreateCheckout(params);
   return {
     change:'upgrade_payment_required',effective:'after_payment',
@@ -1442,6 +1447,14 @@ async function upgradeNow({employerId,ent,sub,targetPlan,billing,input={}}){
     terms_version:String(input.terms_version||'')
   };
 
+  // On app, never silently activate a 100%-discounted upgrade before the
+  // Stripe SetupIntent card form has been completed and verified.
+  if(resolvedPromotion?.promotion?.id&&amountDue===0&&
+     input.source==='capacitor_ios_app'&&nativePaymentSheetRequested(input)){
+    await verifyIosZeroCardSetup({user:{id:employerId},
+      input:{...input,product:'plan_upgrade',setup_intent_id:input.verified_setup_intent_id,
+        target_plan:targetPlan,billing},product:'plan_upgrade'});
+  }
   // No browser for a fully discounted immediate upgrade. Stripe first
   // records the coupon redemption on a paid $0 invoice, then we switch plans.
   if(resolvedPromotion?.promotion?.id && amountDue===0){
@@ -2613,6 +2626,10 @@ async function runManageAction(res,user,input){
           error:'This account uses a non-billing test plan. An immediate test upgrade requires a valid 100% discount code. To make a paid upgrade, first activate a real Stripe subscription.'
         });
       }
+      if(input.source==='capacitor_ios_app'&&nativePaymentSheetRequested(input)){
+        await verifyIosZeroCardSetup({user,input:{...input,product:'plan_upgrade',
+          setup_intent_id:input.verified_setup_intent_id},product:'plan_upgrade'});
+      }
       if(!price?.priceId){
         return send(res,409,{error:'The test upgrade Price is not configured.'});
       }
@@ -2837,7 +2854,9 @@ async function prepareIosWeeklyZeroPaymentMethod({user,input,token}){
     throw Object.assign(new Error('Invalid checkout request.'),{status:400});
   }
   const promo=await resolvePromotionCode(input.promotion_code);
-  if(!promo?.promotion?.id || Number(promo?.coupon?.percent_off)!==100){
+  if(!promo?.promotion?.id || !(Number(promo?.coupon?.percent_off)===100 ||
+     (promo?.coupon?.amount_off!=null && Number(promo.coupon.amount_off)>=9900 &&
+      (!promo.coupon.currency||String(promo.coupon.currency).toLowerCase()==='usd')))){
     throw Object.assign(new Error('A valid 100%-off promotion is required.'),{status:400});
   }
   const address=normalizeBillingAddress(input.billing_address);
@@ -2884,7 +2903,9 @@ async function finalizeIosWeeklyZeroPaymentMethod({user,input}){
      String(meta.employer_id||'')!==String(user.id)||
      meta.product!=='weekly_slot'||meta.payment_flow!=='ios_zero_setup'||
      String(meta.checkout_request_id||'')!==String(input.checkout_request_id||'')||
-     !promo?.promotion?.id||Number(promo?.coupon?.percent_off)!==100||
+     !promo?.promotion?.id||!(Number(promo?.coupon?.percent_off)===100||
+       (promo?.coupon?.amount_off!=null&&Number(promo.coupon.amount_off)>=9900&&
+        (!promo.coupon.currency||String(promo.coupon.currency).toLowerCase()==='usd')))||
      String(meta.promotion_code_id)!==String(promo.promotion.id)||
      String(meta.price_id)!==String(PRICE_IDS.weekly_job_slot)){
     throw Object.assign(new Error('Stripe has not verified the card setup and promotion for this checkout.'),{status:409});
@@ -3441,6 +3462,168 @@ async function reconcileVerifiedSecondSlot(user, checkoutSessionId=null){
   return {ok:true,synced:true,product:'additional_slot',subscription_status:status};
 }
 
+
+
+async function prepareIosZeroSubscriptionSetup({user,input}){
+  if(input.source!=='capacitor_ios_app'||!nativePaymentSheetRequested(input)||input.terms_accepted!==true)
+    throw Object.assign(new Error('Invalid in-app subscription checkout.'),{status:400});
+  const product=String(input.product||'');
+  const plan=String(input.plan||'').toLowerCase();
+  const billing=String(input.billing||'').toLowerCase();
+  let item=null;
+  if(product==='additional_slot')item={priceId:PRICE_IDS.second_job_slot_monthly,cents:15000};
+  else if(product==='job_plan')item=CHECKOUT_CATALOG[billing]?.[plan];
+  if(!item||item.mode==='payment')throw Object.assign(new Error('Unknown subscription product.'),{status:400});
+  const promo=await resolvePromotionCode(input.promotion_code);
+  if(!promo?.promotion?.id)throw Object.assign(new Error('A verified promo code is required.'),{status:400});
+  const c=promo.coupon||{};
+  const amount=c.percent_off!=null?Math.max(0,Math.round(item.cents*(1-Number(c.percent_off)/100))):
+    c.amount_off!=null&&(!c.currency||String(c.currency).toLowerCase()==='usd')
+    ?Math.max(0,item.cents-Number(c.amount_off)):item.cents;
+  if(amount!==0)throw Object.assign(new Error('The discount does not cover this subscription.'),{status:409});
+  const requestId=String(input.checkout_request_id||'');
+  if(!/^[A-Za-z0-9_-]{8,120}$/.test(requestId))throw Object.assign(new Error('Invalid purchase reference.'),{status:400});
+  const ent=await getEntitlement(user.id);
+  const customer=await ensureNativeStripeCustomer({user,employerId:user.id,
+    address:normalizeBillingAddress(input.billing_address),
+    preferredCustomerId:ent?.stripe_plan_customer_id||null});
+  const key='alygnn-sub-card-'+require('crypto').createHash('sha256')
+    .update([user.id,requestId,product,item.priceId,promo.promotion.id].join('|')).digest('hex').slice(0,42);
+  const setup=await stripeNativeRequest('POST','setup_intents',{
+    customer:customer.id,usage:'off_session','payment_method_types[0]':'card',
+    'metadata[employer_id]':user.id,'metadata[product]':product,
+    'metadata[payment_flow]':'alygnn_zero_subscription_setup',
+    'metadata[checkout_request_id]':requestId,
+    'metadata[promotion_code_id]':promo.promotion.id,
+    'metadata[price_id]':item.priceId
+  },{'Idempotency-Key':key});
+  if(!setup?.client_secret||!setup?.id)throw new Error('Stripe could not prepare card entry.');
+  return {ok:true,setup_payment_sheet:true,setup_intent_id:setup.id,
+    setup_intent_client_secret:setup.client_secret,
+    publishable_key:process.env.STRIPE_PUBLISHABLE_KEY,amount_total_cents:0};
+}
+async function verifyIosZeroSubscriptionSetup({user,input,priceId,promotionId,product}){
+  const id=String(input.verified_setup_intent_id||input.setup_intent_id||'');
+  if(!/^seti_[A-Za-z0-9_]+$/.test(id))throw Object.assign(new Error('Complete Stripe card entry first.'),{status:409});
+  const setup=await stripeNativeRequest('GET','setup_intents/'+encodeURIComponent(id));
+  const meta=setup.metadata||{};
+  if(setup.status!=='succeeded'||!setup.payment_method||!setup.customer||
+     meta.payment_flow!=='alygnn_zero_subscription_setup'||
+     meta.product!==product||meta.employer_id!==user.id||
+     meta.checkout_request_id!==String(input.checkout_request_id||'')||
+     meta.promotion_code_id!==promotionId||meta.price_id!==priceId)
+    throw Object.assign(new Error('Card setup has not been confirmed for this subscription.'),{status:409});
+  // A customer-level default lets future normal renewal invoices use the card.
+  const customerId=typeof setup.customer==='string'?setup.customer:setup.customer.id;
+  const entitlement=await getEntitlement(user.id);
+  const existingCustomer=entitlement?.stripe_plan_customer_id;
+  if(existingCustomer&&existingCustomer!==customerId)
+    throw Object.assign(new Error('The subscription billing customer has changed.'),{status:409});
+  await stripeNativeRequest('POST','customers/'+encodeURIComponent(customerId),{
+    'invoice_settings[default_payment_method]':setup.payment_method
+  });
+  return setup;
+}
+
+// Card collection for fully discounted app purchases. The SetupIntent never grants access;
+// a verified Stripe $0 invoice is still required before anything is activated.
+async function prepareIosZeroCardSetup({user,input,token,product}){
+  if(input.source!=='capacitor_ios_app'||!nativePaymentSheetRequested(input)||
+     input.terms_accepted!==true||input.product!==product){
+    throw Object.assign(new Error('Invalid in-app card setup request.'),{status:400});
+  }
+  const requestId=String(input.checkout_request_id||'').trim();
+  if(!/^[A-Za-z0-9_-]{8,120}$/.test(requestId))
+    throw Object.assign(new Error('Invalid purchase reference.'),{status:400});
+  const promo=await resolvePromotionCode(input.promotion_code);
+  if(!promo?.promotion?.id)
+    throw Object.assign(new Error('A verified promo code is required.'),{status:400});
+  let amount=0,priceId='',jobId='',days=0,from='',to='',billing='',subscriptionId='';
+  const ent=await getEntitlement(user.id);
+  if(product==='job_boost'){
+    jobId=String(input.job_id||'');days=Number(input.days);
+    if(!Number.isInteger(days)||days<1||days>30)
+      throw Object.assign(new Error('Choose a valid Boost duration.'),{status:400});
+    await verifyOwnedActiveJob(token,user.id,jobId);
+    amount=days*1500;priceId=PRICE_IDS.job_boost_day;
+  }else{
+    to=String(input.target_plan||'').toLowerCase();
+    billing=String(input.billing||'').toLowerCase();
+    const sub=ent?.test_mode===true?null:await resolveSubscription(user.id,ent);
+    from=subscriptionPlan(ent,sub);
+    const currentBilling=subscriptionBilling(ent,sub);
+    const current=MANAGE_CATALOG[currentBilling]?.[from];
+    const target=MANAGE_CATALOG[billing]?.[to];
+    if(!current||!target||currentBilling!==billing||target.rank<=current.rank||
+       (!subscriptionIsActive(sub)&&!(ent?.test_mode===true&&entitlementLooksActive(ent))))
+      throw Object.assign(new Error('This immediate plan upgrade is not eligible.'),{status:409});
+    const upgrade=fixedUpgradePrice(from,to,billing);
+    if(!upgrade?.priceId||upgrade.cents!==target.cents-current.cents)
+      throw Object.assign(new Error('The exact upgrade price cannot be verified.'),{status:409});
+    amount=upgrade.cents;priceId=upgrade.priceId;subscriptionId=sub?.id||'';
+  }
+  const coupon=promo.coupon||{};
+  const percent=Number(coupon.percent_off);
+  const fixed=Number(coupon.amount_off);
+  const total= coupon.percent_off!=null ? Math.max(0,Math.round(amount*(1-percent/100))):
+    coupon.amount_off!=null && (!coupon.currency||String(coupon.currency).toLowerCase()==='usd')
+      ? Math.max(0,amount-fixed) : amount;
+  if(total!==0)throw Object.assign(new Error('This card setup requires a promo covering the entire purchase.'),{status:409});
+  const customer=await ensureNativeStripeCustomer({user,employerId:user.id,
+    address:normalizeBillingAddress(input.billing_address),
+    preferredCustomerId:ent?.stripe_plan_customer_id||null});
+  const key='alygnn-zero-card-'+require('crypto').createHash('sha256')
+    .update([user.id,product,requestId,priceId,promo.promotion.id,jobId,to].join('|')).digest('hex').slice(0,45);
+  const setup=await stripeNativeRequest('POST','setup_intents',{
+    customer:customer.id,usage:'off_session','payment_method_types[0]':'card',
+    'metadata[employer_id]':user.id,'metadata[product]':product,
+    'metadata[payment_flow]':'alygnn_zero_card_setup',
+    'metadata[checkout_request_id]':requestId,
+    'metadata[promotion_code_id]':promo.promotion.id,
+    'metadata[price_id]':priceId,
+    'metadata[job_id]':jobId,'metadata[days]':String(days),
+    'metadata[from_plan]':from,'metadata[to_plan]':to,
+    'metadata[billing]':billing,'metadata[subscription_id]':subscriptionId
+  },{'Idempotency-Key':key});
+  if(!setup?.client_secret||!setup?.id)throw new Error('Stripe could not prepare the card form.');
+  return {ok:true,setup_payment_sheet:true,setup_intent_id:setup.id,
+    setup_intent_client_secret:setup.client_secret,
+    publishable_key:process.env.STRIPE_PUBLISHABLE_KEY,amount_total_cents:0};
+}
+async function verifyIosZeroCardSetup({user,input,product}){
+  if(input.source!=='capacitor_ios_app'||!nativePaymentSheetRequested(input)||
+     input.terms_accepted!==true||input.product!==product)
+    throw Object.assign(new Error('Invalid purchase confirmation.'),{status:400});
+  const setupId=String(input.setup_intent_id||'');
+  if(!/^seti_[A-Za-z0-9_]+$/.test(setupId))
+    throw Object.assign(new Error('Missing Stripe card setup reference.'),{status:400});
+  const setup=await stripeNativeRequest('GET','setup_intents/'+encodeURIComponent(setupId));
+  const meta=setup.metadata||{};
+  const promo=await resolvePromotionCode(input.promotion_code);
+  if(setup.status!=='succeeded'||!setup.payment_method||!setup.customer||
+     meta.payment_flow!=='alygnn_zero_card_setup'||
+     meta.employer_id!==user.id||meta.product!==product||
+     meta.checkout_request_id!==String(input.checkout_request_id||'')||
+     !promo?.promotion?.id||meta.promotion_code_id!==promo.promotion.id)
+    throw Object.assign(new Error('Stripe has not confirmed this card setup and promo.'),{status:409});
+  if(product==='job_boost'){
+    if(meta.job_id!==String(input.job_id||'')||meta.days!==String(input.days)||
+       meta.price_id!==PRICE_IDS.job_boost_day)
+      throw Object.assign(new Error('Boost details changed after card setup.'),{status:409});
+  }else{
+    if(meta.to_plan!==String(input.target_plan||'').toLowerCase()||
+       meta.billing!==String(input.billing||'').toLowerCase()||
+       meta.price_id!==fixedUpgradePrice(meta.from_plan,meta.to_plan,meta.billing)?.priceId)
+      throw Object.assign(new Error('The plan upgrade changed after card setup.'),{status:409});
+    const ent=await getEntitlement(user.id);
+    const sub=ent?.test_mode===true?null:await resolveSubscription(user.id,ent);
+    if(meta.from_plan!==subscriptionPlan(ent,sub)||
+       meta.billing!==subscriptionBilling(ent,sub)||meta.subscription_id!==(sub?.id||''))
+      throw Object.assign(new Error('The current plan has changed. Restart the checkout.'),{status:409});
+  }
+  return {setup,promo};
+}
+
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return send(res, 204, {});
@@ -3451,12 +3634,50 @@ module.exports = async function handler(req, res) {
     if (!token) return send(res, 401, { error: 'Authentication required.' });
 
     const user = await supabaseUser(token);
-    const input = parseBody(req);
+    let input = parseBody(req);
 
     // Billing & plan management shares this existing Vercel function so the
     // Hobby deployment stays below the Serverless Function limit.
     const billingAction = String(input.action || '').toLowerCase();
 
+    if(billingAction==='prepare_ios_subscription_zero_setup'){
+      const result=await prepareIosZeroSubscriptionSetup({user,input});
+      return send(res,200,result);
+    }
+    if(billingAction==='finalize_ios_subscription_zero_setup'){
+      // Verify the already-completed SetupIntent on the normal subscription path.
+      // Never create access merely because the app claims a setup succeeded.
+      input={...input,action:'',verified_setup_intent_id:input.setup_intent_id};
+    }
+    if(billingAction==='prepare_ios_boost_zero_setup'){
+      const result=await prepareIosZeroCardSetup({user,input,token,product:'job_boost'});
+      return send(res,200,result);
+    }
+    if(billingAction==='finalize_ios_boost_zero_setup'){
+      const {setup,promo}=await verifyIosZeroCardSetup({user,input,product:'job_boost'});
+      await verifyOwnedActiveJob(token,user.id,String(input.job_id||''));
+      const days=Number(input.days);
+      const result=await createIosDiscountedInvoice({
+        user,input:{...input,__authToken:token,
+          expected_setup_customer_id:typeof setup.customer==='string'?setup.customer:setup.customer.id},
+        product:'job_boost',priceId:PRICE_IDS.job_boost_day,quantity:days,
+        cents:days*1500,name:`Alygnn Job Boost — ${days} days`,
+        jobId:String(input.job_id),days,promotionCodeId:promo.promotion.id
+      });
+      if(result.verified_payment!==true||result.boost_activated!==true||
+         Number(result.amount_total_cents)!==0)
+        throw Object.assign(new Error('Stripe did not confirm this $0 Boost invoice.'),{status:409});
+      return send(res,200,result);
+    }
+    if(billingAction==='prepare_ios_plan_zero_setup'){
+      const result=await prepareIosZeroCardSetup({user,input,token,product:'plan_upgrade'});
+      return send(res,200,result);
+    }
+    if(billingAction==='finalize_ios_plan_zero_setup'){
+      await verifyIosZeroCardSetup({user,input,product:'plan_upgrade'});
+      return await runManageAction(res,user,{...input,action:'change_plan',
+        verified_setup_intent_id:input.setup_intent_id});
+    }
     if(billingAction==='prepare_ios_weekly_zero_setup'){
       const result=await prepareIosWeeklyZeroPaymentMethod({user,input,token});
       return send(res,200,result);
@@ -3801,9 +4022,25 @@ module.exports = async function handler(req, res) {
       return send(res,200,result);
     }
 
+    if(String(input.source||'')==='capacitor_ios_app'&&
+       nativePaymentSheetRequested(input)&&mode==='subscription'&&promotionCodeId){
+      const coupon=resolvedPromotion?.coupon||{};
+      const remaining=coupon.percent_off!=null
+        ?Math.max(0,Math.round(cents*(1-Number(coupon.percent_off)/100)))
+        :coupon.amount_off!=null&&(!coupon.currency||String(coupon.currency).toLowerCase()==='usd')
+        ?Math.max(0,cents-Number(coupon.amount_off)):cents;
+      if(remaining===0){
+        await verifyIosZeroSubscriptionSetup({user,input,product,priceId,promotionId:promotionCodeId});
+      }
+    }
+
     const useNativePaymentSheet=
       nativePaymentSheetRequested(input) &&
       !(promotionCodeId && mode==='payment');
+    if(nativePaymentSheetRequested(input)&&promotionCodeId&&mode==='payment'&&
+       ['capacitor_ios_app','capacitor_app'].includes(String(input.source||''))){
+      return send(res,409,{error:'Discounted in-app purchases must use the verified Stripe invoice payment sheet. Update your checkout app.'});
+    }
 
     // Avoid double-granting weekly slots: hosted Checkout emits both the
     // PaymentIntent and Checkout events; only one of those should fulfill.
