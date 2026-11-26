@@ -14,13 +14,14 @@
     return ['system','light','dark'].includes(v)?v:'system';
   }
   function pref(){
-    return normalize(
-      localStorage.getItem('alygnnTheme') ||
-      localStorage.getItem('alygnnEmployerTheme') ||
-      localStorage.getItem('alygnn_candidate_theme') ||
-      localStorage.getItem('alygnn-theme') ||
-      'system'
-    );
+    // Candidate setting is authoritative; both login and Discover use this order.
+    for(const key of ['alygnn_candidate_theme','alygnn-theme','alygnnCandidateTheme','alygnnTheme','alygnn_theme']){
+      try{
+        const raw=localStorage.getItem(key);
+        if(raw!==null && String(raw).trim()!=='') return normalize(raw);
+      }catch(_error){}
+    }
+    return 'system';
   }
   function apply(){
     const p=pref();
@@ -4416,6 +4417,21 @@ body[data-theme="dark"] .job-card .swipe-card-details-top{
   }
 }
 </style>
+
+<style id="alygnn-android-discover-final-spacing-and-header-20261125">
+/* Remove the unwanted dark divider under the Alygnn wordmark. */
+html body .top-header{border-bottom-color:transparent!important;box-shadow:none!important;}
+/* Tablets in portrait: align the card directly below stats instead of centering
+   it in the remaining tall canvas. This uses flexible viewport dimensions. */
+@media (min-width:600px) and (min-height:780px) and (orientation:portrait){
+  body:not(.no-jobs-mode) #swipe-area{
+    justify-content:flex-start!important;
+    padding-top:clamp(18px,2.5dvh,30px)!important;
+    gap:clamp(18px,2.4dvh,28px)!important;
+  }
+  body:not(.no-jobs-mode) #swipe-area .old-action-layout{margin-top:0!important;}
+}
+</style>
 </head>
 
 <body class="swipe-initializing" data-swipe-build="2026-09-27-empty-topbar-job-count">
@@ -6358,14 +6374,15 @@ document.addEventListener('keydown',event=>{
 
 
 function getCandidateThemePreference(){
-  const saved=
-    localStorage.getItem('alygnn_candidate_theme') ||
-    localStorage.getItem('alygnn-theme') ||
-    'system';
-
-  return ['system','light','dark'].includes(saved)
-    ?saved
-    :'system';
+  for(const key of ['alygnn_candidate_theme','alygnn-theme','alygnnCandidateTheme','alygnnTheme','alygnn_theme']){
+    try{
+      const raw=localStorage.getItem(key);
+      const pref=String(raw||'').trim().toLowerCase();
+      if(pref==='light'||pref==='dark') return pref;
+      if(pref==='system'||pref==='auto'||pref==='default'||pref==='system-default') return 'system';
+    }catch(_error){}
+  }
+  return 'system';
 }
 
 function resolveCandidateTheme(preference=getCandidateThemePreference()){
