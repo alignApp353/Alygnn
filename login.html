@@ -436,27 +436,37 @@
       console.warn('Could not read account role during login routing:', error);
     }
 
-    const signupRole=String(user.user_metadata?.role||user.user_metadata?.account_type||'').trim().toLowerCase();
-    // Some iOS-created candidate accounts have stale employer role values in profiles.
-    // Respect explicit candidate signup metadata unless an employer team/owner workspace is verified.
-    // Team membership was checked above; do not treat a role value alone as proof of employer access.
-    let ownerWorkspace=false;
-    if(signupRole==='candidate'||signupRole==='seeker'){
-      try{
-        const {data:ownerState,error:ownerError}=await sb.rpc('get_my_team_operational_state');
-        if(!ownerError&&ownerState?.has_company===true&&ownerState?.access?.is_owner===true){ownerWorkspace=true;}
-      }catch(error){console.warn('Employer ownership check unavailable:',error);}
+    // iOS candidate registration writes account_type="candidate", but older
+    // sessions may carry role="employer". An explicit candidate account_type
+    // takes precedence over that legacy metadata and a stale profiles.role.
+    // An actual employer team membership or owned workspace still wins.
+    const accountType = String(user.user_metadata?.account_type || '').trim().toLowerCase();
+    const metadataRole = String(user.user_metadata?.role || '').trim().toLowerCase();
+    const explicitlyCandidate = accountType === 'candidate' || accountType === 'seeker' ||
+      (!accountType && (metadataRole === 'candidate' || metadataRole === 'seeker'));
+
+    let ownerWorkspace = false;
+    if (explicitlyCandidate) {
+      try {
+        const { data: ownerState, error: ownerError } = await sb.rpc('get_my_team_operational_state');
+        if (!ownerError && ownerState?.has_company === true && ownerState?.access?.is_owner === true) {
+          ownerWorkspace = true;
+        }
+      } catch (error) {
+        console.warn('Employer ownership check unavailable:', error);
+      }
     }
-    const role=String(
-      (signupRole==='candidate'||signupRole==='seeker')&&!ownerWorkspace?'seeker':
+
+    const role = String(
+      explicitlyCandidate && !ownerWorkspace ? 'seeker' :
       profileRole ||
-      user.user_metadata?.role ||
-      user.user_metadata?.account_type ||
+      accountType ||
+      metadataRole ||
       user.app_metadata?.role ||
       user.app_metadata?.account_type ||
       fallbackRole ||
       'seeker'
-    ).toLowerCase();
+    ).trim().toLowerCase();
 
     // Every employer enters through onboarding. That page is the single source
     // of truth for whether setup is already complete and forwards completed
