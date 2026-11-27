@@ -349,65 +349,6 @@
   const urlRole = new URLSearchParams(window.location.search).get('role');
   let currentRole = urlRole === 'employer' ? 'employer' : 'seeker';
 
-
-  // Shared with the app: an active membership in an approved company
-  // is authoritative for employer approval. Never rely on browser storage.
-  // Use the canonical company resolver used by the Alygnn app. Its
-  // SECURITY DEFINER implementation can see this employer's company even
-  // when the ordinary company_members -> companies join is hidden by RLS.
-  async function alygnnApprovedCompanyForUser(userId) {
-    if (!userId) return false;
-    try {
-      const { data: linked, error: rpcError } = await sb.rpc('get_my_employer_company');
-      if (!rpcError && linked) {
-        const companies = Array.isArray(linked) ? linked : [linked];
-        if (companies.some(company => {
-          const id = company?.company_id || company?.id;
-          return !!id && String(company?.verification_status || '').trim().toLowerCase() === 'approved';
-        })) return true;
-      } else if (rpcError) {
-        console.warn('Canonical employer company lookup unavailable:', rpcError);
-      }
-    } catch (error) {
-      console.warn('Canonical employer company lookup failed:', error);
-    }
-    // Match the mobile app's authenticated server-side company resolver.
-    // Never infer approval from localStorage, email, or a purchase.
-    try {
-      const { data: authData } = await sb.auth.getSession();
-      const accessToken = authData?.session?.access_token;
-      if (accessToken) {
-        const response = await fetch('/api/company/my-company', {
-          headers: { Authorization: 'Bearer ' + accessToken },
-          cache: 'no-store'
-        });
-        if (response.ok) {
-          const payload = await response.json();
-          const company = payload?.company || payload?.data?.company || payload?.data || payload;
-          const companyId = String(company?.id || company?.company_id || payload?.company_id || '').trim();
-          const status = String(company?.verification_status || company?.verificationStatus || payload?.verification_status || '').trim().toLowerCase();
-          if (companyId && status === 'approved') return true;
-        }
-      }
-    } catch (error) {
-      console.warn('Employer company API lookup unavailable:', error);
-    }
-    // Backward-compatible fallback for workspaces where the join is visible.
-    try {
-      const { data, error } = await sb.from('company_members')
-        .select('company_id,companies(verification_status)')
-        .eq('user_id', userId).eq('membership_status', 'active').limit(20);
-      if (error) { console.warn('Company membership lookup unavailable:', error); return false; }
-      return (data || []).some(member => {
-        const company = Array.isArray(member.companies) ? member.companies[0] : member.companies;
-        return !!member.company_id && String(company?.verification_status || '').trim().toLowerCase() === 'approved';
-      });
-    } catch (error) {
-      console.warn('Company membership lookup failed:', error);
-      return false;
-    }
-  }
-
   async function employerDestination(userId) {
     const { data: profile, error } = await sb
       .from('profiles')
@@ -434,9 +375,7 @@
       )
     );
 
-    const approvedCompany = await alygnnApprovedCompanyForUser(userId);
     const onboardingComplete =
-      approvedCompany ||
       profile?.employer_verified === true ||
       status === 'approved' ||
       blueprintLooksComplete;
@@ -497,7 +436,19 @@
       console.warn('Could not read account role during login routing:', error);
     }
 
-    const role = String(
+    const signupRole=String(user.user_metadata?.role||user.user_metadata?.account_type||'').trim().toLowerCase();
+    // Some iOS-created candidate accounts have stale employer role values in profiles.
+    // Respect explicit candidate signup metadata unless an employer team/owner workspace is verified.
+    // Team membership was checked above; do not treat a role value alone as proof of employer access.
+    let ownerWorkspace=false;
+    if(signupRole==='candidate'||signupRole==='seeker'){
+      try{
+        const {data:ownerState,error:ownerError}=await sb.rpc('get_my_team_operational_state');
+        if(!ownerError&&ownerState?.has_company===true&&ownerState?.access?.is_owner===true){ownerWorkspace=true;}
+      }catch(error){console.warn('Employer ownership check unavailable:',error);}
+    }
+    const role=String(
+      (signupRole==='candidate'||signupRole==='seeker')&&!ownerWorkspace?'seeker':
       profileRole ||
       user.user_metadata?.role ||
       user.user_metadata?.account_type ||
@@ -507,10 +458,12 @@
       'seeker'
     ).toLowerCase();
 
-    // Route approved app-created employers straight to their existing website
-    // dashboard. New employers still enter onboarding.
-    if (role === 'employer' || await alygnnApprovedCompanyForUser(user.id)) {
-      return await employerDestination(user.id);
+    // Every employer enters through onboarding. That page is the single source
+    // of truth for whether setup is already complete and forwards completed
+    // employers to the dashboard. This avoids duplicate checks on login.html
+    // and prevents login <-> dashboard redirect loops.
+    if (role === 'employer') {
+      return window.location.origin + '/employer-onboarding.html';
     }
 
     return window.location.origin + '/account.html';
