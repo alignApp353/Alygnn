@@ -2384,8 +2384,57 @@ async function syncCompletedPlanUpgradeCheckout({user,checkoutSessionId}){
   return{ok:true,change:'upgrade_applied',target_plan:target,already_applied:livePlan===target};
 }
 
+// Resolve the authenticated user's company membership for billing, never a client-supplied owner ID.
+// All employers use the same logic; team permissions are verified using the user's JWT.
+async function resolveAuthorizedBillingWorkspace(token,user){
+  const base=manageBase();
+  const anon=process.env.SUPABASE_ANON_KEY;
+  if(!anon)throw Object.assign(new Error('Billing authentication is not configured.'),{status:503});
+  const response=await fetch(base+'/rest/v1/rpc/get_my_team_operational_state',{
+    method:'POST',
+    headers:{apikey:anon,Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:'{}'
+  });
+  const raw=await response.json().catch(()=>null);
+  if(!response.ok){
+    // Do not fall back to personal billing if team membership cannot be checked.
+    throw Object.assign(new Error('Could not verify your company billing access. Please retry.'),{status:503});
+  }
+  const runtime=Array.isArray(raw)?raw[0]:raw;
+  const access=runtime?.access||{};
+  if(!runtime?.has_company){
+    // Legacy employer owners may not have a company row yet; retain own billing.
+    return {employerId:user.id,isOwner:true,canView:true,canManage:true,companyName:null};
+  }
+  const isOwner=access.is_owner===true;
+  const ownerId=String(access.owner_user_id||(isOwner?user.id:'')).trim();
+  if(!ownerId){
+    throw Object.assign(new Error('Company billing owner could not be verified.'),{status:403});
+  }
+  const permissions=access.permissions&&typeof access.permissions==='object'?access.permissions:{};
+  const canManage=isOwner||permissions.billing_manage===true;
+  const canView=isOwner||permissions.billing_view===true||canManage;
+  if(!canView){
+    throw Object.assign(new Error('You do not have permission to view this company billing account.'),{status:403});
+  }
+  return {
+    employerId:ownerId,isOwner,canView,canManage,
+    companyName:String(runtime?.company_name||access.company_name||runtime?.owner_profile?.company_name||'').trim()||null,
+    role:String(access.role||'').trim()||null,
+    ownerEmail:String(runtime?.owner_profile?.email||'').trim()||null
+  };
+}
+
 async function runManageAction(res,user,input){
   const action=String(input.action||'summary').toLowerCase();
+  const authenticatedUser=user;
+  const context=await resolveAuthorizedBillingWorkspace(input.__authToken,user);
+  if(!context.isOwner && action!=='summary' && !(action==='billing_portal' && context.canManage)){
+    throw Object.assign(new Error('Only the company billing owner can perform this billing action.'),{status:403});
+  }
+  // All payment, entitlement and invoice lookups must use the verified company owner.
+  // The owner's identity is derived from the authenticated membership RPC.
+  user={...user,id:context.employerId,email:context.ownerEmail||(context.isOwner?user.email:null)};
 
   let ent=await getEntitlement(user.id);
   let sub=null;
@@ -2454,7 +2503,7 @@ async function runManageAction(res,user,input){
         !!ent?.stripe_plan_schedule_id
       );
 
-    if(hasStalePendingPlan){
+    if(hasStalePendingPlan && context.isOwner){
       try{
         if(sub){
           await releaseSchedule(sub,ent);
@@ -2515,6 +2564,29 @@ async function runManageAction(res,user,input){
       ok:true,
       summary:{
         ...planSummary,
+        billing_access:{
+          is_owner:context.isOwner,
+          can_view:context.canView,
+          can_manage:context.canManage,
+          company_name:context.companyName,
+          team_role:context.role
+        },
+        // Only fields required for plan display; never expose Stripe secret IDs.
+        billing_entitlement:{
+          plan:ent?.plan||null,
+          test_plan:ent?.test_plan||null,
+          test_mode:ent?.test_mode===true,
+          subscription_status:ent?.subscription_status||null,
+          billing_period:ent?.billing_period||null,
+          slot_limit:ent?.slot_limit??null,
+          addon_slot_count:ent?.addon_slot_count??null,
+          addon_slots_expires_at:ent?.addon_slots_expires_at||null,
+          current_period_end:ent?.current_period_end||null,
+          plan_amount_cents:ent?.plan_amount_cents??null,
+          pending_plan:ent?.pending_plan||null,
+          pending_billing_period:ent?.pending_billing_period||null,
+          pending_plan_effective_at:ent?.pending_plan_effective_at||null
+        },
         second_job_slot:secondSlotSummary(secondSlot),
         billing_account:billingAccount
       }
@@ -3706,7 +3778,7 @@ module.exports = async function handler(req, res) {
     }
     if(billingAction==='finalize_ios_plan_zero_setup'){
       await verifyIosZeroCardSetup({user,input,product:'plan_upgrade'});
-      return await runManageAction(res,user,{...input,action:'change_plan',
+      return await runManageAction(res,user,{...input,__authToken:token,action:'change_plan',
         verified_setup_intent_id:input.setup_intent_id});
     }
     if(billingAction==='prepare_ios_weekly_zero_setup'){
@@ -3804,7 +3876,7 @@ module.exports = async function handler(req, res) {
       'resume_second_slot',
       'billing_portal'
     ].includes(billingAction)) {
-      return await runManageAction(res, user, input);
+      return await runManageAction(res, user, {...input,__authToken:token});
     }
 
     if (billingAction === 'sync_boost_checkout') {
