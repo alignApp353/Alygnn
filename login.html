@@ -390,26 +390,30 @@
   async function redirectForUser(user, fallbackRole = currentRole) {
     if (!user?.id) return window.location.origin + '/login.html';
 
-    // Accepted employer team members (admin/recruiter) belong to the owner's
-    // existing company workspace even if their personal profiles.role is still
-    // "seeker". Resolve team membership before normal profile-role routing so
-    // an invited recruiter can never be sent to the candidate account page.
+    // A login may legitimately have a candidate profile AND an accepted employer
+    // team membership. The side selected at sign-in controls which authorized
+    // workspace opens; team membership never erases the candidate workspace.
+    let teamRuntime = null;
     try {
-      const { data: teamRuntime, error: teamRuntimeError } = await sb.rpc('get_my_team_operational_state');
-
-      if (
-        !teamRuntimeError &&
-        teamRuntime?.has_company === true &&
-        teamRuntime?.access?.is_owner === false
-      ) {
-        return window.location.origin + '/employer-dashboard.html';
+      const result = await sb.rpc('get_my_team_operational_state');
+      if (!result.error && result.data?.has_company === true) teamRuntime = result.data;
+    } catch (error) {
+      console.warn('Could not resolve employer membership at sign-in:', error);
+    }
+    let candidateWorkspace = false;
+    try {
+      const result = await sb.rpc('get_my_workspace_context');
+      if (!result.error) candidateWorkspace = result.data?.has_candidate === true;
+    } catch (error) {
+      console.warn('Candidate workspace check unavailable:', error);
+    }
+    const memberOfCompany = teamRuntime?.has_company === true &&
+      teamRuntime?.access?.is_owner === false && !!teamRuntime?.access?.company_id;
+    if (memberOfCompany) {
+      if (fallbackRole === 'seeker' && candidateWorkspace) {
+        return window.location.origin + '/account.html?mode=candidate';
       }
-
-      if (teamRuntimeError) {
-        console.warn('Could not check employer team membership during login routing:', teamRuntimeError);
-      }
-    } catch (teamRuntimeError) {
-      console.warn('Could not check employer team membership during login routing:', teamRuntimeError);
+      return window.location.origin + '/employer-dashboard.html';
     }
 
     // Keep login routing lightweight and resilient. On a fresh computer the
@@ -458,7 +462,8 @@
     }
 
     const role = String(
-      explicitlyCandidate && !ownerWorkspace ? 'seeker' :
+      (fallbackRole === 'seeker' && candidateWorkspace && !ownerWorkspace) ||
+      (explicitlyCandidate && !ownerWorkspace) ? 'seeker' :
       profileRole ||
       accountType ||
       metadataRole ||
