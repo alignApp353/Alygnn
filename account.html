@@ -1692,7 +1692,7 @@ select.form-input{
         <span class="settings-card-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><path d="M17 15l3 3-3 3"/></svg>
         </span>
-        <div class="label">Switch to Recruiter Mode</div>
+        <div class="label">Switch to Employer Account</div>
         <div class="sub">Open the employer workspace connected to this Alygnn login</div>
         <span class="workspace-mode-badge" id="candidate-workspace-role">Employer workspace</span>
       </button>
@@ -3219,9 +3219,9 @@ async function configureCandidateWorkspaceMode(){
       ? candidateWorkspaceContext.employer_workspaces
       : [];
 
-    // Only added teammates who ALSO have a real candidate workspace get the switch.
-    // A company owner, a candidate-only login, and an employer-only login stay single-mode.
-    const teammateWorkspaces = workspaces.filter(workspace => workspace?.is_owner !== true);
+    // Both accepted team members and company owners may also have a genuine candidate workspace.
+    // Use only memberships returned by the workspace RPC, never cached roles.
+    const teammateWorkspaces = workspaces.filter(workspace => !!workspace?.company_id);
     const hasCandidateWorkspace = candidateWorkspaceContext.has_candidate === true;
 
     if(!hasCandidateWorkspace || !teammateWorkspaces.length){
@@ -3345,8 +3345,13 @@ async function initAccountPage(){
   }
 
   const workspaceModeState = await configureCandidateWorkspaceMode();
-  const candidateModeRequested =
-    new URLSearchParams(window.location.search).get('mode') === 'candidate';
+  const requestedMode = new URLSearchParams(window.location.search).get('mode');
+  const selectedMode = (() => {
+    try { return sessionStorage.getItem('alygnn_active_mode') || localStorage.getItem('alygnn_active_mode'); }
+    catch(_) { return null; }
+  })();
+  const candidateModeRequested = requestedMode === 'candidate' ||
+    (requestedMode !== 'employer' && selectedMode === 'candidate');
   const dualWorkspaceCandidate = Boolean(
     workspaceModeState.hasCandidateWorkspace &&
     workspaceModeState.teammateWorkspaces.length > 0
