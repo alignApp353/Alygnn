@@ -413,7 +413,11 @@
       if (fallbackRole === 'seeker' && candidateWorkspace) {
         return window.location.origin + '/account.html?mode=candidate';
       }
-      return window.location.origin + '/employer-dashboard.html';
+      return window.location.origin + '/employer-dashboard.html?mode=employer';
+    }
+    if (teamRuntime?.has_company === true && teamRuntime?.access?.is_owner === true &&
+        fallbackRole === 'seeker' && candidateWorkspace) {
+      return window.location.origin + '/account.html?mode=candidate';
     }
 
     // Keep login routing lightweight and resilient. On a fresh computer the
@@ -462,7 +466,7 @@
     }
 
     const role = String(
-      (fallbackRole === 'seeker' && candidateWorkspace && !ownerWorkspace) ||
+      (fallbackRole === 'seeker' && candidateWorkspace) ||
       (explicitlyCandidate && !ownerWorkspace) ? 'seeker' :
       profileRole ||
       accountType ||
@@ -705,6 +709,14 @@
         showJobSeekerAccountNotice(destination);
         return;
       }
+
+      // Remember the selected, authorized workspace only after routing checks passed.
+      try {
+        const mode = /\/account\.html(?:$|[?#])/.test(destination) ? 'candidate' : 'employer';
+        localStorage.setItem('alygnn_active_mode',mode);
+        sessionStorage.setItem('alygnn_active_mode',mode);
+        localStorage.setItem('alygnn_last_workspace',mode);
+      } catch(_) {}
 
       // Preferences are helpful, but they must never trap the user on the login
       // page. Give the save a short window, then continue routing regardless.
