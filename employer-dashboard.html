@@ -1625,8 +1625,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     button.style.display='none';
     hasCandidateWorkspace=false;
 
-    if(!isTeamMember || teamAccess?.is_owner!==false) return;
-
+    // Owners can also be candidates; verify from the workspace RPC.
     try{
       const {data,error}=await sb.rpc('get_my_workspace_context');
       if(error) throw error;
@@ -1638,7 +1637,7 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 
   function switchToCandidateMode(){
-    if(!isTeamMember || !hasCandidateWorkspace){
+    if(!hasCandidateWorkspace){
       showToast('No personal candidate workspace is connected to this login.');
       return;
     }
@@ -3721,6 +3720,9 @@ createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     } finally {
       billingReady = true;
     }
+    // Keep a verified candidate switch visible for owners with both workspaces.
+    if(!isTeamMember) await configureCandidateModeSwitch();
+
   }
 
   function entitlementNotExpired() {
