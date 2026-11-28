@@ -686,7 +686,7 @@ function editInvite(encoded){
  $('member-role').value=['admin','hiring_manager','recruiter'].includes(editingInvite.team_role)?editingInvite.team_role:'recruiter';
  $('remove-member').style.display='none';
  $('save-member').disabled=false;
- $('save-member').textContent='Save & resend invite';
+ $('save-member').textContent='Save';
  renderPermissions(editingInvite.permissions);
  clearMsg('modal-message');
  const overlay=$('invite-overlay');
@@ -798,7 +798,12 @@ async function saveMember(){
         p_permissions:permissions
       });
       if(updateError)throw updateError;
-      inviteId=invite?.id||editingInvite.id||'';
+      // Editing a pending invitation saves the record only. It must not send email.
+      closeInvite();
+      editingInvite=null;
+      await loadTeam();
+      showMsg('page-message','Invitation changes saved. The original invitation remains pending; use Resend if you want to send another email.','success');
+      return;
     }else{
       const {data:invite,error:createError}=await sb.rpc('create_company_team_invite',{
         p_email:email,
@@ -838,9 +843,7 @@ async function saveMember(){
 
     showMsg(
       'modal-message',
-      editingInvite
-        ? 'Invitation updated. Resending the email now… Please keep this window open.'
-        : 'Invitation saved. Sending the email now… Please keep this window open.',
+      'Invitation saved. Sending the email now… Please keep this window open.',
       'info'
     );
 
@@ -850,21 +853,14 @@ async function saveMember(){
       await loadTeam();
       throw new Error(
         mailError?.message||
-        (editingInvite
-          ? 'The invitation was updated, but the email could not be resent. You can use Resend under Pending Invitations.'
-          : 'The invitation was saved, but the email could not be sent. You can use Resend under Pending Invitations.')
+        'The invitation was saved, but the email could not be sent. You can use Resend under Pending Invitations.'
       );
     }
 
-    const wasEditingInvite=!!editingInvite;
     closeInvite();
     editingInvite=null;
     await loadTeam();
-    showMsg(
-      'page-message',
-      wasEditingInvite ? 'Invitation updated and resent.' : 'Invitation sent successfully.',
-      'success'
-    );
+    showMsg('page-message','Invitation sent successfully.','success');
 
   }catch(error){
     console.error('saveMember failed:',error);
@@ -888,7 +884,7 @@ async function saveMember(){
     if(modal)modal.scrollTo({top:0,behavior:'smooth'});
   }finally{
     button.disabled=false;
-    button.textContent=editingMember?'Save access':(editingInvite?'Save & resend invite':originalLabel);
+    button.textContent=editingMember?'Save access':(editingInvite?'Save':originalLabel);
   }
 }
 async function teamAccountApi(method='GET',body=null){
